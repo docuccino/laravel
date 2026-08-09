@@ -1,0 +1,13 @@
+# Vendored Scalar standalone bundle (~3.6 MB minified). Marked as a generated,
+# non-diffable, linguist-vendored asset so it never bloats diffs/reviews or the
+# language stats. Refresh it with scripts/update-scalar.sh (do NOT hand-edit).
+/resources/js/scalar.standalone.js -diff -text linguist-generated linguist-vendored
+
+/tests           export-ignore
+/workbench       export-ignore
+/.github         export-ignore
+phpunit.xml      export-ignore
+phpunit.xml.dist export-ignore
+testbench.yaml   export-ignore
+.gitattributes   export-ignore
+.gitignore       export-ignore

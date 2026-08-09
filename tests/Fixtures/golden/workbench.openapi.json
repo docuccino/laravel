@@ -1,0 +1,1436 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/archived-forms/{form}": {
+      "get": {
+        "summary": "Show a form.",
+        "tags": [
+          "Forms"
+        ],
+        "parameters": [
+          {
+            "name": "form",
+            "in": "path",
+            "description": "Resolves soft-deleted (trashed) records as well as active ones.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormData"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/article-resources": {
+      "get": {
+        "summary": "An anonymous resource collection → array of the item schema.",
+        "tags": [
+          "Integrations"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ArticleResource"
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/article-resources/{id}": {
+      "get": {
+        "summary": "A single API resource whose whenLoaded fields become optional.",
+        "tags": [
+          "Integrations"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ArticleResource"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/articles": {
+      "post": {
+        "summary": "Spatie Data request (body from the Data class) + response, under a folded 201.",
+        "tags": [
+          "Integrations"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Article"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Article_2"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "errors": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attachments/{id}": {
+      "get": {
+        "summary": "A polymorphic morph (Widget|Gadget) → discriminated oneOf keyed by the morph map.",
+        "tags": [
+          "Integrations"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Gadget"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Widget"
+                    }
+                  ],
+                  "discriminator": {
+                    "mapping": {
+                      "gadget": "#/components/schemas/Gadget",
+                      "widget": "#/components/schemas/Widget"
+                    },
+                    "propertyName": "type"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/broken": {
+      "get": {
+        "description": "Documentation could not be generated for this route."
+      }
+    },
+    "/api/checkout": {
+      "post": {
+        "summary": "Throws a renderable exception whose render() defines a 402 — documented by the inferred tier.",
+        "tags": [
+          "Integrations"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "integer",
+                      "const": 402
+                    },
+                    "title": {
+                      "type": "string",
+                      "const": "Payment Required"
+                    },
+                    "type": {
+                      "type": "string",
+                      "const": "https://example.test/problems/payment-required"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status"
+                  ]
+                },
+                "example": {
+                  "type": "https://example.test/problems/payment-required",
+                  "title": "Payment Required",
+                  "status": 402
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/created-articles": {
+      "post": {
+        "summary": "A resource wrapping a fresh Model::create() → a 201 Created response (Wave C item 4).",
+        "tags": [
+          "Integrations"
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ArticleResource"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/forms": {
+      "get": {
+        "summary": "List forms.",
+        "description": "Returns the collection of forms visible to the caller.",
+        "tags": [
+          "Forms"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FormData"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/forms/{form}": {
+      "get": {
+        "summary": "Show a form.",
+        "tags": [
+          "Forms"
+        ],
+        "parameters": [
+          {
+            "name": "form",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormData"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/guarded-forms": {
+      "get": {
+        "summary": "List forms.",
+        "description": "Returns the collection of forms visible to the caller.",
+        "tags": [
+          "Forms"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FormData"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/json-paginated-articles": {
+      "get": {
+        "summary": "A jsonPaginate() resource collection → page[...] params + the paginator envelope (Wave C item 2).",
+        "tags": [
+          "Integrations"
+        ],
+        "parameters": [
+          {
+            "name": "page[number]",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "page[size]",
+            "in": "query",
+            "description": "Number of results per page.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 30,
+              "maximum": 30,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ArticleResource"
+                      }
+                    },
+                    "links": {
+                      "type": "object",
+                      "properties": {
+                        "first": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "last": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "next": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "prev": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "current_page": {
+                          "type": "integer"
+                        },
+                        "from": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "last_page": {
+                          "type": "integer"
+                        },
+                        "path": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "per_page": {
+                          "type": "integer"
+                        },
+                        "to": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "total": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "links",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jsonapi-articles/{id}": {
+      "get": {
+        "summary": "A first-party JSON:API resource → JSON:API document + include/fields query params.",
+        "tags": [
+          "Integrations"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "description": "Sparse fieldsets per resource type (fields[TYPE]=field1,field2).",
+            "required": false,
+            "style": "deepObject",
+            "explode": true,
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "description": "Comma-separated list of relationships to include as compound-document data.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ArticleJsonApiResource"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/model-widgets/{id}": {
+      "get": {
+        "summary": "An Eloquent model → object schema from columns + casts + visible/hidden.",
+        "tags": [
+          "Integrations"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Widget"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "A 204 No Content response (noContent()).",
+        "tags": [
+          "Integrations"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/moderated-forms": {
+      "get": {
+        "summary": "List forms.",
+        "description": "Returns the collection of forms visible to the caller.",
+        "tags": [
+          "Forms"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FormData"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-permissions": [
+          {
+            "type": "permission",
+            "values": [
+              "moderate forms"
+            ],
+            "guard": "web"
+          }
+        ]
+      }
+    },
+    "/api/paginated-articles": {
+      "get": {
+        "summary": "A paginated resource collection → the length-aware {data, links, meta} envelope (Wave C item 1).",
+        "tags": [
+          "Integrations"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ArticleResource"
+                      }
+                    },
+                    "links": {
+                      "type": "object",
+                      "properties": {
+                        "first": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "last": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "next": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "prev": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "current_page": {
+                          "type": "integer"
+                        },
+                        "from": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "last_page": {
+                          "type": "integer"
+                        },
+                        "path": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "per_page": {
+                          "type": "integer"
+                        },
+                        "to": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "total": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "links",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ping": {
+      "get": {}
+    },
+    "/api/rate-limited": {
+      "get": {
+        "summary": "List forms.",
+        "description": "Returns the collection of forms visible to the caller.",
+        "tags": [
+          "Forms"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FormData"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests — the rate limit for this endpoint has been exceeded.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before making another request.",
+                "schema": {
+                  "type": "integer",
+                  "example": 60
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "The maximum number of requests permitted in the current window.",
+                "schema": {
+                  "type": "integer",
+                  "example": 60
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "The number of requests remaining in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Unix timestamp (seconds, UTC) at which the current rate limit window resets.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reports": {
+      "post": {
+        "summary": "Distinct return paths carrying distinct statuses (200 + 202).",
+        "tags": [
+          "Integrations"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "const": "accepted"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tickets": {
+      "post": {
+        "tags": [
+          "Widgets"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreWidgetRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created widget.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetData"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "errors": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/widget-query": {
+      "get": {
+        "summary": "List forms, filterable and sortable via the query string.",
+        "tags": [
+          "WidgetQuery"
+        ],
+        "parameters": [
+          {
+            "name": "filter[name]",
+            "in": "query",
+            "description": "Partial-match filter",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filter[status]",
+            "in": "query",
+            "description": "Exact-match filter. Accepts a comma-separated list of values (matched as `whereIn`).",
+            "required": false,
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/WidgetStatus"
+              }
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "description": "Items per page.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort by: name, created_at (prefix `-` for descending).",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "name"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/widgets": {
+      "post": {
+        "summary": "Create a widget.",
+        "tags": [
+          "Widgets"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "name": "dry_run",
+            "in": "query",
+            "description": "Validate without persisting.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "The created widget.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetData"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Article": {
+        "type": "object",
+        "properties": {
+          "author": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "email": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "email"
+            ]
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "heading": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "internal": {
+            "type": "integer"
+          },
+          "secret": {
+            "type": "string"
+          },
+          "subtitle": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "heading",
+          "body",
+          "secret",
+          "internal"
+        ]
+      },
+      "ArticleJsonApiResource": {
+        "type": "object",
+        "properties": {
+          "attributes": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "body"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "links": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "href": {
+                  "type": "string"
+                },
+                "meta": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "href"
+              ]
+            }
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type"
+        ]
+      },
+      "ArticleResource": {
+        "type": "object",
+        "properties": {
+          "author": {
+            "$ref": "#/components/schemas/AuthorResource"
+          },
+          "excerpt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ]
+      },
+      "Article_2": {
+        "type": "object",
+        "properties": {
+          "author": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthorData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "body": {
+            "type": "string"
+          },
+          "headline": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "subtitle": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "headline",
+          "body",
+          "author"
+        ]
+      },
+      "AuthorData": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "email"
+        ]
+      },
+      "AuthorResource": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "email"
+        ]
+      },
+      "FormData": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "publishedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ]
+      },
+      "Gadget": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "StoreWidgetRequest": {
+        "type": "object",
+        "properties": {
+          "avatar": {
+            "description": "An image file.",
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "user"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "quantity",
+          "role"
+        ]
+      },
+      "Widget": {
+        "type": "object",
+        "properties": {
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "display_name": {},
+          "id": {
+            "type": "integer"
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "meta": {
+            "type": [
+              "array",
+              "object"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/WidgetStatus"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "created_at",
+          "is_active",
+          "status",
+          "meta",
+          "updated_at"
+        ]
+      },
+      "WidgetData": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/WidgetStatus"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status"
+        ]
+      },
+      "WidgetStatus": {
+        "type": "string",
+        "enum": [
+          "draft",
+          "published",
+          "archived"
+        ],
+        "x-enumDescriptions": {
+          "draft": "Not yet visible to applicants.",
+          "published": "Live and accepting traffic."
+        }
+      }
+    }
+  }
+}
