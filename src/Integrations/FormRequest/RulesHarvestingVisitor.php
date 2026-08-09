@@ -19,8 +19,9 @@ use PhpParser\Node\Scalar\String_;
  * bare object. Nothing is executed. Subclasses supply only the front matching — which AST node carries the
  * array — via {@see enterNode()}.
  *
- * A field whose value folds to no rules (a closure, a `new` rule object, `Rule::when(…)`, an unresolvable
- * expression) is recorded as unrecoverable so the caller can diagnose it instead of losing it.
+ * A field whose value folds to no rules (a closure, an unannotated `new` rule object, `Rule::when(…)`, an
+ * unresolvable expression) is recorded as unrecoverable so the caller can diagnose it instead of losing
+ * it.
  */
 abstract class RulesHarvestingVisitor implements TraceVisitor
 {
@@ -51,6 +52,16 @@ abstract class RulesHarvestingVisitor implements TraceVisitor
     public function unrecoverableFields(): array
     {
         return $this->unrecoverable;
+    }
+
+    /**
+     * Files the fold read beyond the traced method — the annotated rule classes.
+     *
+     * @return list<string>
+     */
+    public function dependencyFiles(): array
+    {
+        return $this->folder->dependencyFiles();
     }
 
     protected function harvest(Array_ $array, TypeScope $scope): void

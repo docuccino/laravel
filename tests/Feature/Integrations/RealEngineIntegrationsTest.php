@@ -431,6 +431,35 @@ it('recovers Rule::enum(...) inside a real FormRequest rules() and diagnoses an 
         ->and($priorityRules['enum']['note'])->toBe('App\\Enums\\ListingStatus');
 })->group('fixture');
 
+it('documents a real custom rule object from its #[RuleSchema] and diagnoses the unannotated sibling', function (): void {
+    // `new SortCode` is invisible to the array-shape stage and PHPStan collapses it to a bare object;
+    // the fold catches the `new` at the AST level, reads the class's attribute, and maps it onto the
+    // rule vocabulary. The sibling rule carries no attribute, so nothing is invented.
+    $trace = FixtureRunner::traceRules(
+        'app/Http/Requests/StorePaymentRequest.php',
+        'App\\Http\\Requests\\StorePaymentRequest',
+        'rules',
+    );
+
+    expect(array_keys($trace['fields']))->toBe(['amount', 'sort_code'])
+        ->and($trace['unrecoverable'])->toBe(['signature']);
+
+    $sortCode = [];
+    foreach ($trace['fields']['sort_code'] as $rule) {
+        $sortCode[$rule['name']] = $rule['parameters'];
+    }
+
+    expect($sortCode)->toBe([
+        'required' => [],
+        'string' => [],
+        'regex' => ['/[0-9]{2}-[0-9]{2}-[0-9]{2}/'],
+        'min' => ['8'],
+        'max' => ['8'],
+        'description' => ['A UK sort code, hyphenated.'],
+        'example' => ['20-15-55'],
+    ]);
+})->group('fixture');
+
 it('recovers a real laravel-actions rules() array end-to-end into a RuleSet', function (): void {
     // The engine analyses the action's literal rules() array into a constant shape…
     $analysis = ActionAnalysis::fromArray(FixtureRunner::analyze(

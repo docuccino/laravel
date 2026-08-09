@@ -66,6 +66,7 @@ final class ValidationRequestExtension implements OperationExtension
 
         $visitor = new InlineRulesVisitor;
         $context->trace($visitor);
+        $context->recordDependencyFiles($visitor->dependencyFiles());
 
         $inline = $visitor->ruleSet();
 
@@ -77,7 +78,7 @@ final class ValidationRequestExtension implements OperationExtension
                 severity: Severity::Info,
                 code: 'validation.rule-unrecoverable',
                 message: sprintf('Inline validation field "%s" has no statically recoverable rules; it is omitted from the request schema.', $field),
-                help: 'Its rules are a closure, a custom Rule object, or a Rule::when()/conditional descriptor. Express the field with recoverable rules (string/array rules, Rule::enum(), Rule::in(), …) so it is documented.',
+                help: 'Its rules are a closure, a custom Rule object with no #[RuleSchema], or a Rule::when()/conditional descriptor. Express the field with recoverable rules (string/array rules, Rule::enum(), Rule::in(), …), or annotate the rule class with #[RuleSchema], so it is documented.',
                 routeSignature: $context->route->signature(),
             ));
         }

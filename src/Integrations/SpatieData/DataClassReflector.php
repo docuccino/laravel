@@ -267,8 +267,8 @@ final class DataClassReflector
 
     /**
      * Laravel rule tokens recovered from a property's spatie validation attributes, read via
-     * {@see \ReflectionAttribute::getArguments()} — never instantiated, so no user expression runs.
-     * {@see DataValidationRules} feeds them through the shared validation chain.
+     * {@see \ReflectionAttribute::getArguments()} — the attribute is never instantiated, so no spatie
+     * rule logic runs. {@see DataValidationRules} feeds them through the shared validation chain.
      *
      * @return list<string>
      */
@@ -320,6 +320,38 @@ final class DataClassReflector
         }
 
         return $tokens;
+    }
+
+    /**
+     * The classes of any rule OBJECTS a property's `#[Rule(new Iban)]` attributes carry — spatie's one
+     * attribute that takes one. Only the class is used; its `#[RuleSchema]` is the documented contract.
+     *
+     * @return list<string>
+     */
+    public function ruleObjectClasses(string $fqcn, string $property): array
+    {
+        $reflection = $this->property($fqcn, $property);
+        if ($reflection === null) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($reflection->getAttributes() as $attribute) {
+            if ($attribute->getName() !== self::RULE_ATTRIBUTE) {
+                continue;
+            }
+
+            // array_walk_recursive descends arrays and hands objects over as leaves, so a rule object
+            // is found whether it was written bare or inside an array argument.
+            $arguments = $attribute->getArguments();
+            array_walk_recursive($arguments, static function (mixed $value) use (&$out): void {
+                if (is_object($value)) {
+                    $out[] = $value::class;
+                }
+            });
+        }
+
+        return $out;
     }
 
     /**

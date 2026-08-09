@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 use Docuccino\Core\Inference\ConstValue;
 use Docuccino\Laravel\Integrations\FormRequest\ConstValueToRules;
+use Docuccino\Laravel\Tests\Fixtures\Rules\BankReference;
+use Docuccino\Laravel\Tests\Fixtures\Rules\OpaqueCheck;
 use Workbench\App\Enums\WidgetStatus;
 
 /**
  * Covers the inline-validation folding crux: turning a statically-recovered {@see ConstValue} (a
  * field's rules from `$request->validate([...])`) into rules, including `Rule::*` descriptors that
- * are folded at the AST level before PHPStan would collapse them to a bare object.
+ * are folded at the AST level before PHPStan would collapse them to a bare object, and `new` rule
+ * objects documented by their class's `#[RuleSchema]`.
  */
 it('folds a pipe-string value into rules', function (): void {
     $rules = (new ConstValueToRules)->fold(ConstValue::scalar('required|string|max:100'));
@@ -87,6 +90,45 @@ it('applies chained only() then except() left to right, spread-arg form included
     $rules = (new ConstValueToRules)->fold($value);
 
     expect($rules[0]->parameters)->toBe(['draft', 'archived']);
+});
+
+it('folds a rule object whose class carries a RuleSchema, ignoring its constructor args', function (): void {
+    $folder = new ConstValueToRules;
+
+    // `new BankReference('GB')` — the argument is not part of the documented contract.
+    $rules = $folder->fold(ConstValue::instance(BankReference::class, [ConstValue::scalar('GB')]));
+
+    expect(array_map(fn ($r) => $r->name, $rules))
+        ->toBe(['string', 'regex', 'min', 'max', 'format', 'description', 'example'])
+        ->and($folder->dependencyFiles())->toBe([(new ReflectionClass(BankReference::class))->getFileName()]);
+});
+
+it('folds a rule object beside string rules in an array-form rule list', function (): void {
+    $value = ConstValue::array([
+        ConstValue::scalar('required'),
+        ConstValue::scalar('nullable'),
+        ConstValue::instance(BankReference::class, []),
+    ]);
+
+    $rules = (new ConstValueToRules)->fold($value);
+
+    expect(array_map(fn ($r) => $r->name, $rules))
+        ->toBe(['required', 'nullable', 'string', 'regex', 'min', 'max', 'format', 'description', 'example']);
+});
+
+it('folds an unannotated rule object to nothing, leaving the field unrecoverable', function (): void {
+    $folder = new ConstValueToRules;
+
+    expect($folder->fold(ConstValue::instance(OpaqueCheck::class, [])))->toBe([])
+        // Its file is still a dependency: adding the attribute has to re-document the field.
+        ->and($folder->dependencyFiles())->toBe([(new ReflectionClass(OpaqueCheck::class))->getFileName()]);
+});
+
+it('folds a rule object of an unknown class to nothing with no dependency', function (): void {
+    $folder = new ConstValueToRules;
+
+    expect($folder->fold(ConstValue::instance('App\\Rules\\Missing', [])))->toBe([])
+        ->and($folder->dependencyFiles())->toBe([]);
 });
 
 it('ignores an unknown chained method and keeps the full case list', function (): void {

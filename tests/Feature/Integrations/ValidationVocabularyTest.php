@@ -180,6 +180,17 @@ it('maps every schema-producing string rule to its fragment', function (array $r
     // FileRuleTransformer — dimensions has no OpenAPI keyword, so the constraint list is a note
     // (multipart switch asserted separately).
     'dimensions' => [[['dimensions', ['min_width=100', 'min_height=200']]], ['description' => 'Image dimensions: min_width=100, min_height=200.']],
+
+    // AnnotationRuleTransformer — the keywords a #[RuleSchema] states outright. An example is coerced
+    // back to the field's resolved type, having travelled as a string parameter.
+    'format' => [[['string'], ['format', ['iban']]], ['format' => 'iban', 'type' => 'string']],
+    'format (never overwrites a type rule\'s own)' => [[['email'], ['format', ['iban']]], ['format' => 'email', 'type' => 'string']],
+    'description' => [[['string'], ['description', ['A bank reference.']]], ['description' => 'A bank reference.', 'type' => 'string']],
+    'description (appends to an earlier note)' => [[['timezone'], ['description', ['Europe only.']]], ['description' => 'Must be a valid timezone identifier. Europe only.', 'type' => 'string']],
+    'example (string)' => [[['string'], ['example', ['GB123456']]], ['example' => 'GB123456', 'type' => 'string']],
+    'example (integer)' => [[['integer'], ['example', ['42']]], ['example' => 42, 'type' => 'integer']],
+    'example (number)' => [[['numeric'], ['example', ['1.25']]], ['example' => 1.25, 'type' => 'number']],
+    'example (boolean)' => [[['boolean'], ['example', ['true']]], ['example' => true, 'type' => 'boolean']],
 ]);
 
 it('normalises regex delimiters to a bare ECMA-262 pattern across delimiter styles', function (string $raw, string $expected): void {

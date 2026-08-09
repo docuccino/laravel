@@ -40,6 +40,9 @@ final class RuleOrdering
         'decimal' => 30, 'multiple_of' => 30, 'gt' => 30, 'gte' => 30, 'lt' => 30, 'lte' => 30,
         'distinct' => 30,
         'confirmed' => 40,
+        // Annotations last: a stated description appends to any note the constraint rules left, and a
+        // stated format/example sees the final resolved type.
+        'format' => 50, 'description' => 50, 'example' => 50,
     ];
 
     public function order(RuleSet $rules): RuleSet

@@ -21,6 +21,7 @@ use Docuccino\Core\Inference\DType\UnionT;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Laravel\Integrations\FormRequest\RulesFromClass;
 use Docuccino\Laravel\Integrations\Support\RuleParsing;
+use Docuccino\Laravel\Integrations\Validation\CustomRuleReader;
 
 /**
  * Derives a request {@see RuleSet} from a Data class so the shared validation chain documents the
@@ -45,11 +46,30 @@ final class DataValidationRules
     /** File-implying rules — a property already stating one never gets a synthesised second. */
     private const FILE_RULES = ['file', 'image'];
 
-    public function __construct(private readonly DataClassReflector $reflector = new DataClassReflector) {}
+    /**
+     * @var list<string>
+     */
+    private array $dependencyFiles = [];
+
+    public function __construct(
+        private readonly DataClassReflector $reflector = new DataClassReflector,
+        private readonly CustomRuleReader $customRules = new CustomRuleReader,
+    ) {}
 
     public function reflector(): DataClassReflector
     {
         return $this->reflector;
+    }
+
+    /**
+     * Rule classes read while building the last rule set — recorded by the caller so editing an
+     * annotated rule invalidates the fragment. Reset on each entry point below.
+     *
+     * @return list<string>
+     */
+    public function dependencyFiles(): array
+    {
+        return $this->dependencyFiles;
     }
 
     /**
@@ -61,11 +81,14 @@ final class DataValidationRules
      */
     public function propertyFieldKeys(string $fqcn, ClassMetadata $metadata, TypeEngine $engine): array
     {
+        $this->dependencyFiles = [];
+
         return array_keys($this->fieldsFor($fqcn, $metadata, $engine, '', [$fqcn]));
     }
 
     public function build(string $fqcn, ClassMetadata $metadata, TypeEngine $engine, ?RuleSet $overrides = null): RuleSet
     {
+        $this->dependencyFiles = [];
         $fields = $this->fieldsFor($fqcn, $metadata, $engine, '', [$fqcn]);
 
         // Overwrite, not merge: the override replaces the inferred set at its key, and may name fields
@@ -104,7 +127,10 @@ final class DataValidationRules
             }
 
             $tokens = $this->reflector->validationTokens($fqcn, $property->name);
-            $attributeRules = array_map(RuleParsing::token(...), $tokens);
+            $attributeRules = [
+                ...array_map(RuleParsing::token(...), $tokens),
+                ...$this->ruleObjectRules($fqcn, $property->name),
+            ];
 
             // An UploadedFile-typed property gets a synthesised `file` rule so the shared chain flips the
             // body to multipart/form-data and emits a binary schema — needed because a real upload Data
@@ -127,6 +153,27 @@ final class DataValidationRules
         }
 
         return $fields;
+    }
+
+    /**
+     * Rules from a `#[Rule(new Iban)]` object's `#[RuleSchema]`, alongside the string tokens. An
+     * unannotated rule object contributes nothing, exactly as before.
+     *
+     * @return list<ValidationRule>
+     */
+    private function ruleObjectRules(string $fqcn, string $property): array
+    {
+        $rules = [];
+        foreach ($this->reflector->ruleObjectClasses($fqcn, $property) as $ruleClass) {
+            $facts = $this->customRules->read($ruleClass);
+            if ($facts->file !== null && ! in_array($facts->file, $this->dependencyFiles, true)) {
+                $this->dependencyFiles[] = $facts->file;
+            }
+
+            $rules = [...$rules, ...$facts->rules];
+        }
+
+        return $rules;
     }
 
     /**

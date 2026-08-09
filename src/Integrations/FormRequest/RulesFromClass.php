@@ -23,7 +23,7 @@ use ReflectionClass;
  * The descriptor path wins per field, being strictly more complete for the fields it recovers.
  *
  * A field present in the array but recovered by neither path raises a `validation.rule-unrecoverable` info
- * diagnostic, so a closure or custom rule object never vanishes silently.
+ * diagnostic, so a closure or an undocumented custom rule object never vanishes silently.
  */
 final class RulesFromClass
 {
@@ -72,7 +72,7 @@ final class RulesFromClass
         // (2) Descriptor path — trace the returned array with constant folding.
         $visitor = new RulesMethodVisitor;
         $report = $context->engine->trace($ref, $visitor);
-        $context->recordDependencyFiles($report->dependencyFiles);
+        $context->recordDependencyFiles([...$report->dependencyFiles, ...$visitor->dependencyFiles()]);
         $traceFields = $visitor->ruleSet()->fields;
 
         foreach ($visitor->unrecoverableFields() as $field) {
@@ -83,7 +83,7 @@ final class RulesFromClass
                 severity: Severity::Info,
                 code: 'validation.rule-unrecoverable',
                 message: sprintf('Validation field "%s" on %s has no statically recoverable rules; it is omitted from the request schema.', $field, $class),
-                help: 'Its rules are a closure, a custom Rule object, or a Rule::when()/conditional descriptor. Express the field with recoverable rules (string/array rules, Rule::enum(), Rule::in(), …) so it is documented.',
+                help: 'Its rules are a closure, a custom Rule object with no #[RuleSchema], or a Rule::when()/conditional descriptor. Express the field with recoverable rules (string/array rules, Rule::enum(), Rule::in(), …), or annotate the rule class with #[RuleSchema], so it is documented.',
             ));
         }
 

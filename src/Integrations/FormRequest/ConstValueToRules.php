@@ -8,15 +8,29 @@ use Docuccino\Core\Extensions\Schema\EnumReflection;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 use Docuccino\Core\Inference\ConstValue;
 use Docuccino\Laravel\Integrations\Support\RuleParsing;
+use Docuccino\Laravel\Integrations\Validation\CustomRuleReader;
 
 /**
  * Folds one field's statically-recovered rules — from an inline `validate([...])` or
- * `Validator::make(...)` — into {@see ValidationRule}s: pipe strings, array-of-rule forms, and `Rule::*`
- * factory descriptors. Descriptors are why folding happens at the AST level: `Rule::enum(Status::class)`
- * has to be caught as a call, before PHPStan collapses it to a bare object.
+ * `Validator::make(...)` — into {@see ValidationRule}s: pipe strings, array-of-rule forms, `Rule::*`
+ * factory descriptors, and `new` rule objects whose class carries a `#[RuleSchema]`. Descriptors are why
+ * folding happens at the AST level: `Rule::enum(Status::class)` has to be caught as a call, before
+ * PHPStan collapses it to a bare object.
+ *
+ * The rule classes it read come back as {@see dependencyFiles()} for the caller to record — editing an
+ * annotated rule has to re-document every field using it. One folder per recovery, never shared.
  */
 final class ConstValueToRules
 {
+    /**
+     * @var list<string>
+     */
+    private array $dependencyFiles = [];
+
+    public function __construct(
+        private readonly CustomRuleReader $customRules = new CustomRuleReader,
+    ) {}
+
     /**
      * @return list<ValidationRule>
      */
@@ -32,6 +46,10 @@ final class ConstValueToRules
             return $rule === null ? [] : [$rule];
         }
 
+        if ($value->isInstance()) {
+            return $this->instance($value);
+        }
+
         if ($value->isArray()) {
             $out = [];
             foreach ($value->items as $item) {
@@ -42,6 +60,8 @@ final class ConstValueToRules
                     if ($rule !== null) {
                         $out[] = $rule;
                     }
+                } elseif ($item->isInstance()) {
+                    $out = [...$out, ...$this->instance($item)];
                 }
             }
 
@@ -49,6 +69,33 @@ final class ConstValueToRules
         }
 
         return [];
+    }
+
+    /**
+     * Files whose contents shaped the fold — the rule classes read for their `#[RuleSchema]`.
+     *
+     * @return list<string>
+     */
+    public function dependencyFiles(): array
+    {
+        return $this->dependencyFiles;
+    }
+
+    /**
+     * A `new X(...)` rule object documents as whatever its class declares. An unannotated class
+     * contributes nothing, leaving the field unrecoverable and diagnosed.
+     *
+     * @return list<ValidationRule>
+     */
+    private function instance(ConstValue $value): array
+    {
+        $facts = $this->customRules->read(ltrim((string) $value->class, '\\'));
+
+        if ($facts->file !== null && ! in_array($facts->file, $this->dependencyFiles, true)) {
+            $this->dependencyFiles[] = $facts->file;
+        }
+
+        return $facts->rules;
     }
 
     private function descriptor(ConstValue $descriptor): ?ValidationRule

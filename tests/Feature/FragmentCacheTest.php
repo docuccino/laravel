@@ -20,6 +20,9 @@ use Docuccino\Laravel\Config\DocumentConfigFactory;
 use Docuccino\Laravel\Facades\Docuccino;
 use Docuccino\Laravel\Integrations\SpatieData\SpatieDataDigestContributor;
 use Docuccino\Laravel\Registry\DefaultExtensions;
+use Docuccino\Laravel\Tests\Fixtures\Rules\BankReference;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\CustomRuleController;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\CustomRuleData;
 use Docuccino\Laravel\Tests\Support\CountingTypeEngine;
 use Docuccino\Laravel\Tests\Support\LateBoundMarker;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
@@ -379,6 +382,37 @@ it('invalidates the query-builder fragment when an enum-cast filter file changes
         expect($engine->analyzeCount)->toBeGreaterThan(0);
     } finally {
         file_put_contents($enumFile, $original);
+    }
+});
+
+it('invalidates a fragment when an annotated custom rule class is edited', function (): void {
+    enableFragmentCache();
+    app('router')->post('api/custom-rule-payments', [CustomRuleController::class, 'store']);
+
+    $engine = new CountingTypeEngine(WorkbenchEngine::make(classOverrides: [
+        CustomRuleData::class => new ClassMetadata(CustomRuleData::class, [
+            new PropertyMetadata('reference', ScalarT::string()),
+        ]),
+    ]));
+    app()->instance(TypeEngine::class, $engine);
+
+    // Cold run: the Data property's `#[Rule(new BankReference)]` is documented from the rule class's
+    // #[RuleSchema], and the rule class file is recorded as a fragment dependency.
+    generateDocument()->document;
+    $engine->analyzeCount = 0;
+
+    generateDocument()->document;
+    expect($engine->analyzeCount)->toBe(0);
+
+    $ruleFile = (string) (new ReflectionClass(BankReference::class))->getFileName();
+    $original = (string) file_get_contents($ruleFile);
+    try {
+        file_put_contents($ruleFile, $original."\n// fragment-cache dependency probe\n");
+        generateDocument()->document;
+
+        expect($engine->analyzeCount)->toBeGreaterThan(0);
+    } finally {
+        file_put_contents($ruleFile, $original);
     }
 });
 

@@ -15,9 +15,10 @@ use PhpParser\Node;
  * An in-process {@see TypeScope} for driving a {@see TraceVisitor} over
  * real php-parser nodes without booting PHPStan: {@see typeOf()} returns a fixed receiver type (the
  * chain is known to be a query builder in the test snippet) and {@see constantValueOf()} folds the
- * AST directly — literals to scalars, factory static-calls to descriptors (mirroring what the real
- * engine hands back, so the visitor's harvest logic is exercised for real). Non-constant sub-
- * expressions (a variable) fold to `unknown`, exercising the degradation path.
+ * AST directly — array literals per item, literals to scalars, factory static-calls to descriptors, `new`
+ * expressions to instance
+ * values (mirroring what the real engine hands back, so the visitor's harvest logic is exercised for
+ * real). Non-constant sub-expressions (a variable) fold to `unknown`, exercising the degradation path.
  */
 final class StubTraceScope implements TypeScope
 {
@@ -40,6 +41,15 @@ final class StubTraceScope implements TypeScope
 
     private function fold(Node\Expr $expr): ?ConstValue
     {
+        if ($expr instanceof Node\Expr\Array_) {
+            $items = [];
+            foreach ($expr->items as $item) {
+                $items[] = $this->fold($item->value) ?? ConstValue::unknown('non-constant array item');
+            }
+
+            return ConstValue::array($items);
+        }
+
         if ($expr instanceof Node\Scalar\String_) {
             return ConstValue::scalar($expr->value);
         }
@@ -83,6 +93,17 @@ final class StubTraceScope implements TypeScope
             }
 
             return ConstValue::descriptor($factory, $args);
+        }
+
+        // `new Iban('GB')` folds to an instance value, as the real engine does — the rules recovery keys
+        // on the class to read its `#[RuleSchema]`.
+        if ($expr instanceof Node\Expr\New_ && $expr->class instanceof Node\Name) {
+            $args = [];
+            foreach ($expr->getArgs() as $arg) {
+                $args[] = $this->fold($arg->value) ?? ConstValue::unknown('non-constant arg');
+            }
+
+            return ConstValue::instance(ltrim($expr->class->toString(), '\\'), $args);
         }
 
         return null;
