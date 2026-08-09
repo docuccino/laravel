@@ -12,27 +12,23 @@ use ReflectionObject;
 use Throwable;
 
 /**
- * Reflects the BOOTED app's exception handler for the render callbacks it registered
- * (`$exceptions->render(…)` → `Illuminate\Foundation\Exceptions\Handler::$renderCallbacks`) —
- * catching provider- and package-registered handlers a static AST scan would miss (design §6
- * inferred-handler tier). The result is memoised: the handler is reflected once per build, and each
- * callback's source location + first-parameter type feed the engine's analysis.
+ * Reflects the booted app's exception handler for the callbacks it registered via
+ * `$exceptions->render(…)` (`Illuminate\Foundation\Exceptions\Handler::$renderCallbacks`), catching
+ * provider- and package-registered handlers a static AST scan would miss (design §6). Memoised: the
+ * handler is reflected once per build, and each callback's source location + first-parameter type feed
+ * the engine.
  *
- * Two shapes it must not miss:
- *   - DECORATED handlers. In console (the export command runs there) Collision rebinds the handler to
- *     its own decorator, which holds the real Foundation handler in a property and exposes NO
- *     `renderCallbacks` of its own. {@see unwrap()} walks the decoration chain to the handler that owns
- *     the callbacks, so the export sees them too.
- *   - METHOD-BACKED callbacks. `Handler::renderable()` wraps every non-Closure render callable via
- *     `Closure::fromCallable()`, so an invokable renderer (`->render(new ProblemRenderer)`), an
- *     `[$obj, 'method']` pair, or a first-class callable all arrive as closures whose reflection names a
- *     real method — analysed as that method (its declaration line is not a closure literal, so the
- *     closure-by-line path would find nothing there).
+ * Two shapes it must not miss. Decorated handlers: in console (where the export command runs) Collision
+ * rebinds the handler to its own decorator, which holds the real Foundation handler in a property and has
+ * no `renderCallbacks` of its own — {@see unwrap()} walks the chain. Method-backed callbacks:
+ * `Handler::renderable()` puts every non-Closure callable through `Closure::fromCallable()`, so an
+ * invokable renderer, an `[$obj, 'method']` pair or a first-class callable all arrive as closures naming a
+ * real method, and must be analysed as that method — their declaration line isn't a closure literal, so
+ * the closure-by-line path finds nothing there.
  *
- * A callback present but not analysable (no params, builtin first param, a bound free function) is not
- * dropped in silence: it is recorded in {@see skipped()} so the tier can report it rather than fall
- * through unexplained. Every step is defensive — an unexpected handler shape yields no callbacks rather
- * than a failed build.
+ * A callback that's present but not analysable (no params, builtin first param, bound free function) goes
+ * into {@see skipped()} rather than vanishing. Every step is defensive: an unexpected handler shape yields
+ * no callbacks instead of failing the build.
  */
 final class HandlerReflector
 {
@@ -50,8 +46,8 @@ final class HandlerReflector
     public function __construct(private readonly ExceptionHandler $handler) {}
 
     /**
-     * The registered render callbacks in registration order (the order Laravel itself matches them
-     * in — first whose first-parameter type the exception `is_a` wins).
+     * Registration order, which is also Laravel's match order — first callback whose first-parameter type
+     * the exception `is_a` wins.
      *
      * @return list<RenderCallback>
      */
@@ -63,9 +59,6 @@ final class HandlerReflector
     }
 
     /**
-     * Labels of registered render callbacks that were found on the handler but could not be resolved to
-     * an analysable form — so the tier can surface an info diagnostic instead of silently ignoring them.
-     *
      * @return list<string>
      */
     public function skipped(): array
@@ -111,14 +104,13 @@ final class HandlerReflector
 
             $this->callbacks = $callbacks;
         } catch (Throwable) {
-            // An unexpected handler shape leaves the tier inert rather than failing the build.
+            // Unexpected handler shape: leave the tier inert rather than fail the build.
         }
     }
 
     /**
-     * The handler in the decoration chain that owns the `renderCallbacks` — the handler itself, or the
-     * real Foundation handler a decorator (Collision's console adapter, Flare, …) wraps as an
-     * {@see ExceptionHandler} property. Null when no handler in reach exposes them.
+     * The handler in the decoration chain that owns `renderCallbacks` — this handler, or the real
+     * Foundation handler a decorator (Collision, Flare, …) holds as an {@see ExceptionHandler} property.
      */
     private function unwrap(ExceptionHandler $handler, int $depth = 0): ?ExceptionHandler
     {
@@ -132,9 +124,8 @@ final class HandlerReflector
         }
 
         foreach ($reflection->getProperties() as $property) {
-            // Per-property, not per-walk: reading an UNINITIALIZED typed property throws, and a single
-            // such property on any handler in the decoration chain would otherwise abort ALL
-            // render-callback discovery. Skip the unreadable property and keep looking.
+            // Per-property, not per-walk: reading an uninitialized typed property throws, and one of those
+            // anywhere in the chain would otherwise abort all discovery. Skip it and keep looking.
             try {
                 $wrapped = $property->getValue($handler);
             } catch (Throwable) {
@@ -171,9 +162,8 @@ final class HandlerReflector
         $exceptionType = ltrim($type->getName(), '\\');
         $parameterName = $parameters[0]->getName();
 
-        // A method-backed closure (`Closure::fromCallable` on an invokable/`[$obj, 'method']`/first-class
-        // callable): analyse the real method, since its declaration line is not a closure literal. A bound
-        // free function has no owning class to analyse by name — skip it rather than mis-locate it.
+        // Method-backed closure: analyse the real method, its declaration line isn't a closure literal. A
+        // bound free function has no owning class to name — skip rather than mis-locate it.
         if (! $function->isAnonymous()) {
             $class = $function->getClosureScopeClass()?->getName();
 

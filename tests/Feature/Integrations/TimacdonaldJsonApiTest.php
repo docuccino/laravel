@@ -25,11 +25,10 @@ use TiMacDonald\JsonApi\JsonApiResourceCollection;
 use Workbench\App\Http\Controllers\FormController;
 
 /**
- * The timacdonald/json-api integration (Phase 5c): the pre-13 JSON:API resource package Laravel 13's
- * first-party resources were upstreamed from. Its `to*()` surface is identical, so the shared
- * JSON:API document + params infra produces the same output behind a different class guard. The
- * document shape's self-reference cycle-break is proven once via the first-party ApiResources suite
- * (same {@see JsonApiDocument} builder).
+ * The timacdonald/json-api integration: the pre-13 JSON:API resource package Laravel 13's first-party
+ * resources were upstreamed from. Its `to*()` surface is identical, so the shared JSON:API document +
+ * params infra produces the same output behind a different class guard. The self-reference cycle-break is
+ * proven once in the first-party ApiResources suite — same {@see JsonApiDocument} builder.
  */
 function timacdonaldEngine(): StubTypeEngine
 {
@@ -41,8 +40,8 @@ function timacdonaldEngine(): StubTypeEngine
             new ArrayShapeField('title', ScalarT::string()),
             new ArrayShapeField('body', ScalarT::string()),
         ]),
-        // toLinks is NOT analysed — it returns Link objects, so the document builder special-cases it
-        // from the fact that the resource overrides toLinks (see the links assertion below).
+        // toLinks isn't analysed: it returns Link objects, so the builder keys off the resource simply
+        // overriding toLinks (see the links assertion below).
     ]);
 }
 
@@ -65,8 +64,8 @@ it('maps a timacdonald JSON:API resource to a JSON:API document schema through t
 
     // The hoisted component is the resource object itself (no `{data: …}` envelope).
     $object = $components->schemas()['TimacdonaldArticleResource'];
-    // `relationships` is intentionally absent: closure-valued relationships analyse as CallableT, so the
-    // shared builder omits the member rather than emit a non-linkage shape (see JsonApiDocument docblock).
+    // `relationships` is absent by design: closure-valued relationships analyse as CallableT, so the shared
+    // builder omits the member rather than emit a non-linkage shape (see JsonApiDocument).
     expect($object['required'])->toBe(['id', 'type'])
         ->and(array_keys($object['properties']))->toBe(['id', 'type', 'attributes', 'links'])
         ->and($object['properties'])->not->toHaveKey('relationships')
@@ -105,8 +104,8 @@ it('documents a timacdonald JSON:API collection as a single-wrapped array of res
 });
 
 it('declines a timacdonald resource in the plain JsonResource mapper (symmetric exclusion)', function (): void {
-    // TimacdonaldArticleResource subclasses Illuminate's JsonResource, so without the symmetric
-    // exclusion the plain mapper would claim it and emit a flat toArray shape (N5).
+    // TimacdonaldArticleResource subclasses Illuminate's JsonResource, so without the symmetric exclusion
+    // the plain mapper would claim it and emit a flat toArray shape.
     expect((new JsonResourceSchema)->supports(new ClassT(TimacdonaldArticleResource::class)))->toBeFalse();
 });
 

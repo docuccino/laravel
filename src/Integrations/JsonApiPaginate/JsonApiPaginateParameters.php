@@ -7,11 +7,10 @@ namespace Docuccino\Laravel\Integrations\JsonApiPaginate;
 use Docuccino\Laravel\Integrations\Support\QueryParameterSpec;
 
 /**
- * Turns a {@see JsonApiPaginateConfig} and the recovered {@see JsonApiPaginateFacts} into the JSON:API
- * pagination query parameters the package resolves — the bracketed `page[number]`/`page[size]` pair
- * (length or simple mode), or `page[cursor]`/`page[size]` under cursor mode. Reuses the Query-Builder
- * integration's {@see QueryParameterSpec} value object (a plain, assertable in-query/optional spec).
- * Pure and deterministic so every config/override combination is dataset-testable without a pipeline.
+ * Turns a {@see JsonApiPaginateConfig} plus the recovered {@see JsonApiPaginateFacts} into the pagination
+ * query parameters the package resolves: bracketed `page[number]`/`page[size]` in length or simple mode,
+ * `page[cursor]`/`page[size]` in cursor mode. Pure, so every config/override combination is dataset-testable
+ * without a pipeline.
  */
 final class JsonApiPaginateParameters
 {

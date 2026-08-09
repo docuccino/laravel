@@ -13,12 +13,11 @@ use Docuccino\Core\Patch\Contribution;
 use Docuccino\Laravel\Integrations\Support\DescriptionAppender;
 
 /**
- * Documents the authorization a `spatie/laravel-permission` middleware enforces (design §Phase 4).
- * Each `role:`/`permission:`/`role_or_permission:` middleware on the route becomes an entry in the
- * machine-readable `x-permissions` extension member, and a generated line is appended to the
- * operation description ("Requires permission: …"). Class_exists-guarded on the package's
- * `PermissionServiceProvider`. Writes at the integration layer, so a docblock/attribute description
- * still wins (in which case the structured `x-permissions` remains the authoritative signal).
+ * Documents the authorization a `spatie/laravel-permission` middleware enforces. Each
+ * `role:`/`permission:`/`role_or_permission:` middleware becomes an entry in the machine-readable
+ * `x-permissions` member, plus a "Requires permission: …" line on the description. Writes at the
+ * integration layer, so a docblock or attribute description still wins — `x-permissions` stays the
+ * authoritative signal either way.
  */
 final class PermissionExtension implements OperationExtension
 {
@@ -33,8 +32,7 @@ final class PermissionExtension implements OperationExtension
 
     public function handle(OperationDraft $operation, RouteContext $context): void
     {
-        // An operation opted out of auth documents no security requirement, so the permission line
-        // and x-permissions member would be inconsistent alongside `security: []` — skip it.
+        // An op that opted out of auth carries `security: []`, which a permission line would contradict.
         if ($context->attributes->has(Unauthenticated::class)) {
             return;
         }

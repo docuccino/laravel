@@ -14,18 +14,14 @@ use Docuccino\Laravel\Integrations\Support\AuthGuardDrivers;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 
 /**
- * Auto-configures Sanctum security on protected operations (design §Phase 4 — Sanctum auto-config),
- * modelling the common DUAL-auth reality: a route protected by `auth:sanctum` in an app that also
- * runs `statefulApi()` genuinely accepts BOTH an API bearer token AND a first-party session cookie,
- * so it gets an OR-list `security` — `[{sanctumToken: []}, {sanctumStateful: []}]` — with each scheme
- * registered once into `components.securitySchemes` (carrying the auth-section prose consumers
- * render).
+ * Sets Sanctum security on protected operations, modelling the usual dual-auth reality: a route behind
+ * `auth:sanctum` in an app that also runs `statefulApi()` really does accept both a bearer token and a
+ * first-party session cookie, so it gets an OR-list `security` of `[{sanctumToken: []},
+ * {sanctumStateful: []}]`, each scheme registered once into `components.securitySchemes`.
  *
  * Which modes a document exposes is per-document config (`integrations.sanctum.modes`), so audience
- * segmentation happens through documents (a `public` doc lists only `token`; an `internal` doc lists
- * both) — the effective set is the route's supported modes ∩ the document's allowed modes. Deferred
- * entirely when config already declares security schemes (explicit config wins), and skipped for
- * `#[Unauthenticated]`. Class_exists-guarded on `Laravel\Sanctum\Sanctum`.
+ * segmentation happens per document — the effective set is the route's supported modes ∩ the document's
+ * allowed ones. Defers entirely when config already declares security schemes; skips `#[Unauthenticated]`.
  */
 final class SanctumSecurityExtension implements OperationExtension
 {
@@ -71,8 +67,7 @@ final class SanctumSecurityExtension implements OperationExtension
     }
 
     /**
-     * The route's supported modes narrowed to the document's allowed set, preserving the stable
-     * token-before-stateful order.
+     * The route's supported modes ∩ the document's allowed set, keeping token-before-stateful order.
      *
      * @return list<string>
      */
@@ -107,9 +102,8 @@ final class SanctumSecurityExtension implements OperationExtension
     }
 
     /**
-     * The stateful cookie name for the apiKey-in-cookie scheme. The Sanctum stateful cookie IS the
-     * Laravel session cookie, so resolve: an explicit per-document override, else the app's real
-     * `session.cookie` (customised per app — e.g. `myapp_session`), else Laravel's default name.
+     * Sanctum's stateful cookie *is* the Laravel session cookie, so: per-document override, else the app's
+     * real `session.cookie`, else Laravel's default name.
      */
     private function sessionCookie(RouteContext $context): string
     {
@@ -123,9 +117,7 @@ final class SanctumSecurityExtension implements OperationExtension
         return is_string($sessionCookie) && $sessionCookie !== '' ? $sessionCookie : 'laravel_session';
     }
 
-    /**
-     * The app's default auth guard (`config('auth.defaults.guard')`), for resolving bare `auth`.
-     */
+    /** The app's default auth guard, for resolving bare `auth`. */
     private function defaultGuard(): string
     {
         return AuthGuardDrivers::defaultGuard($this->config?->get('auth.defaults.guard'));

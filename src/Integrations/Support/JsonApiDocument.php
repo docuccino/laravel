@@ -13,39 +13,30 @@ use ReflectionMethod;
 use Throwable;
 
 /**
- * The shared JSON:API resource-object document builder. A JSON:API resource — whether Laravel 13's
- * first-party `JsonApiResource` or the pre-13 `timacdonald/json-api` base it was upstreamed from —
- * exposes the same member surface, so both integrations feed this one builder rather than
- * duplicating the document shape. It emits `{data: {id, type, attributes?, links?, meta?}}`, hoisting
- * the resource to a reusable component (including the self-reference cycle-break) via
- * {@see ComponentHoist}.
+ * Builds a JSON:API `{data: {id, type, attributes?, links?, meta?}}` document, hoisting the resource
+ * object to a reusable component via {@see ComponentHoist}. Laravel 13's first-party `JsonApiResource`
+ * and the `timacdonald/json-api` base it was upstreamed from expose the same members, so both
+ * integrations share this builder. Each mapper holds its own instance — the hoist carries per-mapper
+ * recursion state, so there's no shared mutable state between them.
  *
- * `id` and `type` are emitted as `string` unconditionally (the JSON:API contract), not analysed from
- * `toId`/`toType`; `attributes`, `links` and `meta` ARE analysed from their `to*` methods into object
- * schemas ({@see ToArrayObject}).
+ * `id`/`type` are always `string` per the JSON:API contract rather than analysed; `attributes` and
+ * `meta` are analysed from their `to*` methods.
  *
- * `relationships` — and the top-level `included` compound-document member it drives — are deliberately
- * OMITTED. Both packages express relationships as closures (`'author' => fn () => new AuthorResource(...)`),
- * which the type engine reports as `CallableT` — a flat `toArray`-style analysis of `toRelationships`
- * cannot produce JSON:API's `{data: {type, id}}` linkage object, so emitting either it or the
- * `included` array of resolved relations would document a shape the resource never yields. Both are
- * left out until the linkage object can be modelled from real relationship resolution.
- *
- * `links` is special-cased rather than analysed: `toLinks` returns `Link` objects (keyed by relation),
- * each serialising to `{href, meta?}`, so a flat `toArray` analysis cannot see the shape. When the
- * resource overrides `toLinks`, an object of link objects is emitted.
- *
- * Each schema mapper holds its OWN instance (the hoist carries per-mapper recursion state), so there
- * is no shared mutable state between the first-party and timacdonald mappers.
+ * Two members are handled specially because a flat `toArray`-style analysis can't see their shapes:
+ * - `links`: `toLinks` returns relation-keyed `Link` objects serialising to `{href, meta?}`, so the
+ *   shape is emitted directly when the resource overrides the method.
+ * - `relationships`, and the `included` compound-document member it drives, are OMITTED. Both packages
+ *   express relationships as closures (`'author' => fn () => new AuthorResource(...)`) which the engine
+ *   sees as `CallableT`, so nothing here can produce JSON:API's `{data: {type, id}}` linkage object —
+ *   emitting either would document a shape the resource never yields.
  */
 final class JsonApiDocument
 {
-    /** JSON:API bases whose `toLinks`/`to*` are not user overrides (links/attributes fallbacks). */
+    /** A `to*` declared under one of these is the base's own, not a user override. */
     private const JSON_API_BASES = ['TiMacDonald\\', 'Illuminate\\'];
 
     /**
-     * The JSON:API resource-object members analysed from their `to*` methods (links special-cased,
-     * relationships omitted; see the class docblock).
+     * The members analysed from their `to*` methods.
      *
      * @var array<string, string>
      */
@@ -61,10 +52,8 @@ final class JsonApiDocument
 
     public function build(ClassT $type, SchemaContext $context): SchemaResult
     {
-        // The hoisted component is the JSON:API resource OBJECT (`{id, type, attributes?, links?}`),
-        // NOT the `{data: …}` document envelope. That way a collection can reference the bare object
-        // per item and wrap the envelope once around the array, instead of the old double-wrapped
-        // `{data: [{data: {…}}]}`.
+        // The component is the resource OBJECT, not the `{data: …}` envelope — that lets a collection
+        // reference the bare object per item and wrap once, rather than `{data: [{data: {…}}]}`.
         $object = $this->hoist->hoist($context, $type->fqcn, function () use ($type, $context): array {
             $data = [
                 'type' => 'object',
@@ -90,10 +79,8 @@ final class JsonApiDocument
             return $data;
         });
 
-        // The document envelope wraps the resource object ONLY at the response root (depth 1). A
-        // resource reached as a collection item or a nested relationship stays the bare object, so
-        // its enclosing collection/resource applies the single `data` wrap (mirrors the depth-gating
-        // in JsonResourceSchema::wrapTopLevel).
+        // Only the response root gets the envelope; a collection item or nested relationship stays bare
+        // so its enclosing resource applies the single `data` wrap. Mirrors JsonResourceSchema.
         if ($context->depth() !== 1) {
             return $object;
         }
@@ -106,9 +93,8 @@ final class JsonApiDocument
     }
 
     /**
-     * The `links` member schema — an object of relation-keyed link objects (`{href, meta?}`) —
-     * emitted only when the resource overrides `toLinks`. The relation keys (`self`, `related`, …) are
-     * runtime data, so they are captured via `additionalProperties` rather than enumerated.
+     * An object of relation-keyed link objects, emitted only when the resource overrides `toLinks`. The
+     * relation keys (`self`, `related`, …) are runtime data, hence `additionalProperties`.
      *
      * @return array<string, mixed>|null
      */
@@ -131,7 +117,7 @@ final class JsonApiDocument
         ];
     }
 
-    /** Whether the resource declares its own `toLinks` (not the untouched JSON:API base method). */
+    /** Whether the resource declares its own `toLinks` rather than inheriting the base's. */
     private static function overridesLinks(string $fqcn): bool
     {
         if (! class_exists($fqcn) || ! method_exists($fqcn, 'toLinks')) {

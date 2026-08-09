@@ -10,14 +10,11 @@ use Docuccino\Core\Extensions\Validation\ValidationField;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
- * Rules with no request-schema effect that are nonetheless legitimate Laravel rules: consuming them
- * here (rather than letting them fall through to the chain's unhandled path) stops each raising a
- * spurious `validation.rule-unhandled` info diagnostic. `bail` (stop on first failure), the `exclude`
- * family (drops the field from validated output — it does not describe the accepted input) and
- * `current_password` (a runtime credential check, not a shape constraint) genuinely add nothing to
- * the documented request shape. `prohibited`/`prohibits` are presence-NEGATIONS — the field (or the
- * fields it names) must be absent — so they describe no sendable shape either; the field simply
- * stays optional (its default), which is the honest documented contract for a field you must not send.
+ * Legitimate Laravel rules that say nothing about the request shape. Consuming them here keeps each from
+ * raising a spurious `validation.rule-unhandled` diagnostic. `bail` is about failure handling; the
+ * `exclude` family drops the field from validated output, not from the accepted input;
+ * `current_password` is a runtime credential check; `prohibited`/`prohibits` are presence *negations*, so
+ * the field just stays optional — the honest contract for something you must not send.
  */
 final class NoOpRuleTransformer implements RuleTransformer
 {
@@ -45,7 +42,6 @@ final class NoOpRuleTransformer implements RuleTransformer
 
     public function apply(ValidationRule $rule, ValidationField $field, SchemaContext $context): void
     {
-        // Intentionally nothing: the rule is recognised (so it is not diagnosed) but has no effect
-        // on the documented request shape.
+        // Nothing to do — recognising the rule is the whole point.
     }
 }

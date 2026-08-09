@@ -10,15 +10,13 @@ use Docuccino\Core\Extensions\Validation\ValidationField;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
- * Size rules (`min`, `max`, `between:a,b`, `size:n`), applied type-aware (Laravel's own semantics):
- * a numeric field bounds `minimum`/`maximum`, an array bounds `minItems`/`maxItems`, and any other
- * field bounds `minLength`/`maxLength`. Runs after {@see TypeRuleTransformer} + {@see FileRuleTransformer}
- * so the field type is known; an untyped field defaults to string-length bounds, matching Laravel's
- * default coercion.
+ * `min`, `max`, `between:a,b`, `size:n`, mapped to the keyword Laravel's own semantics imply: numeric →
+ * `minimum`/`maximum`, array → `minItems`/`maxItems`, anything else → `minLength`/`maxLength`. Runs after
+ * {@see TypeRuleTransformer} and {@see FileRuleTransformer} so the type is known; untyped falls back to
+ * string-length bounds, matching Laravel's coercion.
  *
- * On a FILE field (`format: binary`) these bounds mean KILOBYTES, not string length — emitting
- * `maxLength: 2048` for `file|max:2048` is actively wrong. OpenAPI has no file-size keyword, so the
- * honest representation is a human description note; no numeric length keyword is emitted.
+ * On a file field these bounds are kilobytes, not string length, so `file|max:2048` must not become
+ * `maxLength: 2048`. OpenAPI has no file-size keyword, so it becomes a description note instead.
  */
 final class SizeRuleTransformer implements RuleTransformer
 {
@@ -52,10 +50,7 @@ final class SizeRuleTransformer implements RuleTransformer
         };
     }
 
-    /**
-     * A size bound on a file field is in KB. Append a human note rather than emit a wrong length/size
-     * keyword; skip non-numeric parameters.
-     */
+    /** A description note in KB rather than a wrong length keyword. Non-numeric parameters are skipped. */
     private function fileSize(ValidationField $field, ValidationRule $rule): void
     {
         $note = match ($rule->name) {

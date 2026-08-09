@@ -15,12 +15,12 @@ use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParametersExtension;
 use Docuccino\Laravel\Tests\Support\QbTraceScript;
 
 /**
- * A user-land filter FACTORY (a `ListFilters`-style helper returning a Spatie `AllowedFilter`) is
- * typed from its CALL-SITE arguments — no descent into the factory body. A backed-enum class-string
- * argument types the value off that enum directly; otherwise the filter's own key is the column,
- * typed off the model cast. Spatie's own factories and bare strings are untouched. Driven through the
- * REAL extension over a scripted trace (the enum/model reflection is real; the real-engine descent is
- * proven in the fixture group).
+ * A user-land filter factory (a `ListFilters`-style helper returning a Spatie `AllowedFilter`) is typed
+ * from its call-site arguments, with no descent into the factory body. A backed-enum class-string
+ * argument types the value off that enum directly; otherwise the filter's own key is the column, typed
+ * off the model cast. Spatie's own factories and bare strings are untouched. This runs the real extension
+ * over a scripted trace — the enum/model reflection is real, and the engine descent is proven in the
+ * fixture group.
  */
 function runFactoryFilters(string $chain): array
 {
@@ -34,8 +34,8 @@ function runFactoryFilters(string $chain): array
         attributes: new AttributeSet,
         engine: $engine,
         document: new DocumentConfig('default', []),
-        // EnumSchema (backing values + x-enumDescriptions) is a Laravel-adapter mapper the production
-        // pipeline registers ahead of the core case-names mapper; mirror that so the enum types like prod.
+        // EnumSchema (backing values + x-enumDescriptions) is an adapter mapper the production pipeline
+        // registers ahead of the core case-names mapper — mirrored here so enums type as they do in prod.
         typeMappers: [new EnumSchema, ...DefaultTypeMappers::all()],
     );
 
@@ -62,8 +62,8 @@ $factoryChain = 'QueryBuilder::for(\\Workbench\\App\\Models\\Gadget::class)->all
 it('types an enum-factory filter off its backed-enum class-string argument (scalar enum, not whereIn)', function () use ($factoryChain): void {
     $byName = runFactoryFilters($factoryChain);
 
-    // The enum hoists to a component (default policy); the filter's value $refs it — a single-value
-    // comparison, so the $ref sits directly on the schema, NOT wrapped in a whereIn array (`items`).
+    // The enum hoists to a component (default policy) and the filter's value $refs it. This is a
+    // single-value comparison, so the $ref sits directly on the schema, not inside a whereIn array.
     expect($byName['filter[status]']['schema']['$ref'])->toBe('#/components/schemas/WidgetStatus')
         ->and($byName['filter[status]']['schema'])->not->toHaveKey('items')
         ->and($byName['__components']['WidgetStatus'])->toBe([
@@ -83,14 +83,14 @@ it('types a boolean-factory filter off the model cast for its key column', funct
 });
 
 it('types a uuid-factory filter off the model cast, by key and by explicit column argument', function () use ($factoryChain): void {
-    // The uuid() arm had no rows at all. It types like boolean(): the filter's own key is the column by
-    // default, and an explicit second argument names a different column — both resolved off the model
-    // cast (`public_id => 'string'`), and no enum domain is invented for either.
+    // uuid() types like boolean(): the filter's own key is the column by default, and an explicit second
+    // argument names a different one. Both resolve off the model cast (`public_id => 'string'`), and
+    // neither invents an enum domain.
     $byName = runFactoryFilters($factoryChain);
 
     expect($byName['filter[public_id]']['schema']['type'])->toBe('string')
         ->and($byName['filter[public_id]']['schema'])->not->toHaveKey('enum')
-        // `uuid('gadget', 'public_id')`: the PARAMETER name is the filter key, the second arg the column.
+        // In `uuid('gadget', 'public_id')` the first arg is the filter key, the second the column.
         ->and($byName['filter[gadget]']['schema']['type'])->toBe('string')
         ->and($byName['filter[gadget]']['schema'])->not->toHaveKey('enum');
 });
@@ -100,15 +100,15 @@ it('leaves a multi-column search factory and Spatie\'s own factories as plain st
 
     expect($byName['filter[q]']['schema']['type'])->toBe('string')
         ->and($byName['filter[q]']['schema'])->not->toHaveKey('enum')
-        // Spatie's own AllowedFilter::partial is not a project factory → unaffected.
+        // Spatie's own AllowedFilter::partial isn't a project factory, so it's unaffected.
         ->and($byName['filter[name]']['schema']['type'])->toBe('string')
         ->and($byName['filter[name]']['schema'])->not->toHaveKey('enum');
 });
 
 it('leaves an enum-factory filter a plain string when the subject model is unresolvable', function (): void {
-    // No `QueryBuilder::for(Model::class)` origin → no subject model. The enum-arg path still types the
-    // enum directly (it does not need the model), but a factory with NO enum arg falls back to the
-    // key→cast lookup, which needs the model — so it degrades to string.
+    // Without a `QueryBuilder::for(Model::class)` origin there's no subject model. The enum-arg path
+    // doesn't need one, but a factory with no enum arg falls back to the key→cast lookup, which does —
+    // so it degrades to string.
     $byName = runFactoryFilters(
         'QueryBuilder::for($builder)->allowedFilters([\\Workbench\\App\\Support\\FilterFactory::boolean(\'active\')])->paginate()',
     );

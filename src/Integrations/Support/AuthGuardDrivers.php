@@ -5,19 +5,17 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\Support;
 
 /**
- * Resolves a route's `auth`/`auth:<guard>` middleware to the auth DRIVERS behind those guards, using
- * the app's `config('auth.guards')` map (auth audit #8). Driver — not guard name — is the robust
- * signal for which security integration owns a route: a `passport`-driver guard is Passport
- * regardless of its name, and an `api` guard on a `token`/`sanctum` driver is not Passport. The
- * config is resolved in the extension (which may touch it) and the plain guard→driver map is passed
- * in, so this stays pure and dataset-testable.
+ * Resolves a route's `auth`/`auth:<guard>` middleware to the DRIVERS behind those guards, via the app's
+ * `config('auth.guards')` map. The driver, not the guard name, is what tells you which security
+ * integration owns a route: a `passport`-driver guard is Passport whatever it's called, and an `api`
+ * guard on a `sanctum` driver isn't. The extension resolves the config and passes the plain map in, so
+ * this stays pure and dataset-testable.
  */
 final class AuthGuardDrivers
 {
     /**
-     * The drivers the route's auth middleware resolve to, deduped in first-seen order. Bare `auth`
-     * uses the default guard; an `auth:a,b` list names several guards. A guard absent from the map
-     * (unknown / unconfigured) contributes no driver.
+     * The drivers the middleware resolve to, deduped in first-seen order. A guard missing from the map
+     * contributes nothing.
      *
      * @param  list<string>  $middleware
      * @param  array<string, string>  $drivers  guard name → driver
@@ -39,7 +37,7 @@ final class AuthGuardDrivers
     }
 
     /**
-     * Build the guard→driver map from a raw `config('auth.guards')` value, dropping malformed entries.
+     * The guard→driver map from a raw `config('auth.guards')` value, malformed entries dropped.
      *
      * @return array<string, string>
      */
@@ -60,8 +58,8 @@ final class AuthGuardDrivers
     }
 
     /**
-     * The guard names an auth middleware entry references: the default guard for bare `auth`, the
-     * comma-listed guards for `auth:a,b`, and none for any non-`auth` middleware.
+     * The guards an entry names: the default for bare `auth`, the comma list for `auth:a,b`, none
+     * otherwise.
      *
      * @return list<string>
      */
@@ -81,10 +79,7 @@ final class AuthGuardDrivers
         return [];
     }
 
-    /**
-     * The app's default auth guard for resolving a bare `auth` middleware, from a raw
-     * `config('auth.defaults.guard')` value — Laravel's own default is `web` when unset/blank.
-     */
+    /** The default guard from `config('auth.defaults.guard')`; Laravel's own fallback is `web`. */
     public static function defaultGuard(mixed $configured): string
     {
         return is_string($configured) && $configured !== '' ? $configured : 'web';

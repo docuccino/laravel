@@ -9,9 +9,8 @@ use Docuccino\Core\Pipeline\GenerationResult;
 use Illuminate\Console\Command;
 
 /**
- * The single owner of the `--fail-on` policy shared by the artisan commands: `warning` fails on any
- * warning or error, `error` fails on an error only, anything else never fails. The severity scan
- * lives on {@see GenerationResult::has()} so this is the only home for the option-to-severity map.
+ * The `--fail-on` policy shared by the commands: `warning` fails on a warning or an error, `error` on
+ * an error only, anything else never fails.
  *
  * @mixin Command
  */

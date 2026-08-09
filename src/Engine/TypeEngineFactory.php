@@ -11,11 +11,11 @@ use Docuccino\Inference\PhpStan\Analysis\PhpStanEngineFactory;
 use Docuccino\Inference\PhpStan\Runtime\RuntimeConfig;
 
 /**
- * Builds the configured {@see TypeEngine} for a build (design §Inference). The `null` mode skips
- * PHPStan entirely; `in-process` boots the real engine — and {@see PhpStanEngineFactory::create()}
- * already degrades to a {@see NullTypeEngine} on any container/Larastan boot failure, so the
- * caller always gets a total engine and the build stays alive. Caching/orchestrated composition
- * is retained in the enum for Phase 3b; Phase 3a treats them as in-process.
+ * Builds the configured {@see TypeEngine} (design §Inference). `null` mode skips PHPStan entirely;
+ * everything else boots the real engine, and {@see PhpStanEngineFactory::create()} degrades to a
+ * {@see NullTypeEngine} on any container/Larastan boot failure, so callers always get a total engine
+ * and the build survives. The enum's caching/orchestrated modes are not implemented yet and are
+ * treated as in-process.
  */
 final readonly class TypeEngineFactory
 {
@@ -43,11 +43,9 @@ final readonly class TypeEngineFactory
             @mkdir($this->tmpDir, 0755, true);
         }
 
-        // PRIME scope is broader than DESCEND scope: PHPStan strips the method bodies of any file it
-        // does not analyse, so a Query class the QB trace follows must be PRIMED even though general
-        // descent (throws/inline-rules) stays confined to `project_paths`. Priming every app PSR-4
-        // source root (from the app's own composer.json) keeps a modular `Modules\…\Queries` body
-        // intact for the `$query->query()` hop, without widening throw analysis across those modules.
+        // PRIME scope is wider than DESCEND scope on purpose: PHPStan strips the bodies of files it
+        // doesn't analyse, so a class a trace hops into must be primed even though descent
+        // (throws/inline-rules) stays confined to `project_paths`.
         $primePaths = $this->primePaths($descendPaths);
 
         $runtime = new RuntimeConfig(
@@ -57,8 +55,8 @@ final readonly class TypeEngineFactory
             projectPaths: $primePaths,
         );
 
-        // The vendor dir lets the Query-Builder trace follow a `$query->query()` hop into a primed
-        // Query class outside the DESCEND scope while never following vendor code (design §4).
+        // The vendor dir is passed so traces can hop into primed classes outside the descend scope
+        // while never following vendor code itself (design §4).
         return $this->factory->create($runtime, EngineConfig::forProjectWithVendor($this->basePath.'/vendor', ...$descendPaths));
     }
 
@@ -84,11 +82,10 @@ final readonly class TypeEngineFactory
     }
 
     /**
-     * The set of directories whose `.php` bodies are preserved (primed): the DESCEND paths plus every
-     * local PSR-4 source root declared in the app's `composer.json` (`autoload` + `autoload-dev`), so a
-     * modular Query class the QB trace follows is not body-stripped. Vendor roots are never included
-     * (composer's own `autoload.psr-4` maps only the app's dirs). Falls back to the descend paths when
-     * composer.json is unreadable.
+     * Directories whose `.php` bodies stay intact: the descend paths plus every local PSR-4 source root
+     * from the app's `composer.json` (`autoload` + `autoload-dev`), so a class in a modular namespace
+     * isn't body-stripped. Vendor roots never appear — composer's `autoload.psr-4` maps only the app's
+     * own dirs. An unreadable composer.json falls back to the descend paths.
      *
      * @param  list<string>  $descendPaths
      * @return list<string>

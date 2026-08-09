@@ -16,13 +16,11 @@ use Docuccino\Laravel\Integrations\Support\PaginationEnvelope;
 use Docuccino\Laravel\Integrations\Support\PaginationTerminalVisitor;
 
 /**
- * Documents the response envelope on a `jsonPaginate()` list endpoint whose body is a resource
- * collection (`ArticleResource::collection($query->jsonPaginate())` — audit json-api-paginate §2).
+ * Documents the response envelope on a `jsonPaginate()` list endpoint whose body is a resource collection.
  * `jsonPaginate()` returns a standard Laravel paginator, so the envelope is the shared
- * {@see PaginationEnvelope} — but which of length/simple/cursor
- * is decided by the package config (`use_simple_pagination`/`use_cursor_pagination`), not the terminal
- * name, so the kind comes from {@see JsonApiPaginateConfig::$mode}. Traces for the (renamable) terminal
- * and rewraps the collection body at integration precedence, matching the parameter side.
+ * {@see PaginationEnvelope} — but length/simple/cursor is decided by the package config
+ * (`use_simple_pagination`/`use_cursor_pagination`), not by the terminal name, so the kind comes from
+ * {@see JsonApiPaginateConfig::$mode}. Rewraps at integration precedence, matching the parameter side.
  */
 #[ExtensionOrder(priority: Priorities::LATE)]
 final class JsonApiPaginateResponsesExtension implements OperationExtension

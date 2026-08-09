@@ -10,10 +10,9 @@ use Docuccino\Core\Extensions\Validation\ValidationField;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
- * `starts_with` / `ends_with` (Scribe-parity, validation §4 #8). A single required affix maps cleanly
- * to an anchored `pattern` (the literal is regex-escaped); a multi-value any-of set has no single
- * pattern, so it degrades to a human description ("Must start with one of: …"). Defaults an untyped
- * field to string.
+ * `starts_with`/`ends_with`. A single affix becomes an anchored `pattern` with the literal regex-escaped;
+ * a multi-value any-of set has no single pattern, so it degrades to a description. Untyped fields default
+ * to string.
  */
 final class AffixRuleTransformer implements RuleTransformer
 {

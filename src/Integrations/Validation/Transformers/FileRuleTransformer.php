@@ -10,18 +10,12 @@ use Docuccino\Core\Extensions\Validation\ValidationField;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
- * `file`/`image` → a binary string schema and a request-wide switch to `multipart/form-data` (a
- * file field can't be JSON). `image` additionally notes the constraint in the description.
+ * `file`/`image` → a binary string schema, and the whole request switches to `multipart/form-data` since a
+ * file field can't be JSON. `image` also notes itself in the description.
  *
- * `mimes`/`mimetypes`/`extensions` also imply an uploaded file, so they flip the request to multipart
- * too — but they contribute nothing else to the field schema (the binary type comes from an
- * accompanying `file`/`image` rule, which these almost always carry). Handling them here also stops
- * them raising a spurious unhandled-rule diagnostic.
- *
- * `dimensions` (image width/height constraints) likewise implies an uploaded image, so it flips
- * multipart; OpenAPI has no keyword for pixel dimensions, so the constraint list becomes a
- * description note rather than a wrong schema claim (the binary type comes from the accompanying
- * `image` rule).
+ * `mimes`/`mimetypes`/`extensions`/`dimensions` imply an upload too, so they flip multipart, but add
+ * nothing to the schema — the binary type comes from the accompanying `file`/`image` rule these almost
+ * always carry. `dimensions` becomes a description note; OpenAPI has no pixel-dimension keyword.
  */
 final class FileRuleTransformer implements RuleTransformer
 {

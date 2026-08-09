@@ -8,9 +8,8 @@ use Docuccino\Laravel\Pipeline\DocumentBuilder;
 use Illuminate\Console\Command;
 
 /**
- * Shared `{document?}` argument handling for the artisan commands: an unknown document key errors
- * out, otherwise the body runs for the selected document (or every configured document when the
- * argument is omitted). The per-document exit codes aggregate — any FAILURE fails the command.
+ * Shared `{document?}` handling: an unknown key errors, otherwise the body runs for that document, or
+ * for all of them when the argument is omitted. Exit codes aggregate — any failure fails the command.
  *
  * @mixin Command
  */

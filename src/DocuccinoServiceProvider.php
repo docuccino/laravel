@@ -52,9 +52,13 @@ use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
 /**
- * The Docuccino Laravel adapter service provider (spatie/laravel-package-tools): registers the
- * config, the export command, the late-bound {@see ExtensionRegistry} singleton (backing the
- * `Docuccino` facade), and the pipeline services with their filesystem-path contextual bindings.
+ * The adapter's service provider (spatie/laravel-package-tools): config, commands, the late-bound
+ * {@see ExtensionRegistry} singleton behind the `Docuccino` facade, and the pipeline services with
+ * their filesystem-path contextual bindings.
+ *
+ * Integrations may not import vendor classes (arch rule), so the provider is the one place that
+ * reads a third-party package's own config or static runtime state and injects it — that's why the
+ * bindings below look chatty.
  */
 final class DocuccinoServiceProvider extends PackageServiceProvider
 {
@@ -78,23 +82,22 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
     {
         $this->app->singleton(ExtensionRegistry::class);
 
-        // The route resolver reflects each route while filtering and records it here; the context
-        // builder reads it back O(1), so a route is reflected once per build. Scoped so both share
-        // one index within a request/build and it resets between them.
+        // The resolver reflects each route while filtering and stashes it here for the context builder
+        // to read back O(1). Scoped, so both share one index per build and it resets between builds.
         $this->app->scoped(ResolvedRouteIndex::class);
 
-        // The inferred-handler tier records per-callback response-fold deferrals here; the summary
-        // transformer drains them once at document build. Scoped so both share one log per build.
+        // Same deal: the inferred-handler tier writes response-fold deferrals, the summary transformer
+        // drains them once per build.
         $this->app->scoped(HandlerDeferralLog::class);
 
-        // The route resolver excludes vendor-package controller routes by default (route:list
-        // --except-vendor semantics); supply the app's vendor directory as the boundary.
+        // Vendor-package controller routes are excluded by default (route:list --except-vendor
+        // semantics); this is the boundary.
         $this->app->when(LaravelRouteResolver::class)
             ->needs(VendorRoutePolicy::class)
             ->give(fn (): VendorRoutePolicy => new VendorRoutePolicy($this->app->basePath('vendor')));
 
-        // Provenance `source.file` paths are relativised against the app base path (design §4);
-        // the resolver falls back to a composer-root walk for files outside it (the workbench).
+        // Provenance `source.file` paths are relative to the app base path (design §4); the resolver
+        // falls back to a composer-root walk for files outside it (the workbench).
         $this->app->bind(
             SourcePathResolver::class,
             fn (Application $app): SourcePathResolver => new RootRelativeSourcePathResolver($app->basePath()),
@@ -116,7 +119,7 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             ->needs('$tmpDir')
             ->give(fn (): string => $this->app->storagePath('docuccino'));
 
-        // The runtime document cache uses the configured Laravel cache store (null = default store).
+        // null = Laravel's default cache store.
         $this->app->when(DocumentCache::class)
             ->needs('$store')
             ->give(function (): ?string {
@@ -129,8 +132,8 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             ->needs('$generatorVersion')
             ->give(self::VERSION);
 
-        // The pipeline engine lives in core; this adapter labels the emitted generator metadata as
-        // itself (a future/second adapter binds its own name — byte-identical for this one).
+        // Core does the assembling; the generator metadata names this adapter. A second adapter would
+        // bind its own name here.
         $this->app->when(Assembler::class)
             ->needs('$generatorName')
             ->give('docuccino/laravel');
@@ -158,8 +161,8 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             ->needs('$basePath')
             ->give(fn (): string => $this->app->basePath());
 
-        // The data-leakage lint is core + framework-agnostic; the adapter only maps its config
-        // (docuccino.lint.leakage.{enabled,allow,patterns}) onto the core options and registers it.
+        // The data-leakage lint itself is framework-agnostic core; the adapter just maps
+        // docuccino.lint.leakage.* onto its options.
         $this->app->bind(SensitiveFieldLint::class, static function (): SensitiveFieldLint {
             /** @var array<string, mixed> $leakage */
             $leakage = (array) config('docuccino.lint.leakage', []);
@@ -170,7 +173,7 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
                 allow: $allow,
             );
 
-            // Extra token → label heuristics MERGE over the default table (existing tokens keep their label).
+            // Extra token → label heuristics merge over the defaults; existing tokens keep their label.
             $patterns = [];
             foreach (is_array($leakage['patterns'] ?? null) ? $leakage['patterns'] : [] as $token => $label) {
                 if (is_string($token) && is_string($label)) {
@@ -184,8 +187,9 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             return new SensitiveFieldLint($options);
         });
 
-        // The json-api-paginate integration reads the package's own config for the (renamable)
-        // parameter names + sizes; an absent bag falls back to defaults + an info diagnostic.
+        // json-api-paginate's parameter names and sizes are renamable in its own config; an absent bag
+        // falls back to defaults plus an info diagnostic. Its response envelope (pagination mode) and
+        // the cache's environment digest read the same bag, hence the three bindings.
         $this->app->bind(JsonApiPaginateParametersExtension::class, static function (): JsonApiPaginateParametersExtension {
             /** @var array<string, mixed> $config */
             $config = (array) config('json-api-paginate', []);
@@ -193,8 +197,6 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             return new JsonApiPaginateParametersExtension(JsonApiPaginateConfig::fromArray($config));
         });
 
-        // The json-api-paginate response envelope depends on the SAME config (its pagination mode
-        // decides length/simple/cursor), so it is wired from the live bag alongside the params side.
         $this->app->bind(JsonApiPaginateResponsesExtension::class, static function (): JsonApiPaginateResponsesExtension {
             /** @var array<string, mixed> $config */
             $config = (array) config('json-api-paginate', []);
@@ -202,8 +204,6 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             return new JsonApiPaginateResponsesExtension(JsonApiPaginateConfig::fromArray($config));
         });
 
-        // The environment-digest contributor (A4) keys the fragment cache on the SAME renamable
-        // parameter names + mode, so it reads the live bag the same way the extensions above do.
         $this->app->bind(JsonApiPaginateConfigDigestContributor::class, static function (): JsonApiPaginateConfigDigestContributor {
             /** @var array<string, mixed> $config */
             $config = (array) config('json-api-paginate', []);
@@ -211,9 +211,8 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             return new JsonApiPaginateConfigDigestContributor(JsonApiPaginateConfig::fromArray($config));
         });
 
-        // The query-builder integration reads the package's own config for the (renamable) request
-        // parameter names (filter/sort/include/fields); an absent bag falls back to defaults + an
-        // info diagnostic.
+        // Likewise query-builder: filter/sort/include/fields are renamable, and its digest contributor
+        // keys the fragment cache on the same names + strict mode.
         $this->app->bind(QueryBuilderParametersExtension::class, static function (): QueryBuilderParametersExtension {
             /** @var array<string, mixed> $config */
             $config = (array) config('query-builder', []);
@@ -221,8 +220,6 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             return new QueryBuilderParametersExtension(QueryBuilderConfig::fromArray($config));
         });
 
-        // The environment-digest contributor (A4) keys the fragment cache on the SAME renamable
-        // parameter names + strict mode, so it reads the live bag the same way the extension above does.
         $this->app->bind(QueryBuilderConfigDigestContributor::class, static function (): QueryBuilderConfigDigestContributor {
             /** @var array<string, mixed> $config */
             $config = (array) config('query-builder', []);
@@ -230,9 +227,8 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             return new QueryBuilderConfigDigestContributor(QueryBuilderConfig::fromArray($config));
         });
 
-        // Passport's oauth2 scheme needs runtime facts (the scope catalogue + which grants were
-        // enabled) that live on the vendor class. The integration stays vendor-import-free (arch
-        // rule), so the provider — allowed to touch Passport — reads them here and injects them.
+        // Passport's oauth2 scheme (and the cache digest below) need facts that only live on the
+        // vendor class: the scope catalogue and which grants are enabled.
         $this->app->bind(PassportSecurityExtension::class, function (Application $app): PassportSecurityExtension {
             /** @var Repository $config */
             $config = $app->make('config');
@@ -240,8 +236,6 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             return new PassportSecurityExtension($config, self::passportRuntime());
         });
 
-        // The environment-digest contributor (A4) needs the same runtime facts (app.url + scopes +
-        // grants), read here and injected so the integration stays vendor-import-free.
         $this->app->bind(PassportDigestContributor::class, function (Application $app): PassportDigestContributor {
             /** @var Repository $config */
             $config = $app->make('config');
@@ -249,12 +243,9 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             return new PassportDigestContributor($config, self::passportRuntime());
         });
 
-        // The spatie-data integration reads the package's own global config — none of which the
-        // integration may import (the vendor-import-free arch rule): the name-mapping strategy (a
-        // whole-class default rename), the response wrap key, and the date format. The provider is the
-        // one place allowed to touch it, so it reads the values here and injects them (mirroring the
-        // Passport runtime facts). A single configured reflector is shared by every spatie-data
-        // extension via the container.
+        // spatie-data's globals shape output too: the name-mapping strategy (a whole-class default
+        // rename), the response wrap key and the date format. One configured reflector is shared by
+        // every spatie-data extension through the container.
         $this->app->bind(DataClassReflector::class, static function (): DataClassReflector {
             return new DataClassReflector(
                 globalInputMapper: self::stringConfig('data.name_mapping_strategy.input'),
@@ -272,8 +263,8 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             );
         });
 
-        // The engine is resolved from the container so tests (and users) can swap in a stub or the
-        // NullTypeEngine; production builds it from config, degrading to null on boot failure.
+        // Resolved from the container so tests (and users) can swap in a stub or the NullTypeEngine;
+        // otherwise built from config, degrading to null on boot failure.
         $this->app->bind(TypeEngine::class, static function (Application $app): TypeEngine {
             /** @var array<string, mixed> $config */
             $config = (array) config('docuccino.engine', []);
@@ -282,7 +273,7 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
         });
     }
 
-    /** A non-empty string config value (a mapper FQCN / wrap key), or null when unset/blank. */
+    /** A non-empty string config value, or null when unset/blank. */
     private static function stringConfig(string $key): ?string
     {
         $value = config($key);
@@ -291,9 +282,8 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
     }
 
     /**
-     * Read Passport's runtime facts for the oauth2 scheme (empty when Passport is not installed): the
-     * scope catalogue from `Passport::tokensCan()` and whether the password / implicit grants were
-     * enabled. Kept in the provider so the integration itself never imports the vendor class.
+     * Passport's scope catalogue and enabled grants — empty when Passport isn't installed, which is
+     * why the `class_exists` guard has to come first.
      */
     private static function passportRuntime(): PassportRuntime
     {
@@ -316,13 +306,13 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
     }
 
     /**
-     * Register the runtime viewer routes for each document that configures a `viewer.route`: the
-     * Scalar HTML page, its `.json` spec, and the locally bundled Scalar asset. Guarding lives in
-     * the controller (a `viewer.gate` ability, else local env only).
+     * Registers the runtime viewer routes for each document with a `viewer.route`: the Scalar HTML
+     * page, its `.json` spec, and the bundled Scalar asset. Access control lives in
+     * {@see DocsController} (a `viewer.gate` ability, else local env only).
      */
     public function packageBooted(): void
     {
-        // The master off-switch (security M3): when disabled, register no runtime endpoints at all.
+        // Master off-switch: no runtime endpoints exist at all when it's off.
         if (config('docuccino.enabled', true) === false) {
             return;
         }
@@ -351,9 +341,9 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
     }
 
     /**
-     * The middleware stack for a document's viewer routes (security M1/M2): `viewer.middleware`,
-     * defaulting to `['web', 'throttle:60,1']` so the spec endpoint is session-scoped and rate
-     * limited out of the box.
+     * A document's `viewer.middleware`, defaulting to `['web', 'throttle:60,1']` so the spec endpoint
+     * is session-scoped and rate limited out of the box. Beware: if the app's `web` group resolves a
+     * domain or tenant, these domain-less routes will 404 — configure a narrower stack.
      *
      * @param  array<array-key, mixed>  $viewer
      * @return list<string>

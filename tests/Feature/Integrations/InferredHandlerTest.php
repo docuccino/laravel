@@ -21,12 +21,11 @@ use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
- * The inferred-handler tier wiring (design §6 flagship), stub-side: the mapper reflects the booted
- * handler's render callbacks, analyses the matching one (here scripted through the stub engine,
- * keyed by the CallableRef the mapper builds), and emits the handler's REAL status+shape — winning
- * the chain over the framework-default tier. A too-dynamic body defers to the next tier + a
- * diagnostic. (Narrowed-catch-all recovery is engine truth, proven by the --group=fixture
- * InferredHandlerTest in packages/inference-phpstan.)
+ * The inferred-handler tier wiring, stub-side: the mapper reflects the booted handler's render
+ * callbacks, analyses the matching one (scripted through the stub engine, keyed by the CallableRef the
+ * mapper builds) and emits the handler's own status + shape, winning the chain over the
+ * framework-default tier. A too-dynamic body defers to the next tier with a diagnostic. The
+ * narrowed-catch-all recovery half lives in inference-phpstan's `--group=fixture` InferredHandlerTest.
  */
 const MODEL_NOT_FOUND = ModelNotFoundException::class;
 
@@ -53,9 +52,9 @@ function registerRenderCallback(Closure $callback, string $exceptionType): strin
 }
 
 /**
- * Register an INVOKABLE renderer (Laravel wraps it via `Closure::fromCallable()`) and return the
- * method-based CallableRef symbol the mapper will analyse it under — mirroring the mapper routing a
- * method-backed callback to method analysis rather than the by-line closure path.
+ * Register an invokable renderer (Laravel wraps it via `Closure::fromCallable()`) and return the
+ * method-based CallableRef symbol the mapper will analyse it under — the mapper routes a method-backed
+ * callback to method analysis rather than the by-line closure path.
  */
 function registerInvokableRenderCallback(object $renderer, string $exceptionType): string
 {
@@ -137,9 +136,9 @@ it('stays inert (framework tier owns the 404) when no handler matches the except
 });
 
 it('documents an invokable renderer via method analysis, winning over the framework tier', function (): void {
-    // The common real-world shape: `$exceptions->render(new SomeRenderer)`. Laravel wraps it as a method-backed
-    // closure, and the mapper must analyse `__invoke` (not the closure-by-line path, whose target line is
-    // a method declaration, not a closure literal).
+    // `$exceptions->render(new SomeRenderer)` is the common real-world shape. Laravel wraps it as a
+    // method-backed closure, so the mapper has to analyse `__invoke` — the closure-by-line path would
+    // land on a method declaration, not a closure literal.
     $symbol = registerInvokableRenderCallback(new InvokableRenderer, MODEL_NOT_FOUND);
 
     $engine = WorkbenchEngine::make([
@@ -162,8 +161,8 @@ it('documents an invokable renderer via method analysis, winning over the framew
 });
 
 it('documents the recovered content type (application/problem+json) from a refined helper shape', function (): void {
-    // The refiner recovers a JsonResponse<payload, status, contentType> — the adapter must document the
-    // body under the recovered media type, not the default application/json.
+    // The refiner recovers a JsonResponse<payload, status, contentType>, so the body is documented under
+    // the recovered media type rather than the default application/json.
     $symbol = registerRenderCallback(
         static fn (ModelNotFoundException $e) => response()->json(['type' => 'x', 'title' => 'y'], 404),
         MODEL_NOT_FOUND,
@@ -189,8 +188,8 @@ it('documents the recovered content type (application/problem+json) from a refin
 });
 
 it('assembles a media-type example from folded literals and const-pins each member', function (): void {
-    // The refiner folded the arm's per-arm literals into the body; the adapter must both const-pin each
-    // member (schema) and surface them as a media-type example (Tom: the 403 shows status: 403 + the type const).
+    // The refiner folded the arm's literals into the body, so the adapter both const-pins each member in
+    // the schema and surfaces them as a media-type example.
     $symbol = registerRenderCallback(
         static fn (ModelNotFoundException $e) => response()->json(['type' => 'about:blank', 'title' => 'Forbidden', 'status' => 403], 403),
         MODEL_NOT_FOUND,
@@ -220,8 +219,8 @@ it('assembles a media-type example from folded literals and const-pins each memb
 });
 
 it('fills a status-provenance member with the response status, omits non-folding members, and is deterministic', function (): void {
-    // A StatusMarkerT member echoes the response status; a widened `detail` did not fold. The example
-    // must carry the concrete status and the folded type, and OMIT detail (never fabricated).
+    // A StatusMarkerT member echoes the response status; a widened `detail` didn't fold. The example
+    // carries the concrete status and the folded type, and omits detail rather than fabricating it.
     $script = static fn (): ActionAnalysis => new ActionAnalysis(returns: [new ReturnSite(
         new ClassT('Illuminate\\Http\\JsonResponse', [
             new ArrayShapeT([
@@ -256,8 +255,8 @@ it('fills a status-provenance member with the response status, omits non-folding
 });
 
 it('emits no example for a non-shape (object-typed) body — nothing statically known to assemble', function (): void {
-    // A handler that renders an object-typed body (not a keyed array literal) has no folded members, so
-    // there is nothing to example: the schema is still documented, no example is fabricated.
+    // A handler rendering an object-typed body (not a keyed array literal) has no folded members, so
+    // there's nothing to example: the schema is still documented, no example is invented.
     $symbol = registerRenderCallback(
         static fn (ModelNotFoundException $e) => response()->json(['ignored' => true], 403),
         MODEL_NOT_FOUND,
@@ -280,8 +279,8 @@ it('emits no example for a non-shape (object-typed) body — nothing statically 
 });
 
 it('falls back to the exception status hint when the recovered status did not fold', function (): void {
-    // An enum-derived / dynamic status the refiner could not fold arrives as UnknownT; the adapter must
-    // document the exception's own status classification (404 here) rather than guessing 200.
+    // An enum-derived / dynamic status the refiner couldn't fold arrives as UnknownT, so the adapter
+    // documents the exception's own status classification (404 here) rather than guessing 200.
     $symbol = registerRenderCallback(
         static fn (ModelNotFoundException $e) => response()->json(['type' => 'x'], 404),
         MODEL_NOT_FOUND,
@@ -309,8 +308,8 @@ it('falls back to the exception status hint when the recovered status did not fo
 });
 
 it('defers SILENTLY (no too-dynamic diagnostic) when an arm delegates to the framework (null/void)', function (): void {
-    // A `return null` / void arm is a framework delegation, not a fold failure — the tier must NOT raise
-    // a too-dynamic deferral for it; the framework-default tier fills in.
+    // A `return null` / void arm is a framework delegation, not a fold failure, so no too-dynamic
+    // deferral — the framework-default tier just fills in.
     $symbol = registerRenderCallback(
         static fn (ModelNotFoundException $e) => null,
         MODEL_NOT_FOUND,

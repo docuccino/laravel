@@ -24,43 +24,30 @@ use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Patch\Contribution;
 
 /**
- * Infers the success response(s) from the action's return paths (design §5). Every return type is
- * unwrapped to a `(status, payload)` pair and grouped by HTTP status, so distinct return paths that
- * carry distinct statuses become distinct responses:
+ * Infers the success response(s) from the action's return paths (design §5): each return type is
+ * unwrapped to a `(status, payload)` pair and grouped by status, so return paths with different
+ * statuses become different responses. A `JsonResponse<TPayload, TStatus>` contributes its payload
+ * shape (never a generic `{type: object}`) under the folded status — an `int` literal second type
+ * arg, else the default 200; `noContent()` arrives as `JsonResponse<void, 204>`; bare `void`/`never`
+ * contributes nothing.
  *
- * - A `JsonResponse<TPayload, TStatus>` (recovered by the bundled PHPStan extension for
- *   `response()->json($x, 201)`) contributes its PAYLOAD shape under the folded status — the whole
- *   `JsonResponse` object is never rendered as a generic `{type: object}`.
- * - `noContent()` surfaces as `JsonResponse<void, 204>`: an empty response body under status 204.
- * - Any other return type keeps its default `200 application/json` mapping.
- *
- * The folded status is read from the second type arg when it is a constant `int` literal; a dynamic
- * status (non-literal) falls back to the default `200`. Bare `void`/`never` returns (no
- * `JsonResponse` wrapper) contribute nothing.
- *
- * This is a built-in adapter extension, so it reaches into NO integration: the three integration-aware
- * decisions all arrive through gated context chains (design §6 — an integration contributes only when
- * installed AND enabled). A {@see ResponseAnalysisTarget} may
- * redirect the analysed method (laravel-actions `jsonResponse()`), a
- * {@see ResponseStatusResolver} may re-home a bare Data return's
- * status (spatie `calculateResponseStatus()`), and a
- * {@see PayloadMediaTypeResolver} may classify the media type
- * (JSON:API resources). A disabled integration contributes none of these, so it cannot shape the
- * success response; a redirect carries the honest provenance producer.
+ * Being a built-in, it imports no integration: the three integration-aware decisions arrive through
+ * gated context chains ({@see ResponseAnalysisTarget} redirects the analysed method,
+ * {@see ResponseStatusResolver} re-homes a bare Data return's status,
+ * {@see PayloadMediaTypeResolver} classifies the media type), so a disabled integration cannot shape
+ * the success response. A redirect carries its own provenance producer.
  */
 #[ExtensionOrder(priority: Priorities::EARLY)]
 final class InferredResponsesExtension implements OperationExtension
 {
-    /** The Illuminate JSON response FQCN, matched by string so this extension carries no Illuminate/integration import. */
+    /** Matched by string so this extension carries no Illuminate import. */
     private const JSON_RESPONSE = 'Illuminate\\Http\\JsonResponse';
 
     private const DEFAULT_STATUS = '200';
 
     /**
-     * Canonical RFC reason phrases for the statuses this extension emits. Beyond the 2xx range a
-     * `calculateResponseStatus()` override can re-home a Responsable body to a 4xx (e.g. challenge
-     * DTOs that return 422), so those phrases are covered too; an unlisted status falls back to
-     * `OK`.
+     * RFC reason phrases for the statuses this extension emits; unlisted falls back to `OK`. 422 is
+     * here because a `calculateResponseStatus()` override can re-home a body outside 2xx.
      *
      * @var array<int, string>
      */
@@ -114,27 +101,23 @@ final class InferredResponsesExtension implements OperationExtension
         ksort($byStatus);
 
         foreach ($byStatus as $status => $bucket) {
-            // A numeric-string status key ('200') is coerced to int by PHP array semantics; restore
-            // the string the draft API and reason table expect.
+            // PHP coerced the '200' key to int; the draft API and reason table want the string back.
             $this->emit($operation, $context, (string) $status, $bucket['payloads'], $bucket['location'], $producer);
         }
     }
 
     /**
-     * Place a return into `(status, payload)` bucket(s). Normally one — the unwrapped pair. But a bare
-     * Data return (Responsable, still at the default 200, the whole return type IS the payload) may
-     * override `calculateResponseStatus()` to 201/202/… (or several statuses for a conditional whose
-     * arms all fold): each folded status re-homes the body off 200. A UNION of Data classes returned
-     * directly — e.g. `MfaChallengeData|EmailVerificationChallengeData|…` from one action — re-homes
-     * EACH member to its own status(es); a member with no override, and any non-class member, stays at
-     * 200. Overrides arrive through the gated {@see ResponseStatusResolver} chain, never a direct import.
+     * Place a return into `(status, payload)` bucket(s) — normally just the unwrapped pair. A bare
+     * Data return can override `calculateResponseStatus()` and re-home its body off 200, possibly to
+     * several statuses (a conditional whose arms all fold). For a union of Data classes each member
+     * re-homes independently; members with no override, and non-class members, stay at 200.
      *
      * @return list<array{0: string, 1: ?DType}>
      */
     private function placeReturn(string $status, ?DType $payload, DType $returnType, RouteContext $context): array
     {
-        // Only a bare Data return is re-homed: still the default 200, and the payload IS the whole
-        // return type (a JsonResponse-wrapped payload keeps its own folded status — $returnType !== payload).
+        // Only a bare Data return re-homes: default status, and the payload IS the whole return type
+        // (a JsonResponse-wrapped payload already has its own folded status).
         if ($status !== self::DEFAULT_STATUS || $payload === null || $returnType !== $payload) {
             return [[$status, $payload]];
         }
@@ -158,8 +141,7 @@ final class InferredResponsesExtension implements OperationExtension
     }
 
     /**
-     * Place one payload under each resolved status (the same body under every status), or under the
-     * default 200 when no override folded.
+     * The same body under each resolved status, or under 200 when no override folded.
      *
      * @param  list<int>  $statuses
      * @return list<array{0: string, 1: ?DType}>
@@ -174,13 +156,10 @@ final class InferredResponsesExtension implements OperationExtension
     }
 
     /**
-     * The analysis whose return sites define the success body, paired with the provenance producer to
-     * attribute it to. Normally the dispatched action's own ({@see RouteContext::analysis()}) with a
-     * null producer (→ plain inference); when a gated {@see ResponseAnalysisTarget}
-     * redirects (a laravel-actions `jsonResponse()`), it is that method's analysis and the redirect's
-     * producer (e.g. `integration:laravel-actions`), so the body is attributed honestly. Analysing the
-     * redirected method directly keeps a single source for the 200 schema; its dependency files are
-     * recorded so editing it still invalidates the cached fragment.
+     * The analysis whose return sites define the success body, plus the producer to attribute it to.
+     * Usually the action's own analysis with a null producer (plain inference); a
+     * {@see ResponseAnalysisTarget} redirect swaps in another method's analysis and its producer, and
+     * records that method's dependency files so editing it invalidates the cached fragment.
      *
      * @return array{0: ActionAnalysis, 1: ?string}
      */
@@ -198,9 +177,9 @@ final class InferredResponsesExtension implements OperationExtension
     }
 
     /**
-     * Unwrap a return type into its `(status, payloadType, isEmptyBody)` triple. A
-     * `JsonResponse<payload, status>` yields the payload under its folded status (void payload =
-     * empty body); anything else yields itself under `200`.
+     * Unwrap a return type to `(status, payloadType, isEmptyBody)`. A `JsonResponse<payload, status>`
+     * yields the payload under its folded status (void payload = empty body); anything else yields
+     * itself under 200.
      *
      * @return array{0: string, 1: ?DType, 2: bool}
      */
@@ -224,7 +203,7 @@ final class InferredResponsesExtension implements OperationExtension
         return [self::DEFAULT_STATUS, $type, false];
     }
 
-    /** The folded status from a `JsonResponse` status type arg — a constant `int` literal, else 200. */
+    /** A constant `int` literal status arg folds; anything dynamic falls back to 200. */
     private function foldStatus(?DType $statusArg): string
     {
         if ($statusArg instanceof LiteralT && is_int($statusArg->value)) {
@@ -235,8 +214,8 @@ final class InferredResponsesExtension implements OperationExtension
     }
 
     /**
-     * Emit one response: the unioned payload schema under its resolved media type, or an empty-bodied
-     * response when there is no payload (e.g. `noContent()`).
+     * One response: the unioned payload schema under its resolved media type, or an empty body when
+     * there's no payload (`noContent()`).
      *
      * @param  list<DType>  $payloads
      */
@@ -258,10 +237,8 @@ final class InferredResponsesExtension implements OperationExtension
         $type = count($payloads) === 1 ? $payloads[0] : UnionT::of($this->dedupe($payloads));
         $result = $context->converter()->toSchema($type);
 
-        // Anchor the inferred body to the first contributing return path (design §4); an engine that
-        // reports no usable location yields a sourceless contribution rather than a churny one. When a
-        // redirect fired (laravel-actions jsonResponse) the body is attributed to that integration's
-        // producer, not plain inference.
+        // Anchor the body to the first contributing return path (design §4); no usable location means
+        // a sourceless contribution rather than a churny one.
         $source = $location !== null ? $context->sourceAt($location) : null;
         $contribution = $producer !== null
             ? Contribution::forProducer($producer, $source, $result->confidence)
@@ -274,10 +251,9 @@ final class InferredResponsesExtension implements OperationExtension
     }
 
     /**
-     * The response media type from the gated {@see PayloadMediaTypeResolver}
-     * chain: JSON:API resources (either enabled family, or a collection of them) serialise as
-     * `application/vnd.api+json`; everything else stays `application/json`. Every payload must resolve
-     * to the same non-JSON media type — a mixed union falls back to `application/json`.
+     * The media type from the gated {@see PayloadMediaTypeResolver} chain — e.g. JSON:API resources
+     * serialise as `application/vnd.api+json`. Every payload must agree; a mixed union falls back to
+     * `application/json`.
      *
      * @param  list<DType>  $payloads
      */

@@ -7,19 +7,17 @@ namespace Docuccino\Laravel\Integrations\JsonApiPaginate;
 use Docuccino\Laravel\Integrations\Support\PaginationTerminalVisitor;
 
 /**
- * The `jsonPaginate()` facts the parameters extension builds from the shared
- * {@see PaginationTerminalVisitor} trace: whether the chain
- * reaches the terminal at all, and the per-call-site overrides the macro accepts
- * (`jsonPaginate(?maxResults, ?defaultSize)`), folded from the outermost call's int args. A small DTO
- * the parameters extension populates once the trace returns and hands to {@see JsonApiPaginateParameters}.
+ * What a {@see PaginationTerminalVisitor} trace found: whether the chain reaches `jsonPaginate()` at all, and
+ * the per-call-site overrides the macro accepts, folded from the outermost call's int args. Populated by the
+ * parameters extension and handed to {@see JsonApiPaginateParameters}.
  */
 final class JsonApiPaginateFacts
 {
     public bool $paginates = false;
 
-    /** The macro's first argument (`$maxResults`) when folded from a literal at the call site. */
+    /** `jsonPaginate($maxResults, …)`, when it folded from a literal. */
     public ?int $maxResultsOverride = null;
 
-    /** The macro's second argument (`$defaultSize`) when folded from a literal at the call site. */
+    /** `jsonPaginate(…, $defaultSize)`, when it folded from a literal. */
     public ?int $defaultSizeOverride = null;
 }

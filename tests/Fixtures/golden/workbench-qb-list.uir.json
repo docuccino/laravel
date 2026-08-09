@@ -462,8 +462,8 @@
   "x-docuccino": {
     "document": {
       "id": "doc:qb-list",
-      "configHash": "71200391b0c6bcb2f09cee05d56d55835fbcc518d12b2aaa4cebad43620e249a",
-      "contentHash": "5fa4351648f1a7e9bfe622c63e380a607fd9cd7b163efc7aad2c20a688bd8bf4"
+      "configHash": "989677afe6cf5b4cd34523c66ef1113434bc523a73b2152559c1aff96278b88d",
+      "contentHash": "a40c6d2e7a6145c5c2e3bc9769cd8782b2801ce99d6f8088f6223ac2fc9a42b8"
     },
     "generator": {
       "name": "docuccino/laravel",

@@ -24,11 +24,10 @@ use Illuminate\Routing\Router;
 use ReflectionNamedType;
 
 /**
- * Builds the framework-agnostic {@see RouteContext} for one discovered route: it locates the
- * Laravel {@see Route}, reflects the handler, collects attributes (method > class), reads the
- * docblock summary/description, and derives path parameters and route-model bindings from the
- * template and the action signature. Returns null when the action cannot be reflected so the
- * generator emits a skeleton.
+ * Builds the framework-agnostic {@see RouteContext} for one discovered route: locates the Laravel
+ * {@see Route}, reflects the handler, collects attributes (method beats class), reads the docblock
+ * prose, and derives path parameters and route-model bindings. Null when the action can't be
+ * reflected, which is the generator's cue to emit a skeleton.
  *
  * @internal
  */
@@ -66,8 +65,8 @@ final class RouteContextBuilder
         array $payloadMediaTypeResolvers = [],
         array $routeBindingSchemaResolvers = [],
     ): ?RouteContext {
-        // Fast path: reuse the Route + reflection the resolver already produced (O(1), reflected
-        // once). On a container miss the index is empty, so fall back to a lookup + fresh reflection.
+        // Reuse the Route + reflection the resolver already produced. On a container miss the index is
+        // empty, so fall back to a lookup and fresh reflection.
         $resolved = $this->index->get($descriptor);
         $route = $resolved['route'] ?? $this->locate($descriptor);
         if ($route === null) {
@@ -110,9 +109,8 @@ final class RouteContextBuilder
     }
 
     /**
-     * The FormRequest class type-hinted on the action, resolved once by reflection so both the
-     * FormRequest rule recovery and the implicit-403 authorize probe read it off the context (no
-     * extension reaches into the integration for this route-identity fact).
+     * The FormRequest type-hinted on the action, resolved once here so rule recovery and the
+     * implicit-403 authorize probe both read it off the context rather than reflecting again.
      *
      * @return class-string<LaravelFormRequest>|null
      */

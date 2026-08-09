@@ -8,14 +8,12 @@ use Docuccino\Core\Extensions\Context\RepresentationPolicy;
 use Docuccino\Laravel\Integrations\Support\QueryParameterSpec;
 
 /**
- * Turns recovered {@see QueryBuilderFacts} into query-parameter specs under a {@see
- * RepresentationPolicy} and the package's own {@see QueryBuilderConfig} parameter names (design
- * §Representation policies): the semantic facts are policy-independent, this class is the only place
- * the *expression* is decided — bracketed `filter[status]` params vs a single `filter` deep-object,
- * comma-string `sort`/`include` vs exploded arrays, sparse-fieldset params, pagination, and how an
- * exact filter's recovered column cast is expressed (an enum modelled as a comma-serialised array so
- * Spatie's whereIn split stays valid, a native cast as its scalar type). Pure and deterministic so
- * every branch is dataset-testable without a pipeline.
+ * Turns recovered {@see QueryBuilderFacts} into query-parameter specs. The facts themselves are
+ * policy-independent; this is the only place their EXPRESSION is decided — bracketed `filter[status]`
+ * params vs one `filter` deep-object, comma strings vs exploded arrays, sparse fieldsets, pagination,
+ * and how a column cast surfaces (an enum becomes a comma-serialised array so Spatie's whereIn split
+ * stays valid; a native cast is just its scalar type). Names come from {@see QueryBuilderConfig}, shapes
+ * from the {@see RepresentationPolicy}. Pure and deterministic, so every branch is dataset-testable.
  */
 final class QueryBuilderParameters
 {
@@ -25,7 +23,7 @@ final class QueryBuilderParameters
 
     private const NULLABLE_NOTE = 'Accepts `null` to filter for absent values.';
 
-    /** The soft-delete filter's fixed value set (Spatie's `FiltersTrashed`). */
+    /** Spatie's `FiltersTrashed` accepts exactly these. */
     private const TRASHED_VALUES = ['with', 'only'];
 
     /**
@@ -102,10 +100,9 @@ final class QueryBuilderParameters
     }
 
     /**
-     * The bracketed-filter schema plus its serialization style: the soft-delete filter is a fixed
-     * `with`/`only` enum, an enum-typed exact filter becomes a comma-serialised array (so a `whereIn`
-     * list validates), a resolved column/scope/custom type becomes its scalar schema, and anything
-     * else keeps the plain-string shape.
+     * `[schema, style, explode]` for a bracketed filter: the soft-delete filter is a fixed enum, an
+     * enum-typed one a comma-serialised array so a `whereIn` list validates, a resolved column its
+     * scalar schema, everything else a plain string.
      *
      * @return array{0: array<string, mixed>, 1: string|null, 2: bool|null}
      */
@@ -127,7 +124,7 @@ final class QueryBuilderParameters
     }
 
     /**
-     * The deepObject property schema for a filter (description inline, no per-property style/explode).
+     * A filter as a deepObject property — description inline, since a property can't carry style/explode.
      *
      * @return array<string, mixed>
      */
@@ -150,8 +147,7 @@ final class QueryBuilderParameters
     }
 
     /**
-     * The soft-delete filter's fixed schema — a `with`/`only` string enum (never a `whereIn` array;
-     * a single mode is selected).
+     * A string enum, never a `whereIn` array — only one mode can be selected.
      *
      * @return array<string, mixed>
      */
@@ -167,7 +163,7 @@ final class QueryBuilderParameters
     private function withDefault(array $schema, QbEntry $filter): array
     {
         if ($filter->hasDefault) {
-            // For the enum-array modelling the default is the single value, not a wrapped list.
+            // Even under the enum-array modelling the default is the single value, not a wrapped list.
             $schema['default'] = $filter->default;
         }
 
@@ -191,8 +187,8 @@ final class QueryBuilderParameters
             return $base;
         }
 
-        // Terminate the lead fragment so the appended note-sentences read cleanly (note-less filters
-        // keep their bare fragment, so their goldens don't churn).
+        // Terminate the lead so the appended notes read as sentences. Note-less filters keep their bare
+        // fragment, which is what the goldens pin.
         $lead = preg_match('/[.!?]$/', $base) === 1 ? $base : $base.'.';
 
         return implode(' ', [$lead, ...$notes]);
@@ -207,8 +203,7 @@ final class QueryBuilderParameters
             return [];
         }
 
-        // The `-name` descending convention: each allowed sort admits an ascending and a `-`-prefixed
-        // descending form.
+        // Spatie's `-name` convention: every allowed sort has an ascending and a descending form.
         $values = [];
         foreach ($facts->sorts as $sort) {
             $values[] = $sort->name;

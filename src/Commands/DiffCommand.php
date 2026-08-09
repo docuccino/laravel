@@ -20,17 +20,14 @@ use Illuminate\Support\Facades\Process;
 use JsonException;
 
 /**
- * Semantically diffs a previously-committed artifact against the freshly-generated document
- * (design §Commands). The diff is over stable `x-docuccino.id`s (via core's {@see DocumentDiffer}),
- * so a path-param rename reads as no change while a URI change reads as remove + add.
+ * Semantically diffs a committed artifact against the freshly-generated document. The diff runs over
+ * stable `x-docuccino.id`s ({@see DocumentDiffer}), so a path-param rename is no change while a URI
+ * change is remove + add.
  *
- * The `old` argument is a path to a committed UIR (preferred — carries identities) or OpenAPI
- * artifact. By default it is read from the working tree; `--against=<git-ref>` instead reads that
- * same path out of a git ref via `git show <ref>:<old>` (so `old` must be repo-relative for git),
- * making `docuccino:diff docs/openapi.json --against=HEAD` the natural PR/CI check.
- *
- * With `--enforce`, the per-document `versioning` policy (semver|date|none) evaluates the changeset
- * severity against both documents' `info.version`; a violation makes the command exit non-zero.
+ * `old` is a path to a committed UIR (preferred — it carries identities) or OpenAPI artifact, read from
+ * the working tree unless `--against=<git-ref>` reads it via `git show <ref>:<old>`, in which case the
+ * path must be repo-relative. `--enforce` runs the document's `versioning` policy over the changeset
+ * severity and both `info.version`s, exiting non-zero on a violation.
  */
 final class DiffCommand extends Command
 {
@@ -142,8 +139,8 @@ final class DiffCommand extends Command
 
     private function readFromGit(string $ref, string $path): ?string
     {
-        // Reject a ref or path that git would parse as an option (e.g. `--upload-pack=…`), so a
-        // hostile argument cannot smuggle a flag past the `<ref>:<path>` operand (security L3).
+        // Reject anything git would read as an option (`--upload-pack=…`), so a hostile argument can't
+        // smuggle a flag past the `<ref>:<path>` operand.
         if (str_starts_with($ref, '-') || str_starts_with($path, '-')) {
             $this->error('The git ref and path must not start with "-".');
 

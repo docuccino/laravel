@@ -36,9 +36,9 @@ use Docuccino\Laravel\Tests\Fixtures\Eloquent\Widget;
 use Workbench\App\Enums\WidgetStatus;
 
 /**
- * The Eloquent model schema integration (Phase 4): columns (from the engine) refined by the model's
- * visible/hidden/appends + class-level #[Hidden], with casts fixing datetime formats and routing enum
- * casts through the Enum integration.
+ * The Eloquent model schema integration: engine-reported columns refined by the model's
+ * visible/hidden/appends and class-level #[Hidden], with casts fixing datetime formats and routing
+ * enum casts through the Enum integration.
  */
 function eloquentEngine(): StubTypeEngine
 {
@@ -87,9 +87,9 @@ function eloquentEngine(): StubTypeEngine
             new PropertyMetadata('title', ScalarT::string()),
         ]),
     ], callables: (static function (): array {
-        // The accessor / custom-caster / relation return types the real engine recovers, scripted here
-        // so the in-process mapper test drives the same shapes (the real recovery half is proven
-        // out-of-process in RealEngineIntegrationsTest). Keyed by CallableRef::symbol().
+        // Accessor / custom-caster / relation return types scripted so the in-process mapper test drives
+        // the same shapes the real engine recovers; the recovery half is proven out-of-process in
+        // RealEngineIntegrationsTest. Keyed by CallableRef::symbol().
         $loc = new SourceLocation('');
         $returning = static fn (DType $type): ActionAnalysis => new ActionAnalysis(returns: [new ReturnSite($type, $loc)]);
 
@@ -257,10 +257,9 @@ it('keeps the bare-object behaviour but raises an info diagnostic for an undocum
 });
 
 it('discovers a model\'s classic and Attribute accessors via real reflection', function (): void {
-    // Real reflection + php-parser over the idiomatic Boutique fixture (not a stub): the classic
-    // getters map to snake-cased attribute names analysed by their own method; the Attribute accessor
-    // is located by the LINE of its get closure (a closure ref, not a named method); framework getters
-    // (getKeyName, …) are excluded.
+    // Real reflection + php-parser over the idiomatic Boutique fixture, no stub: classic getters map to
+    // snake-cased attribute names analysed by their own method; the Attribute accessor is located by the
+    // line of its get closure (a closure ref, not a named method); framework getters are excluded.
     $accessors = (new AccessorReader)->read(Boutique::class);
 
     $byAttribute = [];
@@ -288,8 +287,8 @@ it('types appended accessors, overrides a column\'s cast with its accessor, and 
     // full_label is an appended accessor typed by getFullLabelAttribute() → string (was permissive {}).
     expect($boutique['properties']['full_label'])->toBe(['type' => 'string']);
 
-    // options carries an `array` cast, but getOptionsAttribute(): string OVERRIDES it — the accessor
-    // type wins and the cast is skipped (mirroring HasAttributes' mutate-then-cast precedence).
+    // options carries an `array` cast, but getOptionsAttribute(): string wins and the cast is skipped —
+    // mirroring HasAttributes' mutate-then-cast precedence.
     expect($boutique['properties']['options'])->toBe(['type' => 'string']);
 
     // AsCollection → array; AsEnumCollection:Enum → an array whose items $ref the hoisted enum

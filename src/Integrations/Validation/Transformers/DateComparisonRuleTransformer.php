@@ -10,11 +10,10 @@ use Docuccino\Core\Extensions\Validation\ValidationField;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
- * The date-comparison rules `before`, `before_or_equal`, `after`, `after_or_equal` (Scribe-parity,
- * validation §4 #8). The comparison bound is a runtime relationship OpenAPI cannot express, so it is
- * surfaced as a human description ("Must be a date before …"). A `format` (`date` / `date-time`) is
- * emitted only when the target is itself a parseable date or a date keyword — a bare field reference
- * (`after:start_date`) is described but left unformatted (the field's type could be anything).
+ * `before`, `before_or_equal`, `after`, `after_or_equal`. The bound is a runtime relationship OpenAPI can't
+ * express, so it becomes a description. A `date`/`date-time` format is only emitted when the target is
+ * itself a parseable date or date keyword; a bare field reference like `after:start_date` is described but
+ * left unformatted, since that field could be anything.
  */
 final class DateComparisonRuleTransformer implements RuleTransformer
 {

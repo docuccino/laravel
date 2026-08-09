@@ -12,10 +12,9 @@ use Docuccino\Core\Inference\DType\LiteralT;
 use Docuccino\Laravel\Integrations\Support\RuleParsing;
 
 /**
- * Turns a `rules()` method's inferred return type (an {@see ArrayShapeT} of `field => rule`) into a
- * {@see RuleSet}. This is the FormRequest path: the engine analyses `rules()` statically (its literal
- * array becomes a constant array shape), so pipe-string and array-of-string rule forms are recovered
- * without ever instantiating the request or executing `rules()`.
+ * Turns a `rules()` inferred return type — an {@see ArrayShapeT} of `field => rule` — into a {@see RuleSet}.
+ * The engine reads the literal array as a constant array shape, so pipe-string and array-of-string rules are
+ * recovered without instantiating the request or running `rules()`.
  */
 final class ShapeToRuleSet
 {

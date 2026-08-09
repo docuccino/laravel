@@ -5,31 +5,23 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\Eloquent;
 
 /**
- * Maps an Eloquent `$casts` entry to the JSON Schema fragment it serialises to — datetime casts pick
- * up a `date-time`/`date` format (honouring a `datetime:FORMAT` parameter), native casts fix a type,
- * decimal/hashed stay strings, `array`/`collection`/`json` admit either a JSON object or array, and an
- * `encrypted:<inner>` compound decrypts-then-casts to the inner type.
+ * Maps an Eloquent `$casts` entry to the JSON Schema fragment it serialises to: datetime casts get a
+ * `date-time`/`date` format honouring a `datetime:FORMAT` parameter, native casts fix a type,
+ * decimal/hashed stay strings, `array`/`collection`/`json` admit object OR array, and
+ * `encrypted:<inner>` decrypts-then-casts to the inner type.
  *
- * The built-in `Illuminate\Database\Eloquent\Casts\As*` class casts are covered by a small class →
- * fragment table (their FQCN is the `$casts` value): `AsStringable`/`AsUri`/`AsHtmlString` serialise
- * to a string; `AsFluent`/`AsArrayObject` to a JSON object; `AsCollection` to a JSON array; and —
- * decrypt-THEN-cast, so NOT an opaque string — `AsEncryptedArrayObject` to an object,
- * `AsEncryptedCollection` to an array. The two enum-valued class casts (`AsEnumCollection:Enum`,
- * `AsEnumArrayObject:Enum`) serialise to an array of the parameterised enum's values; they are routed
- * through the Enum integration by {@see ModelSchema} (which owns the enum machinery), so this table
- * exposes only their enum-FQCN parameter via {@see enumCollectionEnum()} and returns null for them here.
- *
- * A backed-enum cast (a backed-enum class-string) is likewise routed through the Enum integration and
- * returns null, as does any unrecognised custom caster class, so the column falls back to its inferred
- * type.
+ * Anything enum-valued returns null here and is routed through the Enum integration by
+ * {@see ModelSchema}, which owns that machinery — a backed-enum cast, `AsEnumCollection:Enum` and
+ * `AsEnumArrayObject:Enum` (whose enum parameter {@see enumCollectionEnum()} exposes). An unrecognised
+ * custom caster also returns null, leaving the column on its inferred type.
  */
 final class CastSchema
 {
     private const AS_NAMESPACE = 'Illuminate\\Database\\Eloquent\\Casts\\';
 
     /**
-     * The built-in `As*` class casts whose serialised shape is fixed (no enum parameter): the cast's
-     * `$casts` value is one of these FQCNs (optionally with a trailing `:arg` this table ignores).
+     * Built-in `As*` class casts with a fixed serialised shape. The `$casts` value is the FQCN, possibly
+     * with a trailing `:arg` this table ignores.
      *
      * @var array<string, array<string, mixed>>
      */
@@ -40,13 +32,12 @@ final class CastSchema
         self::AS_NAMESPACE.'AsFluent' => ['type' => 'object'],
         self::AS_NAMESPACE.'AsArrayObject' => ['type' => 'object'],
         self::AS_NAMESPACE.'AsCollection' => ['type' => 'array'],
-        // Decrypt-then-cast: the ciphertext is decrypted and decoded, so these serialise as the decoded
-        // JSON value (object/array), never as the opaque encrypted string.
+        // Decrypt-THEN-cast: these serialise as the decoded JSON value, never the ciphertext string.
         self::AS_NAMESPACE.'AsEncryptedArrayObject' => ['type' => 'object'],
         self::AS_NAMESPACE.'AsEncryptedCollection' => ['type' => 'array'],
     ];
 
-    /** The two enum-valued `As*` class casts, whose enum parameter {@see ModelSchema} routes. */
+    /** The enum-valued `As*` class casts — an array of the parameterised enum's values. */
     private const AS_ENUM_COLLECTION = [
         self::AS_NAMESPACE.'AsEnumCollection',
         self::AS_NAMESPACE.'AsEnumArrayObject',
@@ -71,14 +62,12 @@ final class CastSchema
         $base = $parts[0];
         $parameter = $parts[1] ?? null;
 
-        // Built-in As* class casts are matched on the FQCN (case-sensitive), before the native-cast
-        // table lowercases the base. The enum-valued ones fall through to null (routed by ModelSchema).
+        // Class casts match on the FQCN case-sensitively, before the native table lowercases the base.
         if (isset(self::CLASS_CASTS[$base])) {
             return self::CLASS_CASTS[$base];
         }
 
-        // `encrypted:<inner>` decrypts then casts to the inner type — it serialises as that inner type
-        // (array/object/string), NOT as an opaque string.
+        // `encrypted:<inner>` serialises as the inner type, not an opaque string.
         if (strtolower($base) === 'encrypted' && $parameter !== null && $parameter !== '') {
             return self::forCast($parameter);
         }
@@ -92,8 +81,7 @@ final class CastSchema
             'real', 'float', 'double' => ['type' => 'number'],
             'decimal' => ['type' => 'string'],
             'string', 'encrypted', 'hashed' => ['type' => 'string'],
-            // A JSON/array/collection column decodes to whatever it stored — an assoc array is a JSON
-            // object, a list is a JSON array — so it admits both. `json:unicode` is the same shape.
+            // Decodes to whatever was stored: an assoc array is an object, a list is an array, so both.
             'array', 'collection', 'json' => ['type' => ['array', 'object']],
             'object' => ['type' => 'object'],
             default => null,
@@ -101,10 +89,9 @@ final class CastSchema
     }
 
     /**
-     * The schema for a `datetime` cast, honouring a `datetime:FORMAT` parameter: the default (ISO-8601)
-     * and other time-bearing ISO forms are `date-time`; the ISO date-only form is `date`; any other
-     * custom format serialises to a bespoke string that is neither, so it is a plain string with the
-     * format noted in the description rather than a wrong `format` claim.
+     * A `datetime` cast honouring its `datetime:FORMAT` parameter. ISO forms with a time are `date-time`,
+     * the ISO date-only form is `date`, and a bespoke format is a plain string with the format noted in
+     * the description — better than a `format` claim that would be wrong.
      *
      * @return array<string, mixed>
      */
@@ -125,7 +112,7 @@ final class CastSchema
         return ['type' => 'string', 'description' => sprintf('Serialized using the date format "%s".', $format)];
     }
 
-    /** Whether a cast value names a backed enum (routed through the Enum integration path). */
+    /** Whether a cast value names an enum. */
     public static function isEnum(string $cast): bool
     {
         $base = explode(':', $cast, 2)[0];
@@ -133,11 +120,7 @@ final class CastSchema
         return enum_exists($base);
     }
 
-    /**
-     * The enum FQCN of an `AsEnumCollection:Enum` / `AsEnumArrayObject:Enum` cast (serialised as an
-     * array of that enum's values), or null when the cast is not one of those class casts. The enum
-     * itself is routed through the Enum integration by {@see ModelSchema}, which assembles the array.
-     */
+    /** The enum FQCN of an `AsEnumCollection:Enum` / `AsEnumArrayObject:Enum` cast. */
     public static function enumCollectionEnum(string $cast): ?string
     {
         $parts = explode(':', $cast, 2);
@@ -149,9 +132,8 @@ final class CastSchema
     }
 
     /**
-     * Whether a cast serialises a date/datetime via `serializeDate()` (so a model overriding that
-     * method makes its wire format unknowable — {@see ModelSchema} weakens these to a plain string).
-     * The `timestamp` cast is excluded: it serialises as a unix integer, not through `serializeDate()`.
+     * Whether a cast serialises through `serializeDate()` — a model overriding that method makes these
+     * formats unknowable. `timestamp` is excluded: it serialises as a unix integer, bypassing the hook.
      */
     public static function isDateCast(string $cast): bool
     {

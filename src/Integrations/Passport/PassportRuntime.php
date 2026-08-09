@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\Passport;
 
 /**
- * The Passport runtime facts the oauth2 scheme needs, read once from the installed package by the
- * service-provider wiring (which is allowed to touch the vendor class) and injected here so the
- * integration itself stays vendor-import-free per the dogfooding arch rule: the app's scope catalogue
- * (`Passport::tokensCan()`), and whether the deprecated password / implicit grants were opted into.
+ * The Passport facts the oauth2 scheme needs — the `Passport::tokensCan()` catalogue and whether the
+ * deprecated password/implicit grants were opted into. Read once by the service-provider wiring, which is
+ * allowed to touch the vendor class, and injected here so the integration itself stays vendor-import-free.
  */
 final readonly class PassportRuntime
 {

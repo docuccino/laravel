@@ -10,10 +10,9 @@ use Docuccino\Core\Extensions\Validation\ValidationField;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
- * The digit-length rules `digits`, `digits_between`, `max_digits`, `min_digits` (Scribe-parity,
- * validation §4 #8/#11). A count of digits is documented honestly as a STRING with an anchored `^\d{…}$`
- * pattern — never an integer bound — because leading zeros matter (zip codes, PINs, phone fields) and
- * an `integer` schema would silently drop them. A non-numeric parameter is ignored (no pattern emitted).
+ * `digits`, `digits_between`, `max_digits`, `min_digits` → a string with an anchored `^\d{…}$` pattern,
+ * never an integer bound: leading zeros matter for zip codes, PINs and phone numbers, and an `integer`
+ * schema would silently drop them. A non-numeric parameter emits no pattern.
  */
 final class DigitsRuleTransformer implements RuleTransformer
 {

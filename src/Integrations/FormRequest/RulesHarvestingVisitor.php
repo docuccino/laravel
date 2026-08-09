@@ -12,15 +12,15 @@ use PhpParser\Node\Expr\Array_;
 use PhpParser\Node\Scalar\String_;
 
 /**
- * The shared back half of the two rules-array recoverers ({@see RulesMethodVisitor} for a `rules()`
- * override, {@see InlineRulesVisitor} for an inline `validate()` / `Validator::make()` call): the
- * folded-field accumulator, the unrecoverable-field list, and the {@see harvest()} that reads a
- * `['field' => <rule>]` array by constant-folding each value ({@see TypeScope::constantValueOf()} →
- * {@see ConstValueToRules}) so `Rule::enum(...)`/`Rule::in(...)` descriptors survive PHPStan's
- * collapse to a bare object. Nothing is executed. A field present in the array whose value folds to
- * no rules (a closure, a `new` rule object, `Rule::when(...)`, an unresolvable expression) is recorded
- * as unrecoverable so the caller can diagnose it rather than let it vanish silently. Subclasses supply
- * only the front matching — which AST node carries the rules array — via {@see enterNode()}.
+ * The shared back half of the two rules-array recoverers — {@see RulesMethodVisitor} for a `rules()`
+ * override, {@see InlineRulesVisitor} for an inline `validate()`/`Validator::make()`. It holds the folded
+ * fields, the unrecoverable list, and the {@see harvest()} that reads a `['field' => <rule>]` array by
+ * constant-folding each value so `Rule::enum(…)`/`Rule::in(…)` descriptors survive PHPStan's collapse to a
+ * bare object. Nothing is executed. Subclasses supply only the front matching — which AST node carries the
+ * array — via {@see enterNode()}.
+ *
+ * A field whose value folds to no rules (a closure, a `new` rule object, `Rule::when(…)`, an unresolvable
+ * expression) is recorded as unrecoverable so the caller can diagnose it instead of losing it.
  */
 abstract class RulesHarvestingVisitor implements TraceVisitor
 {
@@ -44,7 +44,7 @@ abstract class RulesHarvestingVisitor implements TraceVisitor
     }
 
     /**
-     * Field names present in the rules array whose value folded to no rules (never recovered).
+     * Fields present in the rules array whose value folded to nothing.
      *
      * @return list<string>
      */

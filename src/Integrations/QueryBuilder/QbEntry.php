@@ -5,32 +5,21 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\QueryBuilder;
 
 /**
- * One recovered Query-Builder allow-list entry. Its public `name` is the value a client sends —
- * `filter[status]`, `sort=name`, `include=author`; the `kind` is the bare string form or the factory
- * method (`exact`, `partial`, `scope`, `callback`, `custom`, `operator`, `trashed`, `belongsTo`,
- * `field`, `relationship`, `count`, `exists`, `aggregate`). The remaining members carry the richer
- * facts the trace recovers when present (design §Representation policies — facts stay stable in the
- * UIR regardless of how a policy later expresses them):
+ * One recovered Query-Builder allow-list entry. `name` is what a client sends (`filter[status]`,
+ * `sort=name`); `kind` is the bare string form or the factory method (`exact`, `partial`, `scope`,
+ * `callback`, `custom`, `operator`, `trashed`, `belongsTo`, `field`, `relationship`, `count`, `exists`,
+ * `aggregate`). The rest are facts the trace recovers when present, and stay stable in the UIR however
+ * a representation policy later expresses them. Worth calling out:
  *
- *   - `internal`: the second factory argument (`AllowedFilter::exact('status', 'status_code')`) — the
- *     underlying column the cast lookup keys on. The public `name` stays what is documented.
- *   - `hasDefault`/`default`: a constant-folded `->default(…)` modifier → the parameter's
- *     `schema.default`.
- *   - `nullable`: a `->nullable()` modifier → a description note (never an added enum case).
- *   - `comment`: the first sentence(s) of a line or block comment directly above the array entry —
- *     an integration-layer description overriding the generic kind description.
- *   - `typeColumn`: the subject-model column whose cast types this filter's value. Set for kinds
- *     that resolve a column: `exact`/`operator` (static) from the internal name, `callback`/`custom`
- *     from a recovered `$q->where(COLUMN, …)` body clause. When null the filter stays a plain string.
- *   - `filterClass`: the custom-filter FQCN (`AllowedFilter::custom('x', new F)` / `F::class`) — the
- *     extension reads its `#[QueryParameter]` attribute (an integration-layer override) and, absent
- *     that, analyses its `__invoke` body for a `where` column.
- *   - `columnSchema`/`enumTyped`: the base column schema the extension enriches the filter with from
- *     the resolved column's cast — or a scope-value parameter's type, or a custom-filter attribute —
- *     (an enum's backing values + `x-enumDescriptions`, or a native type). `enumTyped` drives the
- *     comma/whereIn array modelling and is set only for the whereIn kinds (`exact`); a single-value
+ *   - `internal`: the factory's underlying-column argument (`exact('status', 'status_code')`), which the
+ *     cast lookup keys on. `name` stays what's documented.
+ *   - `nullable`: from a `->nullable()` modifier — becomes a description note, never an extra enum case.
+ *   - `comment`: the leading comment above the array entry, overriding the generic kind description.
+ *   - `typeColumn`: the subject-model column whose cast types the value; null leaves it a plain string.
+ *   - `filterClass`: a custom filter's FQCN, whose `#[QueryParameter]` or `__invoke` body the extension
+ *     reads.
+ *   - `enumTyped`: drives comma/whereIn array modelling. Only the whereIn kinds set it — a single-value
  *     comparison (scope/callback/operator) keeps a scalar enum schema.
- *   - `example`: an example value (a custom-filter `#[QueryParameter]` attribute) for the parameter.
  */
 final readonly class QbEntry
 {
@@ -50,25 +39,23 @@ final readonly class QbEntry
         public ?string $typeColumn = null,
         public ?string $filterClass = null,
         public mixed $example = null,
-        // Set when the entry was produced by a PROJECT factory (a helper returning a Spatie
-        // AllowedFilter, e.g. a ListFilters::enum(...) idiom) rather than a Spatie AllowedFilter::*
-        // factory: `factoryEnum` is a backed-enum class-string argument (→ typed off it directly),
-        // `factoryClass` the factory's declaring class (recorded as a fragment-cache dependency).
+        // Set when a PROJECT factory produced the entry (a `ListFilters::enum(...)` style helper) rather
+        // than a Spatie `AllowedFilter::*` one: the backed-enum class-string argument to type off, and
+        // the factory's declaring class, which is a fragment-cache dependency.
         public ?string $factoryEnum = null,
         public ?string $factoryClass = null,
     ) {}
 
-    /** The underlying column a cast lookup keys on: the recovered internal name, else the public name. */
+    /** The column a cast lookup keys on: the internal name if recovered, else the public one. */
     public function column(): string
     {
         return $this->internal ?? $this->name;
     }
 
     /**
-     * A copy carrying the recovered column schema (an enum's values / a native type) — the extension's
-     * enrichment step, keeping the pure trace-recovered entry immutable. `comment`, `default` and
-     * `example` may be overridden too, so a custom-filter `#[QueryParameter]` attribute can set the
-     * description/default/example alongside the schema.
+     * A copy carrying the enriched column schema, keeping the trace-recovered entry immutable. Comment,
+     * default and example can be overridden too, so a custom filter's `#[QueryParameter]` can set them
+     * alongside the schema.
      *
      * @param  array<string, mixed>|null  $columnSchema
      */

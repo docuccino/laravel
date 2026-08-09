@@ -10,39 +10,30 @@ use Docuccino\Laravel\Registry\ConfigDiagnostics;
 use Docuccino\Laravel\Support\Paths;
 
 /**
- * The single owner of "which document-config keys hold filesystem paths", and of the base-path
- * relativisation every one of them goes through at config-read time.
+ * Owns which document-config keys hold filesystem paths, and relativises them against the app base
+ * path at config-read time.
  *
- * Why relativise at all: {@see DocumentConfig::hash()} digests the
- * whole raw config bag, and that digest is EMITTED into the document as `document.configHash`. An
- * absolute path in config therefore folds the generating machine's filesystem layout into a committed
- * artifact — two checkouts of the same code at different paths would emit different bytes, breaking
- * the determinism promise. Rewriting every in-app absolute path to its base-relative form makes the
- * hash depend on the path's MEANING rather than on how the user happened to spell it: `content.dir`
- * written as `base_path('resources/docs/api')` and as `'resources/docs/api'` hash identically.
+ * Why: {@see DocumentConfig::hash()} digests the raw config bag and that digest is emitted as
+ * `document.configHash`, so an absolute path would fold the build machine's layout into a committed
+ * artifact and two checkouts at different paths would emit different bytes. Relativising makes the
+ * hash depend on what the path means, not how it was spelled — `base_path('resources/docs/api')` and
+ * `'resources/docs/api'` hash the same. Reads are unaffected: consumers already resolve relative
+ * values against the base path ({@see Paths::absolute()}, {@see ConfinedPath::resolve()}).
  *
- * Resolution is unaffected: every consumer resolves a relative value against the app base path
- * already ({@see Paths::absolute()}, {@see ConfinedPath::resolve()}), so the
- * rewritten value points at the very same file.
- *
- * A path that genuinely lives OUTSIDE the app is kept exactly as configured — silently rewriting it
- * would break the read — and surfaces as a `config.machine-dependent-path` info diagnostic
- * ({@see ConfigDiagnostics}) so the machine dependence is stated rather
- * than hidden.
+ * A path genuinely outside the app is left exactly as configured (rewriting would break the read) and
+ * reported as a `config.machine-dependent-path` info diagnostic ({@see ConfigDiagnostics}).
  *
  * @internal
  */
 final class ConfigPaths
 {
     /**
-     * Every document-config key whose value is a filesystem path, in a fixed order (deterministic
-     * diagnostics). `true` marks a key holding a LIST of paths, `false` a single path.
+     * Document-config keys holding filesystem paths, in a fixed order so diagnostics are
+     * deterministic. `true` = a list of paths, `false` = a single path.
      *
-     * Deliberately absent, and audited as such: the whole `viewer` bag (`route` is a URL path, not a
-     * filesystem one; `gate`/`source`/`driver`/`middleware` are names and keywords), `servers[].url`
-     * and `integrations.passport.url` (URLs), and the app-level `cache.path` / `engine.project_paths`
-     * — those two are filesystem paths but sit outside the per-document bag, so they never reach a
-     * document's `configHash` or any emitted byte.
+     * Not here on purpose: the `viewer` bag, `servers[].url` and `integrations.passport.url` aren't
+     * filesystem paths; `cache.path` and `engine.project_paths` are, but live outside the per-document
+     * bag so they never reach a `configHash` or any emitted byte.
      *
      * @var array<string, bool>
      */
@@ -54,9 +45,8 @@ final class ConfigPaths
     ];
 
     /**
-     * $config with every {@see PATH_KEYS} value that sits inside $basePath rewritten to its
-     * base-relative form. Values already relative, values outside the base path, and values of any
-     * other shape than the key's declared one are returned untouched.
+     * $config with every {@see PATH_KEYS} value inside $basePath rewritten base-relative. Already
+     * relative, outside the base path, or the wrong shape for its key: returned untouched.
      *
      * @param  array<string, mixed>  $config
      * @return array<string, mixed>
@@ -101,9 +91,8 @@ final class ConfigPaths
     }
 
     /**
-     * The path-like keys of an ALREADY-relativized config whose value is still absolute — i.e. points
-     * outside the app base path, so it is machine-dependent. Each entry names the dotted config key
-     * and the offending path, in {@see PATH_KEYS} order.
+     * Keys of an already-relativized config whose value is still absolute, i.e. outside the app and so
+     * machine-dependent. Dotted key + offending path, in {@see PATH_KEYS} order.
      *
      * @param  array<string, mixed>  $config
      * @return list<array{key: string, path: string}>
@@ -133,7 +122,7 @@ final class ConfigPaths
         return $found;
     }
 
-    /** One path value: relativized when it is absolute and inside $basePath, untouched otherwise. */
+    /** Relativized when absolute and inside $basePath, untouched otherwise. */
     private static function rewrite(string $value, string $basePath): string
     {
         return Paths::relative($value, $basePath) ?? $value;

@@ -10,9 +10,8 @@ use Docuccino\Core\Extensions\Validation\ValidationField;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
- * `timezone` (Scribe-parity, validation §4 #8): a timezone identifier has no JSON-Schema format, so it
- * is documented as a string with a human description. Defaults an untyped field to string; an existing
- * description is preserved.
+ * `timezone`. There's no JSON-Schema format for a timezone identifier, so it's a string plus a description.
+ * Untyped fields default to string; an existing description is preserved.
  */
 final class TimezoneRuleTransformer implements RuleTransformer
 {

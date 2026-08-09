@@ -10,28 +10,21 @@ use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Laravel\Config\ConfigPaths;
 
 /**
- * Config-shape info diagnostics for a document (design §9): surface the two silent no-ops the config
- * surface used to swallow, so a misconfiguration is discoverable instead of mystifying.
+ * Config-shape info diagnostics (design §9) — the misconfigurations that would otherwise be silent
+ * no-ops:
  *
- * - An `enabled` switch on one of the always-on producers (validation / form_request /
- *   framework_errors / problem_details / inferred_handler) — these have no {@see IntegrationToggles}
- *   entry, so the switch is silently ignored; the diagnostic says so (problem_details is driven by
- *   the `error_responses` preset, not an `enabled` toggle).
- * - An unknown `tags.default_strategy` value — {@see DocumentConfig::tagDefaultStrategy()} coerces it
- *   to `controller`, and the diagnostic now names the coercion instead of applying it silently.
- * - A path-like key pointing OUTSIDE the app base path. {@see ConfigPaths} relativises every in-app
- *   path so it cannot fold this machine's filesystem layout into the emitted `configHash`; a path that
- *   genuinely lives elsewhere has to be kept verbatim, which DOES make the document machine-dependent
- *   — so the diagnostic names the key and the path instead of letting committed bytes drift silently.
+ * - An `enabled` switch on an always-on producer. Those have no {@see IntegrationToggles} entry, so the
+ *   switch does nothing (problem_details is driven by the `error_responses` preset instead).
+ * - An unknown `tags.default_strategy`, which {@see DocumentConfig::tagDefaultStrategy()} coerces to
+ *   `controller`.
+ * - A path-like key pointing outside the app base path. {@see ConfigPaths} can't relativise it, so it
+ *   goes verbatim into the `configHash` and the output becomes machine-dependent.
  *
  * @internal
  */
 final class ConfigDiagnostics
 {
-    /**
-     * The always-on producers with no `enabled` toggle (the 5 producers absent from
-     * {@see IntegrationToggles}), in a fixed order for deterministic diagnostics.
-     */
+    /** Producers with no `enabled` toggle, i.e. absent from {@see IntegrationToggles}. Fixed order. */
     private const ALWAYS_ON = ['validation', 'form_request', 'framework_errors', 'problem_details', 'inferred_handler'];
 
     private const VALID_TAG_STRATEGIES = ['controller', 'none'];

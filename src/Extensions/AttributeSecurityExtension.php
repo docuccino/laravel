@@ -14,18 +14,14 @@ use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Patch\Contribution;
 
 /**
- * The attribute security layer (design §7): `#[Security]` and `#[OptionallyAuthenticated]` override
- * or relax the per-operation `security` requirement at the attribute precedence (40), so they win
- * over anything inferred from middleware by the Sanctum/Passport/config integrations (20).
+ * The attribute security layer (design §7): `#[Security]` and `#[OptionallyAuthenticated]` override or
+ * relax `security` at attribute precedence (40), beating anything the integrations inferred from
+ * middleware (20). Repeated `#[Security]` attributes form an OR-list, any one of which satisfies the
+ * operation; `#[OptionallyAuthenticated]` prepends the empty requirement, giving OAS's
+ * `security: [{}, …]`.
  *
- * - Each `#[Security(scheme, scopes)]` is one alternative; repeated they form an OR-list
- *   `[{schemeA: scopesA}, {schemeB: scopesB}]` (any one satisfies the operation).
- * - `#[OptionallyAuthenticated]` prepends the empty (anonymous) requirement to whatever was declared
- *   here or inferred by a lower layer, yielding OAS's `security: [{}, …]`.
- *
- * Ordered LAST in the Security phase (low priority) so that, when only `#[OptionallyAuthenticated]`
- * is present, the requirement it reads back off the draft already reflects the integration layer's
- * inferred security.
+ * Ordered last in the Security phase so a lone `#[OptionallyAuthenticated]` reads a draft that already
+ * carries the integration layer's inferred security.
  */
 #[ExtensionOrder(priority: -100)]
 final class AttributeSecurityExtension implements OperationExtension
@@ -52,15 +48,14 @@ final class AttributeSecurityExtension implements OperationExtension
             return;
         }
 
-        // Anonymous OR the declared/inferred requirement. A declared `#[Security]` list takes
-        // precedence as the "authenticated" alternative; otherwise fall back to whatever a lower
-        // layer inferred from middleware.
+        // Anonymous OR the authenticated alternative — a declared `#[Security]` list if there is one,
+        // else whatever a lower layer inferred from middleware.
         $base = $declared ?? $this->inferredSecurity($operation);
         $operation->setSecurity($this->withAnonymous($base), $contribution);
     }
 
     /**
-     * The OR-list declared via `#[Security]` (source order, most-specific first), or null when none.
+     * The OR-list declared via `#[Security]` in source order, or null when there are none.
      *
      * @return list<array<string, list<string>>>|null
      */
@@ -75,8 +70,7 @@ final class AttributeSecurityExtension implements OperationExtension
     }
 
     /**
-     * The security requirement resolved so far on the draft (the integration/config layer's inferred
-     * value), or null when nothing has set one.
+     * Whatever a lower layer already resolved onto the draft, or null if nothing has.
      *
      * @return list<array<string, mixed>>|null
      */
@@ -94,8 +88,8 @@ final class AttributeSecurityExtension implements OperationExtension
     }
 
     /**
-     * Prepend the empty (anonymous) requirement, dropping any empty entry already in the base so the
-     * `{}` alternative appears exactly once and first.
+     * Prepends the anonymous requirement, dropping any empty entry already in the base so `{}` appears
+     * exactly once, first.
      *
      * @param  list<array<string, mixed>>|null  $base
      * @return list<array<string, mixed>>

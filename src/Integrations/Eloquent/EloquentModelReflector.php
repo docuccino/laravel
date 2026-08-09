@@ -9,10 +9,9 @@ use Docuccino\Core\Inference\ClassMetadata;
 use ReflectionClass;
 
 /**
- * Reads the presentation facts an Eloquent model declares — `$visible`/`$hidden`/`$appends`, the
- * `$casts` map, and any class-level `#[Hidden]` list — via native reflection of the class's default
- * property values (never instantiating the model, so no boot side effects or DB access). These
- * refine the column set the engine's {@see ClassMetadata} supplies.
+ * Reads the presentation facts a model declares — `$visible`/`$hidden`/`$appends`, `$casts`, a
+ * class-level `#[Hidden]` — off the class's default property values. The model is never instantiated,
+ * so no boot side effects and no DB access. These refine the columns {@see ClassMetadata} supplies.
  */
 final class EloquentModelReflector
 {
@@ -30,19 +29,17 @@ final class EloquentModelReflector
 
     private const SERIALIZE_DATE = 'serializeDate';
 
-    /** Whether an FQCN is a concrete Eloquent model (the schema mapper's trigger). */
+    /** A concrete Eloquent model — the schema mapper's trigger. */
     public static function isModel(string $fqcn): bool
     {
         return $fqcn !== self::MODEL && is_a($fqcn, self::MODEL, true);
     }
 
     /**
-     * The route-key schema for a bound model, without the full {@see facts()} pass — the primary-key
-     * column schema a `{model}` path parameter resolves to (uuid/ulid/int + format). Reuses the same
-     * {@see keySchema()} the model mapper does (never duplicated), so a bound path param and the
-     * model's own key column can never disagree. A non-model / unreflectable FQCN degrades to the
-     * historical `integer` default. (A model overriding `getRouteKeyName()` to bind on a non-key column
-     * is out of scope — its PK schema is still the closest static answer.)
+     * The schema a `{model}` path parameter resolves to, without the full {@see facts()} pass. Shares
+     * {@see keySchema()} with the model mapper so a bound path param and the model's own key column can't
+     * disagree; anything unreflectable falls back to `integer`. A model that overrides `getRouteKeyName()`
+     * to bind on some other column is out of scope — the PK schema is still the closest static answer.
      *
      * @return array<string, mixed>
      */
@@ -76,8 +73,8 @@ final class EloquentModelReflector
 
         $traits = self::traits($fqcn);
 
-        // The cast map is the $casts property merged with the casts() method (Laravel 11+ default),
-        // the latter winning on a key conflict — mirroring HasAttributes::getCasts().
+        // $casts merged with the casts() method (Laravel 11+), the method winning on a key conflict —
+        // mirrors HasAttributes::getCasts().
         $file = $reflection->getFileName();
         $casts = [...self::castMap($defaults['casts'] ?? []), ...$this->castsMethod->read($file === false ? null : $file)];
 
@@ -89,14 +86,12 @@ final class EloquentModelReflector
             'classHidden' => $classHidden,
             'fillable' => self::stringList($defaults['fillable'] ?? []),
             'dates' => self::stringList($defaults['dates'] ?? []),
-            // Relations named in `$with` are eager-loaded on every query, so they serialise on every
-            // response (nested model schemas keyed by the snake-cased relation name).
+            // `$with` relations are eager-loaded on every query, so they serialise on every response.
             'with' => self::stringList($defaults['with'] ?? []),
             // Timestamps default on unless the model sets `$timestamps = false`.
             'timestamps' => ($defaults['timestamps'] ?? true) !== false,
             'softDeletes' => in_array(self::SOFT_DELETES, $traits, true),
-            // A model overriding serializeDate() rewrites every date attribute's wire format, making it
-            // statically unknowable — the date/datetime cast claims are weakened to a plain string.
+            // An override rewrites every date attribute's wire format, making it statically unknowable.
             'overridesSerializeDate' => self::overridesSerializeDate($reflection),
             'keyName' => is_string($defaults['primaryKey'] ?? null) ? $defaults['primaryKey'] : 'id',
             'keySchema' => self::keySchema($defaults, $traits),
@@ -104,8 +99,8 @@ final class EloquentModelReflector
     }
 
     /**
-     * Whether the model declares its own `serializeDate()` — i.e. the method's declaring class is not
-     * one of Illuminate's (the default lives in the HasAttributes concern).
+     * Whether the model declares its own `serializeDate()`. Laravel's default lives in the HasAttributes
+     * concern, so anything declared outside `Illuminate\` is a user override.
      *
      * @param  ReflectionClass<object>  $reflection
      */
@@ -119,9 +114,8 @@ final class EloquentModelReflector
     }
 
     /**
-     * The primary-key column schema: a `HasUuids`/`HasUlids` model keys on a string with the matching
-     * format; otherwise an incrementing integer key, or a plain string for a non-incrementing string
-     * key. Only ever applied to the key column, and only when a trait/keyType makes it authoritative.
+     * The primary-key schema: `HasUuids`/`HasUlids` key on a string with the matching format, otherwise
+     * `$keyType` decides between an integer and a plain string.
      *
      * @param  array<string, mixed>  $defaults
      * @param  list<string>  $traits
@@ -142,8 +136,7 @@ final class EloquentModelReflector
     }
 
     /**
-     * Every trait used by the class and its parents (the `class_uses_recursive` equivalent), read via
-     * reflection without instantiating.
+     * Every trait on the class and its parents — `class_uses_recursive` without instantiating.
      *
      * @return list<string>
      */

@@ -30,7 +30,7 @@ use Illuminate\Support\Facades\RateLimiter as RateLimiterFacade;
 
 /**
  * Write a throwaway PHP file and return its path — a stand-in for a returned DTO/model/enum/resource
- * source file whose reflected shape a schema mapper records via SchemaContext::dependsOn (A1).
+ * source file whose reflected shape a schema mapper records via SchemaContext::dependsOn.
  */
 function tempDependencyFile(): string
 {
@@ -41,8 +41,8 @@ function tempDependencyFile(): string
 }
 
 /**
- * The OperationFragment cache (design §10): warm hits are byte-identical and skip the engine, and
- * fragments invalidate when the document config or a dependency file changes.
+ * The OperationFragment cache: warm hits are byte-identical and skip the engine, and fragments
+ * invalidate when the document config or a dependency file changes.
  */
 function enableFragmentCache(): string
 {
@@ -229,8 +229,8 @@ it('invalidates fragments when a render callback is registered (booted-app cache
     generateDocument()->document;
     $engine->analyzeCount = 0;
 
-    // Adding a handler must re-document the inferred-handler error tier (the add-a-handler asymmetry
-    // per-file hashes miss); the registered render-callback set is folded into the env digest.
+    // Adding a handler re-documents the inferred-handler error tier — an asymmetry per-file hashes miss,
+    // so the registered render-callback set is folded into the env digest.
     /** @var object $handler */
     $handler = app(ExceptionHandler::class);
     $handler->renderable(static fn (RuntimeException $e) => response()->json(['error' => 'boom'], 400));
@@ -262,9 +262,9 @@ it('invalidates fragments when a RateLimiter::for registration is added (booted-
     generateDocument()->document;
     $engine->analyzeCount = 0;
 
-    // The add-a-limiter asymmetry (A4): a route carrying `throttle:brand-new` documents the numberless
-    // 429 floor and records NO closure dependency, so registering the limiter afterwards must refresh
-    // the fragments through the document-level RateLimiter registration-set digest — not a route file.
+    // The add-a-limiter asymmetry: a route carrying `throttle:brand-new` documents the numberless 429
+    // floor and records no closure dependency, so registering the limiter afterwards has to refresh the
+    // fragments through the document-level RateLimiter registration-set digest, not a route file.
     RateLimiterFacade::for('brand-new-limiter', static fn (): Limit => Limit::perMinute(10));
     generateDocument()->document;
 
@@ -279,8 +279,8 @@ it('invalidates fragments when the query-builder parameter names change (booted-
     generateDocument()->document;
     $engine->analyzeCount = 0;
 
-    // Renaming query-builder's `filter` parameter reshapes every QB operation but touches no route
-    // file → the query-builder config digest must invalidate the warm fragments.
+    // Renaming query-builder's `filter` parameter reshapes every QB operation but touches no route file,
+    // so the query-builder config digest is what invalidates the warm fragments.
     config()->set('query-builder.parameters.filter', 'q');
     generateDocument()->document;
 
@@ -288,8 +288,8 @@ it('invalidates fragments when the query-builder parameter names change (booted-
 });
 
 it('gates each integration environment-digest contributor with its integration', function (): void {
-    // Gating (A4): the spatie-data digest contributor is contributed when the integration is enabled
-    // and omitted when the document disables it, so a disabled integration's globals never key the cache.
+    // The spatie-data digest contributor is contributed when the integration is enabled and omitted when
+    // the document disables it, so a disabled integration's globals never key the cache.
     /** @var array<string, mixed> $raw */
     $raw = config('docuccino.documents.default');
     $factory = app(DocumentConfigFactory::class);

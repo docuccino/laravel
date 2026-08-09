@@ -5,12 +5,10 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\RateLimit;
 
 /**
- * Builds the OAS `429 Too Many Requests` response for a throttled operation (design §Phase 4 — rate
- * limiting): the JSON `{message}` body plus the `Retry-After` / `X-RateLimit-Limit` /
- * `X-RateLimit-Remaining` headers Laravel's ThrottleRequests middleware sets. When the limit is a
- * known numeric throttle the header schemas carry the concrete numbers as examples; a named limiter
- * (whose numbers live in a `RateLimiter::for` closure) documents the headers without values. Pure,
- * so the header shape is dataset-testable.
+ * Builds the `429 Too Many Requests` response: a JSON `{message}` body plus the `Retry-After` and
+ * `X-RateLimit-*` headers Laravel's ThrottleRequests middleware sets. A known numeric throttle puts concrete
+ * numbers in the header examples; an unfolded named limiter documents the headers without values. Pure, so
+ * the header shape is dataset-testable.
  */
 final class RateLimitResponse
 {

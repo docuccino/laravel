@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\Passport;
 
 /**
- * The scopes a Passport-protected route demands, split by the middleware semantics that produced
- * them: `scopes:`/`CheckScopes` require ALL of {@see $allOf}; `scope:`/`CheckForAnyScope` require ANY
- * ONE of {@see $anyOf}. OAS expresses all-of as a single requirement's scope list and any-of as an
- * OR-list of requirements, so the two must be kept apart until the security requirement is built.
+ * The scopes a Passport-protected route demands, split by the semantics that produced them:
+ * `scopes:`/`CheckScopes` require all of {@see $allOf}, `scope:`/`CheckForAnyScope` any one of
+ * {@see $anyOf}. OAS spells all-of as one requirement's scope list and any-of as an OR-list of
+ * requirements, so they must stay apart until the requirement is built.
  */
 final readonly class ScopeRequirements
 {
@@ -37,9 +37,8 @@ final readonly class ScopeRequirements
     }
 
     /**
-     * The OAS security requirement scope-lists this demands against the given scheme name: one entry
-     * for all-of (or when no any-of scopes exist), else one entry per any-of scope (each combined
-     * with the always-required all-of scopes).
+     * One entry when there are no any-of scopes, else one per any-of scope, each combined with the
+     * always-required all-of scopes.
      *
      * @return list<array<string, list<string>>>
      */

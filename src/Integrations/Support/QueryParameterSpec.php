@@ -8,10 +8,9 @@ use Docuccino\Core\Draft\ParameterDraft;
 use Docuccino\Core\Patch\Contribution;
 
 /**
- * One query parameter the Query-Builder integration contributes, already resolved through the
- * representation policy (a flat `filter[status]` vs a `filter` deep-object, a comma string vs an
- * exploded array). A plain, assertable value the {@see QueryBuilderParameters} builder returns and
- * the extension writes onto the operation draft — always `in: query`, always optional.
+ * One query parameter an integration contributes, already resolved through the representation policy. A
+ * plain assertable value the builder returns and the extension writes onto the draft — always
+ * `in: query`, always optional.
  */
 final readonly class QueryParameterSpec
 {
@@ -28,12 +27,10 @@ final readonly class QueryParameterSpec
     ) {}
 
     /**
-     * Write this spec onto a query {@see ParameterDraft}: optional, plus description/style/explode/
-     * example when present and every schema keyword. One applier so no consumer re-implements it (and
-     * drops style/explode). Attributed to $contribution. A deepObject container's `properties` map is
-     * written as nested property drafts (each keyword on its own guard) rather than one opaque value,
-     * so a later `#[QueryParameter('filter[child]')]` can patch a single property with its own
-     * provenance (deepObject/bracketed parity).
+     * Writes the whole spec onto a {@see ParameterDraft}. One applier, so no consumer re-implements this
+     * and quietly drops style/explode. A deepObject's `properties` map goes in as nested property drafts
+     * rather than one opaque value, so a later `#[QueryParameter('filter[child]')]` can patch a single
+     * property with its own provenance.
      */
     public function applyTo(ParameterDraft $parameter, Contribution $contribution): void
     {
@@ -64,9 +61,8 @@ final readonly class QueryParameterSpec
     }
 
     /**
-     * Write each deepObject property as its own nested schema draft (keyword-by-keyword through the
-     * property's guard), so per-property provenance is recorded and a later attribute patch merges
-     * onto a single property instead of replacing the whole map.
+     * Each property keyword-by-keyword through its own guard, so a later attribute patch merges onto one
+     * property instead of replacing the whole map.
      *
      * @param  array<array-key, mixed>  $properties
      */

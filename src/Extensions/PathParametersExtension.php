@@ -14,17 +14,14 @@ use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Patch\Contribution;
 
 /**
- * Adds a path parameter for every `{param}` in the route template (design §Route-model binding).
- * A parameter bound to a model is typed from the model's ROUTE KEY — uuid/ulid/int with the matching
- * format (Laravel's default `id` route key), resolved through the gated
- * {@see RouteBindingSchemaResolver} chain (contributed by the
- * Eloquent integration) so a `{model}` segment matches the model's real key rather than a hardcoded
- * integer; a disabled Eloquent integration, or an unbound segment, yields a required string. Attribute
- * `#[PathParameter]` refines these later through the higher attribute layer.
+ * Adds a path parameter for every `{param}` in the route template (design §Route-model binding). A
+ * model-bound parameter is typed from the model's route key (uuid/ulid/int, with format) via the gated
+ * {@see RouteBindingSchemaResolver} chain, so `{model}` matches the real key instead of a hardcoded
+ * integer. An unbound segment — or a disabled Eloquent integration — gives a required string, and
+ * `#[PathParameter]` can refine any of it from the higher attribute layer.
  *
- * When the route allows trashed bindings (`->withTrashed()`), each bound parameter is flagged: a note
- * is appended to its description and a stable `x-docuccino.facts.routeBinding.withTrashed` semantic
- * fact is recorded, so consumers know a soft-deleted record resolves here.
+ * A route with `->withTrashed()` flags each bound parameter: a note on the description plus an
+ * `x-docuccino.facts.routeBinding.withTrashed` fact, so consumers know soft-deleted records resolve.
  */
 #[ExtensionOrder(priority: Priorities::EARLY)]
 final class PathParametersExtension implements OperationExtension
@@ -49,9 +46,8 @@ final class PathParametersExtension implements OperationExtension
             $parameter->setRequired(! in_array($name, $context->optionalPathParameters, true), $contribution);
 
             if ($isBound) {
-                // Record the bound model's file (design §10 cache soundness): switching a model to
-                // HasUuids changes the route-key schema, so a warm DELETE /users/{user} fragment must
-                // invalidate. Plain reflection keeps this framework-neutral (no integration import).
+                // Switching a model to HasUuids changes the route-key schema, so a warm fragment has to
+                // invalidate (design §10).
                 $this->recordModelFile($context, $context->routeBindings[$name]);
             }
 
@@ -71,7 +67,7 @@ final class PathParametersExtension implements OperationExtension
         }
     }
 
-    /** Record the bound model class's file as a fragment-cache dependency, if it can be reflected. */
+    /** Records the model's file as a cache dependency, when it can be reflected. */
     private function recordModelFile(RouteContext $context, string $modelFqcn): void
     {
         if (! class_exists($modelFqcn)) {

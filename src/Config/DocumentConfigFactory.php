@@ -13,11 +13,10 @@ use Docuccino\Laravel\Tags\PrefixTagMapper;
 use Illuminate\Contracts\Container\Container;
 
 /**
- * Builds a framework-agnostic {@see DocumentConfig} from one `config('docuccino.documents.*')`
- * entry: relativising every path-like key against the app base path ({@see ConfigPaths}), resolving an
- * `info.description.file` reference to the file's contents so the pipeline never touches the
- * filesystem, and resolving the document's tag mapper (a custom `tags.mapper` class-string from the
- * container, else the built-in {@see PrefixTagMapper} over `tags.map`).
+ * Builds a framework-agnostic {@see DocumentConfig} from one `config('docuccino.documents.*')` entry:
+ * relativises every path-like key ({@see ConfigPaths}), reads `info.description.file` into its contents
+ * so the pipeline never touches the filesystem, and resolves the tag mapper (a container-resolved
+ * `tags.mapper`, else {@see PrefixTagMapper} over `tags.map`).
  */
 final readonly class DocumentConfigFactory
 {
@@ -31,9 +30,8 @@ final readonly class DocumentConfigFactory
      */
     public function make(string $key, array $config, string $onRouteError): DocumentConfig
     {
-        // The single choke point for path handling: every path-like key is rewritten to its
-        // base-relative form BEFORE anything reads the bag, so the emitted `configHash` (a digest of
-        // `raw`) and every typed accessor over it describe the path's meaning, not this machine's layout.
+        // The choke point for path handling: relativise before anything reads the bag, so the emitted
+        // `configHash` describes what paths mean rather than this machine's layout.
         $config = ConfigPaths::relativize($config, $this->basePath);
 
         $routes = Hydrate::map($config['routes'] ?? []);
@@ -42,8 +40,7 @@ final readonly class DocumentConfigFactory
 
         $closure = $routes['closure'] ?? null;
 
-        // `error_responses` is either a string preset ('default'|'problem-details'|'none') or a bag
-        // ['preset' => …, 'errors_shape' => 'map'|'pointer-list'] carrying the 422 errors representation.
+        // `error_responses` is either a preset string or a bag ['preset' => …, 'errors_shape' => …].
         $errorResponses = $config['error_responses'] ?? 'none';
         $preset = is_array($errorResponses) ? ($errorResponses['preset'] ?? 'none') : $errorResponses;
         $errorsShape = is_array($errorResponses) ? ($errorResponses['errors_shape'] ?? 'map') : 'map';
@@ -72,9 +69,8 @@ final readonly class DocumentConfigFactory
     }
 
     /**
-     * Resolve the document's tag mapper: a `tags.mapper` class-string is container-resolved (so a
-     * custom mapper gets constructor DI); otherwise a non-empty `tags.map` builds the built-in
-     * {@see PrefixTagMapper}. No mapper (null) means tags pass through unchanged.
+     * A `tags.mapper` class-string is container-resolved so custom mappers get constructor DI; else a
+     * non-empty `tags.map` builds a {@see PrefixTagMapper}. Null means tags pass through unchanged.
      *
      * @param  array<string, mixed>  $tags
      */
@@ -101,8 +97,8 @@ final readonly class DocumentConfigFactory
         $description = $info['description'] ?? null;
 
         if (is_array($description) && isset($description['file']) && is_string($description['file'])) {
-            // Confine the description file to the app base path (security L2): a `../` escape reads
-            // nothing rather than leaking an out-of-tree file.
+            // Confined to the app base path: a `../` escape reads nothing rather than leaking an
+            // out-of-tree file.
             $resolved = ConfinedPath::resolve($this->basePath, $description['file']);
             $contents = $resolved === null ? false : @file_get_contents($resolved);
             $info['description'] = $contents === false ? '' : rtrim($contents, "\n");

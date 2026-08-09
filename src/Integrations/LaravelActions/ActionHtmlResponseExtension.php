@@ -13,17 +13,13 @@ use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Patch\Contribution;
 
 /**
- * Records the `text/html` success representation of a laravel-actions action that defines
- * `htmlResponse()` (Phase 5d). The package's controller decorator returns `htmlResponse($response,
- * $request)` for non-JSON clients (its `ControllerDecorator::__invoke()`), so such an endpoint serves
- * HTML alongside its JSON form. That body is a rendered HTML string / view, not a JSON document, so
- * this adds a `text/html` content entry with a `string` schema rather than trying to type the HTML as
- * JSON.
+ * Records the `text/html` success representation of an action that defines `htmlResponse()`. The package's
+ * controller decorator returns it for non-JSON clients, so the endpoint serves HTML alongside JSON. The
+ * body is a rendered string, not a JSON document, so it gets a `text/html` entry with a `string` schema.
  *
- * Runs LATE so the inferred JSON success response already exists; the `text/html` note is attached to
- * that same `200` (the decorator transforms one dispatched value, so both representations share a
- * status). Additive only — it never touches the JSON body, so an action defining both `jsonResponse()`
- * and `htmlResponse()` keeps its recovered JSON schema and gains the HTML content type.
+ * Runs LATE so the inferred JSON success response already exists; both representations share the same
+ * `200`, since the decorator transforms one dispatched value. Purely additive — an action defining both
+ * `jsonResponse()` and `htmlResponse()` keeps its recovered JSON schema and gains the HTML content type.
  */
 #[ExtensionOrder(priority: Priorities::LATE)]
 final class ActionHtmlResponseExtension implements OperationExtension

@@ -5,17 +5,15 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\Sanctum;
 
 /**
- * Entry point for the Sanctum integration (design §Phase 4). The service provider spreads
- * {@see extensions()} into the default set only when Sanctum is installed (`class_exists` guard),
- * so docuccino/laravel never hard-requires it.
+ * Entry point for the Sanctum integration. The provider spreads {@see extensions()} in only when Sanctum is
+ * installed, so docuccino/laravel never hard-requires it.
  */
 final class SanctumIntegration
 {
     public const SANCTUM = 'Laravel\\Sanctum\\Sanctum';
 
     /**
-     * The class-presence probe is injectable so the gated-off branch is testable where the package
-     * is in fact present.
+     * The probe is injectable so the gated-off branch stays testable where the package is present.
      *
      * @param  (callable(string): bool)|null  $probe
      */
@@ -34,8 +32,6 @@ final class SanctumIntegration
         return [
             SanctumSecurityExtension::class,
             SanctumAbilitiesExtension::class,
-            // Environment-digest seam (A4): the auth guards + session cookie shape Sanctum security
-            // output, so they feed the document-level fragment-cache digest.
             SanctumDigestContributor::class,
         ];
     }

@@ -14,23 +14,21 @@ use Docuccino\Laravel\Integrations\ApiResources\ResourceReflector;
 use Docuccino\Laravel\Integrations\TimacdonaldJsonApi\TimacdonaldResourceReflector;
 
 /**
- * Wraps a resource-collection success response in the Laravel paginator envelope once a call-graph
- * trace has recovered that the collection was paginated (and with what kind). Shared by the API
- * Resources ({@see PaginatedResourceResponsesExtension})
- * and json-api-paginate response extensions so the envelope + emit logic is written once.
+ * Wraps a resource-collection success response in the Laravel paginator envelope, once a trace has
+ * recovered that the collection was paginated and with what kind. Shared by the API Resources
+ * ({@see PaginatedResourceResponsesExtension}) and json-api-paginate response extensions.
  *
- * The item schema is taken from a fresh conversion of the collection type (the item component is
- * hoist-deduped, so re-converting adds no components), then rewrapped in the {@see PaginationEnvelope}
- * for the recovered kind and written at INTEGRATION precedence — overriding the inference-layer
- * `{data: [...]}` body the response extension already emitted. Paginated responses always carry the
- * `data` wrapper even under `withoutWrapping`, so any leftover bare-array `items` keyword is removed.
+ * The item schema comes from a fresh conversion of the collection type (hoist-deduped, so re-converting
+ * costs no components), then goes into the {@see PaginationEnvelope} for that kind at INTEGRATION
+ * precedence, overriding the inference-layer `{data: [...]}` body already emitted. Laravel keeps the
+ * `data` wrapper on paginated responses even under `withoutWrapping`, so a leftover bare-array `items`
+ * keyword is removed.
  */
 final class PaginatedResponseBody
 {
     /**
-     * The first plain (non-JSON:API) `AnonymousResourceCollection<T>` return type of the action, or
-     * null when the action does not return one (JSON:API collections have their own envelope and are
-     * out of scope here).
+     * The action's first plain `AnonymousResourceCollection<T>` return type. JSON:API collections have
+     * their own envelope, so they're skipped.
      */
     public static function resourceCollectionReturn(RouteContext $context): ?ClassT
     {
@@ -53,10 +51,7 @@ final class PaginatedResponseBody
         return null;
     }
 
-    /**
-     * Rewrap the 200 response's resource-collection body in the paginator envelope for `$kind`
-     * (length/simple/cursor). No-op when the collection body cannot be located.
-     */
+    /** Rewraps the 200 body in the envelope for `$kind`. No-op when the body can't be located. */
     public static function wrap(OperationDraft $operation, RouteContext $context, ClassT $collection, string $kind, Contribution $by): void
     {
         $result = $context->converter()->toSchema($collection);
@@ -79,15 +74,13 @@ final class PaginatedResponseBody
             $content->set($keyword, $value, $by);
         }
 
-        // Clear a bare-array `items` keyword left by a withoutWrapping inference body (the envelope is
-        // an object, so a stray top-level `items` would be invalid).
+        // The envelope is an object, so a top-level `items` left by a withoutWrapping body is invalid.
         $content->set('items', Remove::value(), $by);
     }
 
     /**
-     * The item schema inside a converted resource-collection body: `properties.data.items` (wrapped)
-     * or the top-level `items` (a withoutWrapping bare array). An opaque schema fragment (the exact
-     * keys are the converter's), null for any other shape.
+     * The item schema inside a converted collection body — `properties.data.items` when wrapped, the
+     * top-level `items` for a withoutWrapping bare array. Null for any other shape.
      *
      * @param  array<string, mixed>  $body
      * @return array<array-key, mixed>|null

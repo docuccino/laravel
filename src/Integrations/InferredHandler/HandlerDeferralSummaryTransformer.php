@@ -11,10 +11,9 @@ use Docuccino\Core\Extensions\Contracts\DocumentTransformer;
 use Docuccino\Core\Extensions\Document\UirDocumentDraft;
 
 /**
- * Collapses the inferred-handler tier's deferral noise (design §6): one info diagnostic per CALLBACK
- * that genuinely could not fold a JSON response, naming the callback, the count, and the first few
- * exception types — instead of one per (route × exception) as before. Reads the shared
- * {@see HandlerDeferralLog} the tier fills, runs once per build, and never mutates the document.
+ * One info diagnostic per callback that couldn't fold a JSON response, naming the callback, the count and the
+ * first few exception types. Reads the {@see HandlerDeferralLog} the tier fills, runs once per build, and
+ * never mutates the document.
  */
 final class HandlerDeferralSummaryTransformer implements DocumentTransformer
 {

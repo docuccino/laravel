@@ -10,10 +10,9 @@ use Docuccino\Core\Extensions\Validation\ValidationField;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
- * The array-shape rules (validation §4 #11): `list` → `type: array` (a Laravel `list` is a
- * sequentially-keyed array), and `distinct` → `uniqueItems: true` (its `ignore_case`/`strict`
- * parameters do not change the documented shape). `distinct` also defaults an untyped field to array,
- * since it only makes sense on one.
+ * `list` → `type: array`, a Laravel `list` being a sequentially-keyed array; `distinct` →
+ * `uniqueItems: true`, its `ignore_case`/`strict` parameters making no difference to the shape.
+ * `distinct` also defaults an untyped field to array, since it only makes sense on one.
  */
 final class ArrayShapeRuleTransformer implements RuleTransformer
 {

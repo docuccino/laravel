@@ -34,14 +34,10 @@ use Illuminate\Contracts\Container\Container;
 use Throwable;
 
 /**
- * The document pipeline (design §5): resolve extensions late, discover routes, build each
- * operation in phased isolation, assign identities, assemble, apply overlays/transformers,
- * validate against the bundled UIR schema, and return a {@see UirDocument} with deterministic
- * diagnostics. A broken route yields a skeleton (or is omitted) and an error diagnostic — never a
- * dead build.
- *
- * Responsibility split: this is the pipeline itself; {@see DocumentBuilder} is the config-facade
- * callers use to feed it (resolved config, overlays, config extensions).
+ * The document pipeline (design §5): resolve extensions late, discover routes, build each operation
+ * in phased isolation, assign identities, assemble, apply overlays/transformers, validate against
+ * the bundled UIR schema. A broken route yields a skeleton (or is omitted) plus an error diagnostic
+ * — never a dead build. {@see DocumentBuilder} is the config-facade callers use to feed it.
  *
  * @internal
  */
@@ -79,36 +75,23 @@ final class DocumentGenerator
         $components = new ComponentRegistry;
         $bag = new DiagnosticCollector;
 
-        // One info diagnostic per integration that is installed but this document disabled (default-off
-        // permission awaiting opt-in, or an explicit `enabled => false`) — the discoverability signal
-        // (design §4). Nothing fires for an integration whose package is absent.
+        // Discoverability: one info diagnostic per installed-but-disabled integration (design §4).
         $bag->addAll(IntegrationToggles::diagnostics($document));
-
-        // Config-shape info diagnostics (design §9): an `enabled` switch on an always-on producer, or
-        // an unknown tags.default_strategy — surfaced instead of silently ignored/coerced.
+        // Config-shape info diagnostics (design §9) — surfaced instead of silently coerced.
         $bag->addAll(ConfigDiagnostics::for($document));
 
-        // Compile the narrative content tree (design §Narrative content layer): a document-level
-        // input assembled fresh each build. It is deliberately KEPT OUT of the fragment cache key —
-        // operation fragments never read content, so a prose edit must not invalidate them (at
-        // production scale that would re-run out-of-process PHPStan across the whole route set for a typo fix).
-        // Content edits are picked up regardless: content flows into the always-fresh assembly step
-        // and into the document-level contentHash.
+        // The narrative content tree is a document-level input, rebuilt every run and kept OUT of the
+        // fragment cache key: fragments never read content, so a prose typo mustn't re-run PHPStan
+        // across the whole route set. It reaches output via assembly and the document contentHash.
         [$content, $contentDiagnostics] = $this->contentCompiler->compile($document);
         $bag->addAll($contentDiagnostics);
 
-        // Booted-app facts the fragments depend on but that no route file reflects (design §10, A4):
-        // each ENABLED integration contributes its output-shaping global state (render-callback set,
-        // morph map, QB/paginate parameter names, auth guards + session cookie, Passport scopes/grants/
-        // app.url, spatie-data globals, the rate-limiter registration set) through the gated
-        // EnvironmentDigestContributor chain. Folded into the document-level cache input because each is
-        // global — a change can affect any fragment; a DISABLED integration contributes nothing.
         $configHash = $document->hash().'|env:'.$this->environmentDigest($resolved);
         $extensionClasses = $resolved->cacheSignature();
 
         $fragments = [];
         foreach ($this->descriptors($resolved, $document) as $descriptor) {
-            // A route registered for several verbs documents one operation per method (arch F8).
+            // A route registered for several verbs documents one operation per method.
             foreach ($descriptor->documentableMethods() as $method) {
                 $fragment = $this->processRoute($descriptor, $method, $document, $documentId, $engine, $resolved, $components, $bag, $configHash, $extensionClasses);
                 if ($fragment !== null) {
@@ -143,14 +126,13 @@ final class DocumentGenerator
     }
 
     /**
-     * A canonical digest of the booted-app facts the fragment cache must key on beyond config,
-     * routes, and extensions (design §10, A4). Each is a global fact whose change can alter any
-     * route's fragment, so it lives at the document level, and each is contributed by the ENABLED
-     * integration that owns it through the gated {@see EnvironmentDigestContributor} chain (a disabled
-     * integration's globals never key the cache; the pipeline reads only the chain, never an
-     * integration class). Segments are keyed by contributor class and sorted, so the digest is
-     * independent of registration/sort order. Each contributor is itself defensive — an unresolvable
-     * fact contributes the empty string — so the aggregate stays total and deterministic.
+     * Digests the booted-app facts the fragment cache must key on beyond config, routes and
+     * extensions (design §10, A4) — morph maps, guards, registered rate limiters and friends. They're
+     * global, so any change can alter any fragment: hence document-level. Each is contributed by its
+     * owning ENABLED integration via the gated `EnvironmentDigestContributor` chain, so the pipeline
+     * never imports an integration and a disabled one never keys the cache. Segments are keyed by
+     * contributor class and sorted (order-independent), and a contributor that can't resolve its fact
+     * contributes an empty string, keeping the digest total and deterministic.
      */
     private function environmentDigest(ResolvedExtensions $resolved): string
     {
@@ -201,23 +183,22 @@ final class DocumentGenerator
         array $extensionClasses,
     ): ?OperationFragment {
         $path = $this->oasPath($descriptor->uri);
-        // The human signature names the specific method being documented, so multi-method routes
-        // produce distinct per-method diagnostics.
+        // Naming the specific method keeps multi-method routes' diagnostics distinct.
         $signature = strtoupper($method).' '.$descriptor->uri;
 
-        // Fold the documented method into the cache key so each method of a multi-method route keys
-        // to its own fragment (they differ: GET query vs POST body, distinct operation identities).
+        // The method is part of the cache key: GET query vs POST body are different fragments with
+        // different operation identities.
         $cacheKey = $this->cache->key($descriptor->cacheSignature().'|'.$method, $configHash, $extensionClasses);
         $cached = $this->cache->get($cacheKey);
         if ($cached !== null) {
-            // Warm hit: restore the route's components without touching the type engine (design §10).
+            // Warm hit: restore components without waking the type engine (design §10).
             $this->restoreComponents($cached, $components);
 
             return $cached;
         }
 
-        // Snapshot the shared registry so a route that throws after registering components rolls
-        // back cleanly, leaving no orphaned schemas from a route that never entered the document.
+        // Snapshot the shared registry: a route that throws mid-build rolls back, so it can't leave
+        // orphaned schemas behind for a document it never entered.
         $snapshot = $components->snapshot();
 
         try {
@@ -251,8 +232,8 @@ final class DocumentGenerator
             [$referencedSchemas, $referencedSchemaIds, $referencedResponses] = $this->componentClosure($frozen->toArray(), $components);
 
             $fragment = new OperationFragment($path, $method, $frozen, $signature, $diagnostics, $referencedSchemas, $referencedSchemaIds, $referencedResponses);
-            // Merge trace-derived dependency files (design §10 seam): integrations that recover facts
-            // by tracing widen the cache key, so a deep chain invalidates when any traced file changes.
+            // Trace-derived dependency files widen the key, so a deep chain invalidates when any file
+            // it walked changes (design §10 seam).
             $this->cache->put($cacheKey, $fragment, $context->dependencyFiles());
 
             return $fragment;
@@ -264,13 +245,10 @@ final class DocumentGenerator
     }
 
     /**
-     * The transitive closure of the schema AND response components this operation references (design
-     * §5 hoist / arch F7): every component reachable from a `$ref` in the operation, plus every
-     * component those components in turn reference (a response component's content `$ref`s a schema).
-     * Carrying the full closure — not just the components this route happened to register first —
-     * makes each cached fragment self-sufficient: a warm hit restores everything it points at, so
-     * removing the route that first *owned* a shared component never leaves a surviving referencer
-     * with a dangling `$ref`.
+     * The transitive closure of schema and response components this operation `$ref`s, following refs
+     * through the components themselves (design §5 hoist). The full closure — not just what this route
+     * registered first — is what makes a cached fragment self-sufficient: deleting the route that
+     * happened to own a shared component can't leave a survivor with a dangling `$ref`.
      *
      * @param  array<string, mixed>  $operation
      * @return array{0: array<string, array<string, mixed>>, 1: array<string, string>, 2: array<string, array<string, mixed>>}
@@ -331,8 +309,7 @@ final class DocumentGenerator
     }
 
     /**
-     * The component names a node references via `$ref` (`#/components/{$kind}/NAME`), scanned
-     * recursively.
+     * Component names a node references via `$ref` (`#/components/{$kind}/NAME`), scanned recursively.
      *
      * @param  array<array-key, mixed>  $node
      * @return list<string>
@@ -409,9 +386,8 @@ final class DocumentGenerator
     }
 
     /**
-     * The route's analysis diagnostics, tagged with its signature — returned so they live on the
-     * fragment (and are therefore cached and replayed on a warm hit) rather than added straight to
-     * the document bag.
+     * The route's analysis diagnostics, tagged with its signature. They ride on the fragment rather
+     * than going straight to the document bag, so a warm cache hit replays them.
      *
      * @return list<Diagnostic>
      */

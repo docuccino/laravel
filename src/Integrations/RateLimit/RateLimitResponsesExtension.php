@@ -18,14 +18,13 @@ use ReflectionFunction;
 use Throwable;
 
 /**
- * Documents a `429 Too Many Requests` response (with `Retry-After` + `X-RateLimit-*` headers) on any
- * operation whose route carries a `throttle` middleware (design §Phase 4 — rate limiting). Numeric
- * throttles (`throttle:60,1`) document the concrete limit; a named limiter (`throttle:api`) is
- * introspected against the booted app's `RateLimiter::for` registrations. Its closure is located by
- * `ReflectionFunction` and handed to the engine's closure trace, which folds a single-return
- * `Limit::per*(…)` to concrete numbers ({@see RateLimiterLimitVisitor}); a limiter that cannot be
- * folded (dynamic, conditional, or custom-response) still documents the 429, but without numbers,
- * plus an info diagnostic. Always-on: `throttle` ships with Laravel.
+ * Documents a `429 Too Many Requests` (with `Retry-After` + `X-RateLimit-*` headers) on any operation
+ * whose route carries a `throttle` middleware. Always on — `throttle` ships with Laravel.
+ *
+ * Numeric throttles (`throttle:60,1`) document the concrete limit. A named limiter (`throttle:api`) is
+ * looked up in the booted app's `RateLimiter::for` registrations, its closure located by
+ * `ReflectionFunction` and folded by {@see RateLimiterLimitVisitor}. A limiter that won't fold (dynamic,
+ * conditional, custom-response) still gets a 429, just without numbers, plus an info diagnostic.
  */
 final class RateLimitResponsesExtension implements OperationExtension
 {
@@ -112,9 +111,8 @@ final class RateLimitResponsesExtension implements OperationExtension
     }
 
     /**
-     * Resolve a named limiter (`throttle:api`) to a concrete numeric limit by folding its
-     * `RateLimiter::for` closure, or — when the closure is missing, unregistered, or too dynamic to
-     * fold — report the info diagnostic and keep the numberless named limit (today's floor).
+     * Folds a named limiter's `RateLimiter::for` closure to concrete numbers; if it's missing,
+     * unregistered or too dynamic, keeps the numberless named limit and reports a diagnostic.
      */
     private function resolveNamedLimiter(ThrottleLimit $limit, RouteContext $context): ThrottleLimit
     {
@@ -124,7 +122,7 @@ final class RateLimitResponsesExtension implements OperationExtension
         if ($closure instanceof Closure) {
             $folded = $this->foldLimiter($closure, $context);
             if ($folded !== null) {
-                return $folded; // numbers recovered — no diagnostic, the 429 carries concrete values
+                return $folded; // numbers recovered, so no diagnostic
             }
         }
 
@@ -134,17 +132,15 @@ final class RateLimitResponsesExtension implements OperationExtension
     }
 
     /**
-     * Locate the limiter closure by `ReflectionFunction`, hand it to the engine's closure trace, and
-     * build a numeric {@see ThrottleLimit} from a single folded `Limit::per*(…)` — recording the
-     * closure's file as a fragment-cache dependency so editing the limiter invalidates the doc.
-     * Returns null when the closure cannot be reflected or does not fold to a single clean limit.
+     * Reflects the limiter closure, traces it, and builds a numeric {@see ThrottleLimit} from a single
+     * folded `Limit::per*(…)`. The closure's file becomes a fragment-cache dependency so editing the
+     * limiter invalidates the doc. Null when it can't be reflected or doesn't fold cleanly.
      */
     private function foldLimiter(Closure $closure, RouteContext $context): ?ThrottleLimit
     {
         try {
-            // Laravel's `RateLimiter::limiter()` returns a wrapper closure (it dedupes multi-limit
-            // keys) that closes over the app's actual limiter callback — unwrap one level so it is
-            // the user's registered closure that gets reflected and traced, not framework glue.
+            // `RateLimiter::limiter()` hands back a wrapper closure (it dedupes multi-limit keys) over
+            // the app's real callback — unwrap one level so we trace user code, not framework glue.
             $reflection = new ReflectionFunction($closure);
             foreach ($reflection->getClosureUsedVariables() as $used) {
                 if ($used instanceof Closure) {

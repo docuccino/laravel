@@ -15,21 +15,15 @@ use Docuccino\Core\Inference\DType\UnionT;
 use ReflectionClass;
 
 /**
- * Resolves the HTTP success status(es) a spatie Data class documents when it overrides
- * `calculateResponseStatus()` (spatie's `ResponsableData` returns 200 by default; a `Data` subclass
- * may override it to 201/202/…). The override's return TYPE(s) are read from the engine, which folds
- * plain-int, class-constant (`Response::HTTP_CREATED`) and enum-constant returns to `int` literals:
+ * Resolves the success status(es) a Data class documents by overriding `calculateResponseStatus()` —
+ * spatie's `ResponsableData` returns 200 unless a subclass says otherwise. The override's return types
+ * come from the engine, which folds plain ints, class constants (`Response::HTTP_CREATED`) and enum
+ * constants to int literals. Several folded literals (a `$x ? 201 : 200`, or multiple return sites) are
+ * each documented with the same body, matching runtime truth. A computed status leaves the default 200
+ * and earns an info diagnostic — nothing is executed and nothing is guessed.
  *
- *  - a single folded status replaces the inferred 200;
- *  - a conditional/ternary whose arms all fold — `$x ? 201 : 200`, or several `return` sites — folds
- *    to MULTIPLE literals (a union of literals per return site is peeled), and EACH is documented
- *    (the same body under each status, matching runtime truth);
- *  - a genuinely dynamic/computed status (a widened `int`, a non-constant expression) leaves the
- *    default 200 in place and emits an info diagnostic (never a guessed status). Nothing is executed.
- *
- * Only an OVERRIDE counts: the spatie trait's default method reports the vendor trait's file, so a
- * file-identity check against the Data class distinguishes a genuine override from the inherited
- * default, and a plain Data class (no override) is a no-op with no diagnostic.
+ * Only a real override counts: the inherited trait method reports the vendor trait's file, so comparing
+ * files against the Data class's own tells the two apart. No override means no work and no diagnostic.
  */
 final class DataResponseStatus implements ResponseStatusResolver
 {
@@ -49,8 +43,7 @@ final class DataResponseStatus implements ResponseStatusResolver
         $method = $reflection->getMethod(self::METHOD);
         $methodFile = $method->getFileName();
 
-        // A trait-provided (non-overridden) method reports the trait's file, not the class's; only an
-        // override declared in the Data class's own file is a documentable status.
+        // A trait-provided method reports the trait's file, so only a same-file declaration is an override.
         if ($methodFile === false || $methodFile !== $reflection->getFileName()) {
             return [];
         }
@@ -73,8 +66,7 @@ final class DataResponseStatus implements ResponseStatusResolver
 
         $statuses = array_values(array_unique($statuses));
 
-        // Every return site must fold, and at least one status recovered — a widened/computed arm
-        // leaves the whole override unresolved (we never document a partial or guessed status).
+        // All-or-nothing: one computed arm leaves the whole override unresolved rather than partial.
         if ($foldable && $statuses !== []) {
             sort($statuses);
 
@@ -92,9 +84,8 @@ final class DataResponseStatus implements ResponseStatusResolver
     }
 
     /**
-     * The int literal(s) a return-site type folds to: a single `LiteralT` int, or a `UnionT` whose
-     * members are ALL int literals (a `$x ? 201 : 200` return site translates to a union of literals).
-     * Null when any part is not a constant int — the caller then leaves the default in place.
+     * The int literals a return-site type folds to — one `LiteralT`, or a union whose members are all int
+     * literals (which is how a `$x ? 201 : 200` arrives). Null if any part isn't a constant int.
      *
      * @return list<int>|null
      */

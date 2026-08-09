@@ -26,12 +26,11 @@ use Docuccino\Laravel\Registry\DefaultExtensions;
 use Docuccino\Laravel\Registry\ExtensionRegistry;
 
 /**
- * The toggle-bypass fix (arch review PIN 1): an integration contributes to output ONLY when installed
- * AND enabled-for-this-document. Every output-shaping decision an integration used to make through a
- * static call an extension imported directly now flows through a GATED context chain, so disabling the
- * integration removes its contribution entirely — proven here two ways: (1) a disabled integration puts
- * nothing in the resolved resolver partition, and (2) the built-in extensions read only those chains,
- * so an empty chain is inert (the neutral default) while a populated one drives the decision.
+ * An integration contributes to output only when installed *and* enabled for this document. Every
+ * output-shaping decision flows through a gated context chain rather than a static call an extension
+ * imports directly, so disabling the integration removes its contribution entirely. Two halves prove it:
+ * a disabled integration puts nothing in the resolved resolver partition, and the built-in extensions
+ * read only those chains — so an empty chain is inert while a populated one drives the decision.
  */
 function resolvedWith(string $integration, bool $enabled): ResolvedExtensions
 {
@@ -80,10 +79,10 @@ it('drops each resource media-type matcher when its own integration is disabled'
 });
 
 /**
- * The context accessors are the seam the built-in extensions read: an empty chain (a disabled
- * integration) is inert (the neutral default), a populated one drives the decision. Together with the
- * gating above and the arch rule that extensions never import an integration, this proves a disabled
- * integration cannot shape the success response, its status, its media type, or a bound path param.
+ * The context accessors are the seam the built-in extensions read: an empty chain (a disabled integration)
+ * is inert, a populated one drives the decision. With the gating above and the arch rule that extensions
+ * never import an integration, a disabled integration can't shape the success response, its status, its
+ * media type, or a bound path param.
  */
 function contextWithChains(
     array $responseAnalysisTargets = [],
@@ -108,13 +107,13 @@ it('returns the neutral default from each context chain when empty, and the cont
     $empty = contextWithChains();
     $payload = new ClassT('App\\SomeResource');
 
-    // Empty chains → neutral defaults (a disabled integration is inert).
+    // Empty chains give the neutral defaults — a disabled integration is inert.
     expect($empty->responseAnalysisRedirect())->toBeNull()
         ->and($empty->resolveResponseStatuses('App\\Data'))->toBe([])
         ->and($empty->payloadMediaType($payload))->toBe('application/json')
         ->and($empty->routeBindingKeySchema('App\\Models\\Post'))->toBeNull();
 
-    // Populated chains → the contributed decision.
+    // Populated chains give the contributed decision.
     $populated = contextWithChains(
         responseAnalysisTargets: [new class implements ResponseAnalysisTarget
         {

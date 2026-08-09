@@ -9,12 +9,10 @@ use Docuccino\Core\Inference\DType\DType;
 use Docuccino\Laravel\Integrations\ApiResources\ResourceReflector;
 
 /**
- * Names the `timacdonald/json-api` resource classes by FQCN string (the package is optional, so we
- * never hard-reference its symbols) — the pre-13 JSON:API base Laravel 13's first-party resources
- * were upstreamed from. Mirrors {@see ResourceReflector}
- * for its own family: an `abstract JsonApiResource` (a subclass of Laravel's `JsonResource`) and its
- * own `JsonApiResourceCollection`, plus the helper the parameters extension uses to tell whether a
- * return type ultimately produces one of these documents.
+ * {@see ResourceReflector} for the `timacdonald/json-api` family: its `JsonApiResource` (a subclass of
+ * Laravel's `JsonResource`) and `JsonApiResourceCollection`, plus the check the parameters extension uses
+ * to tell whether a return type ends up producing one. Classes are named by FQCN string, never by symbol —
+ * the package is optional.
  */
 final class TimacdonaldResourceReflector
 {
@@ -22,15 +20,14 @@ final class TimacdonaldResourceReflector
 
     public const JSON_API_COLLECTION = 'TiMacDonald\\JsonApi\\JsonApiResourceCollection';
 
-    /** Whether an FQCN is a `timacdonald/json-api` resource (guarded by `class_exists`). */
     public static function isResource(string $fqcn): bool
     {
         return class_exists(self::JSON_API_RESOURCE) && is_a($fqcn, self::JSON_API_RESOURCE, true);
     }
 
     /**
-     * Whether a return type ultimately produces a timacdonald JSON:API document — the resource
-     * itself or a collection whose item is one — so the `include`/`fields` params apply.
+     * The resource itself, or a collection whose item is one — either way the `include`/`fields` params
+     * apply.
      */
     public static function involvesJsonApi(DType $type): bool
     {

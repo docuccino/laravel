@@ -14,15 +14,12 @@ use Docuccino\Laravel\Integrations\Support\AuthGuardDrivers;
 use Illuminate\Contracts\Config\Repository;
 
 /**
- * Auto-configures Passport OAuth2 security (design §Phase 4 — Passport auto-config): on a route
- * Passport protects it registers the `oauth2` scheme and sets the operation's `security` requirement,
- * with the per-operation scopes recovered from the scope middleware. A route counts as
- * Passport-protected when it carries `scope:`/`scopes:` or client-credentials middleware, OR when any
- * `auth:<guard>` (bare `auth` → the default guard) resolves to a `passport`-DRIVER guard via
- * `config('auth.guards')` (auth audit #8 — so a custom passport-driver guard is recognised, an `api`
- * guard on a token driver is not, and multi-guard lists work). Deferred when config already declares
- * security schemes, and skipped for `#[Unauthenticated]`. Class_exists-guarded on
- * `Laravel\Passport\Passport`.
+ * Registers the `oauth2` scheme and the operation's `security` requirement on Passport-protected routes,
+ * with per-operation scopes recovered from the scope middleware. A route counts as protected when it
+ * carries `scope:`/`scopes:` or client-credentials middleware, or when an `auth:<guard>` (bare `auth` =
+ * default guard) resolves to a guard whose `config('auth.guards')` driver is `passport` — so a custom
+ * passport-driver guard is recognised, an `api` guard on the token driver is not, and multi-guard lists
+ * work. Defers when config already declares security schemes; skips `#[Unauthenticated]`.
  */
 final class PassportSecurityExtension implements OperationExtension
 {
@@ -72,17 +69,17 @@ final class PassportSecurityExtension implements OperationExtension
      */
     private function protects(array $middleware, ScopeRequirements $requirements): bool
     {
-        // Scope or client-credentials scopes recovered → Passport-protected (driver-independent).
+        // Recovered scopes mean Passport-protected regardless of driver.
         if (! $requirements->isEmpty()) {
             return true;
         }
 
-        // Bare `client` / parameter-less client-credentials FQCN protect without naming a scope.
+        // Bare `client` / parameter-less client-credentials FQCN protects without naming a scope.
         if ($this->scopes->hasClientCredentials($middleware)) {
             return true;
         }
 
-        // A guard whose configured driver is `passport` (any name; multi-guard lists included).
+        // A guard of any name whose configured driver is `passport`; multi-guard lists included.
         $drivers = AuthGuardDrivers::driversFor(
             $middleware,
             AuthGuardDrivers::map($this->config->get('auth.guards')),
@@ -92,19 +89,16 @@ final class PassportSecurityExtension implements OperationExtension
         return in_array('passport', $drivers, true);
     }
 
-    /**
-     * The app's default auth guard (`config('auth.defaults.guard')`), for resolving bare `auth`.
-     */
+    /** The app's default auth guard, for resolving bare `auth`. */
     private function defaultGuard(): string
     {
         return AuthGuardDrivers::defaultGuard($this->config->get('auth.defaults.guard'));
     }
 
     /**
-     * The oauth2 flow scope map: the app's real Passport scope catalogue (`Passport::tokensCan()`),
-     * augmented with any scope this route references that the catalogue is missing (so the security
-     * requirement stays OAS-valid even in apps that never called `tokensCan()`). Missing scopes get
-     * their id as description — the honest floor when no catalogue entry exists.
+     * The app's real `Passport::tokensCan()` catalogue plus any scope this route references that the
+     * catalogue lacks, so the security requirement stays OAS-valid in apps that never called
+     * `tokensCan()`. Those extras get their id as description.
      *
      * @return array<string, string>
      */

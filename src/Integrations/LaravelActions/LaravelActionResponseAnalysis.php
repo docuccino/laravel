@@ -9,12 +9,10 @@ use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\ResponseAnalysisTarget;
 
 /**
- * The gated {@see ResponseAnalysisTarget} contributed by the laravel-actions integration: when the
- * action defines `jsonResponse()`, the package's controller decorator returns THAT method's value for
- * JSON clients, so its return type is the real 200 wire shape ({@see LaravelAction::responseAnalysisRef()}).
- * Contributed only when `laravel_actions` is enabled, so a disabled integration never redirects the
- * success-body analysis; the redirect carries the honest provenance producer so the inferred body is
- * attributed to `integration:laravel-actions`, not plain inference.
+ * Redirects success-body analysis to `jsonResponse()` when the action defines one — see
+ * {@see LaravelAction::responseAnalysisRef()}. Contributed only while the integration is enabled, so a
+ * disabled one never touches the 200 body, and the redirect names its own producer so the inferred body is
+ * attributed to the integration rather than to plain inference.
  */
 final class LaravelActionResponseAnalysis implements ResponseAnalysisTarget
 {

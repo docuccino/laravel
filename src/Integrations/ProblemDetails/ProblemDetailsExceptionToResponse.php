@@ -14,18 +14,15 @@ use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Patch\Contribution;
 
 /**
- * The RFC 9457 Problem Details preset (design §6 chain, config-activated by
- * `error_responses => 'problem-details'`). Maps the framework exceptions to reusable
- * `application/problem+json` responses that all build on one shared
- * `#/components/schemas/ProblemDetails` component and hoist to shared
- * `#/components/responses/Problem*` components (so many operations reference one response). A bare
- * `HttpException` with a resolved status hint gets a per-status shared `Problem{status}` response.
+ * The RFC 9457 Problem Details preset (design §6 chain), activated by
+ * `error_responses => 'problem-details'`. Maps framework exceptions to reusable
+ * `application/problem+json` responses that all build on one shared `ProblemDetails` schema component and
+ * hoist to shared `#/components/responses/Problem*`, so many operations reference one response. A bare
+ * `HttpException` with a resolved status hint gets a per-status `Problem{status}`.
  *
- * Ordered EARLY — ahead of the framework-defaults tier and the terminal fallback, behind only the
- * inferred-handler tier: when the preset is active it defines the error contract, but a real
- * app handler still wins. Self-gated: `supports()` is false unless the document opted into the
- * preset, so the mapper can sit permanently in the resolved chain without affecting other documents.
- * Producer integration:problem-details.
+ * Ordered EARLY: ahead of the framework-defaults tier and the fallback, behind only the inferred-handler
+ * tier — an active preset defines the error contract, but a real app handler still wins. Self-gated, so
+ * the mapper can sit permanently in the resolved chain without affecting other documents.
  */
 #[ExtensionOrder(priority: Priorities::EARLY)]
 final class ProblemDetailsExceptionToResponse implements ExceptionToResponse

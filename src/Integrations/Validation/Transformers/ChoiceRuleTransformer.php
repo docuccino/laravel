@@ -10,9 +10,9 @@ use Docuccino\Core\Extensions\Validation\ValidationField;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
- * `in:a,b,c` and `enum` (a folded `Rule::enum(...)`/`Rule::in(...)`) → an `enum` schema of the
- * allowed values. Numeric-only value sets emit an integer type; otherwise a string. The optional
- * {@see ValidationRule::$note} (an enum FQCN) is surfaced as the description when present.
+ * `in:a,b,c` and `enum` (a folded `Rule::enum(…)`/`Rule::in(…)`) → an `enum` of the allowed values.
+ * Numeric-only sets get an integer type, everything else string. A {@see ValidationRule::$note} — an enum
+ * FQCN — becomes the description.
  */
 final class ChoiceRuleTransformer implements RuleTransformer
 {

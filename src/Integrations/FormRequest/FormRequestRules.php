@@ -8,10 +8,9 @@ use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Validation\RuleSet;
 
 /**
- * Recovers a request {@see RuleSet} from a FormRequest type-hinted on the action, without executing
- * anything: the FormRequest class is resolved once by the route context ({@see RouteContext::$formRequestClass},
- * shared with the implicit-403 authorize probe so neither reaches into the other), then its `rules()`
- * is analysed into a rule set via the shared {@see RulesFromClass} recovery tail.
+ * Recovers a request {@see RuleSet} from a FormRequest type-hinted on the action. The class is resolved once
+ * by the route context ({@see RouteContext::$formRequestClass}, shared with the implicit-403 authorize probe
+ * so neither reaches into the other), then its `rules()` goes through {@see RulesFromClass}.
  */
 final class FormRequestRules
 {

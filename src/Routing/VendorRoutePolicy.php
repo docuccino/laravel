@@ -5,16 +5,13 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Routing;
 
 /**
- * Decides the default vendor-route exclusion — the same semantics as Laravel's
- * `route:list --except-vendor`: a route whose resolved controller class file lives under the
- * application's `vendor/` directory is dropped from the docs by default, so an installed package's
- * own routes don't leak into your API reference. Orthogonal to the include/exclude/closure filters
- * (those still apply first, unchanged); this is a strictly-narrowing default that a route escapes
- * only by (a) `routes.include_vendor => true`, or (b) not being a vendor controller — closures and
- * application controllers are never affected.
+ * The default vendor-route exclusion, matching `route:list --except-vendor`: a route whose controller
+ * file lives under `vendor/` is dropped, so an installed package's routes don't leak into your API
+ * reference. Strictly narrowing and applied after the include/exclude/closure filters; a route escapes
+ * only via `routes.include_vendor => true` or by not being a vendor controller. Closures and app
+ * controllers are never touched.
  *
- * Pure and path-based: the vendor directory is injected (base_path('vendor') in the app, an
- * arbitrary prefix in tests), so the boundary is not hard-coded.
+ * Pure and path-based — the vendor directory is injected, not hard-coded.
  */
 final class VendorRoutePolicy
 {
@@ -26,10 +23,8 @@ final class VendorRoutePolicy
     }
 
     /**
-     * Whether the default vendor exclusion drops a route. `$controllerFile` is the controller class's
-     * defining file, or null for a closure route / unreflectable action / a controller with no file —
-     * all of which are unaffected. `$includeVendor` (the `routes.include_vendor` opt-in) disables the
-     * exclusion entirely.
+     * `$controllerFile` is the controller's defining file, or null for a closure / unreflectable action
+     * / a fileless controller — none of which are excluded. `$includeVendor` disables the rule outright.
      */
     public function excludesVendorRoute(?string $controllerFile, bool $includeVendor): bool
     {

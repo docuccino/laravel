@@ -19,14 +19,11 @@ use Docuccino\Laravel\Support\Paths;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * The single entry point every command and the runtime viewer share for turning
- * `config('docuccino.documents.*')` into a built {@see GenerationResult}: it resolves the
- * {@see DocumentConfig}, loads the document's Overlay 1.0 files (a malformed overlay becomes a
- * warning diagnostic rather than a fatal), merges the config extensions, and runs the pipeline.
- * Centralising this keeps export/validate/diff/cache/viewer on one identical build path.
- *
- * Responsibility split: this is the config-facade — it turns configuration + files into inputs and
- * delegates the actual route→operation→assemble→validate pipeline to {@see DocumentGenerator}.
+ * The one entry point every command and the runtime viewer share for turning
+ * `config('docuccino.documents.*')` into a {@see GenerationResult}: resolves the
+ * {@see DocumentConfig}, loads Overlay 1.0 files (a malformed one becomes a warning, not a fatal),
+ * merges config extensions, and hands off to {@see DocumentGenerator}. Sharing it keeps
+ * export/validate/diff/cache/viewer on an identical build path.
  *
  * @internal
  */
@@ -61,10 +58,7 @@ final class DocumentBuilder
         return $this->configs->make($key, Hydrate::map($this->documents()[$key] ?? null), $this->onRouteError());
     }
 
-    /**
-     * Build one document. Overlay-parse warnings are folded into the returned diagnostics so a
-     * caller sees them alongside the pipeline's own.
-     */
+    /** Overlay-parse warnings are folded in alongside the pipeline's own diagnostics. */
     public function build(string $key, TypeEngine $engine): GenerationResult
     {
         $config = $this->config($key);
@@ -81,9 +75,8 @@ final class DocumentBuilder
     }
 
     /**
-     * Warn when a not-yet-wired engine mode is selected. The orchestrated and caching compositions
-     * exist in the inference engine but are not plumbed through {@see TypeEngineFactory} yet, so a
-     * build silently runs in-process — surface that rather than let it pass unnoticed.
+     * The orchestrated and caching compositions exist in the inference engine but aren't plumbed
+     * through {@see TypeEngineFactory} yet, so selecting them silently runs in-process. Say so.
      *
      * @return list<Diagnostic>
      */

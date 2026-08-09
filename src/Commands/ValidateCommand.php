@@ -11,10 +11,9 @@ use Docuccino\Laravel\Pipeline\DocumentBuilder;
 use Illuminate\Console\Command;
 
 /**
- * Runs the pipeline for a document (or every document) and validates the assembled UIR against
- * the bundled UIR schema. Schema failures surface as `document.schema-invalid` error diagnostics
- * (the generator already validates internally); this command renders them grouped by route and
- * exits non-zero per `--fail-on`, so CI can gate on a structurally-valid document.
+ * Builds a document (or every document) and checks it against the bundled UIR schema. The generator
+ * already validates internally, so failures arrive as `document.schema-invalid` diagnostics; this
+ * renders them grouped by route and exits non-zero, giving CI something to gate on.
  */
 final class ValidateCommand extends Command
 {

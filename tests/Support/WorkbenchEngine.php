@@ -27,16 +27,16 @@ use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
 
 /**
- * Builds the deterministic stub {@see TypeEngine} the feature tests
- * bind for the workbench — canned return types and thrown exceptions that stand in for what the
- * real PHPStan engine would recover (JsonResponse-payload unwrapping is a Phase 4 integration, so
- * the stub supplies the already-unwrapped shapes).
+ * Builds the deterministic stub {@see TypeEngine} the feature tests bind for the workbench: canned
+ * return types and thrown exceptions standing in for what the real PHPStan engine would recover.
+ * JsonResponse-payload unwrapping happens in an integration, so the stub supplies already-unwrapped
+ * shapes.
  */
 final class WorkbenchEngine
 {
     /**
      * @param  array<string, ActionAnalysis>  $callables  scripted CallableRef analyses (keyed by
-     *                                                    CallableRef::symbol()) for the inferred-handler tier tests
+     *                                                    CallableRef::symbol()) for the inferred-handler tier
      * @param  array<string, ClassMetadata>  $classOverrides  class metadata merged over the defaults
      *                                                        (keyed by FQCN) — e.g. to carry a temp
      *                                                        dependencyFiles for cache-invalidation tests
@@ -78,27 +78,27 @@ final class WorkbenchEngine
         return new StubTypeEngine(
             traces: [
                 // Scripts the Query Builder trace so the golden exercises the QB integration
-                // deterministically (the stub engine has no real trace) — mirrors the Spike-B chain.
+                // deterministically — the stub engine has no real trace.
                 'Workbench\\App\\Http\\Controllers\\WidgetQueryController::index' => QbTraceScript::forChain(
                     "QueryBuilder::for(\\Workbench\\App\\Models\\Form::class)->allowedFilters(['name', AllowedFilter::exact('status')])->allowedSorts(['name', 'created_at'])->defaultSort('name')->paginate(20)",
                 ),
-                // The flagship QB-list endpoint: a QB SUBCLASS paginated through a CUSTOM terminal
-                // (paginateList). Driven over BOTH the QB params visitor (recovers filters/sorts +
-                // the custom terminal's page params) and the resource-envelope visitor (recovers the
-                // paginator kind → {data,links,meta}) — config declares `paginateList` as a terminal.
+                // The flagship QB-list endpoint: a QB subclass paginated through a custom terminal
+                // (`paginateList`, declared as one in config). It runs over both the QB params visitor
+                // (filters/sorts + the custom terminal's page params) and the resource-envelope visitor
+                // (paginator kind → {data,links,meta}).
                 'Workbench\\App\\Http\\Controllers\\QbListController::index' => QbTraceScript::forChain(
                     "ListQueryBuilder::for(\\Workbench\\App\\Models\\Form::class)->allowedFilters(['name'])->allowedSorts(['name'])->paginateList(20)",
                     'Workbench\\App\\Support\\ListQueryBuilder',
                 ),
                 // A paginated resource collection: the chain reaches paginate() on a plain Eloquent
-                // builder (typed as such so the Query-Builder visitor, which needs a Spatie QueryBuilder
-                // receiver, ignores it) — the resource pagination extension wraps the length envelope.
+                // builder, typed as such so the Query-Builder visitor (which needs a Spatie QueryBuilder
+                // receiver) ignores it. The resource pagination extension wraps the length envelope.
                 self::CONTROLLER.'listPaginatedArticles' => QbTraceScript::forChain(
                     '$q->paginate(15)',
                     'Illuminate\\Database\\Eloquent\\Builder',
                 ),
-                // A jsonPaginate() collection: json-api-paginate documents its page[...] params AND
-                // (the response side) the paginator envelope for the configured mode.
+                // A jsonPaginate() collection: json-api-paginate documents its page[...] params, and on
+                // the response side the paginator envelope for the configured mode.
                 self::CONTROLLER.'listJsonPaginatedArticles' => QbTraceScript::forChain(
                     '$q->jsonPaginate()',
                     'Illuminate\\Database\\Eloquent\\Builder',
@@ -139,9 +139,9 @@ final class WorkbenchEngine
                 self::CONTROLLER.'showArticleResource' => new ActionAnalysis(
                     returns: [new ReturnSite(new ClassT(self::ARTICLE_RESOURCE), $location)],
                 ),
-                // Paginated + jsonPaginate resource collections — the return type is the same
-                // AnonymousResourceCollection<ArticleResource>; the paginator envelope comes from the
-                // scripted trace, not the type (Wave C items 1 + 2).
+                // Paginated + jsonPaginate resource collections. The return type is the same
+                // AnonymousResourceCollection<ArticleResource> for both; the paginator envelope comes
+                // from the scripted trace, not the type.
                 self::CONTROLLER.'listPaginatedArticles' => new ActionAnalysis(
                     returns: [new ReturnSite(new ClassT('Illuminate\\Http\\Resources\\Json\\AnonymousResourceCollection', [new ClassT(self::ARTICLE_RESOURCE)]), $location)],
                 ),
@@ -196,7 +196,7 @@ final class WorkbenchEngine
                 ]),
 
                 // A union of a bare spatie Data (its own inferred success status + envelope) and a
-                // noContent() 204 — the merge must document BOTH statuses from one action.
+                // noContent() 204 — the merge documents both statuses from one action.
                 self::CONTROLLER.'storeOrCancel' => new ActionAnalysis(returns: [
                     new ReturnSite(new ClassT(self::ARTICLE_DATA), $location),
                     new ReturnSite($jsonResponse(new VoidT, 204), $location),
@@ -250,8 +250,8 @@ final class WorkbenchEngine
                 // The renderable exception's render() as the engine recovers it — the inferred-handler
                 // tier analyses PaymentRequiredException::render and documents its 402 body.
                 self::PAYMENT_EXCEPTION.'::render' => new ActionAnalysis(
-                    // The real render() writes all three members as literals; the engine recovers them so,
-                    // and the inferred-handler tier documents each as a `const` plus a media-type example.
+                    // The real render() writes all three members as literals, so each is documented as a
+                    // `const` plus a media-type example.
                     returns: [new ReturnSite($jsonResponse(new ArrayShapeT([
                         new ArrayShapeField('type', new LiteralT('https://example.test/problems/payment-required')),
                         new ArrayShapeField('title', new LiteralT('Payment Required')),

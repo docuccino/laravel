@@ -18,10 +18,9 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 
 /**
- * The runtime viewer endpoints (design §Multiple documents / §5 serving): the Scalar HTML page,
- * the `.json` spec (served per `viewer.source`: generate | artifact | cache), and the locally
- * bundled Scalar asset. Every route is guarded by {@see authorize()} — a configured `viewer.gate`
- * ability, else local environment only.
+ * The runtime viewer endpoints: the Scalar HTML page, the `.json` spec (per `viewer.source`:
+ * generate | artifact | cache), and the bundled Scalar asset. All three go through
+ * {@see authorize()} — a configured `viewer.gate` ability, otherwise local environment only.
  */
 final class DocsController
 {
@@ -59,9 +58,8 @@ final class DocsController
     }
 
     /**
-     * `viewer.source: cache` with a cold cache falls back to generating the spec rather than serving
-     * an empty document (arch F11), logging a warning so the missed `docuccino:cache` warm-up is
-     * surfaced instead of silently degrading.
+     * A cold cache generates rather than serving an empty document, and warns so the missed
+     * `docuccino:cache` warm-up is visible instead of silently degrading.
      */
     private function coldCacheFallback(string $document, TypeEngine $engine): string
     {
@@ -86,8 +84,8 @@ final class DocsController
 
         return new Response($contents, 200, [
             'Content-Type' => 'application/javascript',
-            // The bundle is versioned by the package release (it only changes on upgrade), so it is
-            // safe to cache immutably and spares repeat 3.6 MB reads on every viewer load.
+            // The bundle only changes on package upgrade, so cache it immutably and skip re-reading
+            // 3.6 MB on every viewer load.
             'Cache-Control' => 'public, max-age=31536000, immutable',
         ]);
     }
@@ -118,10 +116,8 @@ final class DocsController
             return '';
         }
 
-        // A UIR artifact (carries the `uir` field) is not a viewer-consumable OpenAPI document; the
-        // Scalar viewer expects OAS, so re-emit it through the OpenAPI 3.2 emitter (security L1 —
-        // never stream a UIR's internal x-docuccino provenance to the browser). A plain OpenAPI
-        // artifact streams through unchanged.
+        // A UIR artifact (the `uir` field) is re-emitted as OAS — the viewer expects OAS, and a UIR's
+        // internal x-docuccino provenance must never reach the browser. Plain OpenAPI streams through.
         $decoded = json_decode($contents, true);
         if (is_array($decoded) && isset($decoded['uir'])) {
             /** @var array<string, mixed> $decoded */

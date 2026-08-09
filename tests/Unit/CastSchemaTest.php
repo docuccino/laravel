@@ -6,10 +6,9 @@ use Docuccino\Laravel\Integrations\Eloquent\CastSchema;
 use Workbench\App\Enums\WidgetStatus;
 
 /**
- * Exhaustive coverage of the `$casts` → JSON Schema table (test-coverage standard: a mapping table
- * is tested over EVERY entry plus the unknown-entry degradation). Each cast base maps to a fixed
- * schema fragment; a caster the table does not know returns null so the column keeps its inferred
- * type; enum casts route away through `isEnum()`.
+ * Every entry of the `$casts` → JSON Schema table, plus the unknown-entry degradation (docs/testing.md).
+ * Each cast base maps to a fixed schema fragment; a caster the table doesn't know returns null so the
+ * column keeps its inferred type; enum casts route away through `isEnum()`.
  */
 it('maps every known cast base to its schema fragment', function (string $cast, array $expected): void {
     expect(CastSchema::forCast($cast))->toBe($expected);
@@ -48,19 +47,18 @@ it('strips decimal/plain parameters and is case-insensitive on the base', functi
 it('maps a datetime:FORMAT to an honest format claim', function (string $cast, array $expected): void {
     expect(CastSchema::forCast($cast))->toBe($expected);
 })->with([
-    // Default and ISO date-time forms → date-time.
+    // Default and ISO date-time forms.
     'default datetime' => ['datetime', ['type' => 'string', 'format' => 'date-time']],
     'ISO atom' => ['datetime:Y-m-d\\TH:i:sP', ['type' => 'string', 'format' => 'date-time']],
     'space-separated ISO' => ['datetime:Y-m-d H:i:s', ['type' => 'string', 'format' => 'date-time']],
-    // ISO date-only → date.
     'date-only' => ['datetime:Y-m-d', ['type' => 'string', 'format' => 'date']],
     // A bespoke non-ISO format is neither date nor date-time: a plain string with the format noted.
     'custom format' => ['datetime:d/m/Y', ['type' => 'string', 'description' => 'Serialized using the date format "d/m/Y".']],
 ]);
 
 it('decrypts-then-casts an encrypted:<inner> compound to the inner shape', function (): void {
-    // encrypted:array/collection/json serialise as the decoded JSON value (object or array), NOT a
-    // string; encrypted:object as an object; bare encrypted stays a string.
+    // encrypted:array/collection/json serialise as the decoded JSON value, not a string;
+    // encrypted:object as an object; bare encrypted stays a string.
     expect(CastSchema::forCast('encrypted:array'))->toBe(['type' => ['array', 'object']])
         ->and(CastSchema::forCast('encrypted:collection'))->toBe(['type' => ['array', 'object']])
         ->and(CastSchema::forCast('encrypted:json'))->toBe(['type' => ['array', 'object']])
@@ -69,9 +67,8 @@ it('decrypts-then-casts an encrypted:<inner> compound to the inner shape', funct
 });
 
 it('maps every built-in As* class cast to its serialised shape', function (string $cast, array $expected): void {
-    // The `As*` class casts serialise to a fixed shape read from the class FQCN in `$casts` — not the
-    // null fallback this test used to pin (an enshrined-wrong "no type at all", audit eloquent #8).
-    // AsEncrypted* decrypts-THEN-casts, so they are the decoded object/array, never the opaque string.
+    // The `As*` class casts serialise to a fixed shape read from the class FQCN in `$casts`.
+    // AsEncrypted* decrypts then casts, so they're the decoded object/array, never the opaque string.
     expect(CastSchema::forCast($cast))->toBe($expected);
 })->with([
     'AsStringable → string' => ['Illuminate\\Database\\Eloquent\\Casts\\AsStringable', ['type' => 'string']],
@@ -85,9 +82,9 @@ it('maps every built-in As* class cast to its serialised shape', function (strin
 ]);
 
 it('exposes the enum parameter of an AsEnumCollection / AsEnumArrayObject cast (routed by ModelSchema)', function (?string $enum, string $cast): void {
-    // The two enum-valued As* casts serialise to an array of the parameterised enum's values; forCast
-    // returns null for them (the array + enum routing is assembled by ModelSchema through the Enum
-    // integration), exposing only the enum FQCN here so the mapper can route it.
+    // The two enum-valued As* casts serialise to an array of the parameterised enum's values, but forCast
+    // returns null: ModelSchema assembles the array + enum routing through the Enum integration, so only
+    // the enum FQCN is exposed here.
     expect(CastSchema::forCast($cast))->toBeNull()
         ->and(CastSchema::enumCollectionEnum($cast))->toBe($enum);
 })->with([

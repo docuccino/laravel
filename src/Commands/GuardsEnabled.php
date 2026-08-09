@@ -7,15 +7,14 @@ namespace Docuccino\Laravel\Commands;
 use Illuminate\Console\Command;
 
 /**
- * Honours the `docuccino.enabled` master off-switch on the artisan commands (security M3): a
- * disabled installation exits early with a clear message rather than silently building or serving
- * documentation.
+ * Honours the `docuccino.enabled` master off-switch: a disabled install says so and stops rather than
+ * quietly building documentation.
  *
  * @mixin Command
  */
 trait GuardsEnabled
 {
-    /** True (after printing a message) when Docuccino is disabled and the command should stop. */
+    /** True — having printed why — when the command should stop. */
     protected function abortIfDisabled(): bool
     {
         if (config('docuccino.enabled', true) === false) {

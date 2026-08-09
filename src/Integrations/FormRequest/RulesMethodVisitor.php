@@ -10,12 +10,9 @@ use PhpParser\Node\Expr\Array_;
 use PhpParser\Node\Stmt\Return_;
 
 /**
- * A rules-array recoverer that reads a `rules()` method's returned array from its AST — the
- * FormRequest / laravel-action analogue of {@see InlineRulesVisitor}. The shared harvest (constant-
- * folding each field value so `Rule::enum(...)`/`Rule::in(...)` descriptors survive PHPStan's collapse
- * to a bare object, and recording unrecoverable fields) lives in {@see RulesHarvestingVisitor}; this
- * subclass supplies only the front matching — the returned array literal. It never requests descent;
- * the engine already visits every node of the traced method.
+ * Reads a `rules()` method's returned array from its AST — the FormRequest/laravel-action analogue of
+ * {@see InlineRulesVisitor}, sharing {@see RulesHarvestingVisitor}'s harvest. It only matches the returned
+ * array literal, and never requests descent: the engine already visits every node of the traced method.
  */
 final class RulesMethodVisitor extends RulesHarvestingVisitor
 {

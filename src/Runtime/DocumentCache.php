@@ -8,11 +8,9 @@ use Illuminate\Contracts\Cache\Factory;
 use Illuminate\Contracts\Cache\Repository;
 
 /**
- * The runtime document cache (design §Multiple documents / ops parity `docuccino:cache`): stores an
- * assembled document's served payload in a configured Laravel cache store, keyed by document, so
- * the runtime endpoint can serve `viewer.source: cache` without rebuilding on every request. This
- * is distinct from the fragment cache (design §10) — that keys per operation on the filesystem for
- * incremental builds; this keys per whole document in the app cache for serving.
+ * The runtime document cache: an assembled document's served payload in a Laravel cache store, keyed by
+ * document, so `viewer.source: cache` doesn't rebuild per request. Not to be confused with the fragment
+ * cache (design §10), which keys per operation on the filesystem for incremental builds.
  */
 final readonly class DocumentCache
 {

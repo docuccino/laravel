@@ -12,14 +12,14 @@ use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Identifier;
 
 /**
- * A rules-array recoverer that reads an inline `$request->validate([...])` /
- * `Validator::make($data, [...])` call from the action body — field keys straight from the AST, each
- * rule value constant-folded so `Rule::enum(...)` descriptors survive; nothing is ever executed. The
- * shared harvest + unrecoverable-field bookkeeping lives in {@see RulesHarvestingVisitor}; this
- * subclass supplies only the front matching — locating the rules-array argument. It requests descent
- * into called project code so a `Validator::make(...)` built inside a Queries/service class one or
- * more hops from the action is reached (the modular GET-params pattern); the engine declines vendor /
- * magic / over-budget descent on its own (Spike B split).
+ * Recovers the rules array from an inline `$request->validate([...])` / `Validator::make($data, [...])` in
+ * the action body: field keys straight from the AST, each rule value constant-folded so `Rule::enum(…)`
+ * descriptors survive. The shared harvest and unrecoverable bookkeeping live in
+ * {@see RulesHarvestingVisitor}; this only locates the rules-array argument.
+ *
+ * It asks for descent into called project code, so a `Validator::make(…)` built inside a service or
+ * Queries class a hop or two from the action is still reached; the engine declines vendor, magic and
+ * over-budget callees itself.
  */
 final class InlineRulesVisitor extends RulesHarvestingVisitor
 {
@@ -30,8 +30,6 @@ final class InlineRulesVisitor extends RulesHarvestingVisitor
             $this->harvest($rulesArgument, $scope);
         }
 
-        // Descend into any app-code call so a validate() built inside a helper/Queries class is
-        // reached; the engine bounds the descent and declines vendor/magic callees.
         return $node instanceof MethodCall || $node instanceof StaticCall;
     }
 

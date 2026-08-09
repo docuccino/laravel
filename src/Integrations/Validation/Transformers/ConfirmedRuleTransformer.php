@@ -10,9 +10,8 @@ use Docuccino\Core\Extensions\Validation\ValidationField;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
- * The cross-field `confirmed` rule: documents the implicit `{field}_confirmation` partner, mirroring
- * the field's type and required flag (design §6 — cross-field rules). Runs after the type
- * transformers so the confirmation copies a resolved type.
+ * `confirmed` documents the implicit `{field}_confirmation` partner, mirroring the field's type and
+ * required flag. Runs after the type transformers so there's a resolved type to copy.
  */
 final class ConfirmedRuleTransformer implements RuleTransformer
 {

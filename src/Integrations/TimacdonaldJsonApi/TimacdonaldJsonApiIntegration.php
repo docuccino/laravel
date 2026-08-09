@@ -5,18 +5,16 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\TimacdonaldJsonApi;
 
 /**
- * The single entry point for the `timacdonald/json-api` integration (Phase 5c) — the pre-13 JSON:API
- * resource package Laravel 13's first-party resources were upstreamed from. The service provider
- * spreads {@see extensions()} into the default set only when the package's base resource class exists
- * (`class_exists` guard, Telescope pattern), so docuccino/laravel never hard-requires it. Both the
- * schema mapper and the parameters extension feed the JSON:API infrastructure shared with the
- * first-party `ApiResources` integration.
+ * Entry point for the `timacdonald/json-api` integration — the pre-13 JSON:API resource package Laravel
+ * 13's first-party resources were upstreamed from. The provider spreads {@see extensions()} in only when
+ * the package's base resource class exists, so docuccino/laravel never hard-requires it. The schema mapper
+ * and parameters extension share the JSON:API infrastructure with the first-party `ApiResources`
+ * integration.
  */
 final class TimacdonaldJsonApiIntegration
 {
     /**
-     * The class-presence probe is injectable so the gated-off branch is testable where the package
-     * is in fact present.
+     * The probe is injectable so the gated-off branch stays testable where the package is present.
      *
      * @param  (callable(string): bool)|null  $probe
      */
@@ -35,8 +33,6 @@ final class TimacdonaldJsonApiIntegration
         return [
             TimacdonaldJsonApiResourceSchema::class,
             TimacdonaldJsonApiParametersExtension::class,
-            // The JSON:API media-type matcher (a gated PayloadMediaTypeResolver): a disabled integration
-            // contributes no matcher, so its resources stay application/json.
             TimacdonaldMediaType::class,
         ];
     }

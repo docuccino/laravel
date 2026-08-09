@@ -8,15 +8,13 @@ use Docuccino\Core\Inference\ActionRef;
 use ReflectionMethod;
 
 /**
- * Recognises a `lorisleiva/laravel-actions` action class (it carries the package's `AsController`
- * trait, directly or via the umbrella `AsAction` trait) and exposes the integration's per-route facts:
- * whether the package would run its `rules()`/`authorize()` for the dispatched method, the
- * `jsonResponse()` success-body redirect, and whether it defines `htmlResponse()`. The route-IDENTITY
- * remap (which method an invokable route dispatches) is a non-toggleable route-reflection probe living
- * in the routing layer instead (Docuccino\Laravel\Routing\LaravelActionRouteMethod), so it runs
- * regardless of the integration toggle.
+ * Recognises a `lorisleiva/laravel-actions` action (it carries `AsController`, directly or via the
+ * umbrella `AsAction` trait) and answers the integration's per-route questions: would the package run
+ * `rules()`/`authorize()` here, does it redirect the success body through `jsonResponse()`, does it define
+ * `htmlResponse()`. Every check is guarded by the trait's presence, so this is inert without the package.
  *
- * All checks are guarded by the trait's presence, so this is inert when the package is absent.
+ * The route-identity remap (which method an invokable route dispatches) lives in the routing layer
+ * instead — Docuccino\Laravel\Routing\LaravelActionRouteMethod — so it runs even with this integration off.
  */
 final class LaravelAction
 {
@@ -28,7 +26,6 @@ final class LaravelAction
     /** The methods the package treats as non-explicit (it remaps invokable routes onto these). */
     private const DISPATCH_METHODS = ['asController', 'handle', '__invoke'];
 
-    /** Whether an FQCN is a laravel-actions action used as a controller (carries the AsController trait). */
     public static function isAction(string $fqcn): bool
     {
         if (! trait_exists(self::CONTROLLER_TRAIT)) {
@@ -39,12 +36,9 @@ final class LaravelAction
     }
 
     /**
-     * Whether the package's controller decorator would actually run this action's `rules()`/
-     * `authorize()` for the dispatched method — i.e. whether documenting them reflects runtime.
-     * Mirrors `ControllerDecorator::shouldValidateRequest()`: validation runs only for a non-explicit
-     * dispatched method (`asController`/`handle`/`__invoke`, so an explicitly-registered
-     * `[Action::class, 'store']` never validates) on an action that does NOT use the `WithAttributes`
-     * trait (which opts out of automatic request validation).
+     * Mirrors `ControllerDecorator::shouldValidateRequest()`: the package only validates for a
+     * non-explicit dispatched method (so an explicitly-registered `[Action::class, 'store']` never does)
+     * on an action without `WithAttributes`. Documenting `rules()` elsewhere would misreport runtime.
      */
     public static function dispatchesValidation(string $fqcn, string $method): bool
     {
@@ -54,8 +48,8 @@ final class LaravelAction
     }
 
     /**
-     * Whether $fqcn uses $trait, walking its own traits + parents' + traits-used-by-traits (so the
-     * umbrella `AsAction` trait — which uses `AsController` — is seen) via PHP built-ins only.
+     * Walks own traits + parents' + traits-used-by-traits, so `AsAction` (which uses `AsController`)
+     * counts. Built-ins only, no reflection.
      */
     private static function usesTrait(string $fqcn, string $trait): bool
     {
@@ -85,18 +79,11 @@ final class LaravelAction
     }
 
     /**
-     * The method whose RETURN TYPE is the true 200 wire shape for a JSON client. The package's
-     * controller decorator, when the action defines `jsonResponse()` and the client expects JSON,
-     * returns `jsonResponse($response, $request)` instead of the dispatched method's value
-     * (`ControllerDecorator::__invoke()`). Docuccino documents the JSON path, so the success body must
-     * be analysed from `jsonResponse()` — not from the resolved `handle()`/`asController()` whose value
-     * the decorator has already transformed. Returns an {@see ActionRef} pointing at `jsonResponse()`
-     * when the action defines it, else null (leave the dispatched method's return analysis in place).
-     *
-     * This mirrors the routing layer's route-method probe (Docuccino\Laravel\Routing\LaravelActionRouteMethod)
-     * — reflection-time knowledge of how the route really responds — so it is applied regardless of
-     * whether the route dispatches invokably or through an explicitly-registered method (the decorator
-     * wraps both).
+     * The method whose return type is the real 200 wire shape for a JSON client. When the action defines
+     * `jsonResponse()`, `ControllerDecorator::__invoke()` returns that instead of the dispatched method's
+     * value, so the success body must be analysed there — `handle()`'s value has already been transformed.
+     * Null leaves the dispatched method's analysis alone. Applies to invokable and explicitly-registered
+     * routes alike; the decorator wraps both.
      */
     public static function responseAnalysisRef(ActionRef $dispatched): ?ActionRef
     {
@@ -116,9 +103,8 @@ final class LaravelAction
     }
 
     /**
-     * Whether the action defines `htmlResponse()` — the decorator returns its value for non-JSON
-     * clients (`ControllerDecorator::__invoke()`), so the endpoint additionally serves `text/html`.
-     * Docuccino records that as a content-type note rather than trying to type an HTML body as JSON.
+     * The decorator returns `htmlResponse()`'s value for non-JSON clients, so the endpoint also serves
+     * `text/html`. Recorded as a content-type note; we don't try to type an HTML body as JSON.
      */
     public static function definesHtmlResponse(?string $fqcn): bool
     {

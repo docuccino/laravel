@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\Passport;
 
 /**
- * The OAS `oauth2` security scheme for a Passport-protected API (design §Phase 4 — Passport auto-
- * config): Passport's authorization-code and client-credentials grants (always available) plus the
- * password and implicit grants ONLY when the app opted into them (`Passport::enablePasswordGrant()` /
- * `enableImplicitGrant()`), mapped to OAS flows over the `config('passport.path')` endpoints. The flow
- * `scopes` map carries the app's real scope catalogue (`Passport::tokensCan()`) so every scope an
- * operation's security requirement references is DEFINED here — an OAS 3.x validity requirement; a
- * bare-`*` fallback is used only when the app defines no scopes. Pure so the shape is dataset-testable.
+ * The OAS `oauth2` scheme for a Passport-protected API: the always-available authorization-code and
+ * client-credentials grants, plus password and implicit only when the app called
+ * `Passport::enablePasswordGrant()`/`enableImplicitGrant()`, mapped to flows over the
+ * `config('passport.path')` endpoints.
+ *
+ * The flow `scopes` map carries the app's real `Passport::tokensCan()` catalogue, because OAS 3.x requires
+ * every scope a security requirement references to be defined here. A bare `*` stands in only when the app
+ * defines no scopes at all. Pure, so the shape is dataset-testable.
  */
 final class OAuth2Scheme
 {

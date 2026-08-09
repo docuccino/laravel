@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\Permission;
 
 /**
- * One authorization requirement recovered from a `spatie/laravel-permission` middleware: its `type`
- * (`role` | `permission` | `role_or_permission`), the pipe-separated `values` it demands (any-of),
- * and the optional `guard` a `,guard` suffix names. Feeds both the `x-permissions` extension member
- * and the generated description line.
+ * One authorization requirement from a `spatie/laravel-permission` middleware: its type, the pipe-separated
+ * any-of `values`, and the optional guard a `,guard` suffix names. Feeds the `x-permissions` member and the
+ * description line.
  */
 final readonly class PermissionRequirement
 {
@@ -35,8 +34,8 @@ final readonly class PermissionRequirement
     }
 
     /**
-     * The human description line. A pipe list is any-of, so multi-value requirements say so
-     * explicitly ("Requires any of these permissions: …") rather than reading as a required set.
+     * A pipe list is any-of, so multi-value requirements say so explicitly rather than reading as a set
+     * you need all of.
      */
     public function describe(): string
     {

@@ -10,10 +10,8 @@ use Docuccino\Core\Extensions\Validation\ValidationField;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
- * The acceptance rules `accepted` / `declined` (Scribe-parity, validation §4 #8) and their conditional
- * partners `accepted_if` / `declined_if`. `accepted` → a boolean fixed to `true` (`const`), `declined`
- * → `const: false`. The conditional forms keep the same `const` (the documented happy path) and add a
- * description naming the condition under which the value is enforced.
+ * `accepted` → a boolean `const: true`, `declined` → `const: false`. The `_if` variants keep the same
+ * `const` — the documented happy path — and add a description naming the condition that enforces it.
  */
 final class BooleanConstRuleTransformer implements RuleTransformer
 {

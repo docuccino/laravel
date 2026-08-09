@@ -14,10 +14,9 @@ use Illuminate\Routing\Router;
 use Illuminate\Support\Str;
 
 /**
- * The built-in {@see RouteResolver}: turns the Laravel router into {@see RouteDescriptor}s
- * (design §Route discovery). Applies the document's include/exclude wildcard patterns and its
- * optional closure filter, and honours the `#[ExcludeFromDocs]` and `#[InDocs]` attributes. Both
- * controller and closure routes are supported.
+ * The built-in {@see RouteResolver}: turns the Laravel router into {@see RouteDescriptor}s (design
+ * §Route discovery), applying the document's include/exclude patterns and closure filter and honouring
+ * `#[ExcludeFromDocs]` / `#[InDocs]`. Controller and closure routes both work.
  */
 final class LaravelRouteResolver implements RouteResolver
 {
@@ -42,14 +41,13 @@ final class LaravelRouteResolver implements RouteResolver
                 continue;
             }
 
-            // Reflect once here; the builder reuses this via the shared index — no re-locate/reflect.
+            // Reflect once; the builder reuses this via the shared index.
             $reflected = $this->reflector->forRoute($route);
             if (! $this->passesAttributes($reflected, $document)) {
                 continue;
             }
 
-            // Default vendor exclusion (route:list --except-vendor semantics): needs the resolved
-            // controller file, so it runs post-reflection and after the include/exclude/closure gate.
+            // Vendor exclusion needs the resolved controller file, hence after reflection.
             if ($this->excludedAsVendor($reflected, $document)) {
                 continue;
             }
@@ -72,18 +70,15 @@ final class LaravelRouteResolver implements RouteResolver
     }
 
     /**
-     * The route's gathered middleware with kernel middleware GROUPS expanded to their members
-     * (recursively, cycle-guarded), so middleware registered app-wide via a group — e.g. Sanctum's
-     * `EnsureFrontendRequestsAreStateful` prepended to the `api` group by `statefulApi()`, or a
-     * group's `throttle:` — is detected the same as if declared on the route. Aliases and
-     * `alias:params` entries are left verbatim (the detectors read their short forms), so this widens
-     * detection without the wholesale alias resolution `Router::gatherRouteMiddleware()` would do.
+     * The route's middleware with kernel groups expanded to their members (recursively, cycle-guarded),
+     * so something registered app-wide via a group — Sanctum's stateful middleware on `api`, a group's
+     * `throttle:` — is detected as if it were on the route. Aliases and `alias:params` are kept
+     * verbatim because the detectors read those short forms, so this widens detection without the
+     * wholesale alias resolution `Router::gatherRouteMiddleware()` does.
      *
-     * `withoutMiddleware(...)` exclusions are honoured the way {@see Router::resolveMiddleware()}
-     * does: each excluded entry is expanded through the same groups and then removed from the gathered
-     * set, so a route that opts out of `throttle:api` or `auth` is not documented with a 429/401 (or
-     * a security requirement) it never enforces. The match is in our short-form vocabulary rather than
-     * Laravel's resolved-FQCN space, mirroring the alias-preserving gather above.
+     * `withoutMiddleware(...)` exclusions are expanded through the same groups then subtracted, so a
+     * route that opts out of `throttle:api` or `auth` isn't documented with a 429/401 it never
+     * enforces. Matching happens in our short-form vocabulary, not Laravel's resolved-FQCN space.
      *
      * @return list<string>
      */
@@ -158,9 +153,8 @@ final class LaravelRouteResolver implements RouteResolver
     }
 
     /**
-     * Whether a route is dropped by the default vendor exclusion. A closure / unreflectable action
-     * (no controller class) is passed a null file and is never excluded; an application controller's
-     * file is not under vendor/, so it passes too.
+     * Whether the default vendor exclusion drops this route. A closure or unreflectable action has no
+     * file to judge, so it's never excluded.
      */
     private function excludedAsVendor(?ReflectedAction $reflected, DocumentConfig $document): bool
     {

@@ -13,36 +13,28 @@ use ReflectionMethod;
 use Throwable;
 
 /**
- * Resolves the response-envelope wrap key `spatie/laravel-data` applies to a Data object
- * (docs: as-a-resource/wrapping). A wrapped response nests the payload under a key —
- * `{ "data": <payload> }` for the default `'data'`.
+ * Resolves the wrap key spatie nests a response payload under — `{ "data": <payload> }` by default.
+ * Precedence mirrors spatie's `ContextableData`/`Wrap`: a class-level `defaultWrap()` override, else the
+ * global `config('data.wrap')` injected by the service provider, else unwrapped.
  *
- * Precedence mirrors spatie's `ContextableData`/`Wrap`:
- *
- * 1. a class-level `defaultWrap()` override (`WrapType::Defined`) — its literal string return, read
- *    statically off the class file (never invoked); the base `Data` class does NOT define it, so
- *    `method_exists` true means a real override;
- * 2. else the global `config('data.wrap')` (`WrapType::UseGlobal`), injected by the service provider
- *    (the integration stays vendor-import-free, mirroring the Passport runtime facts);
- * 3. else unwrapped (`null`).
- *
- * The key applies at the RESPONSE ROOT only ({@see DataSchema} guards on depth) — a nested Data
- * property is never wrapped, so a shared component `$ref` stays wrap-free.
+ * The override's literal is read statically off the class file, never invoked. The base `Data` class
+ * doesn't define `defaultWrap()`, so `method_exists` being true already means a real override.
+ * {@see DataSchema} applies the key at the response root only.
  */
 final class WrapResolver
 {
     public function __construct(private readonly ?string $globalWrap = null) {}
 
     /**
-     * The wrap key for a Data class response, or null when unwrapped. Pass null for a collection (no
-     * single owning class), which resolves to the global key only.
+     * The wrap key, or null when unwrapped. Pass null for a collection — it has no single owning class,
+     * so only the global key applies.
      */
     public function key(?string $fqcn): ?string
     {
         return ($fqcn !== null ? $this->defaultWrap($fqcn) : null) ?? $this->globalWrap;
     }
 
-    /** The literal string returned by a class's overridden `defaultWrap()`, or null when none/dynamic. */
+    /** The literal an overridden `defaultWrap()` returns, or null when there's none or it's dynamic. */
     private function defaultWrap(string $fqcn): ?string
     {
         if (! class_exists($fqcn) || ! method_exists($fqcn, 'defaultWrap')) {
@@ -60,7 +52,7 @@ final class WrapResolver
         }
     }
 
-    /** The named method's AST node in a file, or null when the file is unparseable / lacks it. */
+    /** The named method's AST node, or null when the file is unparseable or lacks it. */
     private function methodNode(string $file, string $name): ?ClassMethod
     {
         $code = file_get_contents($file);
@@ -82,7 +74,7 @@ final class WrapResolver
         return null;
     }
 
-    /** The first `return '<literal>';` string of a method body, or null when the return is dynamic. */
+    /** The first `return '<literal>';` in a body, or null when every return is dynamic. */
     private function literalReturn(ClassMethod $method): ?string
     {
         foreach ((new NodeFinder)->findInstanceOf($method->stmts ?? [], Return_::class) as $return) {

@@ -8,12 +8,11 @@ use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Routing\Middleware\ThrottleRequestsWithRedis;
 
 /**
- * Parses a route's `throttle` middleware string into a {@see ThrottleLimit} (design §Phase 4 — rate
- * limiting): `throttle:60,1` → numeric limit (60 attempts / 1 minute), `throttle:60` → 60 / default
- * 1 minute, `throttle:api` → named limiter `api`. Also recognises the `ThrottleRequests::using()`/
- * `::with()` FQCN forms (`Illuminate\Routing\Middleware\ThrottleRequests:...`, incl. the Redis
- * variant), the guest|authenticated pipe form (`throttle:10|60`), and float decay (`throttle:60,0.5`).
- * Anything that is not a throttle declaration returns null.
+ * Parses a `throttle` middleware string into a {@see ThrottleLimit}: `throttle:60,1` → 60 attempts per
+ * minute, `throttle:60` → 60 per the default 1 minute, `throttle:api` → the named limiter `api`. Also
+ * handles the `ThrottleRequests::using()`/`::with()` FQCN forms (including the Redis variant), the
+ * guest|authenticated pipe form `throttle:10|60`, and float decay `throttle:60,0.5`. Null for anything
+ * that isn't a throttle.
  */
 final class ThrottleParser
 {
@@ -25,15 +24,14 @@ final class ThrottleParser
         }
 
         if ($parameters === '') {
-            // Bare `throttle` / `ThrottleRequests::with()` with no arguments: Laravel's middleware
-            // defaults are 60 attempts / 1 minute (a concrete limit, not a named limiter).
+            // No arguments: Laravel's middleware defaults, 60 per minute — a concrete limit, not a name.
             return new ThrottleLimit(maxAttempts: 60, decayMinutes: 1.0);
         }
 
         $parts = explode(',', $parameters);
         $first = trim($parts[0]);
 
-        // Pipe form `10|60`: guest|authenticated attempt allowances (Laravel's resolveMaxAttempts).
+        // Pipe form `10|60` is guest|authenticated allowances — see Laravel's resolveMaxAttempts.
         if (str_contains($first, '|')) {
             [$guest, $auth] = array_pad(explode('|', $first, 2), 2, '');
             $guest = trim($guest);
@@ -57,9 +55,8 @@ final class ThrottleParser
     }
 
     /**
-     * Returns the parameter string for a throttle declaration (`''` for a bare declaration), or null
-     * when the middleware is not a throttle at all. Recognises the short `throttle` alias and both
-     * FQCN class names the `::using()`/`::with()` helpers render.
+     * The parameter string for a throttle declaration (`''` when bare), or null when it isn't one at all.
+     * Covers the short alias and both FQCNs the `::using()`/`::with()` helpers render.
      */
     private function parametersFor(string $middleware): ?string
     {

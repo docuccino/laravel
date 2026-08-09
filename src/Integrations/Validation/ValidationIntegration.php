@@ -30,21 +30,17 @@ use Docuccino\Laravel\Integrations\Validation\Transformers\TimezoneRuleTransform
 use Docuccino\Laravel\Integrations\Validation\Transformers\TypeRuleTransformer;
 
 /**
- * The always-on Laravel validation integration: it owns the rule vocabulary (the per-rule
- * {@see RuleTransformer} set covering Laravel's DSL floor) and contributes it to the core chain
- * driver as {@see RuleTransformer} extensions — dogfooding the public chain exactly as a user's
- * custom rule would. Its target is `illuminate/validation`, present in every Laravel app, so it is
- * unconditional.
+ * Owns the Laravel rule vocabulary and contributes it to the core chain driver as {@see RuleTransformer}
+ * extensions — dogfooding the public chain exactly as a user's own rule would. Unconditional, since
+ * `illuminate/validation` is in every Laravel app.
  *
- * The recovery integrations (FormRequest, inline `validate()`, Spatie Data) reuse this one chain:
- * they only produce a {@see RuleSet} and hand it to
- * {@see RouteContext::validation()}.
+ * The recovery integrations (FormRequest, inline `validate()`, Spatie Data) reuse this one chain: they only
+ * produce a {@see RuleSet} and hand it to {@see RouteContext::validation()}.
  */
 final class ValidationIntegration
 {
     /**
-     * The Laravel rule transformer set, in effect order. Registered as {@see RuleTransformer}
-     * extension defaults so user transformers can slot ahead of them.
+     * In effect order. Registered as extension defaults, so user transformers can slot ahead of them.
      *
      * @return list<RuleTransformer>
      */

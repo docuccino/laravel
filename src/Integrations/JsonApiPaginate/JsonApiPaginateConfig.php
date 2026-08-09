@@ -5,13 +5,11 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\JsonApiPaginate;
 
 /**
- * The `spatie/laravel-json-api-paginate` settings that shape the documented pagination parameters,
- * captured as a pure value object (dataset-testable in isolation). The parameter *names* come only
- * from the package's published config (`page[number]`/`page[size]`/`page[cursor]`, all renamable),
- * so {@see fromArray()} reads the effective `json-api-paginate.*` config bag; when that bag is absent
- * (the package installed but never booted, e.g. a unit context) it falls back to the package's own
- * defaults and records `recovered = false` so the extension can emit an info diagnostic rather than
- * silently guess.
+ * The `spatie/laravel-json-api-paginate` settings that shape the documented pagination parameters, as a
+ * pure value object. Every parameter name (`page[number]`, `page[size]`, `page[cursor]`) is renamable in
+ * the package's published config, so {@see fromArray()} reads the effective `json-api-paginate.*` bag.
+ * An absent bag — package installed but never booted — falls back to package defaults and sets
+ * `recovered = false`, so the extension can say so in a diagnostic rather than quietly guess.
  */
 final readonly class JsonApiPaginateConfig
 {
@@ -34,8 +32,7 @@ final readonly class JsonApiPaginateConfig
     ) {}
 
     /**
-     * Build from the effective `json-api-paginate` config bag. An empty bag (namespace never merged)
-     * yields package defaults with `recovered = false`.
+     * An empty bag (namespace never merged) yields package defaults with `recovered = false`.
      *
      * @param  array<string, mixed>  $config
      */

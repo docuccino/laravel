@@ -5,21 +5,19 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\Support;
 
 /**
- * The JSON paginator envelopes Laravel serialises around a page of resource-collection items
- * (`{data, links, meta}`), shared by the integrations that document a Laravel-paginated collection
- * (API resources, `jsonPaginate`) so the wrapper shape stays identical whoever produces it. Three
- * modes are modelled — length-aware ({@see length()}), simple ({@see simple()}) and cursor
- * ({@see cursor()}); each builder takes the already-converted item schema and wraps it. `data`, `links`
- * and `meta` are always emitted (an empty page still carries them), so all three are required.
+ * The `{data, links, meta}` envelopes Laravel serialises around a page of items, shared by every
+ * integration that documents a Laravel-paginated collection. Each builder wraps an already-converted item
+ * schema. All three members are always emitted — an empty page still carries them — so all three are
+ * required.
  *
- * This is Laravel's `AbstractPaginator` envelope; `spatie/laravel-data` uses a different one
- * ({@see SpatieDataEnvelope}) — the two are NOT interchangeable.
+ * This is Laravel's `AbstractPaginator` envelope. `spatie/laravel-data` has its own
+ * ({@see SpatieDataEnvelope}); the two are NOT interchangeable.
  */
 final class PaginationEnvelope
 {
     /**
-     * The length-aware paginator shape (`paginate()`): first/last/prev/next `links` and a `meta`
-     * block with the full page counters (it knows the total, hence `last_page`/`total`).
+     * `paginate()`: first/last/prev/next links, and a meta block with the full counters — it counts the
+     * result set, so it knows `last_page`/`total`.
      *
      * @param  array<array-key, mixed>  $items
      * @return array<string, mixed>
@@ -43,8 +41,7 @@ final class PaginationEnvelope
     }
 
     /**
-     * The simple paginator shape (`simplePaginate()`): it does NOT count the full result set, so
-     * there is no `last` link and the `meta` block omits `last_page`/`total`.
+     * `simplePaginate()`: no count of the result set, so no `last` link and no `last_page`/`total`.
      *
      * @param  array<array-key, mixed>  $items
      * @return array<string, mixed>
@@ -65,8 +62,7 @@ final class PaginationEnvelope
     }
 
     /**
-     * The cursor paginator shape (`cursorPaginate()`): opaque `next_cursor`/`prev_cursor` tokens, no
-     * page counters.
+     * `cursorPaginate()`: opaque `next_cursor`/`prev_cursor` tokens instead of page counters.
      *
      * @param  array<array-key, mixed>  $items
      * @return array<string, mixed>

@@ -34,9 +34,8 @@ final class AttributeResponsesExtension implements OperationExtension
 
     public function handle(OperationDraft $operation, RouteContext $context): void
     {
-        // Resolve unqualified class names in `type:` strings against the controller file's imports +
-        // namespace, so `#[Response(type: 'MfaChallengeData|…')]` finds the real class (not a bare
-        // object) without forcing FQCN/::class strings.
+        // Unqualified class names in `type:` strings resolve against the controller file's imports and
+        // namespace, so authors don't have to write FQCNs to get a real class instead of a bare object.
         $imports = ImportContext::forFile($context->actionRef->file === '' ? null : $context->actionRef->file);
 
         foreach ($context->attributes->all(IgnoreResponse::class) as $ignore) {

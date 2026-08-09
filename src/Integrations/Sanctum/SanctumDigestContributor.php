@@ -9,11 +9,10 @@ use Docuccino\Laravel\Integrations\Support\AuthGuardDrivers;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 
 /**
- * Contributes Sanctum's output-shaping booted-app state to the environment digest (design §10, A4):
- * the configured auth guards (guard → driver, which decides whether a route resolves a Sanctum mode)
- * and the app's `session.cookie` name (the Sanctum stateful cookie IS the session cookie). Both are
- * read at handle time and shape security output but reflect no route file, so they must key the warm-
- * fragment cache. Gated with the Sanctum integration. Deterministic: the guard map is sorted by name.
+ * Feeds the booted-app state that shapes Sanctum output into the environment digest (design §10): the
+ * configured guard → driver map, which decides whether a route resolves a Sanctum mode, and the app's
+ * `session.cookie` name, since the stateful cookie is the session cookie. Both are read at handle time and
+ * reflect no route file, so they have to key the warm-fragment cache. Guard map sorted by name.
  */
 final class SanctumDigestContributor implements EnvironmentDigestContributor
 {

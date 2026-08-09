@@ -11,13 +11,10 @@ use Docuccino\Core\Extensions\Contracts\DocumentTransformer;
 use Docuccino\Core\Extensions\Document\UirDocumentDraft;
 
 /**
- * Kills the inferred-handler tier's silence (design §6): a render callback registered on the handler
- * but not analysable — no parameters, a builtin-typed first parameter, or a bound free function with no
- * owning class — used to be dropped without a word, so the tier looked absent when it had simply skipped
- * a handler it could not read. This whole-document transformer reports one info diagnostic per skipped
- * callback (it never mutates the document), naming the callable so the omission is explained rather than
- * silent. Runs once per build regardless of routes, so a skip surfaces even when nothing the tier could
- * document remains.
+ * Reports one info diagnostic per render callback the reflector had to skip — no parameters, a
+ * builtin-typed first parameter, a bound free function with no owning class — naming the callable so the
+ * omission is explained rather than making the tier look absent. Never mutates the document, and runs once
+ * per build regardless of routes, so a skip surfaces even when the tier documented nothing.
  */
 final class RenderCallbackSkipTransformer implements DocumentTransformer
 {

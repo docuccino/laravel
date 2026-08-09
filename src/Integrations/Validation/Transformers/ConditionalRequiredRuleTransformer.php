@@ -10,11 +10,9 @@ use Docuccino\Core\Extensions\Validation\ValidationField;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
- * The conditional-presence rules (`required_if`, `required_unless`, `required_with[_all]`,
- * `required_without[_all]`): the field is required only under a runtime condition OpenAPI cannot
- * express, so it stays OPTIONAL in the request schema (the safe floor) and the condition is surfaced
- * as a human "Required when …" description note. Previously these only raised an unhandled diagnostic
- * with no description.
+ * `required_if`, `required_unless`, `required_with[_all]`, `required_without[_all]`. The field is required
+ * only under a runtime condition OpenAPI can't express, so it stays optional — the safe floor — and the
+ * condition becomes a "Required when …" description note.
  */
 final class ConditionalRequiredRuleTransformer implements RuleTransformer
 {

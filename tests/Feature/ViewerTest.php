@@ -12,8 +12,8 @@ use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * The runtime viewer endpoints (design §5 serving): Gate-guarded HTML + `.json` + a locally bundled
- * Scalar asset (no runtime CDN by default).
+ * The runtime viewer endpoints: Gate-guarded HTML plus `.json`, and a locally bundled Scalar asset — no
+ * runtime CDN by default.
  */
 beforeEach(function (): void {
     app()->instance(TypeEngine::class, WorkbenchEngine::make());
@@ -41,9 +41,9 @@ it('serves the Scalar HTML referencing the spec URL and the locally bundled asse
     $response->assertOk()
         ->assertHeader('Content-Type', 'text/html; charset=UTF-8')
         ->assertSee('id="api-reference"', false)
-        // The spec URL points at the document's .json endpoint...
+        // The spec URL points at the document's .json endpoint…
         ->assertSee('data-url="'.url('/docs/api.json').'"', false)
-        // ...and the Scalar script is the local asset, never a CDN.
+        // …and the Scalar script is the local asset, never a CDN.
         ->assertSee('src="'.url('/docs/api/assets/scalar.js').'"', false)
         ->assertDontSee('cdn.jsdelivr.net', false);
 });
@@ -60,16 +60,16 @@ it('serves the generated OpenAPI JSON', function (): void {
 });
 
 it('serves the bundled Scalar asset WITHOUT the gate (it is a static, non-sensitive script)', function (): void {
-    // No gate configured and the environment is "testing", so /docs/api and /docs/api.json are
-    // forbidden — but the asset is a static JS file with nothing sensitive, so it stays open
-    // (Scalar must be able to load it). This is the intended, documented behaviour.
+    // No gate configured and the environment is "testing", so /docs/api and /docs/api.json are forbidden.
+    // The asset is a static JS file with nothing sensitive and Scalar has to be able to load it, so it
+    // stays open by design.
     $this->get('/docs/api')->assertForbidden();
 
     $this->get('/docs/api/assets/scalar.js')
         ->assertOk()
         ->assertHeader('Content-Type', 'application/javascript')
-        // Versioned by the package release, so it is served with a long-lived immutable cache (N8).
-        // Symfony's header bag re-serialises Cache-Control directives in alphabetical order.
+        // Versioned by the package release, so it's served with a long-lived immutable cache. Symfony's
+        // header bag re-serialises Cache-Control directives alphabetically.
         ->assertHeader('Cache-Control', 'immutable, max-age=31536000, public')
         ->assertSee('api-reference', false);
 });
@@ -93,7 +93,7 @@ it('404s a viewer route whose document is no longer configured', function (): vo
     config()->set('docuccino.documents.default.viewer.gate', 'viewApiDocs');
     Gate::before(static fn ($user = null): bool => true);
 
-    // The route was registered at boot, but the document has since gone → hasDocument() is false.
+    // The route was registered at boot but the document has since gone, so hasDocument() is false.
     config()->set('docuccino.documents', []);
 
     $this->get('/docs/api.json')->assertNotFound();
@@ -118,8 +118,8 @@ it('serves source=artifact, re-emitting a UIR artifact as OpenAPI', function ():
 
     $body = $this->get('/docs/api.json')->assertOk()->getContent();
 
-    // Re-emitted through the OpenAPI emitter: it is OAS (no `uir` key) and carries no internal
-    // x-docuccino provenance leaked to the browser (security L1).
+    // Re-emitted through the OpenAPI emitter: it's OAS (no `uir` key) and leaks no internal x-docuccino
+    // provenance to the browser.
     expect($body)->toContain('"openapi"')
         ->and($body)->not->toContain('"uir"')
         ->and($body)->not->toContain('x-docuccino');
@@ -141,7 +141,7 @@ it('serves source=cache when warm, and falls back to generate when cold', functi
     config()->set('docuccino.documents.default.viewer.source', 'cache');
     Gate::before(static fn ($user = null): bool => true);
 
-    // Cold cache → F11 fallback generates a real spec rather than an empty body.
+    // A cold cache falls back to generating a real spec rather than serving an empty body.
     expect($this->get('/docs/api.json')->assertOk()->getContent())->toContain('/api/forms');
 
     // Warm the cache with a sentinel and confirm it is served verbatim.

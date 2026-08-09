@@ -10,10 +10,9 @@ use Docuccino\Core\Extensions\Validation\ValidationField;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
- * The character-class rules `alpha`, `alpha_num`, `alpha_dash` → a string `pattern` (Scribe-parity,
- * validation §4 #8). The canonical ECMA-262 patterns document the ASCII form Laravel enforces under
- * `:ascii` and the common default case; the `:ascii` parameter is accepted and needs no change. An
- * explicit type is preserved (the field defaults to string only when untyped).
+ * `alpha`, `alpha_num`, `alpha_dash` → a string `pattern`. The ECMA-262 patterns describe the ASCII form
+ * Laravel enforces under `:ascii`, which is also the common default, so the `:ascii` parameter needs no
+ * special handling. An explicit type is preserved; only untyped fields default to string.
  */
 final class AlphaRuleTransformer implements RuleTransformer
 {

@@ -11,11 +11,9 @@ use Docuccino\Laravel\Integrations\ApiResources\ResourceMediaType;
 use Docuccino\Laravel\Integrations\ApiResources\ResourceReflector;
 
 /**
- * The gated {@see PayloadMediaTypeResolver} for `timacdonald/json-api` resources: a payload that is a
- * timacdonald resource, or an anonymous collection of one, serialises as `application/vnd.api+json`.
- * Contributed only when `timacdonald_json_api` is enabled, so a disabled integration never flips the
- * media type. (The anonymous-collection predicate is the shared Illuminate one from the ApiResources
- * reflector — integration→integration reuse, allowed.)
+ * A timacdonald resource, or an anonymous collection of one, serialises as `application/vnd.api+json`.
+ * Contributed only while the integration is enabled, so a disabled one never flips the media type. The
+ * anonymous-collection check is the shared Illuminate one from the ApiResources reflector.
  */
 final class TimacdonaldMediaType implements PayloadMediaTypeResolver
 {

@@ -10,26 +10,24 @@ use Docuccino\Core\Inference\TypeScope;
 use PhpParser\Node;
 
 /**
- * Folds a named rate limiter's `RateLimiter::for($name, …)` closure to a concrete limit. Unlike the
- * chain-walking Query-Builder visitor, this is fed ONE return expression per closure return (the
- * engine's closure trace hands it the return exprs, not every node), so it navigates each return's
- * subtree itself and never requests descent.
+ * Folds a named limiter's `RateLimiter::for($name, …)` closure to a concrete limit. The engine's closure
+ * trace feeds this one return expression per closure return (not every node), so it navigates each
+ * return's subtree itself and never requests descent.
  *
- * Recovery matches a SINGLE unconditional `return Limit::perSecond/perMinute/perMinutes/perHour/perDay(…)`
- * of literal-int arguments, mapping the window to seconds (per-second → 1, per-minute → 60,
- * per-minutes($d) → $d·60, per-hour → 3600, per-day → 86400). A trailing `->by(…)` partition-key chain
- * is ignored (no doc effect). It BAILS — leaving {@see RateLimiterLimit::$bailed} set so the extension
- * keeps its numberless-429 + diagnostic floor — on multiple/conditional returns (>1 return fed), a
- * non-literal argument, `Limit::none()`/unlimited, an array of limits, or a `->response(…)` custom-body
- * chain. This is the Laravel-11-skeleton default (`fn ($r) => Limit::perMinute(60)->by(…)`) recovered.
+ * It recovers a single unconditional `return Limit::perSecond/perMinute/perMinutes/perHour/perDay(…)` of
+ * literal ints — i.e. the Laravel skeleton default, `fn ($r) => Limit::perMinute(60)->by(…)`. A trailing
+ * `->by(…)` partition key is ignored, having no doc effect. Everything else bails and leaves
+ * {@see RateLimiterLimit::$bailed} set so the extension keeps its numberless-429 + diagnostic floor:
+ * multiple or conditional returns, a non-literal argument, `Limit::none()`, an array of limits, or a
+ * `->response(…)` custom body.
  */
 final class RateLimiterLimitVisitor implements TraceVisitor
 {
     private const LIMIT = 'Illuminate\\Cache\\RateLimiting\\Limit';
 
     /**
-     * Fixed-window factory → its window length in seconds. `perMinutes` is handled separately (its
-     * decay is the first argument, not fixed).
+     * Fixed-window factory → window length in seconds. `perMinutes` is handled separately; its decay is
+     * an argument, not fixed.
      *
      * @var array<string, int>
      */
@@ -52,7 +50,7 @@ final class RateLimiterLimitVisitor implements TraceVisitor
 
         $this->limit->returnsSeen++;
         if ($this->limit->returnsSeen > 1) {
-            // A second return means the limiter branches (an if/else or multiple returns): conditional.
+            // A second return means the limiter branches, so the limit is conditional.
             $this->bail();
 
             return false;
@@ -68,16 +66,12 @@ final class RateLimiterLimitVisitor implements TraceVisitor
         return false;
     }
 
-    /**
-     * Strip a trailing `->by(…)` partition-key chain (ignored — key only, no doc effect) off the top
-     * of a return expression, returning the base `Limit::…` call. A `->response(…)` custom-body chain,
-     * or any other trailing method, bails and returns null.
-     */
+    /** Strips trailing `->by(…)` calls to get at the base `Limit::…`. Any other trailing method bails. */
     private function peelChain(Node\Expr $expr): ?Node\Expr
     {
         while ($expr instanceof Node\Expr\MethodCall && $expr->name instanceof Node\Identifier) {
             if ($expr->name->toString() !== 'by') {
-                $this->bail(); // ->response(…) custom body, or an unrecognised chain — do not fold
+                $this->bail(); // ->response(…) custom body, or an unrecognised chain
 
                 return null;
             }
@@ -93,8 +87,7 @@ final class RateLimiterLimitVisitor implements TraceVisitor
     {
         $value = $scope->constantValueOf($base);
         if ($value === null || ! $value->isDescriptor()) {
-            // A non-descriptor return: an array of limits, a ternary/conditional expression, a
-            // variable — nothing constant-foldable to a single Limit call.
+            // An array of limits, a ternary, a variable — nothing foldable to a single Limit call.
             $this->bail();
 
             return;
@@ -127,7 +120,7 @@ final class RateLimiterLimitVisitor implements TraceVisitor
         }
 
         if (! isset(self::WINDOWS[$method])) {
-            // `none()`/unlimited, or any factory outside the fixed-window set.
+            // `none()`/unlimited, or a factory outside the fixed-window set.
             $this->bail();
 
             return;
@@ -144,7 +137,7 @@ final class RateLimiterLimitVisitor implements TraceVisitor
         $this->limit->decaySeconds = self::WINDOWS[$method];
     }
 
-    /** The nth descriptor argument as a literal int, or null when it is absent / non-literal. */
+    /** The nth descriptor argument as a literal int; null when absent or non-literal. */
     private function intArg(ConstValue $descriptor, int $index): ?int
     {
         $arg = $descriptor->args[$index] ?? null;

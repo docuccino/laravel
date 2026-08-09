@@ -17,9 +17,8 @@ use Docuccino\Laravel\Support\Paths;
 use Illuminate\Console\Command;
 
 /**
- * Runs the pipeline for a document (or every document) and writes its UIR / OpenAPI artifact
- * (design §Commands). Diagnostics are printed grouped by route deterministically; the exit code
- * honours `--fail-on`.
+ * Builds a document (or every document) and writes its UIR / OpenAPI artifact. Diagnostics print
+ * grouped by route; the exit code honours `--fail-on`.
  */
 final class ExportCommand extends Command
 {
@@ -28,7 +27,7 @@ final class ExportCommand extends Command
     use IteratesDocuments;
     use RendersDiagnostics;
 
-    /** The emitter formats a caller may name via --format. */
+    /** Accepted --format values. */
     private const FORMATS = ['uir', 'openapi-3.2', 'openapi-3.1'];
 
     protected $signature = 'docuccino:export
@@ -47,8 +46,7 @@ final class ExportCommand extends Command
             return self::FAILURE;
         }
 
-        // An explicit --format must name a real emitter — a typo errors rather than silently
-        // falling back to OpenAPI 3.2 (which would ship the wrong artifact).
+        // A typo errors out rather than falling back to OpenAPI 3.2 and shipping the wrong artifact.
         $format = $this->option('format');
         if (is_string($format) && $format !== '' && ! in_array($format, self::FORMATS, true)) {
             $this->error(sprintf('Unknown --format "%s"; expected one of: %s.', $format, implode(', ', self::FORMATS)));
@@ -56,9 +54,7 @@ final class ExportCommand extends Command
             return self::FAILURE;
         }
 
-        // A single --out path cannot receive more than one document — the later ones would clobber
-        // the earlier (arch F9). Require a specific document, or drop --out and use per-document
-        // export.path.
+        // One --out path can't hold several documents — later ones would clobber earlier ones.
         $out = $this->option('out');
         if (is_string($out) && $out !== '' && ! is_string($this->argument('document')) && count($builder->documentKeys()) > 1) {
             $this->error('--out cannot be used when exporting multiple documents; pass a document argument or configure per-document export.path.');

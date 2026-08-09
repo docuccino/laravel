@@ -25,10 +25,10 @@ use Docuccino\Laravel\Tests\Fixtures\SpatieData\TagData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\TimestampData;
 
 /**
- * The harder spatie surfaces Wave B added — class-level/mapper-class mapping, dates, enums, nested
- * request recursion, defaults, #[Computed]/#[Rule]/#[DataCollectionOf], and the BaseData trigger —
- * exercised over idiomatic fixtures (real reflection for the attribute facts; a stub engine scripts
- * the property TYPES, since the analyzer's return-type work is proven out-of-process).
+ * The harder spatie surfaces — class-level/mapper-class mapping, dates, enums, nested request recursion,
+ * defaults, #[Computed]/#[Rule]/#[DataCollectionOf] and the BaseData trigger — over idiomatic fixtures.
+ * The attribute facts come from real reflection; a stub engine scripts the property types, since the
+ * analyzer's return-type work is proven out-of-process.
  */
 function accountEngine(): StubTypeEngine
 {
@@ -95,7 +95,7 @@ it('reflects the new attribute facts off the real class', function (): void {
 it('silently drops an object-valued #[Rule(new …)] but recovers the string form', function (): void {
     $reflector = new DataClassReflector;
 
-    // The custom rule OBJECT cannot be recovered statically → no tokens (the field keeps its type).
+    // A custom rule object can't be recovered statically, so no tokens — the field keeps its type.
     expect($reflector->validationTokens(PinnedRuleData::class, 'label'))->toBe([])
         // The string escape-hatch form still lands.
         ->and($reflector->validationTokens(PinnedRuleData::class, 'code'))->toBe(['max:5']);
@@ -113,7 +113,7 @@ it('documents a WithCast DateTimeInterfaceCast format:U property as an integer t
 
     $properties = $components->schemas()['TimestampData']['properties'];
 
-    // The `format: 'U'` cast → integer (Unix seconds); the plain datetime stays a date-time string.
+    // A `format: 'U'` cast becomes an integer (Unix seconds); a plain datetime stays a date-time string.
     expect($properties['expiresAt'])->toBe(['type' => 'integer', 'description' => 'Unix timestamp (seconds).'])
         ->and($properties['createdAt'])->toBe(['type' => 'string', 'format' => 'date-time']);
 
@@ -131,8 +131,8 @@ it('excludes route-parameter and explicitly request-hidden properties, but not o
         ->and($reflector->isExcludedFromRequest(RequestExclusionData::class, 'id'))->toBeTrue()
         // #[HiddenFromRequest] explicitly drops the field from the request body.
         ->and($reflector->isExcludedFromRequest(RequestExclusionData::class, 'internalToken'))->toBeTrue()
-        // #[Hidden] hides from OUTPUT only — it stays a sendable request field (the leakage lint's job
-        // is to surface such a field, so #[Hidden] must NOT silently remove it from the request).
+        // #[Hidden] hides from output only; the field stays sendable. Surfacing it is the leakage lint's
+        // job, so #[Hidden] mustn't quietly remove it from the request.
         ->and($reflector->isExcludedFromRequest(RequestExclusionData::class, 'secret'))->toBeFalse();
 });
 
@@ -146,7 +146,7 @@ it('recovers request rules: enum values, defaults, computed exclusion, and neste
     expect($ruleSet->fields)->not->toHaveKey('summary');
     // Class-level snake_case mapper renames the input keys.
     expect($ruleSet->fields)->toHaveKeys(['display_name', 'created_at', 'status', 'code', 'country']);
-    // Enum property → an `enum` rule carrying the backing values.
+    // An enum property becomes an `enum` rule carrying the backing values.
     $statusEnum = collect($ruleSet->fields['status'])->firstWhere('name', 'enum');
     expect($statusEnum?->parameters)->toBe(['active', 'suspended']);
     // Defaulted `country` is optional (sometimes), not required.
@@ -169,9 +169,9 @@ it('renders dates, enums, defaults, and collection items in the output schema', 
     $account = $components->schemas()['AccountData'];
     $props = $account['properties'];
 
-    // DateTimeInterface → a formatted string, not a bare object; DATE_ATOM is a date-time.
+    // DateTimeInterface becomes a formatted string, not a bare object; DATE_ATOM is a date-time.
     expect($props['created_at'])->toBe(['type' => 'string', 'format' => 'date-time']);
-    // #[DataCollectionOf] → an array of the item schema.
+    // #[DataCollectionOf] becomes an array of the item schema.
     expect($props['tags']['type'])->toBe('array')
         ->and($props['tags']['items'])->toHaveKey('$ref');
     // Constructor default surfaced as the schema default.

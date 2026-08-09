@@ -13,14 +13,13 @@ use Docuccino\Core\Patch\Contribution;
 use Docuccino\Laravel\Support\AuthMiddlewareDetector;
 
 /**
- * The security layer (design §Auth detection). `#[Unauthenticated]` marks an operation explicitly
- * public by clearing its requirement (an empty `security: []` overrides any document-level
- * default). Otherwise auto-detection inspects the route's middleware: a match against the
- * configured `auto_detect_middleware` pattern applies the document's default requirement
- * (`security.default`) at the integration layer, so attributes/config can still override it.
+ * The security layer (design §Auth detection). `#[Unauthenticated]` marks an operation public by
+ * clearing its requirement — an empty `security: []` beats any document-level default. Otherwise a
+ * middleware match against `auto_detect_middleware` applies the document's `security.default` at the
+ * integration layer, leaving attributes and config free to override.
  *
- * The scheme catalogue (`components.securitySchemes`) and any document-wide requirement are emitted
- * by the assembler from config; this extension only decides the per-operation requirement.
+ * Only the per-operation requirement is decided here; the scheme catalogue and any document-wide
+ * requirement come from the assembler.
  */
 final class SecurityExtension implements OperationExtension
 {

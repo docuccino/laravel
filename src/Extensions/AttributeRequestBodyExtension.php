@@ -13,12 +13,11 @@ use Docuccino\Core\Patch\Contribution;
 use Docuccino\Inference\PhpStan\Types\TypeStringParser;
 
 /**
- * Applies `#[BodyParameter]` attributes to the request body (design §Attribute set). Each attribute
- * PATCHES a single property of the inferred request body (from a FormRequest, inline validation, or a
- * spatie Data class): its named property is added or overridden while every inferred sibling property
- * is kept. When no request body was inferred, the attributes create one. The merged body is re-applied
- * at the attribute layer (PatchGuard-recorded), so an attribute always wins over inference for the
- * property it names, and the media type of an inferred body (e.g. multipart) is preserved.
+ * Applies `#[BodyParameter]` attributes to the request body (design §Attribute set). Each one patches a
+ * single property of the inferred body — adding or overriding just that property, keeping every
+ * inferred sibling — and creates a body outright when nothing was inferred. The merge is re-applied at
+ * the attribute layer, so the attribute wins for the property it names while an inferred body's media
+ * type (multipart, say) survives.
  */
 final class AttributeRequestBodyExtension implements OperationExtension
 {
@@ -52,7 +51,7 @@ final class AttributeRequestBodyExtension implements OperationExtension
                 $property['example'] = $attribute->example;
             }
 
-            // Add or override just this one property; inferred siblings stay in $properties.
+            // Just this one property; inferred siblings stay put.
             $properties[$attribute->name] = $property;
             $required = $this->withRequired($required, $attribute->name, $attribute->required);
         }
@@ -61,9 +60,8 @@ final class AttributeRequestBodyExtension implements OperationExtension
     }
 
     /**
-     * The already-inferred body decomposed into `[mediaType, properties, required, bodyRequired]`, or an
-     * empty `application/json` object body when nothing was inferred. The FIRST content media type wins,
-     * so a merge preserves an inferred multipart/JSON body's media type.
+     * The inferred body as `[mediaType, properties, required, bodyRequired]`, or an empty
+     * `application/json` object body. The first content media type wins.
      *
      * @return array{0: string, 1: array<string, mixed>, 2: list<string>, 3: bool}
      */
@@ -102,7 +100,7 @@ final class AttributeRequestBodyExtension implements OperationExtension
     }
 
     /**
-     * Add or drop a property name in the schema's `required` list (order-stable, no duplicates).
+     * Adds or drops a name in the `required` list, order-stable and duplicate-free.
      *
      * @param  list<string>  $required
      * @return list<string>

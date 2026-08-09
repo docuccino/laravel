@@ -15,13 +15,12 @@ use Docuccino\Core\Extensions\Validation\RuleSet;
 use Docuccino\Laravel\Integrations\Validation\RuleOrdering;
 
 /**
- * Documents a request from its validation rules (design §Phase 4 — FormRequest + inline validate).
- * It recovers a rule set statically — a FormRequest's `rules()` analysed as a constant array, else
- * an inline `$request->validate([...])` / `Validator::make(...)` traced in the action body — orders
- * it into Laravel's effect sequence, and runs it through the shared rule chain. Body verbs
- * (POST/PUT/PATCH) get a request body under the recovered media type (JSON, or multipart once a
- * file rule appears); read verbs (GET/HEAD) get query parameters. Attributes still override, since
- * this writes at the integration layer.
+ * Documents a request from its validation rules. Recovers a rule set statically — a FormRequest's
+ * `rules()` read as a constant array, else an inline `$request->validate([...])`/`Validator::make(…)`
+ * traced in the action body — orders it into Laravel's effect sequence, and runs it through the shared rule
+ * chain. Body verbs get a request body under the recovered media type (JSON, or multipart once a file rule
+ * appears); read verbs get query parameters. Attributes still override, as this writes at the integration
+ * layer.
  */
 final class ValidationRequestExtension implements OperationExtension
 {
@@ -48,14 +47,13 @@ final class ValidationRequestExtension implements OperationExtension
             return;
         }
 
-        // A FormRequest names the source class (its body hoists to a component); an inline
-        // `validate()`/`Validator::make()` body has no class to name honestly, so it stays inline.
+        // A FormRequest names its source class, so its body hoists to a component; an inline body has no
+        // class to name honestly and stays inline.
         $this->request->apply($operation, $context, $result, 'form-request', $sourceClass);
     }
 
     /**
-     * The recovered rule set paired with the single source class it came from (a FormRequest), or null
-     * for an inline body with no source class.
+     * The rule set plus the FormRequest class it came from; the class is null for an inline body.
      *
      * @return array{0: ?RuleSet, 1: ?string}
      */

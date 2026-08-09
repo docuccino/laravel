@@ -11,11 +11,9 @@ use Docuccino\Core\Extensions\Contracts\OperationPhase;
 use Docuccino\Laravel\Integrations\Support\JsonApiParameters;
 
 /**
- * Adds the JSON:API query parameters `timacdonald/json-api` resolves — `include` (compound documents)
- * and `fields[TYPE]` (sparse fieldsets) — to any operation whose action returns a timacdonald JSON:API
- * resource or collection ({@see TimacdonaldResourceReflector::involvesJsonApi()}), via the shared
- * {@see JsonApiParameters} applier. Guarded (with the schema mapper) behind `class_exists`, so it
- * never registers when the package is absent.
+ * Adds the JSON:API query parameters the package resolves — `include` for compound documents, `fields[TYPE]`
+ * for sparse fieldsets — to any operation returning a timacdonald resource or collection, via the shared
+ * {@see JsonApiParameters} applier.
  */
 final class TimacdonaldJsonApiParametersExtension implements OperationExtension
 {

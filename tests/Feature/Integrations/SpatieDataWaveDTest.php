@@ -24,11 +24,11 @@ use Illuminate\Routing\Router;
 use Workbench\App\Http\Controllers\FormController;
 
 /**
- * Wave D — the spatie/laravel-data leftovers (audit gaps 8/9/12 + the global name-mapping carry-over):
- * response wrapping (class `defaultWrap()` > global `config('data.wrap')` > none, and the paginated
- * no-double-wrap), the `include`/`exclude`/`only`/`except` request query-string partials, and the
- * whole-class default name-mapping strategy threaded into input+output keys. The static `rules()`
- * override's recovery half is proven against the real engine in RealEngineIntegrationsTest.
+ * The remaining spatie/laravel-data surface: response wrapping (class `defaultWrap()` beats global
+ * `config('data.wrap')` beats none, plus the paginated no-double-wrap), the
+ * `include`/`exclude`/`only`/`except` request query-string partials, and the whole-class default
+ * name-mapping strategy threaded into input and output keys. The static `rules()` override's recovery
+ * half is proven against the real engine in RealEngineIntegrationsTest.
  */
 function waveDEngine(): StubTypeEngine
 {
@@ -45,7 +45,7 @@ function waveDEngine(): StubTypeEngine
 }
 
 /**
- * Convert a type at the RESPONSE ROOT (depth 1) through a DataSchema carrying the given wrap resolver.
+ * Convert a type at the response root (depth 1) through a DataSchema carrying the given wrap resolver.
  */
 function convertWithWrap(ClassT $type, WrapResolver $wrap): array
 {
@@ -55,9 +55,7 @@ function convertWithWrap(ClassT $type, WrapResolver $wrap): array
     return ['root' => $converter->toSchema($type)->schema, 'components' => $components];
 }
 
-// ---------------------------------------------------------------------------------------------------
-// (b) Wrapping — precedence + non-double-wrap.
-// ---------------------------------------------------------------------------------------------------
+// Wrapping — precedence + non-double-wrap.
 
 it('wraps a top-level Data object under the class defaultWrap() key', function (): void {
     // defaultWrap() → 'record' wins even with a global 'data' configured (WrapType::Defined).
@@ -68,7 +66,7 @@ it('wraps a top-level Data object under the class defaultWrap() key', function (
         'properties' => ['record' => ['$ref' => '#/components/schemas/Wrapped']],
         'required' => ['record'],
     ]);
-    // The hoisted component itself stays UNWRAPPED so a shared/nested $ref never carries the envelope.
+    // The hoisted component itself stays unwrapped so a shared/nested $ref never carries the envelope.
     expect(array_keys($result['components']->schemas()['Wrapped']['properties']))->toBe(['id', 'name']);
 });
 
@@ -89,8 +87,8 @@ it('leaves a top-level Data object unwrapped when neither defaultWrap() nor glob
 });
 
 it('does not wrap a nested Data property (only the response root is wrapped)', function (): void {
-    // Convert WrappedData at the root with a global wrap: the root is wrapped, but AuthorData appearing
-    // as a nested property inside another component must NOT be wrapped (its component body is flat).
+    // With a global wrap the root is wrapped, but AuthorData appearing as a nested property inside
+    // another component isn't — its component body stays flat.
     $result = convertWithWrap(new ClassT(AuthorData::class), new WrapResolver('data'));
 
     // The AuthorData component (a would-be nested shape) has no wrap key baked into its body.
@@ -104,8 +102,8 @@ it('uses the wrap key as the paginated envelope items key without double-wrappin
         new WrapResolver($wrap),
     );
 
-    // The envelope is {itemsKey, links, meta} — the wrap key becomes the items key, NOT an outer wrap
-    // around the whole {data,links,meta} shape (spatie's PaginatedCollectionIsAlwaysWrapped).
+    // The envelope is {itemsKey, links, meta}: the wrap key becomes the items key rather than an outer
+    // wrap around the whole {data,links,meta} shape (spatie's PaginatedCollectionIsAlwaysWrapped).
     expect(array_keys($result['root']['properties']))->toBe([$expectedItemsKey, 'links', 'meta'])
         ->and($result['root']['required'])->toBe([$expectedItemsKey, 'links', 'meta'])
         ->and($result['root']['properties'][$expectedItemsKey]['type'])->toBe('array')
@@ -145,13 +143,11 @@ it('reads a literal defaultWrap() override off the class, and null for a class w
         ->and((new WrapResolver)->key(null))->toBeNull();
 });
 
-// ---------------------------------------------------------------------------------------------------
-// (c) include / exclude / only / except request partials.
-// ---------------------------------------------------------------------------------------------------
+// include / exclude / only / except request partials.
 
 it('detects only the overridden allowedRequest*() partials on a Data class', function (): void {
-    // WrappedData overrides allowedRequestIncludes() + allowedRequestOnly(); exclude/except are the
-    // inert base methods, so they are NOT documented.
+    // WrappedData overrides allowedRequestIncludes() + allowedRequestOnly(); exclude/except are the inert
+    // base methods, so they aren't documented.
     expect((new DataClassReflector)->requestPartials(WrappedData::class))->toBe(['include', 'only'])
         ->and((new DataClassReflector)->requestPartials(AuthorData::class))->toBe([]);
 });
@@ -179,14 +175,12 @@ it('adds the overridden partials as query params on an action returning the Data
         ->and($byName['only']['x-docuccino']['provenance'][0]['producer'])->toBe('integration:spatie-data');
 });
 
-// ---------------------------------------------------------------------------------------------------
-// (d) Global name-mapping strategy threaded into input + output keys.
-// ---------------------------------------------------------------------------------------------------
+// Global name-mapping strategy threaded into input + output keys.
 
 it('applies the global name-mapping strategy to every unmapped key (input + output)', function (?string $mapper, string $expected): void {
     $reflector = new DataClassReflector(globalInputMapper: $mapper, globalOutputMapper: $mapper);
 
-    // displayName has no map attribute → the global strategy governs it (both directions).
+    // displayName has no map attribute, so the global strategy governs it in both directions.
     expect($reflector->inputName(PlainCasedData::class, 'displayName'))->toBe($expected)
         ->and($reflector->outputName(PlainCasedData::class, 'displayName'))->toBe($expected);
 })->with([
@@ -200,7 +194,7 @@ it('applies the global name-mapping strategy to every unmapped key (input + outp
 it('lets an explicit #[MapName] win over the global strategy, and degrades an unknown global mapper', function (): void {
     $snake = new DataClassReflector(globalInputMapper: 'Spatie\\LaravelData\\Mappers\\SnakeCaseMapper', globalOutputMapper: 'Spatie\\LaravelData\\Mappers\\SnakeCaseMapper');
 
-    // userName carries #[MapName('handle')] → the attribute wins, the global default is ignored.
+    // userName carries #[MapName('handle')], so the attribute wins and the global default is ignored.
     expect($snake->inputName(PlainCasedData::class, 'userName'))->toBe('handle')
         ->and($snake->outputName(PlainCasedData::class, 'userName'))->toBe('handle');
 
@@ -208,7 +202,7 @@ it('lets an explicit #[MapName] win over the global strategy, and degrades an un
     $unknown = new DataClassReflector(globalInputMapper: 'App\\Mappers\\Custom', globalOutputMapper: 'App\\Mappers\\Custom');
     expect($unknown->inputName(PlainCasedData::class, 'displayName'))->toBe('displayName');
 
-    // No global strategy → the property name is used verbatim.
+    // With no global strategy the property name is used verbatim.
     expect((new DataClassReflector)->outputName(PlainCasedData::class, 'displayName'))->toBe('displayName');
 });
 

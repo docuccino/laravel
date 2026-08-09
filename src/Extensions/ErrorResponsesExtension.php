@@ -15,10 +15,9 @@ use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Provenance\Source;
 
 /**
- * Turns the action's signalled exceptions into error responses (design §Errors) by running each
- * through the resolved {@see ExceptionToResponse} chain
- * (first supports() + non-null wins) and merging the result into the operation via the shared
- * {@see ResponseDraftApplier}. Skipped when the document sets `error_responses => 'none'`.
+ * Turns the action's signalled exceptions into error responses (design §Errors): each runs through the
+ * resolved {@see ExceptionToResponse} chain (first supports() wins) and merges in via
+ * {@see ResponseDraftApplier}. Skipped when `error_responses => 'none'`.
  */
 final class ErrorResponsesExtension implements OperationExtension
 {
@@ -50,10 +49,8 @@ final class ErrorResponsesExtension implements OperationExtension
     }
 
     /**
-     * The provenance source for an explicit throw: its recovered throw site (the first call-chain
-     * frame), falling back to the action itself when the engine reported no usable location — so an
-     * explicit-throw error response carries a source exactly as a synthesized one does (arch review
-     * PIN 4), rather than a sourceless contribution.
+     * The throw site (first call-chain frame), falling back to the action when the engine had no usable
+     * location — so an explicit throw carries a source just like a synthesized one, never none.
      */
     private function throwSource(RouteContext $context, ThrownException $throw): ?Source
     {

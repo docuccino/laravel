@@ -20,10 +20,10 @@ use Docuccino\Laravel\Tests\Fixtures\SpatieData\ArticleData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\AuthorData;
 
 /**
- * The spatie/laravel-data integration (Phase 4): a Data class → hoisted component honouring the
- * reflected presentation facts (`#[Hidden]`, `#[MapName]`, `Optional`, `#[SchemaName]`/`#[SchemaId]`,
- * nested recursion), its collection variants → array / paginator envelopes, and the request-side
- * rule recovery that feeds the shared validation chain.
+ * The spatie/laravel-data integration: a Data class becomes a hoisted component honouring the reflected
+ * presentation facts (`#[Hidden]`, `#[MapName]`, `Optional`, `#[SchemaName]`/`#[SchemaId]`, nested
+ * recursion), its collection variants become array / paginator envelopes, and the request side recovers
+ * rules for the shared validation chain.
  */
 function spatieDataEngine(): StubTypeEngine
 {
@@ -67,9 +67,9 @@ it('hoists a Data class to a component honouring #[SchemaName]/#[SchemaId], hidd
     // secret (spatie #[Hidden]) and internal (class-level Docuccino #[Hidden]) are dropped; title is
     // renamed to its #[MapName] output key.
     expect(array_keys($article['properties']))->toBe(['id', 'headline', 'body', 'subtitle', 'author']);
-    // Only the Optional-marked subtitle is non-required (marker stripped). A nullable-but-always-
-    // emitted property (author) stays required under the cross-mapper required-vs-nullable convention
-    // (Wave C item 8): the key is on the wire carrying null.
+    // Only the Optional-marked subtitle is non-required (marker stripped). A nullable-but-always-emitted
+    // property (author) stays required under the cross-mapper required-vs-nullable convention: the key is
+    // on the wire, carrying null.
     expect($article['required'])->toBe(['id', 'headline', 'body', 'author'])
         ->and($article['properties']['subtitle'])->toBe(['type' => 'string'])
         // author is nullable AuthorData → an anyOf referencing the hoisted component + null.
@@ -79,12 +79,12 @@ it('hoists a Data class to a component honouring #[SchemaName]/#[SchemaId], hidd
 it('renders a paginated DataCollection as spatie\'s own length-aware envelope', function (): void {
     $converter = new SchemaConverter([new DataSchema, ...DefaultTypeMappers::all()], spatieDataEngine(), new ComponentRegistry);
 
-    // The TWO-arg shape spatie's own generics (`@template TKey of array-key, @template TValue`) and the
-    // docblock parser produce: [TKey=int, TValue=AuthorData]. The item type is the LAST arg — reading
-    // typeArgs[0] here would document the items as `{type: integer}` (the key), the confirmed A1 bug.
+    // The two-arg shape spatie's own generics (`@template TKey of array-key, @template TValue`) and the
+    // docblock parser produce: [TKey=int, TValue=AuthorData]. The item type is the *last* arg — reading
+    // typeArgs[0] would document the items as `{type: integer}`, i.e. the key.
     $paginated = $converter->toSchema(new ClassT('Spatie\\LaravelData\\PaginatedDataCollection', [ScalarT::int(), new ClassT(AuthorData::class)]))->schema;
-    // Spatie's shape (NOT the Laravel resource envelope): data/links/meta all required, `links` is an
-    // array of {url,label,active} objects, and `meta` carries the *_page_url members (audit gap 7).
+    // Spatie's own shape, not the Laravel resource envelope: data/links/meta all required, `links` an
+    // array of {url,label,active} objects, `meta` carrying the *_page_url members.
     expect($paginated['type'])->toBe('object')
         ->and($paginated['required'])->toBe(['data', 'links', 'meta'])
         ->and($paginated['properties']['data']['type'])->toBe('array')
@@ -109,7 +109,7 @@ it('reads the collection ITEM type from the last generic arg across arities', fu
         expect($simple['items'])->toHaveKey('$ref')
             ->and($simple['items'])->not->toBe(['type' => 'integer']);
     } else {
-        // Bare `DataCollection` (no generics) → an untyped item array (empty items schema).
+        // Bare `DataCollection` (no generics) gives an untyped item array.
         expect($simple['items'])->toBe([]);
     }
 })->with([

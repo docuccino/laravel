@@ -5,13 +5,10 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\RateLimit;
 
 /**
- * A parsed `throttle` middleware declaration. Two shapes: a numeric limit (`throttle:60,1` →
- * {@see $maxAttempts}/{@see $decayMinutes} known) whose numbers document the rate headers, or a
- * named limiter (`throttle:api` → {@see $name}) whose limit is defined by a `RateLimiter::for`
- * closure. A named limiter whose closure the engine could fold to a single `Limit::per*(…)` becomes
- * a numeric limit carrying {@see $decaySeconds} (per-second/hour/day windows do not fit the
- * middleware's whole-minute {@see $decayMinutes}); one it could not stays named and documents the
- * 429 without numbers.
+ * A parsed `throttle` declaration, either numeric (`throttle:60,1`) or named (`throttle:api`, its limit
+ * defined by a `RateLimiter::for` closure). A named limiter the engine manages to fold becomes numeric and
+ * carries {@see $decaySeconds}, since per-second/hour/day windows don't fit the middleware's whole-minute
+ * {@see $decayMinutes}; one it can't fold stays named and documents the 429 without numbers.
  */
 final readonly class ThrottleLimit
 {
@@ -29,9 +26,8 @@ final readonly class ThrottleLimit
     }
 
     /**
-     * The `Retry-After` example in whole seconds: a folded named limiter carries its window directly
-     * in {@see $decaySeconds}; the inline `throttle:60,1` form derives it from the whole-/fractional-
-     * minute decay (unchanged, so the numeric-throttle output stays byte-identical).
+     * The `Retry-After` example, in whole seconds. A folded named limiter has its window directly; the
+     * inline form derives it from the (possibly fractional) minute decay.
      */
     public function retryAfterSeconds(): int
     {

@@ -10,11 +10,10 @@ use Docuccino\Core\Extensions\Validation\ValidationField;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
- * The numeric-constraint rules (validation §4 #11): `multiple_of` → `multipleOf`; `decimal` → a `number`
- * with a decimal-places description; and the NUMERIC-LITERAL forms of `gt`/`gte`/`lt`/`lte` →
- * `exclusiveMinimum`/`minimum`/`exclusiveMaximum`/`maximum`. The comparison rules also accept a FIELD
- * reference (`gt:other_field`), which is NOT a bound — that form is described, never mis-read as a
- * literal. Defaults an untyped field to `number`.
+ * `multiple_of` → `multipleOf`; `decimal` → a `number` with a decimal-places description; and the
+ * numeric-literal forms of `gt`/`gte`/`lt`/`lte` → `exclusiveMinimum`/`minimum`/`exclusiveMaximum`/`maximum`.
+ * The comparisons also accept a field reference (`gt:other_field`), which is not a bound — that form is
+ * described, never read as a literal. Untyped fields default to `number`.
  */
 final class NumericRuleTransformer implements RuleTransformer
 {

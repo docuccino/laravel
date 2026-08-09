@@ -14,12 +14,10 @@ use Docuccino\Core\Inference\DType\DType;
 use Docuccino\Laravel\Integrations\Support\JsonApiDocument;
 
 /**
- * Maps a `timacdonald/json-api` resource (`TiMacDonald\JsonApi\JsonApiResource`, guarded by
- * `class_exists`) to a JSON:API document schema through the shared {@see JsonApiDocument} builder —
- * the same `toId`/`toType`/`toAttributes`/`toRelationships`/`toLinks`/`toMeta` surface Laravel 13's
- * first-party resources expose (the package is what they were upstreamed from), so pre-13 apps get
- * identical output. Runs ahead of the always-on `JsonResourceSchema` (a timacdonald resource IS a
- * `JsonResource`), so it wins the chain for these types.
+ * Maps a `timacdonald/json-api` resource to a JSON:API document schema through the shared
+ * {@see JsonApiDocument} builder. The package exposes the same `toId`/`toType`/`toAttributes`/… surface
+ * Laravel 13's first-party resources were upstreamed from, so pre-13 apps get identical output. Runs ahead
+ * of the always-on `JsonResourceSchema`, since a timacdonald resource is also a `JsonResource`.
  */
 #[ExtensionOrder(priority: Priorities::FIRST)]
 final class TimacdonaldJsonApiResourceSchema implements TypeToSchema

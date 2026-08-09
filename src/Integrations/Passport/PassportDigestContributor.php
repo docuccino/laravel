@@ -8,11 +8,10 @@ use Docuccino\Core\Extensions\Contracts\EnvironmentDigestContributor;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 
 /**
- * Contributes Passport's output-shaping booted-app state to the environment digest (design §10, A4):
- * `app.url` (feeds the oauth2 flow URLs into operation security), the scope catalogue
- * (`Passport::tokensCan()`), and whether the password / implicit grants were opted into. The runtime
- * facts arrive pre-read via {@see PassportRuntime} (the integration stays vendor-import-free — the
- * service provider reads the vendor class and injects them). Gated with the Passport integration.
+ * Feeds the booted-app state that shapes Passport output into the environment digest (design §10): `app.url`
+ * behind the oauth2 flow URLs, the `Passport::tokensCan()` catalogue, and whether the password/implicit
+ * grants were opted into. Runtime facts arrive pre-read via {@see PassportRuntime}, keeping this integration
+ * free of vendor imports.
  */
 final class PassportDigestContributor implements EnvironmentDigestContributor
 {

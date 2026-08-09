@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\Sanctum;
 
 /**
- * One Sanctum token-ability requirement recovered from an `abilities:`/`ability:` middleware (or the
- * legacy scope middleware, or a `#[Abilities]` attribute): its `match` semantics — `all` for
- * `CheckAbilities`/`abilities:`, `any` for `CheckForAnyAbility`/`ability:` — and the abilities it
- * demands. Feeds both the `x-abilities` extension member and the generated description line. Because
- * `sanctumToken` is an HTTP bearer scheme, OAS cannot carry abilities as scopes, so they live here.
+ * One Sanctum token-ability requirement, from an `abilities:`/`ability:` middleware, the legacy scope
+ * middleware, or a `#[Abilities]` attribute. Match semantics are `all` for `CheckAbilities`/`abilities:`
+ * and `any` for `CheckForAnyAbility`/`ability:`. Feeds the `x-abilities` member and the description line.
  */
 final readonly class AbilityRequirement
 {
@@ -35,8 +33,8 @@ final readonly class AbilityRequirement
     }
 
     /**
-     * The human description line. A single ability reads the same for both match modes; a multi-value
-     * `any` says so explicitly ("any of these …") so it doesn't read as an all-of set.
+     * A single ability reads the same either way; a multi-value `any` says so explicitly, or it would read
+     * as an all-of set.
      */
     public function describe(): string
     {

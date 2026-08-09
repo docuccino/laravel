@@ -8,21 +8,20 @@ use Docuccino\Laravel\Integrations\Support\FrameworkExceptionTable;
 
 /**
  * The RFC 9457 (`application/problem+json`) shapes the Problem Details preset hoists: the shared
- * `ProblemDetails` object every problem response builds on, plus the per-status reusable response
- * bodies with their examples. Pure data (no I/O) so a dataset test can drive every entry.
+ * `ProblemDetails` object, plus the per-status reusable response bodies and their examples. Pure data,
+ * so a dataset test can drive every entry.
  */
 final class ProblemDetailsSchema
 {
     public const MEDIA_TYPE = 'application/problem+json';
 
-    /** The identity the shared component dedupes under, regardless of how many responses reference it. */
+    /** The identity the shared component dedupes under, however many responses reference it. */
     public const SCHEMA_ID = 'docuccino:problem-details';
 
     public const SCHEMA_NAME = 'ProblemDetails';
 
     /**
-     * The RFC 9457 members (`type`, `title`, `status`, `detail`, `instance`). An app may extend a
-     * problem with its own members, so the object stays open (no `additionalProperties: false`).
+     * The RFC 9457 members. Stays open (no `additionalProperties: false`) — apps may add their own.
      *
      * @return array<string, mixed>
      */
@@ -41,14 +40,9 @@ final class ProblemDetailsSchema
     }
 
     /**
-     * The per-status response component table (design coverage standard: a dataset test drives EVERY
-     * entry). Each maps a framework exception FQCN to the reusable `#/components/responses/Problem*`
-     * it hoists: its component name, HTTP status, human title, and an RFC 9457 example. `422`
-     * additionally grafts the field-keyed `errors` map onto the shared schema.
-     *
-     * Status, validation-flag and title (the RFC reason phrase) come from the shared
-     * {@see FrameworkExceptionTable} so this preset can never drift from the framework-errors tier;
-     * only the RFC 9457 presentation (component name + human detail) is local.
+     * Framework exception FQCN → the reusable `#/components/responses/Problem*` it hoists. Status,
+     * validation flag and title come from {@see FrameworkExceptionTable} so this preset can't drift from
+     * the framework-errors tier; only the RFC 9457 presentation (component name, human detail) is local.
      *
      * @return array<string, array{component: string, status: string, title: string, description: string, validation: bool}>
      */
@@ -81,8 +75,8 @@ final class ProblemDetailsSchema
     }
 
     /**
-     * The reusable response body for a table entry: the shared `ProblemDetails` (via `$ref`), the
-     * problem media type, a per-status example, and — for 422 — the grafted `errors` map.
+     * The reusable response body for a table entry. Validation entries graft an `errors` member onto the
+     * shared schema via `allOf`.
      *
      * @param  array{component: string, status: string, title: string, description: string, validation: bool}  $entry
      * @param  array<string, mixed>  $problemRef  the `{"$ref": …}` to the shared ProblemDetails schema
@@ -116,8 +110,7 @@ final class ProblemDetailsSchema
     }
 
     /**
-     * The inline problem response for an HttpException whose status is only known at document time
-     * (dynamic status hint) — no shared component, just the ProblemDetails body under that status.
+     * For an HttpException whose status is only known at document time: inline, no shared component.
      *
      * @param  array<string, mixed>  $problemRef
      * @return array<string, mixed>
@@ -136,8 +129,7 @@ final class ProblemDetailsSchema
     }
 
     /**
-     * The default 422 `errors` representation: a field-keyed map of message lists (`{field: [msg]}`),
-     * matching Laravel's stock validation JSON.
+     * Default 422 `errors`: a field-keyed map of message lists, matching Laravel's stock validation JSON.
      *
      * @return array{schema: array<string, mixed>, example: array<string, mixed>}
      */
@@ -153,8 +145,8 @@ final class ProblemDetailsSchema
     }
 
     /**
-     * The `pointer-list` 422 `errors` representation: a list of `{detail, pointer}` objects, where
-     * `pointer` is a JSON Pointer to the offending member (RFC 9457 style).
+     * The `pointer-list` 422 `errors`: RFC 9457-style `{detail, pointer}` objects, `pointer` being a JSON
+     * Pointer to the offending member.
      *
      * @return array{schema: array<string, mixed>, example: list<array<string, string>>}
      */

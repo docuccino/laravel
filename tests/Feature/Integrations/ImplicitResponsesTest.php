@@ -27,11 +27,11 @@ use Docuccino\Laravel\Tests\Fixtures\FormRequest\GateRequest;
 use Docuccino\Laravel\Tests\Fixtures\FormRequest\PlainRequest;
 
 /**
- * The implicit-response matrix (design §Errors): 401/422/404/403 synthesized from statically-visible
- * middleware / binding / request signals, flowed through the resolved exception→response chain. Each
- * signal has positive rows and the negative rows the brief mandates (#[Unauthenticated] suppresses 401;
- * no bindings → no 404; authorize() returning literal true → no 403; #[IgnoreResponse] opt-out;
- * error_responses => 'none' emits nothing).
+ * The implicit-response matrix: 401/422/404/403 synthesized from statically visible middleware, binding
+ * and request signals, flowed through the resolved exception→response chain. Each signal has positive rows
+ * and negative ones — #[Unauthenticated] suppresses the 401, no bindings means no 404, an authorize()
+ * returning literal true means no 403, #[IgnoreResponse] opts out, and error_responses => 'none' emits
+ * nothing at all.
  */
 function implicitResponseMappers(string $errorResponses): array
 {
@@ -104,9 +104,8 @@ it('adds no 401 to a route without auth middleware', function (): void {
 it('synthesizes a 422 when a validated request body was recovered at the integration layer', function (string $producer): void {
     $context = implicitContext(new RouteDescriptor(['POST'], 'api/things'));
     $operation = new OperationDraft;
-    // Stand in for a request-recovery integration having recovered a body (its integration producer
-    // owns it). Layer-based, not a closed producer list: form-request/spatie-data/laravel-actions all
-    // qualify, and so does a third-party recoverer writing at the integration layer.
+    // Stands in for a request-recovery integration having recovered a body. The trigger is the layer, not a
+    // closed producer list, so a third-party recoverer writing at the integration layer qualifies too.
     $operation->set('requestBody', ['content' => ['application/json' => ['schema' => ['type' => 'object']]]], Contribution::integration($producer));
 
     expect(implicitStatuses(runImplicit($context, $operation)))->toContain('422');

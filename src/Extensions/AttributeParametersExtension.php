@@ -19,18 +19,16 @@ use Docuccino\Core\Patch\Contribution;
 use Docuccino\Inference\PhpStan\Types\TypeStringParser;
 
 /**
- * Applies the parameter attributes as the attribute precedence layer (design §7): query, header,
- * cookie and explicit path parameters, plus `#[IgnoreParam]` removals. Type strings are parsed to
- * a DType and converted through the route's schema chain, so `#[QueryParameter(type: 'int')]`
- * yields an integer schema.
+ * Applies the parameter attributes at the attribute precedence layer (design §7): query, header,
+ * cookie and explicit path parameters, plus `#[IgnoreParam]` removals. Type strings are parsed to a
+ * DType and converted through the route's schema chain, so `#[QueryParameter(type: 'int')]` gives an
+ * integer schema.
  *
- * A bracketed query name (`#[QueryParameter('filter[status]')]`) patches the matching property of a
- * deepObject container parameter (`filter`, style deepObject) when one is present — the deepObject
- * representation's equivalent of the flat `filter[status]` parameter it patches under the bracketed
- * representation. type/description/example/default land on the property schema and `required` on the
- * container's `required` list; both styles patch an existing member and create a missing one, so the
- * two representations behave identically. With no such container (the default bracketed style) the
- * attribute keeps patching a flat `filter[status]` parameter exactly as before.
+ * A bracketed name (`#[QueryParameter('filter[status]')]`) patches the matching property of a
+ * deepObject container parameter when one exists — type/description/example/default onto the property
+ * schema, `required` onto the container's `required` list — so the deepObject and flat bracketed
+ * representations behave identically. With no such container it patches a flat `filter[status]`
+ * parameter instead. Both create the member if it's missing.
  */
 final class AttributeParametersExtension implements OperationExtension
 {
@@ -49,8 +47,8 @@ final class AttributeParametersExtension implements OperationExtension
             $this->remove($operation, $ignore->name, $ignore->in);
         }
 
-        // Deep-object property `required` merges accumulate per container so the list is written once
-        // (a second equal-layer write would shadow rather than append).
+        // Accumulate per container and write the `required` list once — a second equal-layer write
+        // would shadow rather than append.
         $deepRequired = [];
         foreach ($context->attributes->all(QueryParameter::class) as $attribute) {
             $property = $this->deepObjectProperty($operation, $attribute->name);
@@ -118,9 +116,8 @@ final class AttributeParametersExtension implements OperationExtension
     }
 
     /**
-     * When `$name` is bracketed (`parent[child]`) AND a deepObject query parameter named `parent`
-     * already exists, return its `child` property draft (created if absent, mirroring the flat path's
-     * create-on-miss) with the parent/child names; otherwise null (patch a flat parameter as before).
+     * For a bracketed `parent[child]` name where a deepObject query parameter `parent` exists: the
+     * `child` property draft (created if absent) plus both names. Null means patch a flat parameter.
      *
      * @return array{0: string, 1: string, 2: SchemaDraft}|null
      */
@@ -143,7 +140,7 @@ final class AttributeParametersExtension implements OperationExtension
         return [$parent, $child, $container->schema()->property($child)];
     }
 
-    /** Apply the attribute's type/description/default/example onto a deepObject property's schema. */
+    /** Type/description/default/example onto a deepObject property's schema. */
     private function applyToProperty(
         SchemaDraft $property,
         RouteContext $context,
@@ -171,8 +168,8 @@ final class AttributeParametersExtension implements OperationExtension
     }
 
     /**
-     * Merge each container's required child names into its object schema's `required` list — once per
-     * container, since re-writing an equal-layer field would be shadowed rather than merged.
+     * Merges each container's required child names into its schema's `required` list, once per
+     * container: an equal-layer rewrite would shadow, not merge.
      *
      * @param  array<string, list<string>>  $deepRequired
      */

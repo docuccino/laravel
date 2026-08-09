@@ -10,11 +10,10 @@ use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParameters;
 use Docuccino\Laravel\Integrations\Support\QueryParameterSpec;
 
 /**
- * The crown jewel (design §Phase 4 — the Scramble-Pro-beater), end-to-end on the REAL engine:
- * the spike-B fixture builds its allow-lists inside a `UserIndexQuery` helper two calls deep and
- * paginates behind a custom `paginateList` terminal, with ZERO doc annotations. This asserts the
- * real PHPStan/Larastan engine recovers those facts through the trace boundary AND that the QB
- * integration's parameter builder turns them into the right query parameters under both
+ * The Query Builder integration end-to-end on the real engine. The fixture builds its allow-lists
+ * inside a `UserIndexQuery` helper two calls deep and paginates behind a custom `paginateList`
+ * terminal, with no doc annotations at all: the engine has to recover those facts through the trace
+ * boundary, and the parameter builder has to turn them into the right query parameters under both
  * representation styles. Recovery is real; only the fold-to-facts glue is test code.
  */
 beforeEach(function (): void {
@@ -104,9 +103,9 @@ it('turns the real-engine harvest into a deepObject filter param under the deepO
 })->group('fixture');
 
 it('recovers a subject model and types an enum-cast exact filter through the real engine', function (): void {
-    // The REAL QueryBuilderTraceVisitor recovers `QueryBuilder::for(Listing::class)` and the REAL
-    // FilterColumnResolver reflects the model's `status` enum cast → the enum's backing values +
-    // #[CaseDescription]s, exactly what the extension emits into the filter[status] schema.
+    // QueryBuilderTraceVisitor recovers `QueryBuilder::for(Listing::class)` and FilterColumnResolver
+    // reflects the model's `status` enum cast into the enum's backing values + #[CaseDescription]s —
+    // exactly what the extension emits into the filter[status] schema.
     $harvest = FixtureRunner::traceQbEnrich(
         'app/Http/Controllers/ListingQueryController.php',
         'App\\Http\\Controllers\\ListingQueryController',
@@ -134,16 +133,16 @@ it('recovers a subject model and types an enum-cast exact filter through the rea
     // The non-exact plain filter is not cast-typed (stays a string).
     expect($byName['title']['columnKind'])->toBeNull();
 
-    // The leading `// Full-text match on the listing title.` comment is recovered on the real engine —
-    // proving PHPStan's parser attributes the comment to the array item the way ParserFactory does, so
-    // the comment→description override actually fires (previously proven only over bare parser nodes).
+    // The leading `// Full-text match on the listing title.` comment recovers on the real engine, so
+    // PHPStan's parser attributes it to the array item the way ParserFactory does and the
+    // comment→description override actually fires.
     expect($byName['title']['comment'])->toBe('Full-text match on the listing title.');
 })->group('fixture');
 
 it('types a scope filter off its enum value parameter and a callback filter off its where column, on the real engine', function (): void {
-    // The REAL trace recovers Listing as the subject; ScopeParameterResolver reflects
-    // scopeStatus(Builder, ListingStatus) → the enum's values + case descriptions, and the callback
-    // closure's `where('active', $value)` column types off the model's boolean cast — round-2 kinds.
+    // The trace recovers Listing as the subject; ScopeParameterResolver reflects
+    // scopeStatus(Builder, ListingStatus) into the enum's values + case descriptions, and the callback
+    // closure's `where('active', $value)` column types off the model's boolean cast.
     $harvest = FixtureRunner::traceQbEnrich(
         'app/Http/Controllers/ListingFilterKindsController.php',
         'App\\Http\\Controllers\\ListingFilterKindsController',
@@ -171,18 +170,18 @@ it('types a scope filter off its enum value parameter and a callback filter off 
 })->group('fixture');
 
 it('follows a `$query->query()` hop into a Query class OUTSIDE the project paths (modular layout)', function (): void {
-    // InvoiceController + InvoiceIndexQuery live under `modules/` (namespace Modules\Billing), which is
-    // NOT in the engine's project paths (only `app/` is) — exactly the modular layout that hides a real
-    // app's filters. The controller body is `$this->query->query()->paginateList(...)`; the allow-lists live
-    // inside InvoiceIndexQuery::query(): ListQueryBuilder. Recovering them proves the engine follows
-    // the QueryBuilder-return-type hop beyond the project paths (never into vendor).
+    // InvoiceController + InvoiceIndexQuery live under `modules/` (namespace Modules\Billing), outside
+    // the engine's project paths (only `app/` is in them) — the modular layout that hides a real app's
+    // filters. The controller body is `$this->query->query()->paginateList(...)` and the allow-lists live
+    // inside InvoiceIndexQuery::query(): ListQueryBuilder, so recovering them means the engine follows
+    // the QueryBuilder-return-type hop beyond the project paths, never into vendor.
     $harvest = FixtureRunner::traceQbEnrich(
         'modules/Billing/InvoiceController.php',
         'Modules\\Billing\\InvoiceController',
         'index',
     );
 
-    // Subject model + filters recovered THROUGH the out-of-project hop.
+    // Subject model + filters recovered through the out-of-project hop.
     expect($harvest['subjectModel'])->toBe('App\\Models\\Listing')
         ->and($harvest['sorts'])->toBe(['title']);
 
@@ -199,15 +198,15 @@ it('follows a `$query->query()` hop into a Query class OUTSIDE the project paths
         ->and($byName['status']['comment'])->toBe('The listing\'s publication status.');
 
     // Cache soundness: the out-of-project Query class file lands in the trace's dependency set, so
-    // editing it invalidates the warm fragment (the follow-beyond descent records it like any file).
+    // editing it invalidates the warm fragment.
     expect($harvest['visitedBasenames'])->toContain('InvoiceIndexQuery.php');
 })->group('fixture');
 
 it('types a project-factory (ListFilters-style) filter through the query hop on the real engine', function (): void {
     // Modules\Billing\OrderIndexQuery builds its allow-list from a user-land factory (InvoiceFilters)
-    // rather than direct AllowedFilter::* calls. The real engine must fold the factory call at the site
-    // — recovering the backed-enum class-string argument (→ enum typing) and the key column (→ boolean
-    // cast) — without descending into the factory body, all through the $query->query() hop.
+    // rather than direct AllowedFilter::* calls. The engine folds the factory call at the site —
+    // recovering the backed-enum class-string argument (enum typing) and the key column (boolean cast) —
+    // without descending into the factory body, all through the $query->query() hop.
     $harvest = FixtureRunner::traceQbEnrich(
         'modules/Billing/OrderController.php',
         'Modules\\Billing\\OrderController',

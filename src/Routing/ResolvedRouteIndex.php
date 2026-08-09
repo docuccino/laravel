@@ -8,13 +8,11 @@ use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Illuminate\Routing\Route;
 
 /**
- * An adapter-internal side-channel between {@see LaravelRouteResolver} — which reflects every route
- * while filtering — and {@see RouteContextBuilder}, which needs that same {@see Route} and its
- * reflection. The resolver records each route as it yields the descriptor; the builder reads it back
- * O(1) by descriptor, so a route is reflected once and never linearly re-located. This keeps
- * {@see RouteDescriptor} framework-agnostic (no Laravel Route on the descriptor). Bound scoped, so a
- * fresh index backs each request/build; a container miss simply degrades the builder to its own
- * lookup + reflection.
+ * A side-channel from {@see LaravelRouteResolver}, which reflects every route while filtering, to
+ * {@see RouteContextBuilder}, which needs the same {@see Route} and reflection. Keyed by descriptor so
+ * the builder reads back O(1) and nothing gets reflected or re-located twice — and so
+ * {@see RouteDescriptor} stays framework-agnostic. Bound scoped for a fresh index per build; a
+ * container miss just degrades the builder to its own lookup.
  *
  * @internal
  */

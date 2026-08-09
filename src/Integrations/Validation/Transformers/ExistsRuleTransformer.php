@@ -10,10 +10,9 @@ use Docuccino\Core\Extensions\Validation\ValidationField;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
- * Database-lookup rules (`exists`, `unique`) contribute a *type* only — a foreign-key reference is
- * an integer or string identifier, not a documentable shape, so we default an untyped field to
- * string and otherwise leave it alone. Consuming the rule here keeps it out of the unhandled-rule
- * diagnostics.
+ * `exists`/`unique` contribute a type and nothing else — a foreign-key reference is just an integer or
+ * string identifier — so an untyped field defaults to string and a typed one is left alone. Consuming them
+ * keeps them out of the unhandled-rule diagnostics.
  */
 final class ExistsRuleTransformer implements RuleTransformer
 {

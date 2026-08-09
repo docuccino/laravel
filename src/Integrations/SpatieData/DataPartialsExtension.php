@@ -14,16 +14,13 @@ use Docuccino\Core\Patch\Contribution;
 use Docuccino\Laravel\Integrations\Support\FrameworkClasses;
 
 /**
- * Documents the `spatie/laravel-data` request query-string partials — `include`, `exclude`, `only`,
- * `except` (docs: as-a-resource/lazy-properties, includeable data) — on an operation whose action
- * RETURNS a Data object (or Data collection) that opts into them by overriding the matching
- * `allowedRequest*()` static method ({@see DataClassReflector::requestPartials()}). Each becomes an
- * optional query parameter carrying a comma-separated list of property/relation paths; the allow-list
- * itself is not enumerated (that would run the method), so the parameter is a free string.
+ * Documents spatie's `include`/`exclude`/`only`/`except` query partials on an operation whose action
+ * RETURNS a Data object or collection that opts into them ({@see DataClassReflector::requestPartials()}).
+ * Each becomes an optional free-string query parameter — enumerating the allowed paths would mean running
+ * the allow-list method.
  *
- * The Data class is read from the action's analysed return types (JsonResponse-unwrapped), the same
- * return-driven trigger the JSON:API parameters use — so a `store(Data $d): Data` gets both a request
- * body (via {@see DataRequestExtension}) and these response-shaping query params.
+ * The trigger is the action's analysed return types (JsonResponse-unwrapped), so a
+ * `store(Data $d): Data` picks up both a request body via {@see DataRequestExtension} and these.
  */
 final class DataPartialsExtension implements OperationExtension
 {
@@ -63,10 +60,7 @@ final class DataPartialsExtension implements OperationExtension
         }
     }
 
-    /**
-     * The Data class an action returns — a single Data object, or the item of a Data collection —
-     * across its analysed return paths (JsonResponse-unwrapped), or null when it returns no Data.
-     */
+    /** The Data class an action returns, directly or as a collection item. */
     private function dataReturn(RouteContext $context): ?string
     {
         foreach ($context->analysis()->returns as $return) {
@@ -90,11 +84,11 @@ final class DataPartialsExtension implements OperationExtension
         return null;
     }
 
-    /** Unwrap a `JsonResponse<payload>` to its payload type; other types pass through. */
+    /** A `JsonResponse<payload>` unwrapped to its payload; other types pass through. */
     private static function unwrap(DType $type): DType
     {
         if ($type instanceof ClassT && $type->fqcn === FrameworkClasses::JSON_RESPONSE) {
-            // JsonResponse is single-arg, so the payload is the last (only) type arg.
+            // Single-arg generic, so the payload is the last (only) type arg.
             $args = $type->typeArgs;
 
             return $args === [] ? $type : $args[array_key_last($args)];

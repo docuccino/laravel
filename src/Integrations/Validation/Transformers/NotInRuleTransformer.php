@@ -10,10 +10,9 @@ use Docuccino\Core\Extensions\Validation\ValidationField;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
- * `not_in:a,b,c` → `not: {enum: […]}` (validation §4 #8/#11): the mirror of {@see ChoiceRuleTransformer}'s
- * `in`, excluding a value set rather than restricting to one. A numeric-only set infers an integer type;
- * otherwise string. Also unblocks spatie's `#[NotIn]` attribute, which recovered a `not_in` token that
- * previously dead-ended. Defaults an untyped field; an explicit type is preserved.
+ * `not_in:a,b,c` → `not: {enum: […]}` — the mirror of {@see ChoiceRuleTransformer}'s `in`, excluding a
+ * value set instead of restricting to one. Also covers spatie's `#[NotIn]`, which recovers the same rule.
+ * Numeric-only sets infer integer, otherwise string; an explicit type is preserved.
  */
 final class NotInRuleTransformer implements RuleTransformer
 {

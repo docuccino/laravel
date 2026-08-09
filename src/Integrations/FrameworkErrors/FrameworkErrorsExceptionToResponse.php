@@ -16,22 +16,19 @@ use Docuccino\Laravel\Integrations\Support\FrameworkExceptionTable;
 
 /**
  * Tier 2 of the error-response chain (design §6): Laravel's stock JSON error shapes, keyed by the
- * exception the framework renders to each status. `422` grafts the field-keyed `errors` map onto
- * `{message}`; `401`/`403`/`404` are `{message}` alone.
+ * exception the framework renders to each status. `401`/`403`/`404` are `{message}`; `422` adds the
+ * field-keyed `errors` map.
  *
- * Ordered LATE so it runs after the inferred-handler tier (FIRST) and any active preset (EARLY),
- * but before the terminal fallback (LAST): a real handler or preset always wins; this only documents
- * the framework exceptions neither covered. Matching is subtype-aware (a subclass of a mapped base
- * exception inherits its shape); an exception outside the table is declined so the chain continues.
+ * Ordered LATE — after the inferred-handler tier (FIRST) and any active preset (EARLY), before the
+ * terminal fallback (LAST) — so a real handler or preset always wins and this only covers what neither
+ * did. Matching is subtype-aware; an exception outside the table is declined so the chain continues.
  */
 #[ExtensionOrder(priority: Priorities::LATE)]
 final class FrameworkErrorsExceptionToResponse implements ExceptionToResponse
 {
     /**
-     * The per-exception mapping table (design coverage standard: a dataset test drives EVERY entry),
-     * built from the shared {@see FrameworkExceptionTable}: base exception FQCN → `[status, description
-     * (the shared RFC reason phrase), shape]`. The framework-JSON shapes (`{message}`, plus the 422
-     * `errors` graft) are this tier's presentation.
+     * Base exception FQCN → status, reason phrase and body shape. Status and phrase come from the shared
+     * {@see FrameworkExceptionTable}; only the JSON shapes are this tier's own.
      *
      * @return array<string, array{status: string, description: string, shape: array<string, mixed>}>
      */
@@ -85,8 +82,7 @@ final class FrameworkErrorsExceptionToResponse implements ExceptionToResponse
     }
 
     /**
-     * The table entry for an exception FQCN, matched subtype-aware (a subclass inherits the mapped
-     * base's shape), or null when the exception is outside the framework-defaults table.
+     * Subtype-aware lookup, so a subclass inherits its mapped base's shape.
      *
      * @return array{status: string, description: string, shape: array<string, mixed>}|null
      */
@@ -114,7 +110,7 @@ final class FrameworkErrorsExceptionToResponse implements ExceptionToResponse
     }
 
     /**
-     * The 422 body: `{message}` plus the field-keyed `errors` map Laravel renders from the validator.
+     * `{message}` plus the field-keyed `errors` map Laravel renders from the validator.
      *
      * @return array<string, mixed>
      */

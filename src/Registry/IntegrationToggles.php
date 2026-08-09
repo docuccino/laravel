@@ -20,32 +20,26 @@ use Docuccino\Laravel\Integrations\SpatieData\SpatieDataIntegration;
 use Docuccino\Laravel\Integrations\TimacdonaldJsonApi\TimacdonaldJsonApiIntegration;
 
 /**
- * The per-document integration enable/disable gate.
+ * The per-document integration enable/disable gate: an integration contributes its extensions only
+ * when installed AND enabled for the document. `installed()` is the package-presence probe;
+ * `integrations.<key>.enabled` is the orthogonal per-document question, read at extension-resolution
+ * time — never at boot, never by mutating a probe.
  *
- * `installed()` answers "is the package present" — the unchanged, boot-time-agnostic probe. This
- * table adds the orthogonal, per-document question "does THIS document want it", read from the
- * `integrations.<key>.enabled` switch at extension-resolution time (already per-document) — never at
- * boot, never by mutating a probe. An integration contributes its extensions only when installed AND
- * enabled-for-this-document.
+ * Everything installed defaults ON except `permission`, which is opt-in: documenting permission names
+ * would leak the app's authorization taxonomy into a public spec. (Passport stays on — OAuth scopes
+ * *are* the public contract.) That's the general rule for sensitive-by-activation integrations.
  *
- * Every integration defaults ON when its package is installed, EXCEPT `permission`
- * (spatie/laravel-permission), which defaults OFF: documenting permission names leaks the app's
- * internal authorization taxonomy into the public spec, so it is explicit opt-in. (Passport stays on —
- * OAuth scopes ARE the public contract; only permission flips.) Permission is the first member of the
- * "sensitive-by-activation integrations default off" principle.
- *
- * This is the single lookup table — dataset-tested over every entry. {@see DefaultExtensions} consumes
- * it by key to keep the built-in ordering; the pipeline reads {@see diagnostics()} to surface one
- * discoverability diagnostic per document per installed-but-disabled integration.
+ * The single lookup table, dataset-tested over every entry. {@see DefaultExtensions} consumes it by
+ * key to preserve built-in ordering; the pipeline reads {@see diagnostics()}.
  *
  * @internal
  */
 final class IntegrationToggles
 {
     /**
-     * The toggle table, keyed by config-bag name in built-in order. Framework built-ins that ship
-     * with Laravel (api_resources, eloquent, rate_limit) have no package to detect, so their probe
-     * answers true; the package-backed integrations delegate to their own `installed()` probe.
+     * The toggle table, keyed by config-bag name in built-in order. Laravel's own built-ins
+     * (api_resources, eloquent, rate_limit) have no package to detect so their probe answers true;
+     * package-backed ones delegate to their own `installed()`.
      *
      * @return array<string, IntegrationDescriptor>
      */
@@ -118,9 +112,8 @@ final class IntegrationToggles
     }
 
     /**
-     * The extensions the integration keyed by $key contributes to this document — its own set when
-     * installed AND enabled-for-this-document, otherwise none. The single gate {@see DefaultExtensions}
-     * calls per integration (keeping the built-in ordering).
+     * What the integration keyed by $key contributes to this document: its extensions when installed
+     * and enabled, otherwise nothing.
      *
      * @param  (callable(string): bool)|null  $probe
      * @return list<class-string|object>
@@ -135,12 +128,9 @@ final class IntegrationToggles
     }
 
     /**
-     * One info diagnostic per document per integration that is installed but disabled — the
-     * discoverability signal (design §4). A default-off integration left untouched (permission,
-     * awaiting opt-in) points the user at the switch; a deliberate opt-out (`enabled => false`)
-     * simply confirms its contributions are omitted. Nothing fires when the package is absent, so an
-     * app without an integration's package is never nagged about it. Deterministic ordering is the
-     * collector's (never time-based).
+     * One info diagnostic per installed-but-disabled integration (design §4): a default-off one points
+     * at the switch, an explicit `enabled => false` just confirms the omission. Nothing fires when the
+     * package is absent, so nobody gets nagged about an integration they don't use.
      *
      * @param  (callable(string): bool)|null  $probe
      * @return list<Diagnostic>
@@ -165,7 +155,7 @@ final class IntegrationToggles
 
     private static function message(DocumentConfig $document, IntegrationDescriptor $descriptor): string
     {
-        // Default-off and never touched → the opt-in discovery message (permission's case).
+        // Default-off and never touched → the opt-in discovery message.
         if ($descriptor->optInHint !== null
             && ! $descriptor->defaultEnabled
             && ! $document->integrationEnabledExplicit($descriptor->key)) {
@@ -175,7 +165,7 @@ final class IntegrationToggles
             );
         }
 
-        // Otherwise a deliberate opt-out (`enabled => false`).
+        // Otherwise an explicit opt-out.
         return sprintf(
             '%s detected; the %s integration is disabled (integrations.%s.enabled = false) — its contributions are omitted from this document',
             $descriptor->package, $descriptor->key, $descriptor->key,

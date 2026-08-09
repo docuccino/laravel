@@ -11,13 +11,13 @@ use Docuccino\Laravel\Registry\ConfigDiagnostics;
 use Docuccino\Laravel\Support\Paths;
 
 /*
- * Base-path relativisation of every path-like config key (design §9 determinism).
+ * Base-path relativisation of every path-like config key.
  *
- * `DocumentConfig::hash()` digests the raw config bag and the digest is EMITTED as
+ * `DocumentConfig::hash()` digests the raw config bag and that digest is emitted as
  * `document.configHash`, so an absolute path in config would fold the generating machine's filesystem
- * layout into a committed artifact. Every in-app path is therefore stored base-path-relative — the
- * hash follows the path's MEANING, not the spelling — while a path genuinely outside the app is kept
- * verbatim and reported as machine-dependent.
+ * layout into a committed artifact. Every in-app path is stored base-path-relative, so the hash follows
+ * what a path means rather than how it was spelled. A path genuinely outside the app is kept verbatim and
+ * reported as machine-dependent.
  */
 
 /**
@@ -116,8 +116,8 @@ it('emits no machine-dependent-path diagnostic for an in-app path', function (st
 })->with('pathKeys');
 
 it('hashes identically across two checkouts of the same app at different paths', function (string $key, string $relative): void {
-    // The whole point: CI, a colleague's laptop and a container each mount the app somewhere else. The
-    // same config, spelled absolutely against each checkout's own base path, must emit the same bytes.
+    // CI, a colleague's laptop and a container each mount the app somewhere else, and the same config
+    // spelled absolutely against each checkout's own base path still emits the same bytes.
     $one = documentFrom(rawWithPath($key, '/checkout/one/'.$relative), '/checkout/one');
     $two = documentFrom(rawWithPath($key, '/home/dev/projects/app/'.$relative), '/home/dev/projects/app');
 
@@ -132,7 +132,7 @@ it('relativises every path-like key at once, leaving the rest of the bag alone',
         'content' => ['dir' => $base.'/resources/docs/api'],
         'overlays' => [$base.'/resources/docs/overlays/*.yaml', 'resources/extra/*.yaml'],
         'export' => ['path' => $base.'/docs/openapi.json', 'formats' => ['openapi-3.2']],
-        // A URL path, NOT a filesystem path: the viewer route must survive verbatim.
+        // A URL path, not a filesystem path — the viewer route survives verbatim.
         'viewer' => ['route' => '/docs/api', 'source' => 'generate'],
     ], $base);
 
@@ -144,7 +144,7 @@ it('relativises every path-like key at once, leaving the rest of the bag alone',
 });
 
 it('leaves a non-string value at a path-like key alone', function (): void {
-    // `content.dir => null` is the shipped default, and a mis-typed value must not be coerced.
+    // `content.dir => null` is the shipped default, and a mis-typed value isn't coerced.
     $document = documentFrom(['content' => ['dir' => null], 'overlays' => 'not-a-list', 'export' => ['path' => 42]]);
 
     expect($document->contentDir())->toBeNull()
@@ -160,7 +160,7 @@ it('leaves a non-string entry inside an overlay list alone', function (): void {
 });
 
 it('resolves a relativised path back to the very same file it was configured with', function (): void {
-    // Relativisation must not change what gets read: the base-path join is the inverse operation.
+    // Relativisation doesn't change what gets read — the base-path join is its inverse.
     $base = sys_get_temp_dir().'/docuccino-relativise-'.uniqid();
     $document = documentFrom(['export' => ['path' => $base.'/docs/openapi.json']], $base);
 

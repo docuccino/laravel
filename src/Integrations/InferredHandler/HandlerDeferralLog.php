@@ -5,15 +5,13 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\InferredHandler;
 
 /**
- * Per-build collector of inferred-handler deferrals (design §6). The tier used to emit one
- * `too-dynamic` info diagnostic per (route × thrown exception type) — 656 near-identical lines when run
- * against a large production Laravel app. Instead, each genuine defer (a renderer whose response for a type could not be folded to
- * JSON) is recorded here, keyed by CALLBACK, and {@see HandlerDeferralSummaryTransformer} emits one
- * summary per callback at document build. Container-`scoped` so the tier and the transformer share one
- * instance within a build and it resets between builds.
+ * Per-build collector of inferred-handler deferrals (design §6), keyed by callback rather than by
+ * (route × exception) — the latter produces hundreds of near-identical diagnostics on a large app.
+ * {@see HandlerDeferralSummaryTransformer} then emits one summary per callback. Container-`scoped`, so the
+ * tier and the transformer share an instance within a build and it resets between builds.
  *
- * Framework DELEGATION (a `return null` / void arm) is NOT recorded — it is expected behaviour, not a
- * fold failure, and the next tier handles those exception types.
+ * Framework delegation (a `return null`/void arm) is not recorded: it's expected, not a fold failure, and
+ * the next tier handles those exception types.
  */
 final class HandlerDeferralLog
 {
@@ -30,8 +28,8 @@ final class HandlerDeferralLog
     }
 
     /**
-     * One entry per callback that deferred, exception FQCNs in first-seen order. Callbacks are sorted
-     * for deterministic diagnostic ordering.
+     * One entry per deferring callback, exceptions in first-seen order. Callbacks are sorted so the
+     * diagnostics come out deterministically.
      *
      * @return list<array{callback: string, exceptions: list<string>}>
      */

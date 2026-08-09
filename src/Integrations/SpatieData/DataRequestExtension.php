@@ -20,12 +20,10 @@ use ReflectionNamedType;
 use Throwable;
 
 /**
- * Documents a request whose action type-hints a `spatie/laravel-data` Data object. The Data class is
- * found by reflecting the action parameters (never constructed), its properties + spatie validation
- * attributes are recovered into a rule set ({@see DataValidationRules}) and run through the SHARED
- * validation chain, then applied as a request body (write verbs, `multipart/form-data` once a file
- * rule appears) or query parameters (read verbs) — exactly like the FormRequest path, so the two
- * request-recovery routes converge on one representation.
+ * Documents a request whose action type-hints a `spatie/laravel-data` Data object. The class is found by
+ * reflecting the action parameters — never constructed — recovered into a rule set by
+ * {@see DataValidationRules}, and run through the shared validation chain, so this and the FormRequest
+ * path converge on one representation.
  */
 final class DataRequestExtension implements OperationExtension
 {
@@ -57,10 +55,8 @@ final class DataRequestExtension implements OperationExtension
 
         $metadata = $context->engine->classMetadata(new ClassRef($fqcn));
 
-        // A static rules() override (read via the shared literal+descriptor engine analysis) wins per
-        // field over the property-inferred rules — spatie's DataValidationRulesResolver override.
-        // Property-recovered fields (e.g. an UploadedFile-typed property) are passed so an unrecoverable
-        // dynamic rules() for such a field does not raise a stale `validation.rule-unrecoverable`.
+        // A static rules() override wins per field over property inference. The already-documented field
+        // keys go in so a dynamic rules() for one of them doesn't raise a stale rule-unrecoverable.
         $documentedByProperties = $this->rules->propertyFieldKeys($fqcn, $metadata, $context->engine);
         $overrides = $this->rulesOverride->analyse($context, $fqcn, $documentedByProperties);
 

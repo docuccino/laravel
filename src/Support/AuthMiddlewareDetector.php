@@ -7,11 +7,9 @@ namespace Docuccino\Laravel\Support;
 use Docuccino\Core\Extensions\Context\RouteContext;
 
 /**
- * The one predicate for "this route is behind authentication middleware": any of the route's
- * middleware matches the document's `security.auto_detect_middleware` wildcard (default `auth*`,
- * matching `auth`, `auth:sanctum`, `auth:web`, …). Shared by the security layer (which applies the
- * document's default requirement) and the implicit-response layer (which synthesizes a 401), so both
- * key off the same signal.
+ * "Is this route behind auth middleware": does any of its middleware match the document's
+ * `security.auto_detect_middleware` wildcard (default `auth*`, so `auth:sanctum` and friends count).
+ * Shared by the security layer and the implicit-401 synthesis so both key off one signal.
  */
 final class AuthMiddlewareDetector
 {

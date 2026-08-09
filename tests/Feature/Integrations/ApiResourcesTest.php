@@ -25,9 +25,9 @@ use Docuccino\Laravel\Tests\Fixtures\ApiResources\AuthorResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\CommentJsonApiResource;
 
 /**
- * The API Resources integration (Phase 4): a JsonResource's toArray shape → hoisted component with
- * whenLoaded/when fields made optional and nested resources recursed, anonymous collections → arrays,
- * and Laravel 13 first-party JSON:API resources → JSON:API document schemas.
+ * The API Resources integration: a JsonResource's toArray shape becomes a hoisted component with
+ * whenLoaded/when fields optional and nested resources recursed, anonymous collections become arrays,
+ * and Laravel 13 first-party JSON:API resources become JSON:API document schemas.
  */
 function apiResourceEngine(): StubTypeEngine
 {
@@ -55,11 +55,11 @@ function apiResourceEngine(): StubTypeEngine
         ArticleJsonApiResource::class.'::toLinks' => $shape([
             new ArrayShapeField('self', ScalarT::string()),
         ]),
-        // No toMeta analysis → the meta member is omitted. (relationships is never analysed — see the
-        // JsonApiDocument docblock — so no `::toRelationships` scripting is needed.)
-        // A member typing back to the comment resource itself — a self-reference the component-hoist
-        // cycle-break must resolve to a $ref rather than recurse into. Modelled through an analysed
-        // member (attributes) since relationships is omitted.
+        // No toMeta analysis, so the meta member is omitted; relationships is never analysed either (see
+        // the JsonApiDocument docblock), so `::toRelationships` needs no script.
+        // `replies` types back to the comment resource itself — the self-reference the component-hoist
+        // cycle-break has to resolve to a $ref instead of recursing. It rides on attributes because
+        // relationships is omitted.
         CommentJsonApiResource::class.'::toAttributes' => $shape([
             new ArrayShapeField('body', ScalarT::string()),
             new ArrayShapeField('replies', new ClassT(CommentJsonApiResource::class)),
@@ -137,8 +137,8 @@ it('honours a custom document wrap key over the resource default', function (): 
 it('maps a first-party JSON:API resource to a JSON:API document schema', function (): void {
     $components = new ComponentRegistry;
     // The response root (depth 1) wraps the document envelope around a $ref to the hoisted resource
-    // OBJECT component — the envelope is applied here, not baked into the component (so a collection
-    // can reference the bare object without double-wrapping).
+    // object component. The envelope is applied here rather than baked into the component, so a
+    // collection can reference the bare object without double-wrapping.
     $response = resourceConverter($components)->toSchema(new ClassT(ArticleJsonApiResource::class))->schema;
     expect($response)->toBe([
         'type' => 'object',
@@ -162,8 +162,7 @@ it('documents a JSON:API collection as a single-wrapped array of resource object
     $collection = new ClassT(ResourceReflector::ANONYMOUS_COLLECTION, [new ClassT(ArticleJsonApiResource::class)]);
     $schema = resourceConverter($components)->toSchema($collection)->schema;
 
-    // {data: [resource-object]} — the item is the bare object $ref, NOT a nested {data: {…}} document
-    // (the double-wrap the old baked-in envelope produced).
+    // {data: [resource-object]} — the item is the bare object $ref, not a nested {data: {…}} document.
     expect($schema)->toBe([
         'type' => 'object',
         'properties' => ['data' => ['type' => 'array', 'items' => ['$ref' => '#/components/schemas/ArticleJsonApiResource']]],
@@ -179,8 +178,8 @@ it('cycle-breaks a self-referential JSON:API resource via a $ref to its own comp
     $components = new ComponentRegistry;
     $response = resourceConverter($components)->toSchema(new ClassT(CommentJsonApiResource::class))->schema;
 
-    // The response root wraps the envelope around a $ref to the hoisted OBJECT component; the cycle
-    // terminates (an un-broken cycle would recurse until the stack overflows).
+    // The response root wraps the envelope around a $ref to the hoisted object component and the cycle
+    // terminates — unbroken, it would recurse until the stack overflows.
     expect($response)->toBe([
         'type' => 'object',
         'properties' => ['data' => ['$ref' => '#/components/schemas/CommentJsonApiResource']],

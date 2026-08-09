@@ -19,26 +19,25 @@ use ReflectionProperty;
 use ReflectionUnionType;
 
 /**
- * Reflects a `spatie/laravel-data` Data class into the presentation facts the schema/request
- * mappers need, keeping every touch of the (optional) spatie surface in one place. Spatie's own
- * attribute/marker classes are referenced by FQCN string — the integration carries no hard
- * dependency on the package (it is only ever exercised when the host app has it installed, the
- * `class_exists` registration guard). Docuccino's own `#[Hidden]`/`#[SchemaName]`/`#[SchemaId]`
- * are honoured alongside spatie's.
+ * Reflects a `spatie/laravel-data` Data class into the facts the schema/request mappers need, and is
+ * the only place that touches the (optional) spatie surface. Everything spatie is referenced by FQCN
+ * string, so there's no hard dependency — the integration only runs behind its `class_exists` guard.
+ * Docuccino's own `#[Hidden]`/`#[SchemaName]`/`#[SchemaId]` are honoured alongside spatie's.
+ *
+ * Where a fact can't be recovered honestly this degrades to the plain property name / an omitted
+ * fact plus a diagnostic; it never fabricates a key or a rule.
  */
 final class DataClassReflector
 {
     public const DATA = 'Spatie\\LaravelData\\Data';
 
-    /** The vendor namespace prefix — a method declared under it is spatie's own, not a user override. */
+    /** A method declared under the vendor namespace is spatie's own, not a user override. */
     private const SPATIE_NS = 'Spatie\\LaravelData\\';
 
     /**
-     * The `spatie/laravel-data` request query-string partial parameter → the static allow-list method
-     * that opts a Data class into it (`ResponsableData`). A user OVERRIDE of one of these (declared
-     * off the vendor namespace) makes the corresponding `?include=`/`?exclude=`/`?only=`/`?except=`
-     * query parameter live on the response (docs: lazy-properties / partials). The base returns `[]`
-     * (nothing allowed), so an un-overridden method is inert — only an override is documented.
+     * Request partial query parameter → the `ResponsableData` static allow-list method that opts a
+     * Data class into it. Spatie's base implementations return `[]` (nothing allowed), so only a user
+     * OVERRIDE makes the matching `?include=`/`?exclude=`/`?only=`/`?except=` parameter live.
      *
      * @var array<string, string>
      */
@@ -50,12 +49,10 @@ final class DataClassReflector
     ];
 
     /**
-     * The global default name-mapping strategy (`config('data.name_mapping_strategy.{input,output}')`)
-     * as built-in mapper FQCNs, injected by the service provider (the integration stays
-     * vendor-import-free, mirroring the Passport integration's runtime-config injection).
-     * A whole-class default (commonly `SnakeCaseMapper::class`) renames EVERY property key that carries
-     * no explicit `#[MapName]`/`#[MapInputName]`/`#[MapOutputName]` — spatie's `NameMappersResolver`
-     * falls back to it precisely when no map attribute governs the property.
+     * The global name-mapping strategy (`config('data.name_mapping_strategy.{input,output}')`) as
+     * built-in mapper FQCNs, injected by the service provider so this class stays vendor-import-free.
+     * A global mapper (commonly `SnakeCaseMapper`) renames every property key that carries no explicit
+     * map attribute — spatie's `NameMappersResolver` falls back to config only in that branch.
      */
     public function __construct(
         private readonly ?string $globalInputMapper = null,
@@ -63,17 +60,16 @@ final class DataClassReflector
     ) {}
 
     /**
-     * The interface every Data-like object implements — `Data`, the output-only `Resource`, and the
-     * input-only `Dto` (none of which extend one another). The schema/request trigger tests it so all
-     * three recommended base classes are recognised, not just `Data`.
+     * Implemented by `Data`, the output-only `Resource` and the input-only `Dto` — none of which extend
+     * one another, so triggers test this interface rather than `Data`.
      */
     public const BASE_DATA = 'Spatie\\LaravelData\\Contracts\\BaseData';
 
     public const DATA_COLLECTION = 'Spatie\\LaravelData\\DataCollection';
 
     /**
-     * The interface every collectable shares — a plain `DataCollection` AND the paginated variants,
-     * which do NOT extend `DataCollection` but do implement this. The collection trigger tests it.
+     * Shared by every collectable. The paginated variants do NOT extend `DataCollection` but do
+     * implement this, so the collection trigger tests it.
      */
     public const BASE_COLLECTABLE = 'Spatie\\LaravelData\\Contracts\\BaseDataCollectable';
 
@@ -106,9 +102,9 @@ final class DataClassReflector
     private const ENUM_ATTRIBUTE = 'Spatie\\LaravelData\\Attributes\\Validation\\Enum';
 
     /**
-     * spatie's built-in name mappers → the string transform each applies to a property name. A mapper
-     * CLASS given to `#[MapName(SnakeCaseMapper::class)]` renames EVERY property by this transform;
-     * mapping them here is what stops the mapper's FQCN leaking as the documented JSON key.
+     * spatie's built-in name mappers → the transform each applies. A mapper class passed to
+     * `#[MapName(SnakeCaseMapper::class)]` renames every property; knowing the transform here is what
+     * stops the mapper FQCN leaking as the documented JSON key.
      *
      * @var array<string, string>
      */
@@ -127,10 +123,9 @@ final class DataClassReflector
     private const VALIDATION_NS = 'Spatie\\LaravelData\\Attributes\\Validation\\';
 
     /**
-     * Spatie validation attribute short-name → Laravel rule name. The recovered token is fed through
-     * the SHARED validation chain, so a spatie `#[Max(100)]` documents identically to `'max:100'` on
-     * a FormRequest. Kept deliberately curated (the common DSL floor); an unmapped attribute is
-     * ignored rather than guessed.
+     * Spatie validation attribute short name → Laravel rule name. Tokens go through the shared
+     * validation chain, so `#[Max(100)]` documents identically to `'max:100'` on a FormRequest. Curated
+     * to the common floor — an unmapped attribute degrades (see validationTokens) rather than guessing.
      *
      * @var array<string, string>
      */
@@ -153,10 +148,7 @@ final class DataClassReflector
         'max_digits', 'min_digits', 'digits_between', 'starts_with', 'ends_with',
     ];
 
-    /**
-     * Whether an FQCN is a concrete spatie Data-like class (the schema mapper's trigger): any
-     * implementor of `BaseData` — `Data`, `Resource`, `Dto` — that is not itself a collectable.
-     */
+    /** Any `BaseData` implementor that isn't itself a collectable — the schema mapper's trigger. */
     public static function isData(string $fqcn): bool
     {
         return $fqcn !== self::DATA
@@ -164,17 +156,17 @@ final class DataClassReflector
             && ! is_a($fqcn, self::BASE_COLLECTABLE, true);
     }
 
-    /** Whether an FQCN is any spatie collectable (plain or paginated) — rendered as array/envelope. */
+    /** Any spatie collectable, plain or paginated — rendered as array/envelope. */
     public static function isDataCollection(string $fqcn): bool
     {
         return is_a($fqcn, self::BASE_COLLECTABLE, true);
     }
 
     /**
-     * The ITEM (value) type of a spatie collection generic. Spatie declares its collectables with
-     * `@template TKey of array-key, @template TValue`, so the value type is the LAST type arg:
-     * `PaginatedDataCollection<int, AuthorData>` → `AuthorData`, `DataCollection<AuthorData>` →
-     * `AuthorData`, bare `DataCollection` → null. Reading typeArgs[0] documents the key, not the item.
+     * The item type of a collection generic. Spatie declares its collectables `<TKey of array-key,
+     * TValue>`, so the item is the LAST type arg — reading arg 0 would document the key instead.
+     * `PaginatedDataCollection<int, AuthorData>` and `DataCollection<AuthorData>` both give `AuthorData`;
+     * a bare `DataCollection` gives null.
      */
     public static function collectionValueType(ClassT $type): ?DType
     {
@@ -183,22 +175,20 @@ final class DataClassReflector
         return $args === [] ? null : $args[array_key_last($args)];
     }
 
-    /** Whether an FQCN is a `DateTimeInterface` (spatie serialises these to a formatted string). */
+    /** spatie serialises `DateTimeInterface` values to a formatted string. */
     public static function isDateTime(string $fqcn): bool
     {
         return is_a($fqcn, \DateTimeInterface::class, true);
     }
 
     /**
-     * The property names hidden from OUTPUT: class-level `#[Hidden(...)]` plus any property carrying
-     * spatie's or Docuccino's property-level `#[Hidden]`.
+     * Class-level schema identity plus the class-level `#[Hidden]` output deny-list, read through the
+     * shared helper so a Data class honours them identically to a Resource or a model.
      *
      * @return array{hidden: list<string>, schemaName: ?string, schemaId: ?string}
      */
     public function classFacts(string $fqcn): array
     {
-        // Schema identity (name/id) and the class-level #[Hidden] deny-list are read through the shared
-        // SchemaIdentity helper, so a Data class honours them identically to a Resource or a model.
         return [
             'hidden' => SchemaIdentity::hidden($fqcn),
             'schemaName' => SchemaIdentity::name($fqcn),
@@ -207,10 +197,9 @@ final class DataClassReflector
     }
 
     /**
-     * The `format` of a property's `#[WithCast(DateTimeInterfaceCast::class, format: '…')]`, or null
-     * when the property has no such cast. The format is read from the attribute arguments by
-     * reflection (nothing is instantiated); it governs the wire representation — notably `U` (a Unix
-     * timestamp serialised as an integer) rather than the default date-time string.
+     * The `format` of a `#[WithCast(DateTimeInterfaceCast::class, format: '…')]`, else null. Read from
+     * the attribute arguments (nothing is instantiated). It governs the wire shape — notably `U`, which
+     * serialises as an integer timestamp rather than a date-time string.
      */
     public function dateTimeCastFormat(string $fqcn, string $property): ?string
     {
@@ -234,7 +223,7 @@ final class DataClassReflector
         return is_string($format) ? $format : null;
     }
 
-    /** Whether the named property is hidden from output (property-level spatie/Docuccino `#[Hidden]`). */
+    /** Property-level `#[Hidden]`, either spatie's or Docuccino's. */
     public function isPropertyHidden(string $fqcn, string $property): bool
     {
         $reflection = $this->property($fqcn, $property);
@@ -247,9 +236,8 @@ final class DataClassReflector
     }
 
     /**
-     * Whether a property is optional in the (de)serialised shape: its declared type unions in
-     * spatie's `Optional` or `Lazy` marker (`public string|Optional $foo`). Such a property is
-     * absent from `required` on output and non-required on input.
+     * True when the declared type unions in spatie's `Optional` or `Lazy` marker
+     * (`public string|Optional $foo`) — such a property is non-required on input and output.
      */
     public function isPropertyOptional(string $fqcn, string $property): bool
     {
@@ -267,10 +255,7 @@ final class DataClassReflector
         return false;
     }
 
-    /**
-     * The paginated-collection kind of a `DataCollection` FQCN, for envelope selection:
-     * `length`/`cursor` for the paginated variants, `simple` for a plain `DataCollection`.
-     */
+    /** Envelope selector: `cursor`/`length` for the paginated variants, `simple` for a plain one. */
     public function collectionKind(string $fqcn): string
     {
         if (is_a($fqcn, self::CURSOR_PAGINATED_COLLECTION, true)) {
@@ -281,9 +266,9 @@ final class DataClassReflector
     }
 
     /**
-     * Laravel rule tokens recovered from a property's spatie validation attributes — read statically
-     * via {@see \ReflectionAttribute::getArguments()} (never instantiated, so no user expression runs).
-     * Fed through the shared validation chain by {@see DataValidationRules}.
+     * Laravel rule tokens recovered from a property's spatie validation attributes, read via
+     * {@see \ReflectionAttribute::getArguments()} — never instantiated, so no user expression runs.
+     * {@see DataValidationRules} feeds them through the shared validation chain.
      *
      * @return list<string>
      */
@@ -301,9 +286,8 @@ final class DataClassReflector
                 continue;
             }
 
-            // `#[Rule('max:10|min:1')]` / `#[Rule(['max:10', 'min:1'])]` is spatie's escape hatch: its
-            // arguments ARE Laravel rule strings, so hand them straight to the shared parser instead
-            // of degrading to a garbage `rule:...` token.
+            // `#[Rule('max:10|min:1')]` is spatie's escape hatch — its arguments already ARE Laravel
+            // rule strings, so pass them straight through rather than emit a junk `rule:…` token.
             if ($name === self::RULE_ATTRIBUTE) {
                 foreach ($this->ruleAttributeTokens($attribute->getArguments()) as $token) {
                     $tokens[] = $token;
@@ -312,9 +296,8 @@ final class DataClassReflector
                 continue;
             }
 
-            // `#[Enum(Status::class)]` names a backed enum; expand it to its backing VALUES as an
-            // `in:` rule (reusing the enum machinery) rather than the enum class name as the sole
-            // allowed value.
+            // `#[Enum(Status::class)]` expands to `in:` over the backing values — the class name itself
+            // is not an allowed value.
             if ($name === self::ENUM_ATTRIBUTE) {
                 $token = $this->enumAttributeToken($attribute->getArguments());
                 if ($token !== null) {
@@ -326,9 +309,8 @@ final class DataClassReflector
 
             $short = Fqcn::short($name);
             $mapped = self::RULE_MAP[$short] ?? null;
-            // A mapped attribute becomes its Laravel rule; an unmapped one degrades to the snake-cased
-            // short name so the SHARED chain treats it exactly like an unknown string rule (a
-            // transformer handles it if one exists — e.g. Exists — else a permissive + info diagnostic).
+            // Unmapped attributes degrade to the snake-cased short name, which the shared chain then
+            // treats like any unknown string rule (a transformer if one exists, else permissive + info).
             $rule = $mapped ?? self::snake($short);
 
             $parameters = $this->scalarArguments($attribute->getArguments());
@@ -341,8 +323,7 @@ final class DataClassReflector
     }
 
     /**
-     * The rule tokens carried by a `#[Rule(...)]` attribute: each scalar argument (and each item of an
-     * array argument) is a Laravel rule string.
+     * Every string in a `#[Rule(...)]` attribute's arguments, flattened — each one is a rule string.
      *
      * @param  array<array-key, mixed>  $arguments
      * @return list<string>
@@ -384,18 +365,13 @@ final class DataClassReflector
     }
 
     /**
-     * Whether the property is excluded from the request shape:
-     *  - a spatie `#[Computed]` (server-derived, output-only) or `#[WithoutValidation]` property is
-     *    never a validated request field;
-     *  - a spatie `#[FromRouteParameter]` property is populated from the route binding, not the request
-     *    body, so it is not a sendable body field;
-     *  - a Docuccino `#[HiddenFromRequest]` property is deliberately dropped from the request body.
+     * Whether the property is out of the request shape: `#[Computed]` and `#[WithoutValidation]` are
+     * never validated request fields, `#[FromRouteParameter]` comes from the route binding rather than
+     * the body, and Docuccino's `#[HiddenFromRequest]` is the explicit opt-out.
      *
-     * A property-level `#[Hidden]` is NOT excluded here: `#[Hidden]` hides from OUTPUT only, and a
-     * property hidden from output but still present in the request is a real shape the data-leakage
-     * lint is designed to surface — conflating the two would silently suppress that signal (see the
-     * decision recorded in docs/design/uir-and-extensions.md §7). Request-hiding is the explicit
-     * `#[HiddenFromRequest]` opt-in instead.
+     * `#[Hidden]` does NOT exclude — it hides from output only, and "hidden from output but still
+     * sendable" is exactly the shape the data-leakage lint exists to surface. See
+     * docs/design/uir-and-extensions.md §7.
      */
     public function isExcludedFromRequest(string $fqcn, string $property): bool
     {
@@ -411,9 +387,8 @@ final class DataClassReflector
     }
 
     /**
-     * The property's constructor default: `['hasDefault' => bool, 'value' => mixed]`. A defaulted
-     * property is optional (absent-from-required) and its value is a documentable schema default.
-     * Read from the constructor signature by reflection — nothing is instantiated.
+     * The property's constructor default, read off the signature — nothing is instantiated. A defaulted
+     * property is non-required and its value is a documentable schema default.
      *
      * @return array{hasDefault: bool, value: mixed}
      */
@@ -461,7 +436,7 @@ final class DataClassReflector
         return null;
     }
 
-    /** Whether a property carries a spatie `#[Prohibited]` attribute (documented as never-sendable). */
+    /** A spatie `#[Prohibited]` property is documented as never-sendable. */
     public function isProhibited(string $fqcn, string $property): bool
     {
         $reflection = $this->property($fqcn, $property);
@@ -473,9 +448,8 @@ final class DataClassReflector
     }
 
     /**
-     * The FQCNs of mapper classes used on the class or its properties that are NOT recognised built-in
-     * spatie mappers — the caller emits a diagnostic so an unknown mapper never silently mis-keys the
-     * schema (it falls back to the property name).
+     * Mapper FQCNs used on the class or its properties that aren't recognised built-ins. The caller
+     * turns these into a diagnostic, so an unknown mapper never silently mis-keys the schema.
      *
      * @return list<string>
      */
@@ -516,8 +490,8 @@ final class DataClassReflector
     }
 
     /**
-     * Flatten an attribute's raw arguments into a comma-joined scalar parameter string
-     * (`Between(1, 10)` → `"1,10"`, `In(['a','b'])` → `"a,b"`); non-scalar args are dropped.
+     * Attribute arguments as a comma-joined rule parameter string: `Between(1, 10)` → `"1,10"`,
+     * `In(['a','b'])` → `"a,b"`. Non-scalars are dropped.
      *
      * @param  array<array-key, mixed>  $arguments
      */
@@ -534,7 +508,7 @@ final class DataClassReflector
     }
 
     /**
-     * The named types a property declares (flattening a union/intersection), for marker detection.
+     * The property's declared named types, unions and intersections flattened.
      *
      * @return list<string>
      */
@@ -558,13 +532,13 @@ final class DataClassReflector
         return $names;
     }
 
-    /** The OUTPUT key for a property, honouring `#[MapOutputName]` / `#[MapName]` (else the name). */
+    /** Output key, honouring `#[MapOutputName]` / `#[MapName]`, else the property name. */
     public function outputName(string $fqcn, string $property): string
     {
         return $this->mappedName($fqcn, $property, self::MAP_OUTPUT_NAME, $this->globalOutputMapper) ?? $property;
     }
 
-    /** The INPUT key for a property, honouring `#[MapInputName]` / `#[MapName]` (else the name). */
+    /** Input key, honouring `#[MapInputName]` / `#[MapName]`, else the property name. */
     public function inputName(string $fqcn, string $property): string
     {
         return $this->mappedName($fqcn, $property, self::MAP_INPUT_NAME, $this->globalInputMapper) ?? $property;
@@ -577,8 +551,7 @@ final class DataClassReflector
             return null;
         }
 
-        // Precedence: a property-level map (directional beats symmetric MapName) wins over a
-        // class-level map (which renames every property, commonly via a mapper class).
+        // Precedence: property-level beats class-level, directional beats symmetric MapName.
         $class = $reflection->getDeclaringClass();
         $sources = [
             $reflection->getAttributes($directional),
@@ -598,9 +571,8 @@ final class DataClassReflector
             }
         }
 
-        // Global default strategy applies ONLY when no map attribute governs the property (spatie's
-        // NameMappersResolver falls back to config only in the no-attribute branch); an unrecognised
-        // global mapper class yields null → the property name (the honest floor, no FQCN leak).
+        // The global strategy applies only when no map attribute governs the property — that's where
+        // spatie's NameMappersResolver consults config. An unrecognised one yields the property name.
         if (! $anyMapAttribute && $globalMapper !== null) {
             return self::mapWithMapper($globalMapper, $property);
         }
@@ -609,10 +581,9 @@ final class DataClassReflector
     }
 
     /**
-     * The request query-string partial parameters (`include`/`exclude`/`only`/`except`) a Data class
-     * opts into by OVERRIDING the matching `allowedRequest*()` static method (declared off the vendor
-     * namespace). Detection is reflection-only — the field allow-list itself is never enumerated (that
-     * would need to run the method), so the parameter is documented as a free comma-list string.
+     * The partial query parameters a Data class opts into by overriding the matching
+     * `allowedRequest*()` static. Detection is reflection-only — enumerating the allowed fields would
+     * mean running the method, so the parameter is documented as a free comma-list string.
      *
      * @return list<string>
      */
@@ -637,8 +608,7 @@ final class DataClassReflector
     }
 
     /**
-     * The raw input/output value of the first map attribute (a literal name or a mapper-class FQCN),
-     * or null when there is none.
+     * The first map attribute's raw value — either a literal key or a mapper FQCN.
      *
      * @param  list<\ReflectionAttribute<object>>  $attributes
      */
@@ -657,9 +627,8 @@ final class DataClassReflector
     }
 
     /**
-     * Resolve a map value into the documented key: a known mapper class renames the property by its
-     * transform; an UNKNOWN mapper class yields null (the caller falls back to the property name —
-     * never the FQCN); anything else is a literal key.
+     * A map value resolved to the documented key: a known mapper applies its transform, a literal is
+     * itself, and an unknown mapper class yields null so the caller falls back to the property name.
      */
     private function resolveMapped(?string $value, string $property): ?string
     {
@@ -672,14 +641,13 @@ final class DataClassReflector
             return $mapped;
         }
 
-        // An unrecognised mapper class must not leak its FQCN as the key; fall back to the property
-        // name (the caller surfaces a diagnostic via unrecognisedMappers()).
+        // Never leak an unrecognised mapper's FQCN as the key — unrecognisedMappers() reports it.
         return class_exists($value) ? null : $value;
     }
 
     /**
-     * Apply a spatie built-in name mapper (by FQCN) to a property name, or null when the FQCN is not
-     * a recognised mapper. Public so the mapper table is dataset-testable over every entry.
+     * A spatie built-in mapper applied by FQCN, or null when it isn't one. Public so the mapper table
+     * is dataset-testable over every entry.
      */
     public static function mapWithMapper(string $mapperClass, string $property): ?string
     {

@@ -23,11 +23,10 @@ use Docuccino\Laravel\Support\AuthMiddlewareDetector;
 use ReflectionClass;
 
 /**
- * Synthesizes the error responses that framework MIDDLEWARE and BINDING-TIME machinery produce but
- * the action body never throws, so the engine's throw analysis cannot see them (design §Errors —
- * Scramble's implicit 401/422/404/403). Each detected signal becomes a synthetic {@see ThrownException}
- * run through the SAME resolved exception→response chain the explicit-throw path uses, so the body
- * matches the document's error style (framework defaults or the Problem Details preset):
+ * Synthesizes the error responses that middleware and binding-time machinery produce but the action
+ * body never throws, so throw analysis can't see them (design §Errors). Each signal becomes a
+ * synthetic {@see ThrownException} run through the same exception→response chain as an explicit
+ * throw, so the body matches the document's error style:
  *
  *  | Status | Signal |
  *  |--------|--------|
@@ -36,12 +35,11 @@ use ReflectionClass;
  *  | 404    | the route has ≥1 model-bound path parameter (one 404 per operation, not per param) |
  *  | 403    | `can:` / `signed` / `verified` middleware, or a FormRequest `authorize()` not `return true` |
  *
- * Runs at integration precedence and LATE within the Errors phase, so an exception the action ALSO
- * throws explicitly (already applied by {@see ErrorResponsesExtension}) owns its status and this
- * synthesis is shadowed — no double response. Overridable by docblock/attribute/overlay, and each
- * status honours `#[IgnoreResponse]`. Skipped when `error_responses => 'none'`. 429 is left to the
- * rate-limit integration; CSRF 419, maintenance 503 and arbitrary custom-middleware throws are
- * deliberate non-goals.
+ * Runs LATE in the Errors phase at integration precedence, so an exception the action also throws
+ * explicitly ({@see ErrorResponsesExtension}) owns its status and shadows the synthesis — no double
+ * response. Docblock/attribute/overlay override it, each status honours `#[IgnoreResponse]`, and
+ * `error_responses => 'none'` skips it. 429 belongs to the rate-limit integration; CSRF 419,
+ * maintenance 503 and custom-middleware throws are non-goals.
  */
 #[ExtensionOrder(priority: Priorities::LATE)]
 final class ImplicitResponsesExtension implements OperationExtension
@@ -133,11 +131,10 @@ final class ImplicitResponsesExtension implements OperationExtension
     }
 
     /**
-     * True when a request extension recovered a validated body. Layer-based, not a closed producer
-     * list: any winning `requestBody` contribution at the INTEGRATION layer (its provenance producer
-     * is `integration:*`, the Contribution::integration() marker) means a request-recovery
-     * integration owns the body — so third-party request recoverers earn the implicit 422 too, while
-     * an attribute-layer `#[BodyParameter]` body (producer `attribute`) correctly does not.
+     * True when a request extension recovered a validated body. Tested by layer, not by a closed
+     * producer list: a winning `requestBody` from any `integration:*` producer means some request
+     * recoverer owns the body, so third-party recoverers earn the 422 too — while an attribute-layer
+     * `#[BodyParameter]` body rightly doesn't.
      */
     private function hasValidatedRequest(OperationDraft $operation): bool
     {
@@ -177,8 +174,8 @@ final class ImplicitResponsesExtension implements OperationExtension
 
         $reflection = new ReflectionClass($formRequest);
 
-        // Record the FormRequest file BEFORE the method-presence bail (design §10 cache soundness):
-        // adding an authorize() gate to a warm-cached route's FormRequest must invalidate its fragment.
+        // Record the file BEFORE the method-presence bail: adding an authorize() gate to a warm-cached
+        // route's FormRequest has to invalidate its fragment (design §10).
         $formRequestFile = $reflection->getFileName();
         if ($formRequestFile !== false) {
             $context->recordDependencyFiles([$formRequestFile]);
@@ -190,8 +187,8 @@ final class ImplicitResponsesExtension implements OperationExtension
 
         $method = $reflection->getMethod('authorize');
         $methodFile = $method->getFileName();
-        // Only an authorize() declared in the FormRequest's own file is a real gate; the framework
-        // default (no method / a base default) is not.
+        // Only an authorize() in the FormRequest's own file is a real gate — an inherited framework
+        // default isn't.
         if ($methodFile === false || $methodFile !== $reflection->getFileName()) {
             return false;
         }
@@ -200,10 +197,8 @@ final class ImplicitResponsesExtension implements OperationExtension
         $analysis = $context->engine->analyzeAction(new ActionRef($methodFile, $formRequest, 'authorize', $line === false ? 0 : $line));
         $context->recordDependencyFiles($analysis->dependencyFiles);
 
-        // A `return true;` gate never fails, so it produces no 403; anything provably otherwise (a
-        // computed bool, `return false`, `$this->user()->can(...)`) can deny. Conservative when the
-        // return type is unknown (empty returns): document no 403 rather than invent one — the deny
-        // only surfaces when the engine can PROVE the gate is not an unconditional `true`.
+        // A `return true;` gate never fails, so no 403; anything else can deny. Unknown returns
+        // document nothing — the 403 only appears when the engine can prove the gate isn't `true`.
         foreach ($analysis->returns as $return) {
             if (! ($return->type instanceof LiteralT && $return->type->value === true)) {
                 return true;

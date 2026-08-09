@@ -21,13 +21,11 @@ use Docuccino\Core\Extensions\ResolvedExtensions;
 use Illuminate\Contracts\Container\Container;
 
 /**
- * The late-bound extension registry (design §6 — the Scramble boot-trap, designed away).
- *
- * `extend()` merely appends a class-string, an instance, or a {@see Registrar} closure; nothing
- * is read until {@see resolve()} runs at build time (post-boot by definition). Because there is
- * no method that returns the list before resolution, an early snapshot is impossible — a
- * registration made in any provider's `register()`/`boot()`, or even after the whole app has
- * booted, is picked up. Config `extensions` merge in at resolve time too.
+ * The late-bound extension registry (design §6). `extend()` only appends a class-string, an instance or
+ * a {@see Registrar} closure; nothing is read until {@see resolve()} runs at BUILD time, never at boot.
+ * There's no accessor that returns the list earlier, so an early snapshot is impossible
+ * and a registration from any provider — or from after the app finished booting — still lands. Config
+ * `extensions` merge in at resolve time too.
  */
 final class ExtensionRegistry
 {
@@ -45,10 +43,10 @@ final class ExtensionRegistry
     }
 
     /**
-     * Resolve every registration (plus config extensions and the built-in defaults) into a
-     * partitioned, per-contract-sorted set. Called once per build; never at boot.
+     * Every registration, config extension and built-in default, partitioned by contract and sorted.
+     * Called once per build.
      *
-     * @param  list<class-string|object>  $defaults  the built-in extensions (dogfooding the API)
+     * @param  list<class-string|object>  $defaults  the built-in extensions
      * @param  list<class-string|object>  $configExtensions  from `config('docuccino.extensions')`
      */
     public function resolve(Container $container, array $defaults, array $configExtensions): ResolvedExtensions

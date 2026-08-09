@@ -32,18 +32,17 @@ use Docuccino\Laravel\Tests\Fixtures\ApiResources\MultiShapeResource;
 use Docuccino\Laravel\Tests\Fixtures\TimacdonaldJsonApi\TimacdonaldArticleResource;
 
 /**
- * Real-engine (out-of-process) coverage for the inference-dependent halves of the Phase-4 and Phase-5c
- * integrations, so the type-recovery those integrations lean on is exercised by the ACTUAL
- * PHPStan/Larastan engine — not only the deterministic stub. Complements the in-process unit tests
- * (which drive the mappers) and the existing JsonResponse status/payload real-engine smoke.
+ * Real-engine (out-of-process) coverage for the inference-dependent half of the integrations: the
+ * type recovery they lean on, exercised by the actual PHPStan/Larastan engine rather than the
+ * deterministic stub. The in-process unit tests drive the mappers; these prove the other half.
  */
 beforeEach(function (): void {
     ensureFixtureAvailable(FixtureRunner::available());
 });
 
 it('recovers a constant status from a Data calculateResponseStatus() override', function (): void {
-    // The real engine's return-type inference over the overridden method yields a literal-int type —
-    // the recovery half DataResponseStatus reads to re-home a 201 response (gap 5).
+    // Return-type inference over the override yields a literal int — the recovery half
+    // DataResponseStatus reads to re-home a 201 response.
     $analysis = ActionAnalysis::fromArray(FixtureRunner::analyze(
         'app/Data/CreatedThingData.php',
         'App\\Data\\CreatedThingData',
@@ -56,8 +55,8 @@ it('recovers a constant status from a Data calculateResponseStatus() override', 
 })->group('fixture');
 
 it('recovers an API resource toArray shape as a constant array shape', function (): void {
-    // The real engine analyses UserResource::toArray (@mixin User) into an
-    // array{id, name, email, role, badge} — the last two are conditional fields.
+    // UserResource::toArray (@mixin User) → array{id, name, email, role, badge}; the last two are
+    // conditional fields.
     $analysis = ActionAnalysis::fromArray(FixtureRunner::analyze(
         'app/Http/Resources/UserResource.php',
         'App\\Http\\Resources\\UserResource',
@@ -73,9 +72,9 @@ it('recovers an API resource toArray shape as a constant array shape', function 
 
 it('types API resource conditional fields as T|MissingValue via the ConditionallyLoadsAttributes stub', function (): void {
     // Without the stub, `when(...)`/`whenLoaded(...)` return `MissingValue|mixed`, which PHPStan
-    // collapses to `mixed` (audit api-resources #1) — the field would be required + permissive `{}`.
-    // The stub gives them `TValue|MissingValue`, so the real engine recovers the value type AND the
-    // MissingValue marker ToArrayObject strips to make the field optional.
+    // collapses to `mixed` — the field would come out required with a permissive `{}`. The stub
+    // types them `TValue|MissingValue`, so the engine recovers both the value type and the
+    // MissingValue marker that ToArrayObject strips to make the field optional.
     $analysis = ActionAnalysis::fromArray(FixtureRunner::analyze(
         'app/Http/Resources/UserResource.php',
         'App\\Http\\Resources\\UserResource',
@@ -96,7 +95,7 @@ it('types API resource conditional fields as T|MissingValue via the Conditionall
     ));
 
     // `role` (value form) and `badge` (whenLoaded closure form) both carry the marker (→ optional)
-    // and the concrete recovered value type.
+    // plus the concrete recovered value type.
     expect($hasMissing($byKey['role']))->toBeTrue()
         ->and($literalValue($byKey['role']))->toBe(['member'])
         ->and($hasMissing($byKey['badge']))->toBeTrue()
@@ -104,11 +103,10 @@ it('types API resource conditional fields as T|MissingValue via the Conditionall
 })->group('fixture');
 
 it('recovers a magic-attribute Eloquent model column universe from @property docblocks via classMetadata', function (): void {
-    // App\Models\Product declares NO public column properties — its attributes are magic — and
-    // documents them with class-level @property/@property-read tags (the ide-helper convention).
-    // The real engine recovers those tags as the model's typed column universe: the same
-    // classMetadata path ModelSchema consumes, now sourced from docblocks rather than a shape no
-    // real model has (Finding 0).
+    // App\Models\Product declares no public column properties — its attributes are magic, documented
+    // with class-level @property/@property-read tags (the ide-helper convention). The engine recovers
+    // those tags as the model's typed column universe, through the same classMetadata path
+    // ModelSchema consumes.
     $metadata = ClassMetadata::fromArray(FixtureRunner::classMetadata('App\\Models\\Product'));
 
     $byName = [];
@@ -116,9 +114,9 @@ it('recovers a magic-attribute Eloquent model column universe from @property doc
         $byName[$property->name] = $property->type;
     }
 
-    // Every documented column recovers, including the @property-read one (`name`) — which has no
-    // public property AND no cast, so its only possible source is the docblock. Framework
-    // bookkeeping props may also be present.
+    // Every documented column recovers, including the @property-read one (`name`) — no public
+    // property and no cast, so the docblock is its only possible source. Framework bookkeeping props
+    // may also be present.
     expect($byName)->toHaveKeys(['id', 'sku', 'description', 'name']);
 
     // Precise types from the docblock grammar: id is an int, the ?string column is a string|null
@@ -147,8 +145,8 @@ it('recovers a real Data class shape via classMetadata (property types, not a st
     expect($subtitle)->toBeInstanceOf(UnionT::class)
         ->and(array_filter($subtitle->members, static fn ($m): bool => $m instanceof NullT))->not->toBeEmpty();
 
-    // The `string|Optional` union is recovered as a union whose members include spatie's Optional
-    // marker class — the real-engine proof that Optional-union properties survive reflection.
+    // `string|Optional` keeps spatie's Optional marker in the union — Optional-union properties
+    // survive reflection.
     $summary = $byName['summary'];
     expect($summary)->toBeInstanceOf(UnionT::class)
         ->and(array_filter(
@@ -158,11 +156,10 @@ it('recovers a real Data class shape via classMetadata (property types, not a st
 })->group('fixture');
 
 it('threads the item resource type through Resource::collection() via the collection stub', function (): void {
-    // Framework docblocks `collection()` as a bare AnonymousResourceCollection (no generic), so the
-    // item type was lost and the mapper emitted `items: []` (audit api-resources #2). The
-    // JsonResourceCollection stub makes AnonymousResourceCollection generic and returns
-    // `AnonymousResourceCollection<static>`, so `UserResource::collection(User::all())` recovers the
-    // concrete item resource in typeArgs — what JsonResourceSchema reads to type the array items.
+    // The framework docblocks `collection()` as a bare AnonymousResourceCollection (no generic), so
+    // the item type is lost and the mapper emits `items: []`. The JsonResourceCollection stub makes
+    // it generic and returns `AnonymousResourceCollection<static>`, so the concrete item resource
+    // lands in typeArgs — what JsonResourceSchema reads to type the array items.
     $analysis = ActionAnalysis::fromArray(FixtureRunner::analyze(
         'app/Http/Controllers/SpikeController.php',
         'App\\Http\\Controllers\\SpikeController',
@@ -201,10 +198,9 @@ it('types $model->toResource(Class) and $collection->toResourceCollection(Class)
 })->group('fixture');
 
 it('merges multiple toArray return sites and recurses nested conditionals through the real engine', function (): void {
-    // The real engine pairs each `return` with a ReturnSite: ProfileResource has two (the minimal
-    // branch and the full branch), and the full branch's nested `meta` carries a `when(...)` field
-    // typed `string|MissingValue`. Proves the recovery half of Wave C items 6 (multi-site) + 7
-    // (nested conditional) — not just the mapper mechanics.
+    // The engine pairs each `return` with a ReturnSite: ProfileResource has two (minimal and full),
+    // and the full branch's nested `meta` carries a `when(...)` field typed `string|MissingValue`.
+    // This is the recovery half of multi-site + nested-conditional merging, not the mapper mechanics.
     $analysis = ActionAnalysis::fromArray(FixtureRunner::analyze(
         'app/Http/Resources/ProfileResource.php',
         'App\\Http\\Resources\\ProfileResource',
@@ -224,8 +220,8 @@ it('merges multiple toArray return sites and recurses nested conditionals throug
     expect($keySets)->toContain(['id', 'name'])
         ->and($keySets)->toContain(['id', 'email', 'meta']);
 
-    // Drive the REAL-recovered multi-site analysis through the mapper (keyed onto a loadable fixture,
-    // same technique as the timacdonald composition proof) and assert the merged contract.
+    // Drive the real-recovered multi-site analysis through the mapper (keyed onto a loadable fixture,
+    // since the mapper's guard reflects the class) and assert the merged contract.
     $engine = new StubTypeEngine(analyses: [MultiShapeResource::class.'::toArray' => $analysis]);
     $components = new ComponentRegistry;
     $converter = new SchemaConverter([new JsonResourceSchema, ...DefaultTypeMappers::all()], $engine, $components);
@@ -242,9 +238,9 @@ it('merges multiple toArray return sites and recurses nested conditionals throug
 })->group('fixture');
 
 it('recovers merge()/mergeWhen() as MergeValue<array{…}> and splices the keys through the real engine', function (): void {
-    // With the merge stub the real engine types `merge([...])` as MergeValue<array{name,email}> and
-    // `mergeWhen($c, [...])` as MergeValue<array{role}>|MissingValue — the recovery half of Wave C
-    // item 5 (not just the splice mechanics).
+    // With the merge stub the engine types `merge([...])` as MergeValue<array{name,email}> and
+    // `mergeWhen($c, [...])` as MergeValue<array{role}>|MissingValue — the recovery half of the
+    // key splice, not the splice mechanics.
     $analysis = ActionAnalysis::fromArray(FixtureRunner::analyze(
         'app/Http/Resources/DashboardResource.php',
         'App\\Http\\Resources\\DashboardResource',
@@ -254,8 +250,8 @@ it('recovers merge()/mergeWhen() as MergeValue<array{…}> and splices the keys 
     $shape = $analysis->returns[0]->type ?? null;
     expect($shape)->toBeInstanceOf(ArrayShapeT::class);
 
-    // At least one field is a MergeValue (the int-keyed merge entries), proving the stub threaded the
-    // generic through the engine rather than collapsing to mixed.
+    // At least one field is a MergeValue (the int-keyed merge entries) — the stub threaded the
+    // generic through rather than collapsing to mixed.
     $mergeValue = 'Illuminate\\Http\\Resources\\MergeValue';
     $carriesMerge = static function (DType $t) use ($mergeValue): bool {
         $members = $t instanceof UnionT ? $t->members : [$t];
@@ -264,8 +260,8 @@ it('recovers merge()/mergeWhen() as MergeValue<array{…}> and splices the keys 
     };
     expect(array_filter($shape->fields, static fn ($f): bool => $carriesMerge($f->type)))->not->toBeEmpty();
 
-    // Drive the REAL-recovered shape through the mapper (keyed onto a loadable fixture) and assert the
-    // splice: merged keys sit beside id, unconditional merge keys required, mergeWhen key optional.
+    // Then the splice: merged keys sit beside id, unconditional merge keys required, mergeWhen key
+    // optional, and no leftover int key.
     $engine = new StubTypeEngine(analyses: [MultiShapeResource::class.'::toArray' => $analysis]);
     $components = new ComponentRegistry;
     $converter = new SchemaConverter([new JsonResourceSchema, ...DefaultTypeMappers::all()], $engine, $components);
@@ -279,8 +275,8 @@ it('recovers merge()/mergeWhen() as MergeValue<array{…}> and splices the keys 
 
 it('recovers the resource-collection paginating terminal + kind through the real engine', function (string $method, string $kind): void {
     // The static return type is AnonymousResourceCollection<UserResource> for every mode; only the
-    // call-graph terminal distinguishes them. The REAL PaginationTerminalVisitor must find the
-    // paginate/simplePaginate/cursorPaginate terminal on the Eloquent builder receiver (Wave C item 1).
+    // call-graph terminal distinguishes them, so the real PaginationTerminalVisitor has to find the
+    // paginate/simplePaginate/cursorPaginate call on the Eloquent builder receiver.
     $trace = FixtureRunner::tracePaginationTerminal(
         'app/Http/Controllers/UserPageController.php',
         'App\\Http\\Controllers\\UserPageController',
@@ -297,7 +293,7 @@ it('recovers the resource-collection paginating terminal + kind through the real
 
 it('recognises a resource wrapping Model::create() as a 201 through the real engine', function (string $method, bool $created): void {
     // store() returns new UserResource(User::create(...)) → wasRecentlyCreated → 201; show() wraps an
-    // existing model → stays 200. Proves the recovery half of Wave C item 4 (not just the AST match).
+    // existing model → stays 200. The recovery half, not just the AST match.
     $trace = FixtureRunner::traceCreatedResource(
         'app/Http/Controllers/UserWriteController.php',
         'App\\Http\\Controllers\\UserWriteController',
@@ -310,12 +306,8 @@ it('recognises a resource wrapping Model::create() as a 201 through the real eng
     'show wraps an existing model → 200' => ['show', false],
 ])->group('fixture');
 
-// ---------------------------------------------------------------------------------------------------
-// Phase 5c integrations — the recovery half proven against the REAL engine (M2 / binding coverage).
-// ---------------------------------------------------------------------------------------------------
-
 it('recovers a real timacdonald JSON:API resource attributes shape and maps it to the JSON:API document', function (): void {
-    // Real recovery: the engine reflects the timacdonald resource's toAttributes() into {title, body}.
+    // The engine reflects the timacdonald resource's toAttributes() into {title, body}.
     $analysis = ActionAnalysis::fromArray(FixtureRunner::analyze(
         'app/Http/Resources/ArticleJsonApiResource.php',
         'App\\Http\\Resources\\ArticleJsonApiResource',
@@ -326,10 +318,9 @@ it('recovers a real timacdonald JSON:API resource attributes shape and maps it t
     expect($shape)->toBeInstanceOf(ArrayShapeT::class)
         ->and(array_map(static fn ($field): string => (string) $field->key, $shape->fields))->toBe(['title', 'body']);
 
-    // Drive the REAL-recovered attributes shape through the timacdonald mapper + shared JSON:API
-    // document builder (real recovery → real mapper), proving they compose end-to-end. The mapper's
-    // class guard reflects the resource FQCN, so the composition half runs against the loadable
-    // test-fixture timacdonald resource seeded with the shape the real engine just recovered.
+    // Real recovery → real mapper: the shape goes through the timacdonald mapper and the shared
+    // JSON:API document builder. The mapper's class guard reflects the resource FQCN, so the shape is
+    // seeded onto a loadable test fixture instead.
     $engine = new StubTypeEngine(analyses: [
         TimacdonaldArticleResource::class.'::toAttributes' => $analysis,
     ]);
@@ -342,8 +333,8 @@ it('recovers a real timacdonald JSON:API resource attributes shape and maps it t
     );
     $converter->toSchema(new ClassT(TimacdonaldArticleResource::class));
 
-    // The hoisted component is the resource object itself (the `{data: …}` envelope is applied at the
-    // response root, not baked into the component — so a collection references the bare object).
+    // The hoisted component is the bare resource object; the `{data: …}` envelope is applied at the
+    // response root, so a collection can reference the object directly.
     $object = $components->schemas()['TimacdonaldArticleResource'];
     expect($object['required'])->toBe(['id', 'type'])
         ->and($object['properties']['attributes']['properties'])->toHaveKeys(['title', 'body'])
@@ -351,9 +342,9 @@ it('recovers a real timacdonald JSON:API resource attributes shape and maps it t
 })->group('fixture');
 
 it('recovers spatie jsonPaginate() through the real engine and maps it to page[number]/page[size]', function (): void {
-    // The REAL shared PaginationTerminalVisitor runs in the engine subprocess: it must recognise the
-    // jsonPaginate() terminal one call deep, match the (where-narrowed) Eloquent builder receiver, and
-    // fold the two literal overrides from the outermost call site's int args.
+    // The shared PaginationTerminalVisitor runs in the engine subprocess: it has to spot the
+    // jsonPaginate() terminal one call deep, match the where-narrowed Eloquent builder receiver, and
+    // fold the two literal overrides out of the outermost call site's int args.
     $trace = FixtureRunner::traceJsonApiPaginate(
         'app/Http/Controllers/JsonApiPaginateController.php',
         'App\\Http\\Controllers\\JsonApiPaginateController',
@@ -375,17 +366,17 @@ it('recovers spatie jsonPaginate() through the real engine and maps it to page[n
         $byName[$spec->name] = $spec;
     }
 
-    // The recovered terminal + overrides become the bracketed page params, with the folded literals
-    // driving the size default (defaultSize) and ceiling (maxResults).
+    // Terminal + overrides become the bracketed page params, the folded literals driving the size
+    // default and ceiling.
     expect(array_keys($byName))->toBe(['page[number]', 'page[size]'])
         ->and($byName['page[size]']->schema['default'])->toBe(25)
         ->and($byName['page[size]']->schema['maximum'])->toBe(100);
 })->group('fixture');
 
 it('recovers a Validator::make() rule array inside a Queries class reached by descent from the action', function (): void {
-    // The modular GET-params pattern: the controller action calls a Queries method that runs
-    // Validator::make($input, [...]) one hop away. The engine's bounded descent must reach that call
-    // and the InlineRulesVisitor recover its literal rule array — previously promised but unproven.
+    // The modular GET-params pattern: the action calls a Queries method that runs
+    // Validator::make($input, [...]) one hop away, so the engine's bounded descent has to reach that
+    // call for InlineRulesVisitor to recover the literal rule array.
     $trace = FixtureRunner::traceInlineRules(
         'app/Http/Controllers/ValidatedListController.php',
         'App\\Http\\Controllers\\ValidatedListController',
@@ -402,10 +393,10 @@ it('recovers a Validator::make() rule array inside a Queries class reached by de
 })->group('fixture');
 
 it('recovers Rule::enum(...) inside a real FormRequest rules() and diagnoses an unrecoverable field', function (): void {
-    // ShapeToRuleSet alone drops Rule::enum silently (the descriptor is a bare object by the DType
-    // stage, validation §1). The RulesMethodVisitor traces the returned array with constant folding,
-    // so the enum descriptor survives with its backing values + FQCN; the closure-ruled field is
-    // recovered by neither path and is flagged unrecoverable (diagnostic, never a silent drop).
+    // ShapeToRuleSet alone drops Rule::enum silently — by the DType stage the descriptor is a bare
+    // object. RulesMethodVisitor traces the returned array with constant folding, so the enum
+    // descriptor survives with its backing values and FQCN. The closure-ruled field is recovered by
+    // neither path, so it's flagged unrecoverable rather than silently dropped.
     $trace = FixtureRunner::traceRules(
         'app/Http/Requests/StoreListingRequest.php',
         'App\\Http\\Requests\\StoreListingRequest',
@@ -418,8 +409,8 @@ it('recovers Rule::enum(...) inside a real FormRequest rules() and diagnoses an 
     $titleRules = array_map(static fn (array $r): string => $r['name'], $trace['fields']['title']);
     expect($titleRules)->toBe(['required', 'string', 'max']);
 
-    // The enum descriptor folded to an `enum` rule with the backing values as parameters and the
-    // enum FQCN in the note — the same shape the inline path produces.
+    // The descriptor folds to an `enum` rule with the backing values as parameters and the enum FQCN
+    // in the note — the same shape the inline path produces.
     $statusRules = [];
     foreach ($trace['fields']['status'] as $rule) {
         $statusRules[$rule['name']] = $rule;
@@ -428,9 +419,9 @@ it('recovers Rule::enum(...) inside a real FormRequest rules() and diagnoses an 
         ->and($statusRules['enum']['parameters'])->toBe(['open', 'closed', 'draft'])
         ->and($statusRules['enum']['note'])->toBe('App\\Enums\\ListingStatus');
 
-    // `priority` chains `->only([ListingStatus::Open, ListingStatus::Closed])` off the descriptor:
-    // the real engine folds each enum-case arg to its case name, so the recovered case list is
-    // NARROWED to those two backing values (validation §4 #10 — chained-call folding).
+    // `priority` chains `->only([ListingStatus::Open, ListingStatus::Closed])` off the descriptor: the
+    // engine folds each enum-case arg to its case name, narrowing the recovered case list to those
+    // two backing values.
     $priorityRules = [];
     foreach ($trace['fields']['priority'] as $rule) {
         $priorityRules[$rule['name']] = $rule;
@@ -441,7 +432,7 @@ it('recovers Rule::enum(...) inside a real FormRequest rules() and diagnoses an 
 })->group('fixture');
 
 it('recovers a real laravel-actions rules() array end-to-end into a RuleSet', function (): void {
-    // Real recovery: the engine analyses the action's literal rules() array into a constant shape...
+    // The engine analyses the action's literal rules() array into a constant shape…
     $analysis = ActionAnalysis::fromArray(FixtureRunner::analyze(
         'app/Actions/PublishArticleAction.php',
         'App\\Actions\\PublishArticleAction',
@@ -451,7 +442,7 @@ it('recovers a real laravel-actions rules() array end-to-end into a RuleSet', fu
     $shape = $analysis->returns[0]->type ?? null;
     expect($shape)->toBeInstanceOf(ArrayShapeT::class);
 
-    // ...which ShapeToRuleSet (the integration's recovery tail) turns into a RuleSet.
+    // …which ShapeToRuleSet (the integration's recovery tail) turns into a RuleSet.
     $ruleSet = (new ShapeToRuleSet)->convert($shape);
     expect(array_keys($ruleSet->fields))->toBe(['title', 'body']);
 
@@ -464,9 +455,9 @@ it('recovers a real laravel-actions rules() array end-to-end into a RuleSet', fu
 })->group('fixture');
 
 it('recovers a laravel-actions jsonResponse() envelope distinct from handle() through the real engine', function (): void {
-    // The decorator returns jsonResponse($result) for JSON clients, so ITS return type is the 200 wire
-    // shape. The engine analyses jsonResponse() into the `{data, meta}` envelope — distinct from
-    // handle()'s bare `{id}` — which InferredResponsesExtension selects via responseAnalysisRef().
+    // The decorator returns jsonResponse($result) for JSON clients, so that method's return type is
+    // the 200 wire shape: a `{data, meta}` envelope, distinct from handle()'s bare `{id}`, which
+    // InferredResponsesExtension selects via responseAnalysisRef().
     $jsonResponse = ActionAnalysis::fromArray(FixtureRunner::analyze(
         'app/Actions/PublishArticleAction.php',
         'App\\Actions\\PublishArticleAction',
@@ -477,8 +468,8 @@ it('recovers a laravel-actions jsonResponse() envelope distinct from handle() th
     $envelopeKeys = array_map(static fn ($field): string => (string) $field->key, $envelope->fields);
     expect($envelopeKeys)->toBe(['data', 'meta']);
 
-    // handle()'s own shape is the bare `{id}` the decorator has already wrapped away — proving the
-    // redirect selects a genuinely different (transformed) wire shape, not the same one.
+    // handle()'s own shape is the bare `{id}` the decorator wrapped away — so the redirect really does
+    // select a different, transformed wire shape.
     $handle = ActionAnalysis::fromArray(FixtureRunner::analyze(
         'app/Actions/PublishArticleAction.php',
         'App\\Actions\\PublishArticleAction',
@@ -491,13 +482,11 @@ it('recovers a laravel-actions jsonResponse() envelope distinct from handle() th
         ->and($envelopeKeys)->not->toBe($handleKeys);
 })->group('fixture');
 
-// ---------------------------------------------------------------------------------------------------
-// Wave D — Eloquent accessor / custom-cast / $with recovery, proven against the REAL engine.
-// ---------------------------------------------------------------------------------------------------
+// Eloquent accessor / custom-cast / $with recovery.
 
 it('recovers a classic Eloquent accessor return type through the real engine', function (): void {
-    // App\Models\Product::getFullLabelAttribute(): string — the engine recovers the accessor's own
-    // return type, which ModelSchema uses to type the `full_label` append (Wave D item 7, classic).
+    // Product::getFullLabelAttribute(): string — the accessor's own return type is what ModelSchema
+    // uses to type the `full_label` append.
     $analysis = ActionAnalysis::fromArray(FixtureRunner::analyzeCallable(
         'app/Models/Product.php',
         'App\\Models\\Product',
@@ -510,9 +499,9 @@ it('recovers a classic Eloquent accessor return type through the real engine', f
 })->group('fixture');
 
 it('recovers an Attribute::make(get:) closure return type through the real engine', function (): void {
-    // The `display_name` accessor returns Attribute::make(get: function (): string { … }); the engine
-    // analyses the GET CLOSURE (located by line, as AccessorReader locates it), not the method's
-    // Attribute return type, recovering `string` (Wave D item 7, Attribute form).
+    // The `display_name` accessor returns Attribute::make(get: function (): string { … }). What
+    // matters is the get closure's type, not the method's Attribute return type — so the closure is
+    // located by line, the way AccessorReader locates it.
     $file = FixtureRunner::path('app/Models/Product.php');
     $line = 0;
     foreach (file($file) ?: [] as $index => $text) {
@@ -536,8 +525,8 @@ it('recovers an Attribute::make(get:) closure return type through the real engin
 })->group('fixture');
 
 it('recovers a custom CastsAttributes caster get() return type through the real engine', function (): void {
-    // App\Casts\Money::get(): float — the engine recovers the caster's get() return type, which
-    // ModelSchema uses to type the `price` column cast by it (Wave D item 7, custom cast / eloquent #9).
+    // Money::get(): float — the caster's get() return type is what ModelSchema uses to type the
+    // `price` column it casts.
     $analysis = ActionAnalysis::fromArray(FixtureRunner::analyzeCallable(
         'app/Casts/Money.php',
         'App\\Casts\\Money',
@@ -550,9 +539,9 @@ it('recovers a custom CastsAttributes caster get() return type through the real 
 })->group('fixture');
 
 it('recovers a spatie Data static rules() override through the real engine and merges it over inference', function (): void {
-    // App\Data\PublishListingData defines a STATIC rules() (spatie's override, docs: validation/manual-
-    // rules) mixing a pipe-string rule with a Rule::enum descriptor — read through the SAME literal +
-    // descriptor engine analysis the FormRequest path uses (RulesMethodVisitor), off a static method.
+    // PublishListingData defines a static rules() (spatie's manual-rules override) mixing a pipe-string
+    // rule with a Rule::enum descriptor, read through the same RulesMethodVisitor the FormRequest path
+    // uses — off a static method this time.
     $trace = FixtureRunner::traceRules(
         'app/Data/PublishListingData.php',
         'App\\Data\\PublishListingData',
@@ -573,9 +562,9 @@ it('recovers a spatie Data static rules() override through the real engine and m
         ->and($statusByName['enum']['parameters'])->toBe(['open', 'closed', 'draft'])
         ->and($statusByName['enum']['note'])->toBe('App\\Enums\\ListingStatus');
 
-    // Drive the REAL-recovered override through DataValidationRules::build(): it WINS per field over the
-    // property-type inference (both properties are plain `string`, which alone would infer required|
-    // string) — spatie's DataValidationRulesResolver `add` (override) semantics.
+    // Through DataValidationRules::build() the override wins per field over property-type inference
+    // (both properties are plain `string`, which alone would infer `required|string`) — spatie's
+    // DataValidationRulesResolver override semantics.
     $override = new RuleSet(array_map(
         static fn (array $rules): array => array_map(
             static fn (array $r): ValidationRule => new ValidationRule($r['name'], $r['parameters'], $r['note'] ?? null),
@@ -596,9 +585,8 @@ it('recovers a spatie Data static rules() override through the real engine and m
 })->group('fixture');
 
 it('resolves a $with relation\'s related model through the real engine', function (): void {
-    // App\Models\Product::seller(): BelongsTo<User, $this> — the engine resolves the relation return
-    // type, whose first type argument is the related model ModelSchema nests under the `seller` key
-    // (Wave D item 8, $with default eager load / eloquent #13).
+    // Product::seller(): BelongsTo<User, $this> — the relation return type's first type argument is the
+    // related model, which ModelSchema nests under the `seller` key for a `$with` eager load.
     $analysis = ActionAnalysis::fromArray(FixtureRunner::analyzeCallable(
         'app/Models/Product.php',
         'App\\Models\\Product',

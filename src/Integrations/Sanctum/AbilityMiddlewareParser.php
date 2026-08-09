@@ -5,18 +5,16 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\Sanctum;
 
 /**
- * Parses a Sanctum ability middleware string into an {@see AbilityRequirement}. Sanctum ships
- * `abilities` (`CheckAbilities`, ALL-of) and `ability` (`CheckForAnyAbility`, ANY-of) as short
- * aliases, plus the deprecated `CheckScopes` (ALL-of) / `CheckForAnyScope` (ANY-of) that delegate to
- * them — none register short aliases, so a route uses the class FQCN directly. All forms take a
- * comma-separated ability list; anything else returns null. Pure so the middleware map is
- * dataset-tested.
+ * Parses a Sanctum ability middleware string into an {@see AbilityRequirement}. Sanctum ships `abilities`
+ * (`CheckAbilities`, all-of) and `ability` (`CheckForAnyAbility`, any-of) as short aliases, plus the
+ * deprecated `CheckScopes`/`CheckForAnyScope` that delegate to them — those register no alias, so routes
+ * name the FQCN directly. Every form takes a comma-separated list; null for anything else. Pure, so the
+ * middleware map is dataset-testable.
  */
 final class AbilityMiddlewareParser
 {
     /**
-     * Prefix → match semantics. Ordered longest-alias-first so no short alias shadows another; the
-     * ability and legacy-scope FQCN forms map to the same two match modes.
+     * Prefix → match semantics, longest alias first so no short alias shadows another.
      *
      * @var array<string, string>
      */

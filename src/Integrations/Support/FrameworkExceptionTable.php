@@ -5,15 +5,13 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\Support;
 
 /**
- * The single source of truth for how Laravel's stock exceptions map to HTTP responses — shared by the
- * framework-errors tier (`FrameworkErrorsExceptionToResponse`, plain JSON) and the Problem Details
- * preset (`ProblemDetailsSchema`, RFC 9457) so the two presentations can never drift on the status a
- * given exception produces or the reason phrase for that status.
+ * How Laravel's stock exceptions map to HTTP responses. Every error tier reads this one table — the
+ * plain-JSON framework-errors tier, the RFC 9457 Problem Details preset, the terminal fallback and the
+ * inferred-handler builder — so no two presentations can drift on a status or its label.
  *
- * Reason phrases are the RFC 9110 §15 canonical phrases — used verbatim as the framework-error
- * response *description* and the problem-details *title*. This resolves the historical 401 split
- * (framework-errors said "Unauthenticated", problem-details said "Unauthorized"): the RFC 9110 reason
- * phrase for 401 is **Unauthorized**, so that is the one canonical value both now use.
+ * Reason phrases are the RFC 9110 §15 canonical ones, used verbatim as the framework-error response
+ * description and the problem-details title. Note 401 is "Unauthorized" (§15.5.2), not
+ * "Unauthenticated" — Laravel's own message wording is not the reason phrase.
  */
 final class FrameworkExceptionTable
 {
@@ -28,21 +26,16 @@ final class FrameworkExceptionTable
         'Illuminate\\Auth\\AuthenticationException' => ['status' => '401', 'validation' => false],
         'Illuminate\\Auth\\Access\\AuthorizationException' => ['status' => '403', 'validation' => false],
         'Illuminate\\Database\\Eloquent\\ModelNotFoundException' => ['status' => '404', 'validation' => false],
-        // The PARENT of ModelNotFoundException (and MultipleRecordsFoundException) — a bare
-        // `sole()`/`->firstOrFail()` on the query builder throws this directly, and subtype matching
-        // against ModelNotFoundException alone would miss it (a parent is not a subclass).
+        // ModelNotFoundException's PARENT: a bare `sole()`/`firstOrFail()` on the query builder throws
+        // this directly, and subtype matching on the child alone would miss it.
         'Illuminate\\Database\\RecordsNotFoundException' => ['status' => '404', 'validation' => false],
         'Symfony\\Component\\HttpKernel\\Exception\\NotFoundHttpException' => ['status' => '404', 'validation' => false],
     ];
 
     /**
-     * HTTP status → RFC 9110 §15 reason phrase — the ONE map every error tier reads (framework-errors,
-     * the problem-details preset, the terminal `DefaultExceptionToResponse` fallback and the
-     * inferred-handler `HandlerResponseBuilder`), so a status's human label is identical no matter
-     * which tier wins the chain. The 401 phrase is the RFC 9110 §15.5.2 value **Unauthorized**, which
-     * resolves the historical split (framework-errors said "Unauthorized" while the fallback and
-     * inferred-handler tiers still said "Unauthenticated"). Covers every status those tiers can emit;
-     * an unlisted status degrades to a generic `Error`. (PHP coerces the numeric-string keys to int.)
+     * HTTP status → RFC 9110 §15 reason phrase. Covers every status the error tiers can emit; anything
+     * unlisted degrades to a generic `Error`. Typed `array<int, string>` because PHP coerces the
+     * numeric-string keys to int.
      *
      * @var array<int, string>
      */
@@ -60,7 +53,7 @@ final class FrameworkExceptionTable
     ];
 
     /**
-     * The mapped exception FQCNs in table order (drives the dataset tests over EVERY entry).
+     * The mapped exception FQCNs in table order — drives the dataset test over every entry.
      *
      * @return list<string>
      */
@@ -70,8 +63,7 @@ final class FrameworkExceptionTable
     }
 
     /**
-     * The `{status, validation}` facts for an exception FQCN, matched subtype-aware (a subclass
-     * inherits its base's mapping), or null when the exception is outside the table.
+     * The facts for an exception FQCN, subtype-aware, or null when it's outside the table.
      *
      * @return array{status: string, validation: bool}|null
      */
@@ -86,15 +78,15 @@ final class FrameworkExceptionTable
         return null;
     }
 
-    /** The RFC 9110 reason phrase for an HTTP status (a generic `Error` for an unlisted status). */
+    /** The reason phrase for a status, or a generic `Error` when unlisted. */
     public static function reason(string $status): string
     {
         return self::REASON_PHRASES[$status] ?? 'Error';
     }
 
     /**
-     * The `[status, reason-phrase]` pairs (drives the dataset test over EVERY entry). Returned as a
-     * list of pairs rather than a map because PHP coerces the numeric-string status keys back to int.
+     * The `[status, phrase]` pairs, for the dataset test over every entry. A list of pairs rather than a
+     * map because PHP coerces the numeric-string keys back to int.
      *
      * @return list<array{string, string}>
      */

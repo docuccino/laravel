@@ -22,19 +22,15 @@ use ReflectionNamedType;
 use Throwable;
 
 /**
- * Discovers a model's accessors — both the classic `getXxxAttribute()` form and the Laravel 9+
- * `xxx(): Attribute { return Attribute::make(get: …); }` form — and, for each, the {@see CallableRef}
- * whose return type IS the accessor's serialised type. {@see ModelSchema} analyses those refs through
- * the engine (real return-type recovery) and lets the result type an appended attribute or override
- * the column/cast it shadows, mirroring `HasAttributes::addMutatedAttributesToArray` (an accessor's
- * value replaces the raw/cast column value, so the cast is skipped).
+ * Discovers a model's accessors — the classic `getXxxAttribute()` form and the Laravel 9+
+ * `xxx(): Attribute { return Attribute::make(get: …); }` form — and hands back a {@see CallableRef} whose
+ * return type IS the serialised attribute type. {@see ModelSchema} analyses those and lets the result
+ * override the column/cast it shadows, mirroring `HasAttributes::addMutatedAttributesToArray`.
  *
- * A classic accessor is analysed by name (the method itself is the callable); an `Attribute` accessor
- * is analysed by the LINE of its `get:` closure (the method returns an `Attribute`, not the value), so
- * the file is parsed to locate that closure — the same line-located closure analysis the named
- * rate-limiter uses. Framework-declared methods are skipped, as is any `Attribute` accessor whose get
- * callback is not an inline closure (nothing to locate). Reflection/parse failures yield no accessors,
- * never an error.
+ * A classic accessor is referenced by name. An `Attribute` accessor can't be — the method returns an
+ * `Attribute`, not the value — so the file is parsed to find the `get:` closure and the ref points at its
+ * LINE instead. Framework-declared methods are skipped, as is any `get:` that isn't an inline closure.
+ * Reflection or parse failures yield no accessors rather than an error.
  */
 final class AccessorReader
 {
@@ -67,8 +63,7 @@ final class AccessorReader
 
                 $name = $method->getName();
 
-                // Classic accessor: `getFullNameAttribute()` types the `full_name` attribute; analysed
-                // by name (the method's own return type is the attribute type).
+                // `getFullNameAttribute()` types the `full_name` attribute.
                 if (preg_match('/^get(.+)Attribute$/', $name, $matches) === 1) {
                     $accessors[] = [
                         'attribute' => Str::snake($matches[1]),
@@ -78,8 +73,7 @@ final class AccessorReader
                     continue;
                 }
 
-                // Attribute accessor: `fullName(): Attribute` types the `full_name` attribute via its
-                // `get:` closure — located by line so the engine analyses the closure, not the method.
+                // `fullName(): Attribute` types `full_name` via its `get:` closure, located by line.
                 if (! self::returnsAttribute($method)) {
                     continue;
                 }
@@ -107,10 +101,7 @@ final class AccessorReader
         return $type instanceof ReflectionNamedType && $type->getName() === self::ATTRIBUTE;
     }
 
-    /**
-     * The start line of the `get:` closure inside an `Attribute::make(...)` / `Attribute::get(...)` /
-     * `new Attribute(...)` call within the method, or null when there is no inline closure to locate.
-     */
+    /** The start line of the `get:` closure inside the method's Attribute call, if there is one. */
     private function getClosureLine(?ClassMethod $method): ?int
     {
         if ($method === null) {
@@ -128,7 +119,7 @@ final class AccessorReader
         return null;
     }
 
-    /** Whether a node is an `Attribute::make(...)`/`Attribute::get(...)` static call or `new Attribute(...)`. */
+    /** An `Attribute::make(...)`/`Attribute::get(...)` call, or `new Attribute(...)`. */
     private static function isAttributeCall(object $node): bool
     {
         if ($node instanceof StaticCall
@@ -149,8 +140,8 @@ final class AccessorReader
     }
 
     /**
-     * The get-callback argument of an Attribute call: the `get:` named argument, else the first
-     * positional argument (`Attribute::make(get, set)` / `Attribute::get(get)`).
+     * The `get:` named argument, else the first positional one — `get` comes first in both
+     * `Attribute::make(get, set)` and `Attribute::get(get)`.
      */
     private static function getCallbackArg(StaticCall|New_ $call): ?object
     {

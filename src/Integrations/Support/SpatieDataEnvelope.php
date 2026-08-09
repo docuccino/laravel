@@ -7,22 +7,21 @@ namespace Docuccino\Laravel\Integrations\Support;
 use Docuccino\Laravel\Integrations\SpatieData\DataSchema;
 
 /**
- * The paginated envelopes `spatie/laravel-data` serialises around a page of Data items — distinct
- * from Laravel's own resource paginator envelope ({@see PaginationEnvelope}) and NOT interchangeable
- * with it (audit spatie-data gap 7). Mirrors spatie's `TransformedDataCollectableResolver`:
+ * The paginated envelopes `spatie/laravel-data` serialises around a page of Data items, mirroring
+ * spatie's `TransformedDataCollectableResolver`. NOT interchangeable with Laravel's own resource
+ * envelope ({@see PaginationEnvelope}) — the differences that matter:
  *
  * - `links` is an ARRAY of `{url, label, active}` objects (spatie's `linkCollection()`), not a
- *   `{first,last,prev,next}` object; the cursor variant emits an empty `links` array.
- * - `meta` carries the `*_page_url` members alongside the counters (length-aware) / cursor tokens.
- * - all three of the items key / `links` / `meta` are always emitted, so all three are required.
+ *   `{first,last,prev,next}` object; the cursor variant emits an empty array.
+ * - `meta` carries `*_page_url` members alongside the counters or cursor tokens.
  *
- * A paginated collection is ALWAYS wrapped: the items key is the wrap key (`config('data.wrap')`,
- * default `'data'`) — {@see DataSchema} passes it in.
+ * All three keys are always serialised, so all three are required. A paginated collection is always
+ * wrapped, and {@see DataSchema} passes the wrap key in as the items key.
  */
 final class SpatieDataEnvelope
 {
     /**
-     * The length-aware paginated collection (`PaginatedDataCollection`).
+     * `PaginatedDataCollection` — the length-aware variant, with full counters.
      *
      * @param  array<string, mixed>  $items
      * @return array<string, mixed>
@@ -47,8 +46,8 @@ final class SpatieDataEnvelope
     }
 
     /**
-     * The cursor-paginated collection (`CursorPaginatedDataCollection`): `links` is empty and `meta`
-     * carries the opaque cursor tokens plus the neighbouring page URLs.
+     * `CursorPaginatedDataCollection` — `links` is empty; `meta` carries the cursor tokens and the
+     * neighbouring page URLs.
      *
      * @param  array<string, mixed>  $items
      * @return array<string, mixed>
@@ -68,8 +67,7 @@ final class SpatieDataEnvelope
     }
 
     /**
-     * The items key (the page of items) + spatie's `links` array-of-objects + the given `meta` block;
-     * all three keys are always serialised, so all three are required.
+     * The items key, spatie's array-of-objects `links`, and the given `meta` block.
      *
      * @param  array<string, mixed>  $items
      * @param  array<string, array<string, mixed>>  $extra

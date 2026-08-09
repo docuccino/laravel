@@ -10,10 +10,9 @@ use Docuccino\Core\Extensions\Validation\ValidationField;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
- * `json` (Scribe-parity, validation §4 #8): the value is a STRING carrying a JSON document, so the
- * honest JSON-Schema mapping is `type: string` + `contentMediaType: application/json` — the standard
- * keyword for "this string contains JSON". Also unblocks spatie's `#[Json]` attribute token, which
- * previously recovered a `json` rule that dead-ended in a diagnostic. Defaults an untyped field to string.
+ * `json` — and spatie's `#[Json]`, which recovers the same rule. The value is a string carrying a JSON
+ * document, so it maps to `type: string` + `contentMediaType: application/json`, the standard keyword for
+ * exactly that. Untyped fields default to string.
  */
 final class JsonRuleTransformer implements RuleTransformer
 {

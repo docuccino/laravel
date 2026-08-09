@@ -27,20 +27,17 @@ use Docuccino\Laravel\Integrations\Eloquent\CastSchema;
 use ReflectionClass;
 
 /**
- * Documents a `spatie/laravel-query-builder` list endpoint (design §Phase 4 — Query Builder). It
- * traces the action ({@see RouteContext::trace()}, so the walk's dependency files join the fragment
- * cache key) with a {@see QueryBuilderTraceVisitor} that recovers the subject model, the allow-lists
- * (with internal column names + chained `->default()`/`->nullable()` modifiers + leading comments) and
- * pagination through ANY chain depth (the two-deep `ListQueryBuilder::for()` helper pattern). Exact
- * filters whose recovered column carries a model cast are then enriched with the cast's typed schema —
- * an enum's backing values (through the shared enum machinery, so `#[CaseDescription]` prose lands as
- * `x-enumDescriptions`) or a native cast type — before the facts are expressed as query parameters
- * under the document's {@see RepresentationPolicy} and the package's own parameter names. Un-foldable
- * entries degrade to warning diagnostics naming the exact expression — never a silent drop. Writes at
- * the integration layer, so docblocks/attributes still override.
+ * Documents a `spatie/laravel-query-builder` list endpoint. Traces the action with a
+ * {@see QueryBuilderTraceVisitor} (via {@see RouteContext::trace()}, so the walk's files join the
+ * fragment-cache key) to recover the subject model, allow-lists and pagination, then enriches each
+ * filter with its column's cast — an enum's backing values through the shared enum machinery, so
+ * `#[CaseDescription]` prose lands as `x-enumDescriptions`, or a native cast type. The facts become
+ * query parameters under the document's representation policy and the package's own parameter names.
+ *
+ * Writes at the integration layer, so docblocks and attributes still override.
  */
-// Runs before the attribute parameter layer (priority > its default) so a deepObject container this
-// integration emits already exists when `#[QueryParameter('filter[child]')]` patches its property.
+// Priority beats the attribute parameter layer so a deepObject container emitted here already exists
+// when `#[QueryParameter('filter[child]')]` patches one of its properties.
 #[ExtensionOrder(priority: Priorities::EARLY)]
 final class QueryBuilderParametersExtension implements OperationExtension
 {
@@ -87,10 +84,9 @@ final class QueryBuilderParametersExtension implements OperationExtension
     }
 
     /**
-     * Under strict mode (the package default), an unknown filter/sort/include raises an
-     * `InvalidQuery` (HTTP 400). Document it on any QB operation by running a synthetic 400 through the
-     * resolved exception→response chain, so the body matches the document's error style. Skipped when
-     * strict mode is off or `error_responses => 'none'`.
+     * In strict mode (the package default) an unknown filter/sort/include raises `InvalidQuery` → 400.
+     * A synthetic 400 goes through the resolved exception→response chain so its body matches the
+     * document's error style. Skipped when strict mode is off or `error_responses => 'none'`.
      */
     private function documentStrictModeError(OperationDraft $operation, RouteContext $context): void
     {
@@ -109,9 +105,8 @@ final class QueryBuilderParametersExtension implements OperationExtension
     }
 
     /**
-     * Enrich each exact filter with the subject model's cast for its column. The model's reflected
-     * shape ({@see TypeEngine::classMetadata()} dependency files) and any enum-cast file join the
-     * fragment-cache key (design §10), so editing the model or the enum invalidates the warm fragment.
+     * Enriches each filter with the subject model's cast for its column. The model's reflected shape and
+     * any enum-cast file join the fragment-cache key, so editing either invalidates the warm fragment.
      */
     private function enrichFilters(QueryBuilderFacts $facts, RouteContext $context): void
     {
@@ -131,17 +126,16 @@ final class QueryBuilderParametersExtension implements OperationExtension
     }
 
     /**
-     * Type one filter off the subject model per its kind: a resolved column (`exact`/static
-     * `operator`/`callback`) off the model cast; a `scope` off its scope-method value parameter; a
-     * `custom` off its class attribute or `__invoke` body. A partial/bare-string filter over an enum
-     * column is never enum-typed — it earns an info nudge to switch to `exact` instead.
+     * Types one filter off the subject model per kind: `exact`/static `operator`/`callback` off the
+     * resolved column's cast, a `scope` off its scope method's value parameter, a `custom` off its class
+     * attribute or `__invoke` body. A partial or bare-string filter over an enum column is never
+     * enum-typed — a substring match isn't an enum member — and gets a nudge towards `exact` instead.
      */
     private function enrichFilter(QbEntry $filter, string $model, RouteContext $context): QbEntry
     {
-        // A project factory (a ListFilters-style helper returning an AllowedFilter): record its file
-        // (fragment-cache soundness) and, when it received a backed-enum class-string argument, type the
-        // value off that enum directly — a single-value comparison, so a scalar enum (not the whereIn
-        // array `exact` uses).
+        // A project factory's own file is a dependency (its identity shapes the typing). A backed-enum
+        // argument types the value off that enum as a scalar — one value compared, not the whereIn array
+        // `exact` uses.
         if ($filter->factoryClass !== null) {
             $this->recordFactoryFile($filter, $context);
         }
@@ -162,15 +156,14 @@ final class QueryBuilderParametersExtension implements OperationExtension
             'scope' => $this->applyColumn($filter, $this->scopes->resolve($model, $filter->name), $context, asArray: false),
             'custom' => $this->enrichCustom($filter, $model, $context),
             // A project-factory filter with no enum argument types off its own name as the column (the
-            // `$column ?? $key` idiom) — e.g. a boolean/uuid factory over the model's cast; a name that
-            // is not a column (a multi-column search) degrades cleanly to a plain string.
+            // `$column ?? $key` idiom). A name that isn't a column — a multi-column search — stays a string.
             default => $filter->typeColumn !== null
                 ? $this->applyColumn($filter, $this->columns->resolve($model, $filter->typeColumn), $context, asArray: false)
                 : $filter,
         };
     }
 
-    /** A {@see FilterColumn} for a backed-enum class-string recovered from a project-factory argument. */
+    /** A column for a backed-enum class-string recovered from a project-factory argument. */
     private function enumColumn(string $enumClass): FilterColumn
     {
         $file = EnumReflection::file($enumClass);
@@ -178,7 +171,6 @@ final class QueryBuilderParametersExtension implements OperationExtension
         return FilterColumn::enum($enumClass, $file !== null ? [$file] : []);
     }
 
-    /** Record the project factory's declaring file as a fragment-cache dependency (its identity shapes typing). */
     private function recordFactoryFile(QbEntry $filter, RouteContext $context): void
     {
         if ($filter->factoryClass === null || ! class_exists($filter->factoryClass)) {
@@ -192,10 +184,9 @@ final class QueryBuilderParametersExtension implements OperationExtension
     }
 
     /**
-     * Apply a resolved {@see FilterColumn} onto a filter: an enum yields the backing values +
-     * `x-enumDescriptions` (as a `whereIn` array only for the whereIn kinds — `$asArray`), a native
-     * scalar its type, and none leaves the filter a plain string. The enum's declaring file joins the
-     * fragment-cache dependency set.
+     * Applies a resolved column onto a filter: an enum gives backing values + `x-enumDescriptions`
+     * (rendered as a whereIn array only when `$asArray`), a native cast gives its scalar type, and a
+     * `none` leaves the filter a plain string.
      */
     private function applyColumn(QbEntry $filter, FilterColumn $column, RouteContext $context, bool $asArray): QbEntry
     {
@@ -214,9 +205,8 @@ final class QueryBuilderParametersExtension implements OperationExtension
     }
 
     /**
-     * Enrich a custom filter: a class-level `#[QueryParameter]` attribute (the explicit override) wins,
-     * otherwise the column its `__invoke` body filters on types the value off the model cast. The
-     * filter class file always joins the dependency set.
+     * A class-level `#[QueryParameter]` on the filter class is the explicit override and wins; otherwise
+     * the column its `__invoke` body filters on types the value.
      */
     private function enrichCustom(QbEntry $filter, string $model, RouteContext $context): QbEntry
     {
@@ -239,16 +229,16 @@ final class QueryBuilderParametersExtension implements OperationExtension
     }
 
     /**
-     * Fold a custom filter class's `#[QueryParameter]` into the filter's schema/description/default/
-     * example (its `name` is ignored — the parameter name is the `AllowedFilter` name). Applied at the
-     * integration layer, so a route-level attribute still overrides it downstream.
+     * Folds the attribute's schema/description/default/example into the filter. Its `name` is ignored —
+     * the parameter name is always the `AllowedFilter` name. A route-level attribute still overrides
+     * this downstream.
      */
     private function applyCustomAttribute(QbEntry $filter, QueryParameter $attribute, RouteContext $context): QbEntry
     {
         $default = is_scalar($attribute->default) ? $attribute->default : null;
 
-        // Description / default / example are type-independent; set them first, then let the type
-        // (if any) supply the schema — applyColumn preserves them.
+        // Description/default/example are type-independent, so set them first and let the type supply
+        // the schema afterwards — applyColumn preserves them.
         $filter = $filter->withColumn(
             null,
             enumTyped: false,
@@ -264,11 +254,9 @@ final class QueryBuilderParametersExtension implements OperationExtension
     }
 
     /**
-     * Interpret a custom-filter `#[QueryParameter(type: …)]` string as a {@see FilterColumn}: a backed
-     * enum class-string yields the enum (backing values + `x-enumDescriptions` through the converter),
-     * a scalar name (`int`/`string`/`bool`/`float`) yields its schema directly via the cast table, and
-     * anything else leaves the value untyped. A scoped subset of the attribute-layer type grammar — a
-     * custom filter's value is a scalar or an enum.
+     * A `#[QueryParameter(type: …)]` string read as a column: a backed-enum class-string gives the enum,
+     * a scalar name goes through the cast table, anything else stays untyped. Deliberately a subset of
+     * the attribute-layer type grammar — a custom filter's value is a scalar or an enum, nothing richer.
      */
     private function attributeColumn(string $type): FilterColumn
     {
@@ -283,11 +271,7 @@ final class QueryBuilderParametersExtension implements OperationExtension
         return $schema === null ? FilterColumn::none() : FilterColumn::scalar($schema);
     }
 
-    /**
-     * Info nudge: a partial (or bare-string) filter over an enum-cast column cannot document its
-     * values (a partial match is a substring, not an enum member) — suggest `AllowedFilter::exact` for
-     * exact matching with documented values. The filter is never enum-typed.
-     */
+    /** Nudges a partial filter over an enum-cast column towards `exact`, which can document its values. */
     private function nudgePartialOnEnum(QbEntry $filter, string $model, RouteContext $context): void
     {
         $column = $this->columns->resolve($model, $filter->column());
@@ -319,10 +303,9 @@ final class QueryBuilderParametersExtension implements OperationExtension
     }
 
     /**
-     * Silence kill: a paginating QB terminal was reached but NO allow-list entry was recovered (and
-     * none even attempted-but-unresolved) — typically the `allowedFilters()`/`allowedSorts()` chain
-     * lives behind an indirection the trace could not follow. Emit an info naming the action so the
-     * loss is never silent. Skipped whenever any entry (recovered OR unresolved) was seen.
+     * A paginating terminal was reached but not one allow-list entry turned up, recovered or unresolved
+     * — usually the chain lives behind an indirection the trace couldn't follow. Names the action so the
+     * loss isn't silent.
      */
     private function reportNoAllowLists(QueryBuilderFacts $facts, RouteContext $context): void
     {

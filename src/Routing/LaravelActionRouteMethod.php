@@ -7,24 +7,21 @@ namespace Docuccino\Laravel\Routing;
 use ReflectionClass;
 
 /**
- * A non-toggleable route-reflection probe: resolves which method an invokable route actually dispatches
- * on a `lorisleiva/laravel-actions` action. This is route IDENTITY resolution, not a documentation
- * contribution — gating it would make Docuccino reflect the trait's `__invoke(mixed ...$args)` forwarder
- * (garbage) instead of the real signature — so it lives in the routing layer and always runs, rather
- * than in the (per-document-toggleable) laravel-actions integration. It carries only the framework/
- * package trait knowledge it needs (mirroring the package's `ControllerDecorator::getDefaultRouteMethod()`),
- * so `Docuccino\Laravel\Routing` never reaches into `Docuccino\Laravel\Integrations`.
+ * Resolves which method an invokable route actually dispatches on a `lorisleiva/laravel-actions` action,
+ * mirroring the package's `ControllerDecorator::getDefaultRouteMethod()`.
  *
- * All checks are guarded by the trait's presence, so this is inert when the package is absent.
+ * This is route identity, not a documentation contribution, so it lives here and always runs instead of
+ * inside the toggleable laravel-actions integration — gate it and we'd reflect the trait's
+ * `__invoke(mixed ...$args)` forwarder instead of the real signature. Every check is guarded by the
+ * trait's presence, so it's inert without the package.
  */
 final class LaravelActionRouteMethod
 {
     private const CONTROLLER_TRAIT = 'Lorisleiva\\Actions\\Concerns\\AsController';
 
     /**
-     * Resolve the method a route dispatches on an action. Only an invokable registration (`__invoke`,
-     * the trait's forwarder) is remapped — an explicit `[Action::class, 'method']` registration is
-     * honoured verbatim — mirroring the package's own `replaceRouteMethod()`.
+     * Only an invokable registration is remapped; an explicit `[Action::class, 'method']` is honoured
+     * verbatim, as in the package's own `replaceRouteMethod()`.
      */
     public static function resolve(string $fqcn, string $method): string
     {
@@ -41,7 +38,7 @@ final class LaravelActionRouteMethod
         return $reflection->hasMethod('handle') ? 'handle' : $method;
     }
 
-    /** Whether an FQCN is a laravel-actions action used as a controller (carries the AsController trait). */
+    /** An action used as a controller, i.e. one carrying the AsController trait. */
     private static function isAction(string $fqcn): bool
     {
         if (! trait_exists(self::CONTROLLER_TRAIT) || ! class_exists($fqcn)) {

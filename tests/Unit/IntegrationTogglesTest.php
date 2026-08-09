@@ -11,14 +11,13 @@ use Docuccino\Laravel\Registry\ExtensionRegistry;
 use Docuccino\Laravel\Registry\IntegrationToggles;
 
 /**
- * The per-integration enable/disable gate (feature: per-integration `enabled` config). Every
- * integration's extensions are contributed only when its package is installed AND the document
- * enables it; every integration defaults on when installed EXCEPT `permission`, which is opt-in.
- * The toggle table is the single lookup table — exercised here over every entry.
+ * The per-integration enable/disable gate. An integration's extensions are contributed only when its
+ * package is installed *and* the document enables it; everything defaults on when installed except
+ * `permission`, which is opt-in. The toggle table is the one lookup table, exercised here per entry.
  *
- * These build DocumentConfig instances directly (bypassing the testbench workbench config, which
- * opts permission on), so the true per-integration defaults are what is under test. In this suite
- * every target package IS installed, so a dropped contribution proves the `enabled` gate, not absence.
+ * These build DocumentConfig instances directly, bypassing the workbench config (which opts permission
+ * on), so the real per-integration defaults are under test. Every target package is installed in this
+ * suite, so a dropped contribution is the `enabled` gate at work rather than an absent package.
  *
  * @param  array<string, mixed>  $integrations
  */
@@ -40,14 +39,14 @@ it('applies the per-integration default when the bag is absent: permission OFF, 
     $contribution = IntegrationToggles::contribute(toggleDocument(), $key);
 
     if ($key === 'permission') {
-        // Sensitive-by-activation: default OFF, so an untouched document documents no permissions.
+        // Sensitive by activation: default off, so an untouched document documents no permissions.
         expect($descriptor->defaultEnabled)->toBeFalse()
             ->and($contribution)->toBe([]);
 
         return;
     }
 
-    // Every other integration defaults ON when installed, contributing its full extension set.
+    // Every other integration defaults on when installed, contributing its full extension set.
     expect($descriptor->defaultEnabled)->toBeTrue()
         ->and($contribution)->toBe($descriptor->extensions())
         ->and($contribution)->not->toBe([]);
@@ -88,8 +87,8 @@ it('emits an explicit-opt-out diagnostic when a default-on integration is turned
 });
 
 it('does not diagnose an integration whose package is not installed', function (): void {
-    // Force every package-backed probe absent: permission is default-off but, being uninstalled, must
-    // NOT nag — an app without the package is never told to enable an integration it cannot use.
+    // With every package-backed probe absent, default-off permission stays quiet — an app without the
+    // package is never told to enable an integration it can't use.
     $absent = static fn (string $class): bool => false;
 
     expect(IntegrationToggles::diagnostics(toggleDocument(), $absent))->toBe([])
@@ -102,8 +101,8 @@ it('changes the resolved-extension cache signature when an integration is toggle
     $withPermission = $registry->resolve(app(), DefaultExtensions::all(toggleDocument(['permission' => ['enabled' => true]])), []);
     $withoutPermission = $registry->resolve(app(), DefaultExtensions::all(toggleDocument(['permission' => ['enabled' => false]])), []);
 
-    // Flipping `enabled` adds/removes PermissionExtension from the resolved set, so the FQCN-list
-    // cache-key input differs — the fragment cache cannot serve a stale cross-toggle hit.
+    // Flipping `enabled` adds or removes PermissionExtension from the resolved set, so the FQCN-list
+    // cache-key input differs and the fragment cache can't serve a stale cross-toggle hit.
     expect($withPermission->classSignature())->toContain(PermissionExtension::class)
         ->and($withoutPermission->classSignature())->not->toContain(PermissionExtension::class)
         ->and($withPermission->cacheSignature())->not->toBe($withoutPermission->cacheSignature());

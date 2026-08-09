@@ -42,9 +42,9 @@ function convertLaravelRules(array $fields): ValidationSchema
 }
 
 /**
- * Convert a single field's rules built as `[name, parameters, note?]` tuples — the low-level path
- * that lets the floor dataset drive rules (enum values, exists table args) a `pipe|string` cannot
- * express — through the SHARED ordering + core chain the real integrations use.
+ * Convert one field's rules built as `[name, parameters, note?]` tuples, through the same ordering +
+ * core chain the real integrations use. This low-level path can express rules (enum values, exists
+ * table args) that `pipe|string` shorthand cannot.
  *
  * @param  list<array{0: string, 1?: list<string>, 2?: string}>  $rules
  */
@@ -61,10 +61,9 @@ function convertFieldRules(array $rules): ValidationSchema
 }
 
 /**
- * The floor list (design §Test-coverage standards): EVERY string-rule entry across ALL transformers
- * has a dataset row asserting its schema effect. Presence/cross-field/multipart effects — which
- * surface off the property schema — are asserted in the dedicated tests below, so together every
- * entry in every transformer's table is proven.
+ * The floor list (docs/testing.md): every string-rule entry across every transformer gets a row here
+ * asserting its schema effect. Presence/cross-field/multipart effects don't surface on the property
+ * schema, so they're covered by the dedicated tests below — between them, every table entry is proven.
  */
 it('maps every schema-producing string rule to its fragment', function (array $rules, array $expected): void {
     $property = convertFieldRules($rules)->schema['properties']['f'];
@@ -125,7 +124,7 @@ it('maps every schema-producing string rule to its fragment', function (array $r
     'file' => [[['file']], ['format' => 'binary', 'type' => 'string']],
     'image' => [[['image']], ['description' => 'An image file.', 'format' => 'binary', 'type' => 'string']],
 
-    // AlphaRuleTransformer — canonical ECMA-262 character-class patterns (Scribe-parity block).
+    // AlphaRuleTransformer — canonical ECMA-262 character-class patterns.
     'alpha' => [[['alpha']], ['pattern' => '^[a-zA-Z]+$', 'type' => 'string']],
     'alpha_num' => [[['alpha_num']], ['pattern' => '^[a-zA-Z0-9]+$', 'type' => 'string']],
     'alpha_dash' => [[['alpha_dash']], ['pattern' => '^[a-zA-Z0-9_-]+$', 'type' => 'string']],
@@ -136,7 +135,7 @@ it('maps every schema-producing string rule to its fragment', function (array $r
     'starts_with (multi → description)' => [[['starts_with', ['a', 'b']]], ['description' => 'Must start with one of: a, b.', 'type' => 'string']],
     'ends_with (multi → description)' => [[['ends_with', ['x', 'y']]], ['description' => 'Must end with one of: x, y.', 'type' => 'string']],
 
-    // DigitsRuleTransformer — a digit COUNT is a string pattern (leading zeros preserved), never an int.
+    // DigitsRuleTransformer — a digit count is a string pattern (leading zeros preserved), never an int.
     'digits' => [[['digits', ['5']]], ['pattern' => '^\\d{5}$', 'type' => 'string']],
     'digits_between' => [[['digits_between', ['2', '5']]], ['pattern' => '^\\d{2,5}$', 'type' => 'string']],
     'max_digits' => [[['max_digits', ['4']]], ['pattern' => '^\\d{1,4}$', 'type' => 'string']],
@@ -204,7 +203,7 @@ it('applies every presence-rule entry to the required/nullable contract', functi
     expect(convertFieldRules([['string'], ['required']])->schema['required'] ?? [])->toBe(['f']);
     expect(convertFieldRules([['string'], ['present']])->schema['required'] ?? [])->toBe(['f']);
 
-    // filled ("non-empty WHEN present") does NOT require presence — the field stays optional.
+    // filled means "non-empty when present", so it doesn't require presence — the field stays optional.
     expect(convertFieldRules([['string'], ['filled']])->schema)->not->toHaveKey('required');
 
     // sometimes leaves the field optional (no `required` list emitted).
@@ -242,7 +241,7 @@ it('switches to multipart on mimes/mimetypes/extensions but adds nothing else', 
         expect($result->mediaType)->toBe('multipart/form-data');
     }
 
-    // Bare mimes (no accompanying file rule) still flips multipart and contributes no keyword.
+    // Bare mimes (no accompanying file rule) still flips multipart, and contributes no keyword.
     $bare = convertFieldRules([['mimes', ['pdf', 'doc']]]);
     expect($bare->mediaType)->toBe('multipart/form-data')
         ->and($bare->schema['properties']['f'])->toBe([]);
@@ -355,11 +354,10 @@ it('switches to multipart and documents the confirmed partner', function (): voi
 });
 
 /**
- * The vocabulary guard (design §Test-coverage standards; the FrameworkErrors derive-from-table
- * pattern): the dataset is DERIVED from every transformer's declared handledRuleNames(), so a name
- * added to a transformer without a row here fails the guard. Each declared name must route to exactly
- * one transformer — proving no gap (a declared name supports() rejects) and no overlap (two
- * transformers claiming the same name).
+ * The vocabulary guard: the dataset is derived from every transformer's declared handledRuleNames(),
+ * so a name added to a transformer without a row here fails automatically. Each declared name must
+ * route to exactly one transformer — no gap (a declared name its own supports() rejects) and no
+ * overlap (two transformers claiming the same name).
  *
  * @return iterable<string, array{string}>
  */
@@ -383,8 +381,8 @@ it('routes every declared rule name to exactly one transformer', function (strin
 })->with(handledRuleNameRows());
 
 it('raises an info diagnostic for a rule no transformer handles', function (): void {
-    // `mac_address` has no transformer (still outside the mapped vocabulary), so the field stays
-    // permissive and the unhandled contract holds.
+    // `mac_address` is outside the mapped vocabulary, so the field stays permissive and the unhandled
+    // contract holds.
     $result = convertLaravelRules(['token' => 'string|mac_address']);
 
     expect($result->schema['properties']['token'])->toBe(['type' => 'string'])
@@ -393,9 +391,9 @@ it('raises an info diagnostic for a rule no transformer handles', function (): v
 });
 
 it('describes the field-reference forms of date-comparison and numeric-comparison rules', function (): void {
-    // A field-reference comparison target is a runtime relationship: the numeric bound must NOT be
-    // emitted (it is not a literal) and no `format` is claimed for a non-date target — both degrade to
-    // an honest description alongside the field's own type.
+    // A field-reference comparison target is a runtime relationship: the numeric bound isn't a literal
+    // so it can't be emitted, and a non-date target can't claim a `format`. Both degrade to a
+    // description alongside the field's own type.
     $afterField = convertFieldRules([['string'], ['after', ['start_date']]])->schema['properties']['f'];
     expect($afterField)->toBe(['type' => 'string', 'description' => 'Must be a date after start_date.']);
 

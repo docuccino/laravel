@@ -21,29 +21,20 @@ use Docuccino\Laravel\Integrations\Support\FrameworkClasses;
 use Docuccino\Laravel\Integrations\Support\FrameworkExceptionTable;
 
 /**
- * Turns a handler/closure analysis into an error response (design §6). Reads the recovered
- * `JsonResponse<TPayload, TStatus, TContentType>` — the handler's REAL rendered status, payload shape
- * and (through the engine's helper-indirection refinement) content type — and builds a
- * {@see ResponseDraft} under that status, hoisting the payload
- * schema through the route's converter under the recovered media type (default `application/json`,
- * `application/problem+json` when the helper set that header).
+ * Builds an error {@see ResponseDraft} from a handler/closure analysis (design §6): reads the recovered
+ * `JsonResponse<TPayload, TStatus, TContentType>` for the real status, payload shape and content type
+ * (default `application/json`, `application/problem+json` when the helper set that header), then hoists
+ * the payload schema through the route's converter.
  *
- * It also assembles a media-type EXAMPLE from the statically-known members: a body member the engine
- * folded to a literal (a per-arm `type` URI) contributes its value and a `const`, and a status-provenance
- * member ({@see StatusMarkerT} — a value that echoes the response status) is filled with THIS response's
- * concrete status (the 403 response says `403`, the 404 says `404`). Every non-folding member is omitted,
- * never fabricated; deterministic by construction (declaration order, no randomness).
+ * The example carries only members that folded to a literal — including a {@see StatusMarkerT} member (a
+ * value echoing the response status) resolved to this response's status, so the 403 arm says `403`.
+ * Nothing else is invented. A status that didn't fold falls back to the exception's own status hint
+ * rather than 200; a payload that didn't fold ({@see UnknownT}) drops the body schema but keeps the
+ * status and media type.
  *
- * HONESTY where a fold was partial: when the status did not fold to a literal — an enum-derived or
- * otherwise dynamic status the refiner recovered as {@see UnknownT} — the status falls back to the
- * exception's own status hint (the throw-analysis classification) rather than guessing 200. A payload
- * the refiner could not fold ({@see UnknownT}) contributes no body schema (the media type + status are
- * still documented).
- *
- * Returns null when the analysis recovered no `JsonResponse` at all: a `return null` / void arm (the
- * renderer DELEGATES the type to the framework — {@see isDelegation()} tells the tier this is benign,
- * not a fold failure) or a body too dynamic to fold. Reason phrases come from the shared
- * {@see FrameworkExceptionTable} so the inferred-handler tier can never drift from the others.
+ * Null means no `JsonResponse` was recovered: either a `return null`/void arm ({@see isDelegation()} —
+ * the renderer handing the type back to the framework, not a fold failure) or a body too dynamic to
+ * fold. Reason phrases come from {@see FrameworkExceptionTable} so this tier can't drift from the others.
  */
 final class HandlerResponseBuilder
 {
@@ -66,8 +57,6 @@ final class HandlerResponseBuilder
             $payload = $type->typeArgs[0] ?? null;
             if ($payload !== null && ! $payload instanceof VoidT && ! $payload instanceof NeverT && ! $payload instanceof UnknownT) {
                 $mediaType = self::contentType($type->typeArgs[2] ?? null);
-                // A status-provenance member echoes THIS response's status: resolve it to that concrete
-                // value so its schema is `const`-pinned and it lands in the example (the 403 → 403).
                 $payload = self::resolveStatusMarkers($payload, (int) $status);
                 foreach ($context->converter()->toSchema($payload)->schema as $keyword => $value) {
                     $draft->content($mediaType)->set($keyword, $value, $contribution);
@@ -85,9 +74,8 @@ final class HandlerResponseBuilder
     }
 
     /**
-     * Whether the analysis is a framework DELEGATION rather than a fold failure — every recovered
-     * return is a `return null` / void arm (the renderer hands the type back to the framework). The
-     * tier defers silently for these instead of raising a too-dynamic deferral.
+     * Every recovered return is a `return null`/void arm, i.e. the renderer delegates to the framework.
+     * The tier defers silently on these rather than raising a too-dynamic deferral.
      */
     public static function isDelegation(ActionAnalysis $analysis): bool
     {
@@ -110,8 +98,7 @@ final class HandlerResponseBuilder
             return (string) $statusArg->value;
         }
 
-        // The status did not fold to a literal (e.g. an enum method result); fall back to the
-        // exception's own status classification before the final 200 default — never guess.
+        // Didn't fold (e.g. an enum method result) — prefer the exception's own classification to 200.
         return (string) ($statusHint ?? 200);
     }
 
@@ -123,9 +110,8 @@ final class HandlerResponseBuilder
     }
 
     /**
-     * Resolve every top-level {@see StatusMarkerT} body member — a value that echoes the response's own
-     * HTTP status — to the concrete status this response is documented under, so it converts to a
-     * `const`-pinned integer and appears in the example. Non-shape / list payloads pass through.
+     * Pin each top-level status-echo member to the status this response is documented under, so it
+     * converts to a `const` integer and lands in the example. Non-shape payloads pass through.
      */
     private static function resolveStatusMarkers(DType $payload, int $status): DType
     {
@@ -139,10 +125,9 @@ final class HandlerResponseBuilder
     }
 
     /**
-     * Assemble the media-type example from SOUND members only: each top-level member folded to a literal
-     * (a per-arm `type` URI, a `status` that resolved) contributes its value; every other member — a
-     * widened scalar, a dynamic body, a nested shape — is OMITTED rather than fabricated. Deterministic
-     * by construction: declaration order, no randomness. Empty (no sound members) → no example emitted.
+     * Only top-level members that folded to a literal go in; widened scalars, dynamic bodies and nested
+     * shapes are omitted rather than invented. Declaration order, so it's deterministic. Empty → no
+     * example emitted.
      *
      * @return array<string, string|int|float|bool>
      */

@@ -11,8 +11,8 @@ use Docuccino\Laravel\Runtime\DocumentCache;
 use Illuminate\Console\Command;
 
 /**
- * Builds a document (or every document) and stores its served OpenAPI payload in the configured
- * Laravel cache store, so the runtime endpoint can answer `viewer.source: cache` without a rebuild.
+ * Builds a document (or every document) and stores its OpenAPI payload in the Laravel cache, so the
+ * runtime endpoint can answer `viewer.source: cache` without rebuilding.
  */
 final class CacheCommand extends Command
 {

@@ -8,14 +8,14 @@ use Docuccino\Core\Extensions\Validation\RuleSet;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
- * Orders each field's rules into Laravel's effect sequence — presence/type before constraints
- * before cross-field — so `['max:100', 'string']` documents the same as `['string', 'max:100']`
- * (a size rule must see the type first). This is Laravel-vocabulary knowledge, so it lives with the
- * validation integration; the core chain driver applies rules in whatever order it is handed.
- * Stable within a rank, so author order is preserved among equal-rank rules (deterministic output).
+ * Sorts each field's rules into Laravel's effect sequence — presence/type, then constraints, then
+ * cross-field — so `['max:100', 'string']` documents the same as `['string', 'max:100']`; a size rule has
+ * to see the type first. Stable within a rank, so author order survives among equal-rank rules and output
+ * stays deterministic. This is Laravel vocabulary, hence its home here: the core chain driver applies
+ * rules in whatever order it's handed.
  *
- * Shared by every recovery integration (FormRequest, inline validate, Spatie Data) so all recovered
- * rule sets normalise identically before the chain runs.
+ * Shared by every recovery integration (FormRequest, inline validate, Spatie Data) so all rule sets
+ * normalise identically before the chain runs.
  */
 final class RuleOrdering
 {

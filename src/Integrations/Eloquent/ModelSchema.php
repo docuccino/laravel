@@ -33,40 +33,30 @@ use ReflectionClass;
 use Throwable;
 
 /**
- * Maps an Eloquent model to an object schema (superseding the core class mapper for models).
+ * Maps an Eloquent model to an object schema, superseding the core class mapper for models. Named by
+ * `#[SchemaName]` (else the short class name), pinned by `#[SchemaId]` (else the FQCN). Design:
+ * docs/design/inference-embedding.md §"Eloquent column source".
  *
- * The column universe is a union, most-authoritative first (design — see
- * docs/design/inference-embedding.md §"Eloquent column source"):
+ * Columns come from a union of sources, most authoritative first: the engine's {@see ClassMetadata}
+ * (a real model declares no PHP column properties, so this is nearly all `@property`/`@property-read`
+ * docblock tags), then floor sources reflected off the model — a `$casts` key IS a column, a `$dates`
+ * entry is a date-time, and a `$fillable`-only name is permissive at lowered confidence.
  *
- * 1. the engine's {@see ClassMetadata} — a real model declares no PHP column
- *    properties, so this is almost entirely its class-level `@property`/`@property-read` docblock tags
- *    (typed, high confidence); a native public property, where one exists, also lands here;
- * 2. floor sources reflected off the model — a `$casts` key IS a column (typed via its cast), a
- *    `$dates` entry is a date-time column, and a `$fillable`-only name is a permissive column at
- *    lowered confidence.
+ * {@see EloquentModelReflector} facts then refine the set. Points worth knowing:
  *
- * The model's own presentation facts ({@see EloquentModelReflector}) then refine the set:
- *
- * - `$visible` (allow-list) / `$hidden` + a class-level `#[Hidden]` list (deny-list) filter columns.
- * - `$casts` fix the schema of a column: datetime → `format: date-time`, native casts fix the type
- *   ({@see CastSchema}); an enum cast routes the column through the Enum integration path (`EnumT`);
- *   an `AsEnumCollection:Enum` cast is an array of that enum's values; a custom `CastsAttributes`
- *   caster is typed by its `get()` return type (recovered by the engine).
- * - `$appends` add accessor-backed properties (optional).
- * - Accessors ({@see AccessorReader}) — classic `getXxxAttribute()` and `Attribute::make(get: …)` —
- *   type an appended attribute and OVERRIDE the column/cast they shadow (mirroring the mutated-then-
- *   cast precedence in `HasAttributes::attributesToArray`), their return type recovered by the engine.
+ * - `$casts` pin a column's shape ({@see CastSchema}); an enum cast goes through the Enum path, an
+ *   `AsEnumCollection:Enum` is an array of that enum's values, and a custom `CastsAttributes` caster
+ *   is typed by its `get()` return type.
+ * - accessors ({@see AccessorReader}) OVERRIDE the column/cast they shadow, mirroring the
+ *   mutated-then-cast precedence in `HasAttributes::attributesToArray`.
  * - `$with` relations serialise on every response, so each becomes a nested model schema under the
- *   snake-cased relation key (to-many → an array; to-one → a nullable reference), depth-capped by the
- *   shared component-hoist cycle break (a relation back to a model already mid-expansion is a `$ref`).
- * - a `serializeDate()` override makes every date attribute's wire format statically unknowable, so
- *   date/datetime cast claims are weakened to a plain string (the `format` is dropped) + a diagnostic.
+ *   snake-cased key (to-many → array, to-one → nullable ref), depth-capped by the shared
+ *   component-hoist cycle break — a relation back to a model mid-expansion becomes a `$ref`.
+ * - a `serializeDate()` override makes the wire format statically unknowable, so date casts weaken to
+ *   a plain string (no `format`) plus a diagnostic.
  *
- * When NO source yields a column, today's behaviour is kept (an empty object plus any appends) but an
- * info diagnostic tells the author how to document columns (`@property` docblocks) — never silent.
- *
- * The component is named by `#[SchemaName]` (else the short class name) and pinned by `#[SchemaId]`
- * (else the FQCN); self-references are cycle-broken via the reserved name.
+ * A model no source yields columns for renders as a bare object plus an info diagnostic telling the
+ * author to add `@property` tags — never silently.
  *
  * @phpstan-type ModelFacts array{hidden: list<string>, visible: list<string>, appends: list<string>, casts: array<string, string>, classHidden: list<string>, fillable: list<string>, dates: list<string>, with: list<string>, timestamps: bool, softDeletes: bool, overridesSerializeDate: bool, keyName: string, keySchema: array<string, mixed>}
  */
@@ -96,9 +86,8 @@ final class ModelSchema implements TypeToSchema
             $facts = $this->reflector->facts($fqcn);
             $metadata = $context->engine()->classMetadata(new ClassRef($fqcn));
 
-            // The model's reflected shape is a fragment-cache dependency (design §10): editing the model
-            // (a new column/cast, a changed $hidden list) must invalidate the warm fragment. Enum-cast
-            // third files are recorded as each cast is resolved in castSchema().
+            // Editing the model (new column/cast, changed $hidden) must invalidate the warm fragment.
+            // Enum-cast files are recorded later, as each cast resolves in castSchema().
             $context->dependsOn(...$metadata->dependencyFiles);
 
             $hidden = [...$facts['hidden'], ...$facts['classHidden']];
@@ -116,16 +105,13 @@ final class ModelSchema implements TypeToSchema
                 }
                 $properties[$property->name] = $schema;
 
-                // A declared column is always serialised (its key is present), so it is required — even
-                // when nullable. Nullability is a property of the VALUE, carried in the schema's type
-                // union, not of presence.
+                // A declared column's key is always present, so required even when nullable —
+                // nullability lives in the value's type union, not in presence.
                 $required[] = $property->name;
             }
 
-            // Floor columns: a column the engine did not surface but the model itself evidences —
-            // a `$casts` key (typed by its cast), a `$dates` entry (date-time), or a `$fillable`-only
-            // name (permissive, at lowered confidence). Docblock/native columns above are more
-            // authoritative, so an already-present name is left untouched.
+            // Columns the engine didn't surface but the model evidences. Docblock/native columns above
+            // are more authoritative, so an already-present name is left alone.
             foreach ($this->floorColumns($facts) as $column) {
                 if (isset($properties[$column]) || ! self::isColumnVisible($column, $facts['visible'], $hidden)) {
                     continue;
@@ -138,9 +124,7 @@ final class ModelSchema implements TypeToSchema
                 }
             }
 
-            // Framework-synthesised columns Laravel injects at serialization time: created_at/updated_at
-            // (when the model uses timestamps) and deleted_at (when it soft-deletes). They are always
-            // present on a persisted model, so required — deleted_at is null unless the row is trashed.
+            // created_at/updated_at/deleted_at — always present on a persisted model, so required.
             foreach ($this->frameworkColumns($facts) as [$name, $schema]) {
                 if (isset($properties[$name]) || ! self::isColumnVisible($name, $facts['visible'], $hidden)) {
                     continue;
@@ -149,15 +133,12 @@ final class ModelSchema implements TypeToSchema
                 $required[] = $name;
             }
 
-            // Primary-key format: HasUuids/HasUlids definitively make the key a string with a uuid/ulid
-            // format, overriding a stale inferred/docblock type on the key column.
+            // HasUuids/HasUlids definitively fix the key's format, beating a stale docblock type.
             $key = $facts['keyName'];
             if (isset($properties[$key], $facts['keySchema']['format'])) {
                 $properties[$key] = $facts['keySchema'];
             }
 
-            // No source yielded a column: keep the empty-object behaviour but tell the author how to
-            // document one, so an undocumented model never renders as a silent bare object.
             if ($properties === []) {
                 $context->diagnostic(new Diagnostic(
                     severity: Severity::Info,
@@ -167,8 +148,7 @@ final class ModelSchema implements TypeToSchema
                 ));
             }
 
-            // Appended accessors: optional, permissive unless a cast pins the shape or an accessor
-            // (applied next) recovers a concrete type.
+            // Appends stay permissive unless a cast pins the shape or the accessor pass below types it.
             foreach ($facts['appends'] as $append) {
                 if (isset($properties[$append])) {
                     continue;
@@ -176,10 +156,7 @@ final class ModelSchema implements TypeToSchema
                 $properties[$append] = $this->castSchema($append, $facts, $context) ?? [];
             }
 
-            // Accessors override the columns/appends they shadow with their recovered return type.
             $this->applyAccessors($fqcn, $facts, $properties, $required, $context);
-
-            // $with relations serialise on every response as nested model schemas.
             $this->applyEagerLoads($fqcn, $facts, $properties, $required, $context);
 
             if ($facts['overridesSerializeDate']) {
@@ -201,11 +178,9 @@ final class ModelSchema implements TypeToSchema
     }
 
     /**
-     * Type each accessor Laravel serialises — one shadowing a real column (override) or an appended
-     * attribute — with the engine-recovered return type of its classic getter / `Attribute` get
-     * closure. An accessor that is neither a column nor an append is not serialised, so it is skipped;
-     * an accessor whose return type the engine cannot recover leaves the existing schema untouched
-     * (the column keeps its cast; the append stays permissive).
+     * Types every accessor Laravel actually serialises — one shadowing a column, or an append — from
+     * its engine-recovered return type. An accessor that is neither isn't serialised, so it's skipped;
+     * an unrecoverable return type leaves the existing schema as it stands.
      *
      * @param  ModelFacts  $facts
      * @param  array<string, array<string, mixed>>  $properties
@@ -237,10 +212,9 @@ final class ModelSchema implements TypeToSchema
     }
 
     /**
-     * Add each `$with` relation as a nested model schema under its snake-cased key: a to-many relation
-     * is an array of the related model, a to-one relation a nullable reference to it. The related model
-     * is resolved from the relation method's return type (`HasMany<Comment>` → `Comment`), recovered by
-     * the engine; an unresolvable relation is flagged with an info diagnostic rather than guessed at.
+     * Adds each `$with` relation as a nested model schema under its snake-cased key. The related model
+     * comes from the relation method's return type (`HasMany<Comment>` → `Comment`); an unresolvable
+     * one gets an info diagnostic rather than a guess.
      *
      * @param  ModelFacts  $facts
      * @param  array<string, array<string, mixed>>  $properties
@@ -292,9 +266,8 @@ final class ModelSchema implements TypeToSchema
     }
 
     /**
-     * The related model FQCN + whether the relation is to-many, read from a relation method's analysed
-     * return type (`Illuminate\...\Relations\HasMany<Comment, $this>` → `[Comment, true]`), or null when
-     * no return path yields a relation carrying a model type argument.
+     * `[related FQCN, isToMany]` off a relation method's analysed return type
+     * (`HasMany<Comment, $this>` → `[Comment, true]`), or null when no return path carries a model.
      *
      * @return array{0: string, 1: bool}|null
      */
@@ -315,7 +288,7 @@ final class ModelSchema implements TypeToSchema
         return null;
     }
 
-    /** Whether a relation FQCN is a to-many relation (its serialised value is an array). */
+    /** A to-many relation serialises as an array. */
     private static function isToMany(string $relation): bool
     {
         return is_a($relation, BelongsToMany::class, true)
@@ -325,8 +298,8 @@ final class ModelSchema implements TypeToSchema
     }
 
     /**
-     * The union of an analysis's return-path types, dropping void/never/unknown paths; null when no
-     * concrete type survives (so the caller leaves the existing schema untouched rather than degrading).
+     * The union of the analysis's return-path types, void/never dropped. Null when nothing concrete
+     * survives, so callers leave the existing schema alone rather than degrade it.
      */
     private static function returnType(ActionAnalysis $analysis): ?DType
     {
@@ -360,14 +333,13 @@ final class ModelSchema implements TypeToSchema
             return $context->convert($type);
         }
 
-        // The cast fixes the non-null serialised shape; when the column type admits null, widen it so
-        // the schema is string-or-null (not a non-nullable string on an always-present nullable column).
+        // A cast only describes the non-null shape, so widen when the column type admits null.
         return $type instanceof UnionT && $type->containsNull() ? self::widenNullable($cast) : $cast;
     }
 
     /**
-     * Add a `null` branch to a cast fragment's `type` (2020-12 `[t, null]` form), leaving an enum or
-     * already-nullable fragment untouched.
+     * Adds a `null` branch to a fragment's `type` (2020-12 `[t, null]` form). Enum and already-nullable
+     * fragments pass through untouched.
      *
      * @param  array<string, mixed>  $schema
      * @return array<string, mixed>
@@ -386,10 +358,8 @@ final class ModelSchema implements TypeToSchema
     }
 
     /**
-     * The framework-synthesised timestamp / soft-delete columns, as `[name, schema]` pairs.
-     * created_at/updated_at are non-null date-times (set on any persisted model); deleted_at is a
-     * nullable date-time (null unless the row is soft-deleted). A serializeDate() override weakens the
-     * date-time format to a plain string (the wire format is no longer statically known).
+     * The timestamp / soft-delete columns as `[name, schema]` pairs. created_at/updated_at are non-null
+     * on any persisted model; deleted_at is null unless the row is trashed.
      *
      * @param  ModelFacts  $facts
      * @return list<array{0: string, 1: array<string, mixed>}>
@@ -413,9 +383,8 @@ final class ModelSchema implements TypeToSchema
     }
 
     /**
-     * The floor-source column names, in deterministic priority order: `$casts` keys, then `$dates`,
-     * then `$fillable`. Deduped, first occurrence wins (so a name's most-authoritative floor source
-     * decides its type in {@see floorColumnSchema()}).
+     * Floor column names in priority order — `$casts` keys, `$dates`, `$fillable` — deduped with first
+     * occurrence winning, so the most authoritative source decides the type in {@see floorColumnSchema()}.
      *
      * @param  ModelFacts  $facts
      * @return list<string>
@@ -431,11 +400,9 @@ final class ModelSchema implements TypeToSchema
     }
 
     /**
-     * The schema (and whether it is required) for a floor column: its cast shape when cast, a
-     * date-time when a `$dates` entry (a plain string when serializeDate() is overridden), else a
-     * permissive `{}` at lowered confidence for a `$fillable`-only name whose type is genuinely
-     * unknown. Cast/date floor columns are treated as always-serialised (required); an untyped
-     * permissive one is left optional, since its presence is a guess.
+     * `[schema, isRequired]` for a floor column: the cast shape when cast, a date-time for a `$dates`
+     * entry, else permissive `{}` at lowered confidence. Cast/date columns are always serialised so
+     * they're required; a `$fillable`-only one stays optional because its presence is a guess.
      *
      * @param  ModelFacts  $facts
      * @return array{0: array<string, mixed>, 1: bool}
@@ -457,12 +424,8 @@ final class ModelSchema implements TypeToSchema
     }
 
     /**
-     * The schema a cast pins for a column, or null when the column has no cast this mapper recognises
-     * (so it falls back to its inferred type). Resolution order mirrors `HasAttributes::castAttribute`:
-     * a date cast weakened to a plain string when serializeDate() is overridden, then a backed-enum
-     * cast (via the Enum path), an `AsEnumCollection`/`AsEnumArrayObject` (array of enum values), a
-     * custom `CastsAttributes` caster (typed by its engine-recovered `get()` return type), and finally
-     * the native cast table.
+     * The shape a cast pins for a column, or null when there's no recognised cast (the column then falls
+     * back to its inferred type). Resolution order mirrors `HasAttributes::castAttribute`.
      *
      * @param  ModelFacts  $facts
      * @return array<string, mixed>|null
@@ -491,8 +454,8 @@ final class ModelSchema implements TypeToSchema
     }
 
     /**
-     * The enum schema for a backed-enum FQCN, routed through the Enum integration path (backing values,
-     * `x-enumDescriptions`), recording the enum file as a fragment-cache dependency (design §10).
+     * A backed enum's schema via the Enum path (backing values, `x-enumDescriptions`), recording the
+     * enum's file as a fragment-cache dependency.
      *
      * @return array<string, mixed>
      */
@@ -507,9 +470,8 @@ final class ModelSchema implements TypeToSchema
     }
 
     /**
-     * The schema for a column cast by a custom `CastsAttributes` caster — its engine-recovered `get()`
-     * return type — or null when the cast is not such a caster or the return type is unrecoverable (so
-     * the column falls back to its inferred type).
+     * A custom `CastsAttributes` caster's shape, taken from its engine-recovered `get()` return type.
+     * Null when the cast isn't such a caster or the return type can't be recovered.
      *
      * @return array<string, mixed>|null
      */
@@ -539,7 +501,7 @@ final class ModelSchema implements TypeToSchema
         return $schema === [] ? null : $schema;
     }
 
-    /** The file a class is declared in, or null when it is not reflectable. */
+    /** The file a class is declared in, or null when it isn't reflectable. */
     private static function file(string $fqcn): ?string
     {
         if (! class_exists($fqcn)) {

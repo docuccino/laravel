@@ -14,14 +14,12 @@ use Docuccino\Core\Patch\Contribution;
 use Docuccino\Laravel\Integrations\Support\DescriptionAppender;
 
 /**
- * Documents the Sanctum token abilities an operation requires (auth audit #5). The `abilities:` /
- * `ability:` middleware (and the deprecated `CheckScopes` / `CheckForAnyScope` FQCN forms), plus a
- * `#[Abilities]` attribute for body-checked abilities, each become an entry in the machine-readable
- * `x-abilities` extension member, and a generated "Requires token ability: …" line is appended to
- * the description — mirroring the spatie-permission integration's `x-permissions`. Because
- * `sanctumToken` is an HTTP bearer scheme, OAS can't carry abilities as scopes. Skipped for
- * `#[Unauthenticated]` (a public op documents no requirement, so an abilities line would be
- * inconsistent alongside `security: []`).
+ * Documents the Sanctum token abilities an operation requires. Each `abilities:`/`ability:` middleware (or
+ * the deprecated `CheckScopes`/`CheckForAnyScope` FQCN forms) and each `#[Abilities]` attribute becomes an
+ * entry in the machine-readable `x-abilities` member, plus a "Requires token ability: …" line on the
+ * description. `sanctumToken` is an HTTP bearer scheme, so OAS can't carry abilities as scopes — hence the
+ * extension member. Skipped for `#[Unauthenticated]`, where an abilities line would contradict
+ * `security: []`.
  */
 final class SanctumAbilitiesExtension implements OperationExtension
 {
@@ -53,8 +51,7 @@ final class SanctumAbilitiesExtension implements OperationExtension
     }
 
     /**
-     * The ability requirements from the route middleware, followed by any declared via `#[Abilities]`
-     * (an all-of requirement of the listed abilities).
+     * Middleware requirements first, then `#[Abilities]` ones — the attribute is an all-of requirement.
      *
      * @return list<AbilityRequirement>
      */

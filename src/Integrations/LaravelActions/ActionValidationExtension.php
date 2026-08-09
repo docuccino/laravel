@@ -12,11 +12,10 @@ use Docuccino\Core\Extensions\Validation\RecoveredRequest;
 use Docuccino\Laravel\Integrations\Validation\RuleOrdering;
 
 /**
- * Documents a laravel-actions action's request from its own `rules()` method (Phase 5c) — the
- * action-class analogue of the Form Request integration. It recovers the rule set statically
- * ({@see ActionRules}), orders it into Laravel's effect sequence, and runs it through the shared rule
- * chain: body verbs get a request body under the recovered media type, read verbs get query
- * parameters. Writes at the integration layer, so docblocks/attributes still override.
+ * Documents an action's request from its own `rules()` — the action-class analogue of the Form Request
+ * integration. Recovers the rule set statically ({@see ActionRules}), orders it into Laravel's effect
+ * sequence, and runs it through the shared chain: body verbs get a request body, read verbs get query
+ * parameters. Writes at the integration layer, so docblocks and attributes still override.
  */
 final class ActionValidationExtension implements OperationExtension
 {

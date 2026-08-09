@@ -27,21 +27,19 @@ use Docuccino\Laravel\Integrations\Validation\ValidationIntegration;
 use Docuccino\Laravel\Routing\LaravelRouteResolver;
 
 /**
- * The built-in extension set (dogfooding the public API — arch-enforceable: everything here
- * implements only the core contracts). Class-strings are container-resolved; the core type
- * mappers are stateless instances. Resolved through the same {@see ExtensionRegistry} path as
- * config and programmatic registrations.
+ * The built-in extension set, dogfooding the public API: everything here implements only the core
+ * contracts. Class-strings are container-resolved, the core type mappers are stateless instances, and
+ * the whole set goes through the same {@see ExtensionRegistry} path as config and programmatic
+ * registrations.
  *
  * @internal
  */
 final class DefaultExtensions
 {
     /**
-     * The built-in set gated for one document. Each integration's extensions are contributed only when
-     * its package is installed AND the document enables it ({@see IntegrationToggles}) — the per-document
-     * enable/disable seam. The gate preserves the built-in ordering: each spread sits in the same
-     * position its unconditional predecessor did, so a document that enables everything (the common
-     * case) resolves to byte-identical output.
+     * The built-in set gated for one document via {@see IntegrationToggles} (installed AND enabled).
+     * Each gated spread sits exactly where its unconditional predecessor did, so ordering is preserved
+     * and a document that enables everything resolves to byte-identical output.
      *
      * @return list<class-string|object>
      */
@@ -64,24 +62,20 @@ final class DefaultExtensions
             SecurityExtension::class,
             AttributeSecurityExtension::class,
             AttributeOverridesExtension::class,
-            // Error-response chain (design §6, first supports() wins). Ordered by priority:
-            // inferred handler = the app's REAL error shapes (FIRST), Problem Details preset (EARLY,
-            // self-gated on error_responses => 'problem-details'), framework-default JSON shapes
-            // (LATE, always on), terminal generic fallback (LAST).
+            // Error-response chain, first supports() wins (design §6): the app's real error shapes,
+            // then the Problem Details preset (self-gated on error_responses), then framework defaults,
+            // then a generic fallback.
             ...InferredHandlerIntegration::extensions(),
             ...ProblemDetailsIntegration::extensions(),
             ...FrameworkErrorsIntegration::extensions(),
             DefaultExceptionToResponse::class,
-            // FormRequest / inline validate() request documentation (design §Phase 4). Consumes only
-            // public contracts (dogfooding); the rule vocabulary registers through the same chain.
+            // FormRequest / inline validate() request documentation; the rule vocabulary registers
+            // through the same chain.
             ValidationRequestExtension::class,
             ...ValidationIntegration::transformers(),
-            // Reflection-rich enum schemas (backing values, #[CaseDescription] → x-enumDescriptions);
-            // ordered ahead of the core case-names-only mapper.
+            // Reflection-rich enum schemas (backing values, #[CaseDescription]) — must sit ahead of the
+            // core case-names-only mapper.
             EnumSchema::class,
-            // Per-document, per-integration gate (installed AND enabled). Framework built-ins
-            // (api_resources/eloquent/rate_limit) are always installed; the package-backed integrations
-            // add their class_exists probe. Default-on except permission (opt-in — see IntegrationToggles).
             ...$enabled('api_resources'),
             ...$enabled('timacdonald_json_api'),
             ...$enabled('eloquent'),
@@ -94,9 +88,8 @@ final class DefaultExtensions
             ...$enabled('passport'),
             ...$enabled('permission'),
             ...DefaultTypeMappers::all(),
-            // Data-leakage lint (always-on core DocumentTransformer): warns on schema properties whose
-            // names look sensitive (password/token/secret/…); diagnostics only, never mutates output.
-            // Container-resolved so the provider maps the docuccino.lint.leakage config onto its options.
+            // Data-leakage lint: warns on sensitive-looking property names. Diagnostics only, never
+            // mutates output.
             SensitiveFieldLint::class,
         ];
     }

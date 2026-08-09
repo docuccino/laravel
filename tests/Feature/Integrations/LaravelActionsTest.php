@@ -21,12 +21,12 @@ use Docuccino\Laravel\Tests\Fixtures\LaravelActions\WithAttributesAction;
 use Illuminate\Routing\Router;
 
 /**
- * The laravel-actions integration end-to-end (Phase 5c). The route reflector's method remap is proven
- * with REAL reflection of real action fixtures (an invokable action → its handle()/asController());
- * the resolved method's body analysis is scripted by the stub engine (the engine's real method
- * analysis is already proven by the fixture-group suite — this integration only redirects WHICH
- * method it targets, which is reflection, not engine, work). Request body from rules() and the 403
- * from authorize() are exercised against the real container-registered extension set.
+ * The laravel-actions integration end-to-end. The route reflector's method remap runs against real
+ * reflection of real action fixtures (an invokable action → its handle()/asController()); the resolved
+ * method's body analysis is scripted by the stub engine, since this integration only redirects *which*
+ * method gets analysed — reflection work, not engine work, and the engine's method analysis is already
+ * proven by the fixture group. Request body from rules() and the 403 from authorize() run against the
+ * real container-registered extension set.
  */
 function actionEngine(): StubTypeEngine
 {
@@ -43,13 +43,13 @@ function actionEngine(): StubTypeEngine
         PublishArticleAction::class.'::handle' => new ActionAnalysis(
             returns: [new ReturnSite(new ArrayShapeT([new ArrayShapeField('id', ScalarT::int())]), $loc)],
         ),
-        // asController() carries a DISTINCT return shape from any handle(), so a 200 body of `archived`
-        // proves the analysis was redirected to asController — not merely its docblock summary (G1).
+        // asController() carries a different return shape from handle(), so a 200 body of `archived` shows
+        // the analysis was redirected there, not just the docblock summary.
         ArchiveArticleAction::class.'::asController' => new ActionAnalysis(
             returns: [new ReturnSite(new ArrayShapeT([new ArrayShapeField('archived', ScalarT::bool())]), $loc)],
         ),
-        // handle() and jsonResponse() carry DISTINCT shapes: a 200 body of `{data, meta}` proves the
-        // success analysis was redirected to jsonResponse — the decorator's real JSON wire shape — not
+        // handle() and jsonResponse() carry different shapes, so a 200 body of `{data, meta}` shows the
+        // success analysis went to jsonResponse (the decorator's real JSON wire shape) rather than
         // handle()'s bare `{id}`.
         JsonResponseAction::class.'::handle' => new ActionAnalysis(
             returns: [new ReturnSite(new ArrayShapeT([new ArrayShapeField('id', ScalarT::int())]), $loc)],
@@ -100,8 +100,8 @@ it('resolves an invokable action to handle(), documenting its summary, rules() b
     // authorize() became a 403.
     expect($operation['responses'])->toHaveKey('403');
 
-    // The resolved handle()'s RETURN analysis composed into a 200 body (analysis redirect, not just
-    // the docblock summary) — G1.
+    // The resolved handle()'s return analysis composed into a 200 body — the analysis was redirected,
+    // not just the docblock summary.
     $ok = $operation['responses']['200']['content']['application/json']['schema']['properties'] ?? [];
     expect($ok)->toHaveKey('id');
 });
@@ -109,11 +109,10 @@ it('resolves an invokable action to handle(), documenting its summary, rules() b
 it('resolves an action defining asController() to that method over handle()', function (): void {
     $operation = actionOperation('put', 'api/archive', ArchiveArticleAction::class);
 
-    // The asController() docblock summary proves it won the precedence over handle()...
+    // The asController() docblock summary shows it won precedence over handle()…
     expect($operation['summary'])->toBe('Archive an article.');
 
-    // ...and its DISTINCT return shape composed into the 200 body, proving analysis (not just the
-    // docblock) was redirected to asController rather than handle (G1).
+    // …and its own return shape composed into the 200 body, so the analysis followed it too.
     $ok = $operation['responses']['200']['content']['application/json']['schema']['properties'] ?? [];
     expect($ok)->toHaveKey('archived');
 });
@@ -155,8 +154,8 @@ it('builds the 200 body from jsonResponse() when the action defines it, not from
 });
 
 it('builds the 200 body from the resolved method when the action defines no jsonResponse() (unchanged)', function (): void {
-    // Negative case (binding): SimpleAction has no jsonResponse()/htmlResponse(), so the success body
-    // stays exactly the dispatched handle()'s analysis — the pre-existing behaviour is untouched.
+    // With no jsonResponse()/htmlResponse() the success body stays exactly the dispatched handle()'s
+    // analysis.
     $operation = actionOperation('post', 'api/publish', PublishArticleAction::class);
 
     $schema = $operation['responses']['200']['content']['application/json']['schema'] ?? [];
@@ -165,8 +164,8 @@ it('builds the 200 body from the resolved method when the action defines no json
 });
 
 it('records a text/html success representation when the action defines htmlResponse()', function (): void {
-    // htmlResponse() serves non-JSON clients: the endpoint additionally returns text/html. It is noted
-    // as a string content type (not a JSON-typed body); the JSON body still comes from handle().
+    // htmlResponse() serves non-JSON clients, so the endpoint also returns text/html — noted as a string
+    // content type, not a JSON-typed body. The JSON body still comes from handle().
     $operation = actionOperation('get', 'api/show-html', HtmlResponseAction::class);
 
     $content = $operation['responses']['200']['content'] ?? [];

@@ -17,25 +17,21 @@ use PhpParser\Comment;
 use PhpParser\Node;
 
 /**
- * The Query-Builder integration's {@see TraceVisitor} — the productionised Spike B "Scramble-Pro-
- * beater". Pure semantics + harvesting through {@see TypeScope}; imports zero PHPStan. It recovers,
- * off any `Spatie\QueryBuilder\QueryBuilder` receiver at any chain depth (the engine descends into
- * app-code helpers, so the `ListQueryBuilder::for()` two-deep pattern works):
+ * Harvests a `Spatie\QueryBuilder\QueryBuilder` chain into {@see QueryBuilderFacts}. Pure semantics
+ * over {@see TypeScope} — imports zero PHPStan. Works off a builder receiver at any chain depth, since
+ * the engine descends into app-code helpers (so `ListQueryBuilder::for()` two levels deep still works).
  *
- *   - the **subject model** off `QueryBuilder::for(Article::class)` (a `Model::class` const string) or
- *     `QueryBuilder::for(Article::query())` (the receiver expression's model type) — the model whose
- *     column casts type the exact filters;
- *   - `allowedFilters` / `allowedSorts` / `allowedIncludes` / `allowedFields` literals — strings and
- *     factory descriptors (`AllowedFilter::exact('status')`) folded at the AST level before PHPStan
- *     collapses them to a plain object type (the crux of Spike B), including the **internal column**
- *     (`AllowedFilter::exact('status', 'status_code')`), constant `->default(…)`/`->nullable()`
- *     **chained modifiers**, and a line or block **comment directly above** the entry;
- *   - `defaultSort`/`defaultSorts` documented defaults;
- *   - paginating terminals (`paginate`/`simplePaginate`/`cursorPaginate` plus any configured custom
- *     terminal, e.g. a `paginateList` helper) with the per-page folded from the OUTERMOST call site.
+ * It recovers the subject model from `for(Article::class)` or `for(Article::query())` — that model's
+ * column casts are what type the exact filters — plus the `allowed*` lists, `defaultSort(s)`, and the
+ * paginating terminal (per-page folded from the OUTERMOST call site).
  *
- * Every un-foldable allow-list entry is recorded on {@see QueryBuilderFacts::$unresolved} with its
- * source location, so a dynamic chain degrades to a named diagnostic rather than silence.
+ * Allow-list entries are folded at the AST level, which is the whole point: by the time PHPStan is done
+ * with `AllowedFilter::exact('status')` it's a plain object type with the arguments gone. Folding here
+ * keeps the internal column (`exact('status', 'status_code')`), constant `->default()`/`->nullable()`
+ * modifiers, and a comment sitting directly above the entry.
+ *
+ * Anything un-foldable lands on {@see QueryBuilderFacts::$unresolved} with its source location, so a
+ * dynamic chain becomes a named diagnostic rather than a silent omission.
  */
 final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
 {
@@ -65,10 +61,9 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
     private array $terminals;
 
     /**
-     * The internal-column-name argument position per factory — the default is the second argument
-     * (`AllowedFilter::exact('status', 'status_code')`), but `callback`/`custom` carry a
-     * closure/instance there (internal name is third) and `operator` a `FilterOperator` + boolean
-     * before it (internal name is fourth).
+     * Where each factory puts the internal column name. It's normally argument 2
+     * (`AllowedFilter::exact('status', 'status_code')`), but `callback`/`custom` hold a closure/instance
+     * there, and `operator` a `FilterOperator` plus a boolean, pushing it further right.
      *
      * @var array<string, int>
      */
@@ -78,7 +73,7 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
         'operator' => 3,
     ];
 
-    /** `FilterOperator` cases that compare for equality — the value is typed off the column like `exact`. */
+    /** `FilterOperator` cases that compare for equality, so the value types off the column like `exact`. */
     private const STATIC_OPERATORS = ['DYNAMIC', 'EQUAL'];
 
     /**
@@ -102,7 +97,7 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
             $this->visitMethodCall($node, $node->name->toString(), $scope);
         }
 
-        // `QueryBuilder::for(Model::class)` — the chain's origin: recover the subject model.
+        // `for(…)` is the chain's origin — the subject model comes from there.
         if ($node instanceof Node\Expr\StaticCall
             && $node->name instanceof Node\Identifier
             && $node->name->toString() === 'for'
@@ -111,15 +106,14 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
         }
 
         // Descend into any app-code call so allow-lists built inside a helper are reached; the engine
-        // declines vendor / magic / over-budget descent on its own (Spike B split).
+        // declines vendor / magic / over-budget descent on its own.
         return $node instanceof Node\Expr\MethodCall || $node instanceof Node\Expr\StaticCall;
     }
 
     /**
-     * Follow a callee whose return type IS a Spatie `QueryBuilder` (subclass) even when it lies
-     * outside the configured project paths — the modular `$query->query(): InvoiceQueryBuilder` hop
-     * where the whole `allowedFilters(...)` chain lives. The engine still never descends into vendor,
-     * so this reaches the app's own Query class without following the package's builder methods.
+     * Follows a callee returning a `QueryBuilder` subclass even outside the configured project paths —
+     * that's the `$query->query(): InvoiceQueryBuilder` hop where the whole chain often lives. Vendor is
+     * still never descended into, so this reaches the app's Query class, not the package's own methods.
      */
     public function followsReturnType(DType $returnType): bool
     {
@@ -143,9 +137,8 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
     }
 
     /**
-     * Recover the subject model FQCN from a `QueryBuilder::for(…)` origin. The first `for()` reached
-     * wins (there is one per chain); an unresolvable subject leaves {@see QueryBuilderFacts::$subjectModel}
-     * null so every filter degrades to a plain string.
+     * The subject model behind a `for(…)` origin. First `for()` reached wins (there's one per chain); an
+     * unresolvable subject leaves {@see QueryBuilderFacts::$subjectModel} null and every filter a string.
      */
     private function recoverSubject(Node\Expr\StaticCall $node, TypeScope $scope): void
     {
@@ -167,9 +160,8 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
     }
 
     /**
-     * The model FQCN behind a `for(…)` argument: a `Model::class` const string, else the argument's
-     * own model type (`for($query)` / `for(Model::query())` → a builder/relation carrying the model
-     * as a generic arg, or the model itself).
+     * A `Model::class` const string, else the argument's own model type — `for($query)` /
+     * `for(Model::query())` give a builder or relation carrying the model as a generic arg.
      */
     private function subjectFromArg(Node\Expr $arg, TypeScope $scope): ?string
     {
@@ -212,10 +204,7 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
         }
     }
 
-    /**
-     * Fold one recovered allow-list expression into an entry (peeling constant `->default()`/
-     * `->nullable()` modifiers and attributing a leading comment), or record it unresolved.
-     */
+    /** Folds one allow-list expression into an entry, or records it unresolved. */
     private function collect(Node\Expr $expr, ?Node $itemNode, string $bucket, string $defaultKind, string $method, TypeScope $scope): void
     {
         [$base, $hasDefault, $default, $nullable] = $this->peelModifiers($expr, $scope);
@@ -229,7 +218,7 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
             return;
         }
 
-        // Only filters carry column typing / a custom-filter class; sorts/includes/fields never do.
+        // Only filters carry column typing or a custom-filter class; sorts/includes/fields never do.
         [$typeColumn, $filterClass, $factoryEnum, $factoryClass] = $bucket === 'filters'
             ? $this->filterTyping($entry, $value, $base, $scope)
             : [null, null, null, null];
@@ -264,11 +253,9 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
     }
 
     /**
-     * Peel recognised constant-foldable chained modifiers off the top of an allow-list expression,
-     * returning the base descriptor/scalar expression plus the folded modifier facts. Only
-     * `->default(<const>)` and `->nullable()` are recognised; an unrecognised or non-constant modifier
-     * stops the peel (the base still recovers — a recognised entry never degrades to unresolved noise
-     * over an unfoldable tail).
+     * Peels `->default(<const>)` / `->nullable()` off the top of an entry expression, returning the base
+     * expression plus the folded facts. An unrecognised or non-constant modifier just stops the peel —
+     * the base still recovers, so an unfoldable tail never costs us a whole entry.
      *
      * @return array{0: Node\Expr, 1: bool, 2: string|int|float|bool|null, 3: bool}
      */
@@ -306,7 +293,7 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
     }
 
     /**
-     * Fold a `->default(<value>)` argument to a scalar, or null when it is absent / non-constant.
+     * A `->default(<value>)` argument folded to a scalar, or null when absent / non-constant.
      *
      * @return array{0: string|int|float|bool|null}|null
      */
@@ -340,8 +327,8 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
     }
 
     /**
-     * The public filter name from a descriptor's first argument, or — for `AllowedFilter::trashed()`
-     * called with no name — its documented default `trashed`.
+     * The public filter name from the descriptor's first argument. `AllowedFilter::trashed()` may be
+     * called with no name, in which case Spatie's documented default is `trashed`.
      */
     private function descriptorName(ConstValue $value, string $method): ?string
     {
@@ -353,7 +340,7 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
         return $method === 'trashed' ? 'trashed' : null;
     }
 
-    /** The factory's internal-column-name argument (position varies by factory), when a non-empty string. */
+    /** The internal column name argument, when it's a non-empty string. Position varies by factory. */
     private static function internalArg(ConstValue $descriptor, string $method): ?string
     {
         $arg = $descriptor->args[self::INTERNAL_ARG_INDEX[$method] ?? 1] ?? null;
@@ -364,10 +351,9 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
     }
 
     /**
-     * The column a filter types its value off (else null), and the custom-filter class FQCN (else
-     * null), per kind: `exact` and a static `operator` type off the internal column; a `callback`
-     * types off the column its closure's `where(…)` targets; a `custom` records its filter class for
-     * the extension to analyse. Everything else stays a plain string.
+     * How a filter's value gets typed, per kind: `exact` and a static `operator` type off the internal
+     * column, a `callback` off whatever column its closure's `where(…)` targets, and a `custom` records
+     * its filter class for the extension to analyse. Anything else stays a plain string.
      *
      * @return array{0: string|null, 1: string|null, 2: string|null, 3: string|null} typeColumn, filterClass, factoryEnum, factoryClass
      */
@@ -383,13 +369,12 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
     }
 
     /**
-     * A filter produced by a PROJECT factory — a helper method returning a Spatie `AllowedFilter`
-     * (e.g. a `ListFilters::enum(...)` idiom), as opposed to a Spatie `AllowedFilter::*` factory. Its
-     * typing comes entirely from the CALL-SITE arguments already folded into the descriptor — no descent
-     * into the factory body is needed: a backed-enum class-string argument names the value domain (typed
-     * off that enum directly), otherwise the filter's own name is the column to type off the model cast
-     * (the `$column ?? $key` idiom). A bare string, or a Spatie-own factory kind not handled above,
-     * returns all-null (unchanged — stays a plain string).
+     * Typing for a filter built by a PROJECT factory (a `ListFilters::enum(...)` style helper returning
+     * an `AllowedFilter`) rather than a Spatie `AllowedFilter::*` one. Everything needed is already in
+     * the call-site arguments folded into the descriptor, so the factory body is never descended into: a
+     * backed-enum class-string argument names the value domain, otherwise the filter's own name is the
+     * column to type off, matching the usual `$column ?? $key` idiom. Bare strings and unhandled Spatie
+     * kinds return all-null and stay plain strings.
      *
      * @return array{0: string|null, 1: string|null, 2: string|null, 3: string|null}
      */
@@ -408,7 +393,7 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
             : [$entry->name, null, null, $factoryClass];
     }
 
-    /** A backed-enum class-string among the factory's folded arguments (its value domain), else null. */
+    /** A backed-enum class-string among the folded arguments — the filter's value domain. */
     private static function factoryEnumArg(ConstValue $value): ?string
     {
         foreach ($value->args as $arg) {
@@ -430,7 +415,7 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
         return $sep === false ? $factory : substr($factory, 0, $sep);
     }
 
-    /** Whether an `AllowedFilter::operator` descriptor's operator argument is an equality comparison. */
+    /** Whether an `operator` descriptor's operator argument is an equality comparison. */
     private function operatorIsStatic(ConstValue $value): bool
     {
         $operator = $value->args[1] ?? null;
@@ -439,7 +424,7 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
             && in_array($operator->scalar, self::STATIC_OPERATORS, true);
     }
 
-    /** The column a callback filter's inline closure filters on, via {@see WhereColumnAnalyzer}. */
+    /** The column a callback filter's inline closure filters on. */
     private function callbackColumn(Node\Expr $base): ?string
     {
         if (! $base instanceof Node\Expr\StaticCall) {
@@ -454,8 +439,8 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
     }
 
     /**
-     * The custom-filter class FQCN: the folded `F::class` second argument, else the instantiated
-     * class's type off a `new F` argument. A variable/dynamic instance is unrecoverable (null).
+     * The folded `F::class` second argument, else the type of a `new F` argument. A variable or dynamic
+     * instance is unrecoverable.
      */
     private function customFilterClass(ConstValue $value, Node\Expr $base, TypeScope $scope): ?string
     {
@@ -479,8 +464,8 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
 
     private function recordTerminal(Node\Expr\MethodCall $node, string $name, TypeScope $scope): void
     {
-        // The outermost terminal is the first one recorded (the engine walks the entry method fully
-        // before descending), so per-page comes from the shallowest call site (design §4).
+        // The engine walks the entry method fully before descending, so the first terminal recorded is
+        // the outermost one — per-page comes from the shallowest call site.
         if ($this->facts->paginates) {
             return;
         }
@@ -505,9 +490,8 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
     }
 
     /**
-     * The first sentence(s) of a line or block comment directly above an allow-list entry (its end
-     * line immediately precedes the entry) — verbatim, no tag parsing. Returns null when no such
-     * comment attaches.
+     * The first sentence of a comment whose end line immediately precedes the entry — verbatim, no tag
+     * parsing. Null when nothing attaches that closely.
      */
     private function leadingComment(Node $item): ?string
     {
@@ -526,10 +510,10 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
         return $text === '' ? null : self::firstSentence($text);
     }
 
-    /** Strip line/block comment markers and collapse a comment body to a single line. */
+    /** A comment body with its markers stripped, collapsed to a single line. */
     private static function stripCommentMarkers(Comment $comment): string
     {
-        // Drop block open/close delimiters, then per-line leading markers (`//`, `#`, `*`).
+        // Block delimiters first, then per-line leading markers (`//`, `#`, `*`).
         $text = preg_replace('~/\*\*?|\*/~', '', $comment->getText()) ?? $comment->getText();
 
         $lines = array_map(
@@ -542,7 +526,7 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
         return trim($collapsed);
     }
 
-    /** The first sentence: up to and including the first sentence-terminating period, else the whole line. */
+    /** Up to and including the first sentence-terminating period, else the whole line. */
     private static function firstSentence(string $text): string
     {
         if (preg_match('/^.*?[.!?](?=\s|$)/', $text, $matches) === 1) {

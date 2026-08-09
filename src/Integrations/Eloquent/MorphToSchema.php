@@ -17,15 +17,13 @@ use Docuccino\Core\Inference\DType\UnionT;
 use Illuminate\Database\Eloquent\Relations\Relation;
 
 /**
- * Maps a polymorphic morph — a union of two or more Eloquent models, as `MorphTo<Post|Video>`
- * surfaces once inference resolves the related type — to an OAS `oneOf` of the variant schemas.
- * A `discriminator` (propertyName `type`, `mapping` from `Relation::morphMap()`) is emitted ONLY
- * when polymorphism is evidenced — every variant has a morph-map alias — so clients get a stable,
- * complete mapping they can trust. If any variant is unmapped the mapper emits a bare `oneOf`
- * (no discriminator) and raises an info diagnostic per unmapped variant: a partial discriminator
- * whose values are unstable FQCNs would mislead a client into mis-parsing, worse than none.
- * Runs ahead of the core union mapper so a model union becomes `oneOf` rather than a bare `anyOf`;
- * a nullable morph keeps a `null` branch.
+ * Maps a polymorphic morph — the union of two or more models that `MorphTo<Post|Video>` resolves to —
+ * into a `oneOf` of the variant schemas. Runs ahead of the core union mapper so a model union gets
+ * `oneOf` rather than a bare `anyOf`; a nullable morph keeps its `null` branch.
+ *
+ * A `discriminator` (propertyName `type`, mapping from `Relation::morphMap()`) needs EVERY variant to be
+ * mapped. If one isn't, the mapper emits a bare `oneOf` plus an info diagnostic per unmapped variant — a
+ * partial mapping with unstable FQCN values would make a client mis-parse, which is worse than none.
  */
 #[ExtensionOrder(priority: Priorities::EARLY)]
 final class MorphToSchema implements TypeToSchema
@@ -78,8 +76,6 @@ final class MorphToSchema implements TypeToSchema
         }
 
         $schema = ['oneOf' => $variants];
-        // A discriminator is only sound when every variant is morph-mapped: a partial mapping (or
-        // FQCN-valued keys) would let a client mis-parse an unmapped variant (arch I3).
         if ($allMapped && $mapping !== []) {
             $schema['discriminator'] = ['propertyName' => self::DISCRIMINATOR_PROPERTY, 'mapping' => $mapping];
         }
@@ -88,7 +84,7 @@ final class MorphToSchema implements TypeToSchema
     }
 
     /**
-     * The Eloquent-model members of a union (morph variants), preserving declaration order.
+     * The union's model members — the morph variants — in declaration order.
      *
      * @return list<ClassT>
      */
@@ -104,7 +100,7 @@ final class MorphToSchema implements TypeToSchema
         return $models;
     }
 
-    /** The morph-map alias a model serialises its type as, or null when it is unmapped. */
+    /** The alias a model serialises its `type` as, or null when unmapped. */
     private function morphAlias(string $fqcn): ?string
     {
         $alias = array_search($fqcn, Relation::morphMap(), true);

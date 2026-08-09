@@ -9,9 +9,8 @@ use Docuccino\Core\Diagnostics\DiagnosticCollector;
 use Illuminate\Console\Command;
 
 /**
- * Shared diagnostic rendering for the artisan commands: prints a document's diagnostics grouped
- * by route signature in the deterministic order the {@see DiagnosticCollector}
- * already imposes, so console output is byte-stable across runs.
+ * Prints a document's diagnostics grouped by route signature, relying on the order
+ * {@see DiagnosticCollector} already imposes so console output is byte-stable across runs.
  *
  * @mixin Command
  */

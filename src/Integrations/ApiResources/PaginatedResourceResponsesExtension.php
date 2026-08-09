@@ -15,14 +15,11 @@ use Docuccino\Laravel\Integrations\Support\PaginatedResponseBody;
 use Docuccino\Laravel\Integrations\Support\PaginationTerminalVisitor;
 
 /**
- * Documents the `{data, links, meta}` envelope on a paginated API-resource collection response
- * (`UserResource::collection($query->paginate())` — audit api-resources #3). The static return type
- * (`AnonymousResourceCollection<T>`) is identical paginated or not, so it traces the action for a
- * paginating terminal ({@see PaginationTerminalVisitor}, so the walk's dependency files join the
- * fragment cache key) and, when one is reached, rewraps the collection body in the paginator envelope
- * for the recovered kind (length/simple/cursor). Runs LATE so the inference-layer body already exists;
- * writes at integration precedence so it overrides that body (and docblocks/attributes still override
- * this). JSON:API collections have their own envelope and are excluded.
+ * Documents the `{data, links, meta}` envelope on a paginated resource-collection response like
+ * `UserResource::collection($query->paginate())`. Since the static return type is identical paginated or
+ * not, it traces for a paginating terminal and rewraps the body in the envelope for whatever kind turns
+ * up. Runs LATE so the inference-layer body already exists, and writes at integration precedence so it
+ * overrides that body while docblocks/attributes still override this. JSON:API collections are excluded.
  */
 #[ExtensionOrder(priority: Priorities::LATE)]
 final class PaginatedResourceResponsesExtension implements OperationExtension
@@ -56,11 +53,9 @@ final class PaginatedResourceResponsesExtension implements OperationExtension
     }
 
     /**
-     * The paginating terminals that trigger the resource envelope: the shared length/simple/cursor
-     * table plus any custom Query-Builder terminals configured under
-     * `integrations.query_builder.pagination_terminals` (arch PIN 3 — a resource collection paginated
-     * via a custom QB terminal such as `paginateList` earns the `{data, links, meta}` envelope too,
-     * length-aware, so it is documented consistently with its QB page parameters).
+     * The shared terminal table plus any custom Query-Builder terminals from
+     * `integrations.query_builder.pagination_terminals` — a collection paginated through a custom
+     * terminal like `paginateList` gets the same envelope, so it stays consistent with its QB parameters.
      *
      * @return array<string, string>
      */

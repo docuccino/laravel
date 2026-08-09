@@ -5,15 +5,14 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\Passport;
 
 /**
- * Extracts the OAuth scopes a route requires from its Passport scope middleware (design §Phase 4 —
- * Passport per-operation scopes). Passport registers `scope`/`CheckForAnyScope` (ANY-of) and
- * `scopes`/`CheckScopes` (ALL-of); both take a comma-separated scope list and both ship a
- * `::using()` helper that renders the middleware as its class FQCN. The client-credentials
- * middleware carry scopes the same way — `client`/`CheckClientCredentials` (ALL-of) and
- * `CheckClientCredentialsForAnyScope` (ANY-of) — so machine-to-machine routes get per-operation
- * scopes too (auth audit #7). All-of scopes and any-of scopes are kept apart in a
- * {@see ScopeRequirements} so the security requirement can model each correctly. Pure so the
- * middleware map is dataset-testable.
+ * Extracts the OAuth scopes a route requires from its Passport scope middleware. Passport registers
+ * `scope`/`CheckForAnyScope` (any-of) and `scopes`/`CheckScopes` (all-of); both take a comma-separated
+ * list and both ship a `::using()` helper that renders the middleware as its class FQCN. The
+ * client-credentials middleware carry scopes the same way — `client`/`CheckClientCredentials` (all-of),
+ * `CheckClientCredentialsForAnyScope` (any-of) — so machine-to-machine routes get scopes too.
+ *
+ * All-of and any-of are kept apart in {@see ScopeRequirements} so the security requirement models each
+ * correctly. Pure, so the middleware map is dataset-testable.
  */
 final class ScopeMiddlewareParser
 {
@@ -22,8 +21,7 @@ final class ScopeMiddlewareParser
     private const CHECK_CLIENT_CREDENTIALS_FOR_ANY_SCOPE = 'Laravel\\Passport\\Http\\Middleware\\CheckClientCredentialsForAnyScope';
 
     /**
-     * All-of prefixes: `scopes:` + `CheckScopes::using()` FQCN, plus the `client:` alias and
-     * `CheckClientCredentials::using()` FQCN (client-credentials validates every listed scope).
+     * All-of prefixes. Client-credentials belongs here: it validates every listed scope.
      *
      * @var list<string>
      */
@@ -35,8 +33,7 @@ final class ScopeMiddlewareParser
     ];
 
     /**
-     * Any-of prefixes: `scope:` + `CheckForAnyScope::using()` FQCN, plus the
-     * `CheckClientCredentialsForAnyScope::using()` FQCN.
+     * Any-of prefixes.
      *
      * @var list<string>
      */
@@ -47,9 +44,8 @@ final class ScopeMiddlewareParser
     ];
 
     /**
-     * Whether the route carries any Passport client-credentials middleware — including the bare
-     * `client` alias or a parameter-less FQCN, which protect the route without naming a scope
-     * (auth audit #7).
+     * Any Passport client-credentials middleware, including the bare `client` alias and a parameter-less
+     * FQCN — those protect the route without naming a scope.
      *
      * @param  list<string>  $middleware
      */

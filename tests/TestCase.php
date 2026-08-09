@@ -41,14 +41,12 @@ abstract class TestCase extends Orchestra
     {
         $app['config']->set('app.key', 'base64:AckfSECXIvnK5r28GVIWUAxmbBSjTsmF0FYqwoDL18E=');
 
-        // The workbench documents authorization requirements (the api/moderated-forms route), so it
-        // opts the default document into the now-default-off spatie/laravel-permission integration
-        // explicitly. Setting it here (the fixture's document config) rather than in the shipped
-        // config preserves the opt-in default for real apps while the permission goldens stay
-        // byte-stable now that the integration is opt-in.
+        // api/moderated-forms documents authorization requirements, so the default document opts into the
+        // spatie/laravel-permission integration. Doing it here rather than in the shipped config keeps the
+        // opt-in default for real apps while the permission goldens stay byte-stable.
         $app['config']->set('docuccino.documents.default.integrations.permission.enabled', true);
 
-        // The morph map the /api/attachments discriminator resolves its aliases from (design §Phase 4).
+        // The morph map the /api/attachments discriminator resolves its aliases from.
         Relation::morphMap(['widget' => Widget::class, 'gadget' => Gadget::class], false);
     }
 
@@ -63,19 +61,19 @@ abstract class TestCase extends Orchestra
         $router->get('api/broken', [BrokenController::class, 'ghost']);
         $router->get('api/ping', static fn () => response()->json(['pong' => true]));
 
-        // Phase-4b wave-1 integration routes: Query Builder (scripted trace), rate limiting,
-        // spatie/laravel-permission, and a withTrashed route-model binding.
+        // Query Builder (scripted trace), rate limiting, spatie/laravel-permission, and a withTrashed
+        // route-model binding.
         $router->get('api/widget-query', [WidgetQueryController::class, 'index']);
         $router->get('api/rate-limited', [FormController::class, 'index'])->middleware('throttle:60,1');
         $router->get('api/moderated-forms', [FormController::class, 'index'])->middleware('permission:moderate forms,web');
         $router->get('api/archived-forms/{form}', [FormController::class, 'show'])->withTrashed();
-        // An authenticated + authorized route: exercises the implicit 401 (auth middleware) and
-        // implicit 403 (can: middleware) responses through the full pipeline into the golden. Uses the
-        // session `web` guard so no Sanctum/Passport security scheme is emitted into the default doc —
-        // the 401 response is independent of whether a scheme is configured (matching Scramble).
+        // An authenticated + authorized route: the implicit 401 (auth middleware) and 403 (can:
+        // middleware) responses through the full pipeline into the golden. It uses the session `web` guard
+        // so no Sanctum/Passport security scheme lands in the default doc — the 401 doesn't depend on one
+        // being configured.
         $router->get('api/guarded-forms', [FormController::class, 'index'])->middleware(['auth:web', 'can:view']);
 
-        // Phase-4 integration routes (Spatie Data, API Resources, JSON:API, Eloquent, status codes).
+        // Spatie Data, API Resources, JSON:API, Eloquent and status-code routes.
         $router->post('api/articles', [IntegrationsController::class, 'storeArticle']);
         $router->get('api/article-resources', [IntegrationsController::class, 'listArticleResources']);
         $router->get('api/paginated-articles', [IntegrationsController::class, 'listPaginatedArticles']);
@@ -87,8 +85,8 @@ abstract class TestCase extends Orchestra
         $router->delete('api/model-widgets/{id}', [IntegrationsController::class, 'destroyWidget']);
         $router->post('api/reports', [IntegrationsController::class, 'storeReport']);
 
-        // Phase-4b wave-2 routes: a polymorphic morph (discriminated oneOf) and a renderable
-        // exception the inferred-handler tier documents.
+        // A polymorphic morph (discriminated oneOf) and a renderable exception the inferred-handler tier
+        // documents.
         $router->get('api/attachments/{id}', [IntegrationsController::class, 'showAttachment']);
         $router->post('api/checkout', [IntegrationsController::class, 'checkout']);
     }

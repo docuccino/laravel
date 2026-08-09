@@ -10,10 +10,10 @@ use Docuccino\Core\Inference\ConstValue;
 use Docuccino\Laravel\Integrations\Support\RuleParsing;
 
 /**
- * Folds a statically-recovered {@see ConstValue} (one field's rules from an inline `validate([...])`
- * or `Validator::make(...)`) into {@see ValidationRule}s. Handles pipe strings, array-of-rule forms,
- * and `Rule::*` factory descriptors — the descriptor variant is why folding happens at the AST level
- * (`Rule::enum(Status::class)` is recovered as a call, before PHPStan collapses it to a bare object).
+ * Folds one field's statically-recovered rules — from an inline `validate([...])` or
+ * `Validator::make(...)` — into {@see ValidationRule}s: pipe strings, array-of-rule forms, and `Rule::*`
+ * factory descriptors. Descriptors are why folding happens at the AST level: `Rule::enum(Status::class)`
+ * has to be caught as a call, before PHPStan collapses it to a bare object.
  */
 final class ConstValueToRules
 {
@@ -80,12 +80,11 @@ final class ConstValueToRules
     }
 
     /**
-     * Apply a `Rule::enum(...)` fluent chain (`->only([...])` / `->except([...])`) to the recovered
-     * backing-value list. The chained args fold to case NAMES (the engine folds an enum-case constant
-     * to its case name), so we pair
-     * each name with its backing value ({@see EnumReflection::names()} runs parallel to
-     * {@see EnumReflection::values()}) and keep/drop by name — order-preserving. Unknown chain methods
-     * are ignored (the full case list stands), matching the safe floor elsewhere.
+     * Applies a `Rule::enum(…)->only([…])/->except([…])` chain to the recovered backing values. The chained
+     * args fold to case *names* (that's what the engine folds an enum-case constant to), so pair each name
+     * with its backing value — {@see EnumReflection::names()} runs parallel to
+     * {@see EnumReflection::values()} — and keep/drop by name, preserving order. An unknown chain method is
+     * ignored and the full case list stands.
      *
      * @param  list<string>  $values
      * @param  list<array{method: string, args: list<ConstValue>}>  $chain
@@ -116,8 +115,7 @@ final class ConstValueToRules
     }
 
     /**
-     * The case names selected by a fluent chain call — `->only([Status::A, Status::B])` (a single
-     * array arg) or `->only(Status::A, Status::B)` (spread), each case folded to its name scalar.
+     * The case names a chain call selects, whether written as one array arg or spread.
      *
      * @param  list<ConstValue>  $args
      * @return list<string>
@@ -141,8 +139,7 @@ final class ConstValueToRules
      */
     private function scalarArgs(ConstValue $descriptor): array
     {
-        // `Rule::in(['a', 'b'])` folds arg 0 to an array of scalars; `Rule::in('a', 'b')` to a list of
-        // scalar args. Flatten either into a plain string list.
+        // `Rule::in(['a', 'b'])` folds arg 0 to an array; `Rule::in('a', 'b')` to a list of args.
         $source = count($descriptor->args) === 1 && $descriptor->args[0]->isArray()
             ? $descriptor->args[0]->items
             : $descriptor->args;

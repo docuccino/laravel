@@ -41,6 +41,9 @@
         "spatie/laravel-json-api-paginate": "^2.0",
         "timacdonald/json-api": "^1.0@beta"
     },
+    "suggest": {
+        "larastan/larastan": "^3.10 - enables type inference; install it as a dev dependency, or documentation comes from docblocks and attributes only"
+    },
     "autoload": {
         "psr-4": {
             "Docuccino\\Laravel\\": "src/"

@@ -10,22 +10,18 @@ use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Stmt\ClassMethod;
 
 /**
- * Recovers the single column a Query-Builder callback closure or custom-filter `__invoke` body
- * filters on, for the simple shapes the design admits (§Filter-kind inference):
+ * Recovers the single column a callback closure or custom-filter `__invoke` filters on, for two shapes
+ * only: `$query->where(COLUMN, $value)` and `$query->where(COLUMN, OPERATOR, $value)`. `COLUMN` must be a
+ * string literal, and `$query`/`$value` the callable's first two parameters — that's what proves the
+ * value reaching the `where` IS the filter value and not something captured.
  *
- *   - `$query->where(COLUMN, $value)`                — an equality on a literal column;
- *   - `$query->where(COLUMN, OPERATOR, $value)`      — the same with an explicit literal operator.
- *
- * `COLUMN` is a string literal; `$query`/`$value` must be the callable's first/second parameters (so
- * the value flowing into the `where` is the filter value, not some captured variable). ANYTHING more
- * complex — multiple statements, `orWhere`/`whereIn`, a nested closure, a conditional, a non-literal
- * column, a value that is not the second parameter — returns null (the filter degrades to a plain
- * string, silently, per the design). Pure AST: no type engine, no reflection, so it recovers the same
- * literal both in-process and inside the real-engine fixture trace.
+ * Anything more (several statements, `orWhere`/`whereIn`, a nested closure, a computed column) returns
+ * null and the filter stays a plain string. Pure AST, no engine and no reflection, so it recovers the
+ * same literal in-process and inside the real-engine fixture trace.
  */
 final class WhereColumnAnalyzer
 {
-    /** The recovered column of a callback closure / arrow function, or null when it does not match. */
+    /** The column a callback closure or arrow function filters on. */
     public function fromClosure(Closure|ArrowFunction $fn): ?string
     {
         $params = $fn->params;
@@ -42,7 +38,7 @@ final class WhereColumnAnalyzer
         return $this->fromStatements($fn->stmts, $queryVar, $valueVar);
     }
 
-    /** The recovered column of a custom filter's `__invoke(Builder $query, $value, …)` method. */
+    /** The column a custom filter's `__invoke(Builder $query, $value, …)` filters on. */
     public function fromInvoke(ClassMethod $method): ?string
     {
         $params = $method->params;
@@ -56,8 +52,7 @@ final class WhereColumnAnalyzer
     }
 
     /**
-     * The single statement must be a bare `$query->where(…)` expression (or `return $query->where(…)`);
-     * more than one statement is "too complex" and bails.
+     * The one statement must be `$query->where(…)`, bare or returned. More than one bails.
      *
      * @param  array<array-key, Node\Stmt>  $stmts
      */
@@ -78,10 +73,7 @@ final class WhereColumnAnalyzer
         return $expr === null ? null : $this->fromWhereCall($expr, $queryVar, $valueVar);
     }
 
-    /**
-     * Match `$query->where(COLUMN, $value)` / `$query->where(COLUMN, OPERATOR, $value)` and return
-     * COLUMN, or null for any other expression.
-     */
+    /** COLUMN from either accepted `where` shape, else null. */
     private function fromWhereCall(Node\Expr $expr, string $queryVar, string $valueVar): ?string
     {
         if (! $expr instanceof Node\Expr\MethodCall
@@ -99,12 +91,12 @@ final class WhereColumnAnalyzer
             return null;
         }
 
-        // `where(col, $value)` — the value is the filter value directly.
+        // `where(col, $value)` — the filter value goes straight in.
         if (count($args) === 2 && self::isVariable($args[1] ?? null, $valueVar)) {
             return $column;
         }
 
-        // `where(col, OPERATOR, $value)` — a literal operator, then the filter value.
+        // `where(col, OPERATOR, $value)` — literal operator, then the filter value.
         if (count($args) === 3 && self::stringArg($args[1] ?? null) !== null && self::isVariable($args[2] ?? null, $valueVar)) {
             return $column;
         }

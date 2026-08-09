@@ -14,13 +14,12 @@ use Docuccino\Core\Patch\Contribution;
 use Docuccino\Laravel\Integrations\Support\PaginationTerminalVisitor;
 
 /**
- * Documents a `spatie/laravel-json-api-paginate` list endpoint (Phase 5c). It traces the action with
- * the shared {@see PaginationTerminalVisitor} (so the walk's dependency files join the fragment-cache
- * key), and when the chain reaches `jsonPaginate()` contributes the JSON:API `page[number]`/`page[size]`
- * (or `page[cursor]`/`page[size]`) query parameters, respecting the package's configured names and
- * sizes. The response envelope is documented separately by {@see JsonApiPaginateResponsesExtension},
- * which wraps a resource-collection body in the `{data, links, meta}` paginator envelope for the
- * configured mode. Writes at the integration layer, so docblocks/attributes still override.
+ * Documents a `spatie/laravel-json-api-paginate` list endpoint. Traces the action with the shared
+ * {@see PaginationTerminalVisitor}, so the walk's dependency files join the fragment-cache key, and when
+ * the chain reaches `jsonPaginate()` contributes the JSON:API `page[number]`/`page[size]` (or
+ * `page[cursor]`/`page[size]`) query parameters under the package's configured names and sizes.
+ * {@see JsonApiPaginateResponsesExtension} documents the envelope. Writes at the integration layer, so
+ * docblocks and attributes still override.
  */
 final class JsonApiPaginateParametersExtension implements OperationExtension
 {
@@ -36,9 +35,8 @@ final class JsonApiPaginateParametersExtension implements OperationExtension
 
     public function handle(OperationDraft $operation, RouteContext $context): void
     {
-        // Trace with the shared PaginationTerminalVisitor (the jsonPaginate terminal → the config's
-        // mode); it also exposes the outermost call's folded int args — the macro's
-        // jsonPaginate(?maxResults, ?defaultSize) per-call-site overrides.
+        // The visitor also folds the outermost call's int args — jsonPaginate(?maxResults, ?defaultSize)
+        // per-call-site overrides.
         $visitor = new PaginationTerminalVisitor([$this->config->methodName => $this->config->mode]);
         $context->trace($visitor);
 

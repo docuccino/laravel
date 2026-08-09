@@ -5,18 +5,16 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\Permission;
 
 /**
- * Parses a `spatie/laravel-permission` middleware string into a {@see PermissionRequirement} (design
- * §Phase 4). The three aliases — `role:`, `permission:`, `role_or_permission:` — each take a pipe-
- * separated any-of list and an optional `,guard` suffix (`permission:edit articles,web`). Each also
- * ships a `::using()` helper that renders the middleware as its class FQCN (the canonical Laravel 11+
- * style spatie's docs promote), so the FQCN prefixes are matched too. Anything else returns null.
- * Pure so the middleware map is dataset-testable.
+ * Parses a `spatie/laravel-permission` middleware string into a {@see PermissionRequirement}. The three
+ * aliases — `role:`, `permission:`, `role_or_permission:` — each take a pipe-separated any-of list and an
+ * optional `,guard` suffix (`permission:edit articles,web`). Each also ships a `::using()` helper that
+ * renders the middleware as its class FQCN, the style spatie's docs now promote, so those prefixes match
+ * too. Null for anything else. Pure, so the middleware map is dataset-testable.
  */
 final class PermissionMiddlewareParser
 {
     /**
-     * Prefix → requirement type. Ordered longest-alias-first so no short alias shadows another; the
-     * `::using()` FQCN forms map to the same three types.
+     * Prefix → requirement type, longest alias first so no short alias shadows another.
      *
      * @var array<string, string>
      */

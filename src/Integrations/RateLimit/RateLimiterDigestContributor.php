@@ -12,13 +12,11 @@ use ReflectionObject;
 use Throwable;
 
 /**
- * Contributes the booted app's `RateLimiter::for` registration set to the environment digest (design
- * §10, A4) — the add-a-limiter asymmetry the per-fragment dependency hashes cannot catch: a route
- * carrying `throttle:api` when `api` is unregistered documents the numberless 429 floor and records
- * NO closure dependency, so registering `RateLimiter::for('api', …)` afterwards would never refresh
- * that warm fragment without this digest. Each registered limiter contributes its name + the closure's
- * source location, sorted by name for determinism. Always-on (throttle ships with Laravel). Defensive:
- * an unreflectable limiter set contributes the empty string.
+ * Feeds the app's `RateLimiter::for` registration set into the environment digest (design §10), catching
+ * what per-fragment dependency hashes can't: a route carrying `throttle:api` while `api` is unregistered
+ * documents the numberless 429 floor and records no closure dependency, so registering the limiter
+ * afterwards would never refresh that warm fragment. Each limiter contributes its name plus the closure's
+ * source location, sorted by name. An unreflectable limiter set contributes the empty string.
  */
 final class RateLimiterDigestContributor implements EnvironmentDigestContributor
 {
