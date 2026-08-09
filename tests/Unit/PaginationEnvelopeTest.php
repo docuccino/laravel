@@ -6,7 +6,7 @@ use Docuccino\Laravel\Integrations\Support\PaginationEnvelope;
 use Docuccino\Laravel\Integrations\Support\SpatieDataEnvelope;
 
 /**
- * The paginator envelope builders (Wave C items 1–3), one case per mode. Laravel's envelope
+ * The paginator envelope builders, one case per mode. Laravel's envelope
  * (resources + jsonPaginate) and spatie/laravel-data's envelope diverge deliberately, so both are
  * pinned here so a change to either is a conscious edit.
  */
