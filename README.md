@@ -11,7 +11,13 @@ and exports OpenAPI / UIR documents from the real shape of your code.
 
 ```bash
 composer require docuccino/laravel
+composer require --dev docuccino/inference-phpstan   # powers type inference
 ```
+
+Two packages because analysis is a build-time job: the inference engine runs wherever
+you generate the document, and production serves the finished document without a static
+analyser in `vendor/`. Without the engine, documentation comes from docblocks and
+attributes only — and every export warns that it did.
 
 Publish the config:
 

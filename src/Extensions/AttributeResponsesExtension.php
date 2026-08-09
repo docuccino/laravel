@@ -13,8 +13,8 @@ use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
 use Docuccino\Core\Patch\Contribution;
-use Docuccino\Inference\PhpStan\Types\ImportContext;
-use Docuccino\Inference\PhpStan\Types\TypeStringParser;
+use Docuccino\Core\TypeGrammar\ImportContext;
+use Docuccino\Core\TypeGrammar\TypeStringParser;
 
 /**
  * Applies the response attributes as the attribute layer: `#[Response]` (per status, with a

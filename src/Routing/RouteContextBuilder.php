@@ -17,7 +17,7 @@ use Docuccino\Core\Extensions\Contracts\TypeToSchema;
 use Docuccino\Core\Extensions\Schema\ComponentRegistry;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Provenance\SourcePathResolver;
-use Docuccino\Inference\PhpStan\Metadata\DocBlockReader;
+use Docuccino\Core\TypeGrammar\DocBlockReader;
 use Illuminate\Foundation\Http\FormRequest as LaravelFormRequest;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;

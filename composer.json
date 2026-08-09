@@ -25,7 +25,6 @@
         "php": "^8.3",
         "docuccino/core": "self.version",
         "docuccino/attributes": "self.version",
-        "docuccino/inference-phpstan": "self.version",
         "spatie/laravel-package-tools": "^1.16",
         "illuminate/console": "^12.0 || ^13.0",
         "illuminate/contracts": "^12.0 || ^13.0",
@@ -33,8 +32,8 @@
         "illuminate/support": "^12.0 || ^13.0"
     },
     "require-dev": {
+        "docuccino/inference-phpstan": "self.version",
         "orchestra/testbench": "^10.0",
-        "larastan/larastan": "^3.10",
         "lorisleiva/laravel-actions": "^2.0",
         "pestphp/pest": "^4.0",
         "spatie/laravel-data": "^4.0",
@@ -42,7 +41,7 @@
         "timacdonald/json-api": "^1.0@beta"
     },
     "suggest": {
-        "larastan/larastan": "^3.10 - enables type inference; install it as a dev dependency, or documentation comes from docblocks and attributes only"
+        "docuccino/inference-phpstan": "Required for static type inference — install as a dev dependency: composer require --dev docuccino/inference-phpstan. Without it documentation comes from docblocks and attributes only."
     },
     "autoload": {
         "psr-4": {

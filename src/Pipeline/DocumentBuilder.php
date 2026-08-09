@@ -14,6 +14,7 @@ use Docuccino\Core\Overlay\OverlayDocument;
 use Docuccino\Core\Pipeline\GenerationResult;
 use Docuccino\Core\Support\Hydrate;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
+use Docuccino\Laravel\Engine\EnginePackage;
 use Docuccino\Laravel\Engine\TypeEngineMode;
 use Docuccino\Laravel\Support\Paths;
 use Symfony\Component\Yaml\Yaml;
@@ -33,6 +34,7 @@ final class DocumentBuilder
         private readonly DocumentConfigFactory $configs,
         private readonly DocumentGenerator $generator,
         private readonly string $basePath,
+        private readonly EnginePackage $engine = new EnginePackage,
     ) {}
 
     /**
@@ -63,7 +65,7 @@ final class DocumentBuilder
     {
         $config = $this->config($key);
         [$overlays, $overlayDiagnostics] = $this->overlays($config);
-        $preDiagnostics = [...$this->engineModeDiagnostics(), ...$overlayDiagnostics];
+        $preDiagnostics = [...$this->engineDiagnostics(), ...$overlayDiagnostics];
 
         $result = $this->generator->generate($config, $engine, $this->configExtensions(), $overlays);
 
@@ -75,21 +77,37 @@ final class DocumentBuilder
     }
 
     /**
-     * The orchestrated and caching compositions exist in the inference engine but aren't plumbed
-     * through {@see TypeEngineFactory} yet, so selecting them silently runs in-process. Say so.
+     * The build's one report on the state of inference, emitted once per document.
+     *
+     * A missing engine package is a WARNING, not info: the configured mode asked for inference and the
+     * document quietly lost a whole tier of facts (recovered types, response shapes, thrown errors).
+     * `mode: null` is an explicit opt-out, so it says nothing. The not-wired warning is suppressed when
+     * the engine is absent — which composition would have run is moot.
      *
      * @return list<Diagnostic>
      */
-    private function engineModeDiagnostics(): array
+    private function engineDiagnostics(): array
     {
         $mode = config('docuccino.engine.mode');
+
+        if ($mode !== TypeEngineMode::Null->value && ! $this->engine->installed()) {
+            return [new Diagnostic(
+                severity: Severity::Warning,
+                code: 'engine.not-installed',
+                message: 'The inference engine is not installed; documentation came from docblocks and attributes only.',
+                help: sprintf(
+                    'Install it where you generate: %s. Set DOCUCCINO_ENGINE=null to document without inference and silence this.',
+                    EnginePackage::INSTALL_COMMAND,
+                ),
+            )];
+        }
 
         if ($mode === TypeEngineMode::Orchestrated->value || $mode === TypeEngineMode::Caching->value) {
             return [new Diagnostic(
                 severity: Severity::Warning,
                 code: 'engine.mode-not-wired',
                 message: sprintf('Engine mode "%s" is not yet wired; inference ran in-process.', $mode),
-                help: 'The orchestrated and caching engine modes arrive in a later phase; set DOCUCCINO_ENGINE=in-process to silence this.',
+                help: 'The orchestrated and caching engine modes are not plumbed through yet; set DOCUCCINO_ENGINE=in-process to silence this.',
             )];
         }
 

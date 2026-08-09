@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Engine;
 
-use Docuccino\Inference\PhpStan\Analysis\PhpStanEngineFactory;
-
 /**
- * How inference is composed (design §Inference). `null` skips PHPStan entirely (docblock/
- * attribute-only docs); the others select a {@see PhpStanEngineFactory}
- * composition. Any real-engine boot failure still degrades to the null engine.
+ * How inference is composed (design §Inference). `null` skips analysis entirely (docblock/
+ * attribute-only docs); the others select an engine composition. An absent engine package
+ * ({@see EnginePackage}) or any real-engine boot failure still degrades to the null engine.
  */
 enum TypeEngineMode: string
 {

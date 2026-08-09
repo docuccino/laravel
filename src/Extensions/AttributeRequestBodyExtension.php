@@ -10,7 +10,7 @@ use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
 use Docuccino\Core\Patch\Contribution;
-use Docuccino\Inference\PhpStan\Types\TypeStringParser;
+use Docuccino\Core\TypeGrammar\TypeStringParser;
 
 /**
  * Applies `#[BodyParameter]` attributes to the request body (design §Attribute set). Each one patches a

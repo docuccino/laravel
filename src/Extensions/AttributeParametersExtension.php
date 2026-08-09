@@ -16,7 +16,7 @@ use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
 use Docuccino\Core\Patch\Contribution;
-use Docuccino\Inference\PhpStan\Types\TypeStringParser;
+use Docuccino\Core\TypeGrammar\TypeStringParser;
 
 /**
  * Applies the parameter attributes at the attribute precedence layer (design §7): query, header,

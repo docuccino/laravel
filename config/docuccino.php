@@ -225,7 +225,8 @@ return [
     */
 
     'engine' => [
-        // in-process runs PHPStan; null skips inference entirely.
+        // in-process runs PHPStan; null skips inference entirely. Inference needs the dev-only
+        // docuccino/inference-phpstan package — without it every mode but null warns and falls back.
         'mode' => env('DOCUCCINO_ENGINE', TypeEngineMode::InProcess->value),
         // Directories the engine descends into for interprocedural analysis (throw classification,
         // inline `Validator::make(...)` rules). Every PSR-4 source root in your composer.json — a
