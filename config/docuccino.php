@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use Docuccino\Laravel\Engine\TypeEngineMode;
-
 return [
 
     /*
@@ -225,9 +223,10 @@ return [
     */
 
     'engine' => [
-        // in-process runs PHPStan; null skips inference entirely. Inference needs the dev-only
-        // docuccino/inference-phpstan package — without it every mode but null warns and falls back.
-        'mode' => env('DOCUCCINO_ENGINE', TypeEngineMode::InProcess->value),
+        // 'in-process' runs PHPStan; 'null' skips inference entirely ('orchestrated' and 'caching'
+        // select the worker compositions). Inference needs the dev-only docuccino/inference-phpstan
+        // package — without it every mode but 'null' warns and falls back.
+        'mode' => env('DOCUCCINO_ENGINE', 'in-process'),
         // Directories the engine descends into for interprocedural analysis (throw classification,
         // inline `Validator::make(...)` rules). Every PSR-4 source root in your composer.json — a
         // modular `Modules\…` root included — is already loaded so helpers there resolve; widen this
