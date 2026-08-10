@@ -9,15 +9,23 @@ and exports OpenAPI / UIR documents from the real shape of your code.
 
 ## Install
 
+To serve the docs from your app — the viewer live on a deployed environment:
+
 ```bash
 composer require docuccino/laravel
 composer require --dev docuccino/inference-phpstan   # powers type inference
 ```
 
-Two packages because analysis is a build-time job: the inference engine runs wherever
-you generate the document, and production serves the finished document without a static
-analyser in `vendor/`. Without the engine, documentation comes from docblocks and
-attributes only — and every export warns that it did.
+For docs you only read in development, or a spec you host elsewhere, keep both dev-only —
+`composer install --no-dev` then ships neither:
+
+```bash
+composer require --dev docuccino/laravel docuccino/inference-phpstan
+```
+
+Analysis is a build-time job either way: the inference engine runs wherever you generate
+the document, never on a production host. Without the engine, documentation comes from
+docblocks and attributes only — and every export warns that it did.
 
 Publish the config:
 
