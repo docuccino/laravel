@@ -33,6 +33,19 @@ it('defaults to OpenAPI 3.2 JSON when no format is given', function (): void {
     expect(exportTo([]))->toContain('"openapi": "3.2.0"');
 });
 
+it('emits each downlevel format on request', function (string $format, string $marker): void {
+    expect(exportTo(['--format' => $format]))->toContain($marker);
+})->with([
+    'openapi-3.1' => ['openapi-3.1', '"openapi": "3.1.1"'],
+    'openapi-3.0' => ['openapi-3.0', '"openapi": "3.0.4"'],
+]);
+
+it('reports what a downlevel could not carry as it writes', function (): void {
+    $this->artisan('docuccino:export', ['--format' => 'openapi-3.0', '--out' => sys_get_temp_dir().'/docuccino-notes-'.uniqid().'.json'])
+        ->expectsOutputToContain('downlevel.const')
+        ->assertSuccessful();
+});
+
 it('emits YAML with --yaml', function (): void {
     $yaml = exportTo(['--yaml' => true]);
 

@@ -336,7 +336,7 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
 
             Route::get($base, [DocsController::class, 'show'])->middleware($middleware)->defaults('document', (string) $key);
             Route::get($base.'.json', [DocsController::class, 'spec'])->middleware($middleware)->defaults('document', (string) $key);
-            Route::get($base.'/assets/scalar.js', [DocsController::class, 'asset'])->middleware($middleware);
+            Route::get($base.'/assets/scalar.js', [DocsController::class, 'asset'])->middleware($middleware)->defaults('document', (string) $key);
         }
     }
 

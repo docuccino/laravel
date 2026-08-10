@@ -71,8 +71,10 @@ final class DocsController
         return $this->generate($document, $engine);
     }
 
-    public function asset(): Response
+    public function asset(string $document): Response
     {
+        $this->authorize($this->config($document));
+
         $path = dirname(__DIR__, 2).'/resources/js/scalar.standalone.js';
         $contents = @file_get_contents($path);
 

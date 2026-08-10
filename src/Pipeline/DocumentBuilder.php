@@ -17,6 +17,7 @@ use Docuccino\Laravel\Config\DocumentConfigFactory;
 use Docuccino\Laravel\Engine\EnginePackage;
 use Docuccino\Laravel\Engine\TypeEngineMode;
 use Docuccino\Laravel\Support\Paths;
+use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -163,7 +164,9 @@ final class DocumentBuilder
                     /** @var array<string, mixed> $parsed */
                     $parsed = (array) Yaml::parseFile($file);
                     $overlays[] = OverlayDocument::fromArray($parsed);
-                } catch (InvalidOverlayException $exception) {
+                    // Unparseable YAML and a well-formed file that isn't a valid Overlay 1.0 document
+                    // are the same thing to a caller: one skipped overlay, one warning, build carries on.
+                } catch (InvalidOverlayException|ParseException $exception) {
                     $diagnostics[] = new Diagnostic(
                         severity: Severity::Warning,
                         code: 'overlay.invalid',

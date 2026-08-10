@@ -17,6 +17,8 @@ use Docuccino\Laravel\Config\ConfigPaths;
  *   switch does nothing (problem_details is driven by the `error_responses` preset instead).
  * - An unknown `tags.default_strategy`, which {@see DocumentConfig::tagDefaultStrategy()} coerces to
  *   `controller`.
+ * - A `tags.definitions` `parent` that {@see DocumentConfig::tagDefinitions()} dropped, because it
+ *   names no defined tag or would close a cycle — OAS 3.2 allows neither.
  * - A path-like key pointing outside the app base path. {@see ConfigPaths} can't relativise it, so it
  *   goes verbatim into the `configHash` and the output becomes machine-dependent.
  *
@@ -60,6 +62,28 @@ final class ConfigDiagnostics
                     $strategy,
                 ),
             );
+        }
+
+        foreach ($document->tagParentIssues() as $issue) {
+            $diagnostics[] = $issue['cycle']
+                ? new Diagnostic(
+                    severity: Severity::Info,
+                    code: 'config.tag-parent-cycle',
+                    message: sprintf(
+                        "tags.definitions: '%s' is parented to '%s', which closes a cycle — the link is dropped so the tag hierarchy stays a tree.",
+                        $issue['tag'],
+                        $issue['parent'],
+                    ),
+                )
+                : new Diagnostic(
+                    severity: Severity::Info,
+                    code: 'config.unknown-tag-parent',
+                    message: sprintf(
+                        "tags.definitions: '%s' is parented to '%s', which no definition declares — the link is dropped (OAS 3.2 requires a parent tag to exist).",
+                        $issue['tag'],
+                        $issue['parent'],
+                    ),
+                );
         }
 
         foreach (ConfigPaths::machineDependent($document->raw) as $outside) {

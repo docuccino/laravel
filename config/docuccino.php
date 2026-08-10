@@ -86,9 +86,12 @@ return [
                 'map' => [],
                 // A container-resolved TagMapper, replacing the prefix mapper over `map`.
                 // 'mapper' => App\Docs\InvoiceTagMapper::class,
-                // The OpenAPI top-level `tags`, sorted by weight then name.
+                // The OpenAPI top-level `tags`, sorted by weight then name. `parent` nests one entry
+                // under another (it must name a tag defined here) and `kind` categorises it —
+                // both OAS 3.2 only, so the 3.1 downlevel drops them with a warning.
                 // 'definitions' => [
-                //     ['name' => 'Invoices', 'description' => 'Billing documents.', 'weight' => 0],
+                //     ['name' => 'Billing', 'summary' => 'Billing', 'kind' => 'nav', 'weight' => 0],
+                //     ['name' => 'Invoices', 'description' => 'Billing documents.', 'parent' => 'Billing'],
                 // ],
             ],
 
@@ -223,9 +226,10 @@ return [
     */
 
     'engine' => [
-        // 'in-process' runs PHPStan; 'null' skips inference entirely ('orchestrated' and 'caching'
-        // select the worker compositions). Inference needs the dev-only docuccino/inference-phpstan
-        // package — without it every mode but 'null' warns and falls back.
+        // 'in-process' runs PHPStan; 'null' skips inference entirely. Inference needs the dev-only
+        // docuccino/inference-phpstan package — without it 'in-process' warns and falls back.
+        // (The engine's 'orchestrated' and 'caching' worker compositions are not plumbed through the
+        // adapter yet: picking one warns and runs in-process, so don't reach for them.)
         'mode' => env('DOCUCCINO_ENGINE', 'in-process'),
         // Directories the engine descends into for interprocedural analysis (throw classification,
         // inline `Validator::make(...)` rules). Every PSR-4 source root in your composer.json — a

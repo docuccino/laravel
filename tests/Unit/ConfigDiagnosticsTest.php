@@ -7,9 +7,10 @@ use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Laravel\Registry\ConfigDiagnostics;
 
 /**
- * The config-shape info diagnostics (design §9, B7): the two silent no-ops the config surface used
- * to swallow — an `enabled` switch on an always-on producer, and an unknown tags.default_strategy —
- * are surfaced as info diagnostics so a misconfiguration is discoverable.
+ * The config-shape info diagnostics (design §9, B7): the silent no-ops the config surface used to
+ * swallow — an `enabled` switch on an always-on producer, an unknown tags.default_strategy, and a
+ * dropped tags.definitions `parent` — are surfaced as info diagnostics so a misconfiguration is
+ * discoverable.
  */
 function configDoc(array $integrations = [], array $tags = []): DocumentConfig
 {
@@ -57,3 +58,34 @@ it('emits an info diagnostic for an unknown tags.default_strategy value', functi
 it('does not flag a known tags.default_strategy value', function (string $strategy): void {
     expect(ConfigDiagnostics::for(configDoc(tags: ['default_strategy' => $strategy])))->toBe([]);
 })->with(['controller', 'none']);
+
+it('emits an info diagnostic for a tag parent that no definition declares', function (): void {
+    $diagnostics = ConfigDiagnostics::for(configDoc(tags: ['definitions' => [
+        ['name' => 'Invoices', 'parent' => 'Billing'],
+    ]]));
+
+    expect($diagnostics)->toHaveCount(1)
+        ->and($diagnostics[0]->severity)->toBe(Severity::Info)
+        ->and($diagnostics[0]->code)->toBe('config.unknown-tag-parent')
+        ->and($diagnostics[0]->message)->toContain("'Invoices'")->toContain("'Billing'");
+});
+
+it('emits an info diagnostic for a tag parent link that closes a cycle', function (): void {
+    $diagnostics = ConfigDiagnostics::for(configDoc(tags: ['definitions' => [
+        ['name' => 'Invoices', 'parent' => 'Billing'],
+        ['name' => 'Billing', 'parent' => 'Invoices'],
+    ]]));
+
+    expect($diagnostics)->toHaveCount(1)
+        ->and($diagnostics[0]->severity)->toBe(Severity::Info)
+        ->and($diagnostics[0]->code)->toBe('config.tag-parent-cycle')
+        ->and($diagnostics[0]->message)->toContain("'Invoices'")->toContain("'Billing'");
+});
+
+it('does not flag a tag hierarchy whose parents all resolve', function (): void {
+    expect(ConfigDiagnostics::for(configDoc(tags: ['definitions' => [
+        ['name' => 'Billing', 'kind' => 'nav'],
+        ['name' => 'Invoices', 'parent' => 'Billing'],
+        ['name' => 'Refunds', 'parent' => 'Invoices'],
+    ]])))->toBe([]);
+});

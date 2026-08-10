@@ -23,6 +23,7 @@ it('denies access by default outside the local environment', function (): void {
     // Testbench runs as the "testing" environment and no gate is configured, so access is denied.
     $this->get('/docs/api')->assertForbidden();
     $this->get('/docs/api.json')->assertForbidden();
+    $this->get('/docs/api/assets/scalar.js')->assertForbidden();
 });
 
 it('allows access when the configured gate passes', function (): void {
@@ -59,11 +60,9 @@ it('serves the generated OpenAPI JSON', function (): void {
         ->toBe(file_get_contents(dirname(__DIR__).'/Fixtures/golden/workbench.openapi.json'));
 });
 
-it('serves the bundled Scalar asset WITHOUT the gate (it is a static, non-sensitive script)', function (): void {
-    // No gate configured and the environment is "testing", so /docs/api and /docs/api.json are forbidden.
-    // The asset is a static JS file with nothing sensitive and Scalar has to be able to load it, so it
-    // stays open by design.
-    $this->get('/docs/api')->assertForbidden();
+it('serves the bundled Scalar asset to an authorized viewer', function (): void {
+    config()->set('docuccino.documents.default.viewer.gate', 'viewApiDocs');
+    Gate::before(static fn ($user = null): bool => true);
 
     $this->get('/docs/api/assets/scalar.js')
         ->assertOk()
@@ -80,6 +79,15 @@ it('denies the spec with a 403 when the configured gate rejects', function (): v
 
     $this->get('/docs/api')->assertForbidden();
     $this->get('/docs/api.json')->assertForbidden();
+});
+
+it('denies the Scalar asset with a 403 when the configured gate rejects', function (): void {
+    // The asset goes through the same gate as the page that loads it — an unauthorized viewer gets
+    // nothing, not even the 3.6 MB bundle.
+    config()->set('docuccino.documents.default.viewer.gate', 'viewApiDocs');
+    Gate::before(static fn ($user = null): bool => false);
+
+    $this->get('/docs/api/assets/scalar.js')->assertForbidden();
 });
 
 it('allows the viewer in the local environment without a gate', function (): void {

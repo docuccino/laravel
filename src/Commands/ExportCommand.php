@@ -6,6 +6,9 @@ namespace Docuccino\Laravel\Commands;
 
 use Docuccino\Core\Document\UirDocument;
 use Docuccino\Core\Emit\EmitOptions;
+use Docuccino\Core\Emit\EmitReport;
+use Docuccino\Core\Emit\EmitResult;
+use Docuccino\Core\Emit\OpenApi30DownlevelEmitter;
 use Docuccino\Core\Emit\OpenApi31DownlevelEmitter;
 use Docuccino\Core\Emit\OpenApi32Emitter;
 use Docuccino\Core\Emit\ProvenanceLevel;
@@ -28,11 +31,11 @@ final class ExportCommand extends Command
     use RendersDiagnostics;
 
     /** Accepted --format values. */
-    private const FORMATS = ['uir', 'openapi-3.2', 'openapi-3.1'];
+    private const FORMATS = ['uir', 'openapi-3.2', 'openapi-3.1', 'openapi-3.0'];
 
     protected $signature = 'docuccino:export
         {document? : The configured document key (defaults to every document)}
-        {--format= : uir | openapi-3.2 | openapi-3.1 (defaults to openapi-3.2)}
+        {--format= : uir | openapi-3.2 | openapi-3.1 | openapi-3.0 (defaults to openapi-3.2)}
         {--out= : Output path (defaults to the document export path)}
         {--fail-on=none : none | warning | error — the severity that makes the command exit non-zero}
         {--provenance=winners : none | winners | full — UIR provenance detail}
@@ -81,10 +84,11 @@ final class ExportCommand extends Command
 
         $options = (new EmitOptions)->withYaml($yaml)->withProvenance($this->provenanceLevel());
 
-        $output = match ($format) {
-            'uir' => (new UirEmitter)->emit($document, $options),
-            'openapi-3.1' => (new OpenApi31DownlevelEmitter)->emit($document, $options),
-            default => (new OpenApi32Emitter)->emit($document, $options),
+        $result = match ($format) {
+            'uir' => new EmitResult((new UirEmitter)->emit($document, $options), new EmitReport),
+            'openapi-3.1' => (new OpenApi31DownlevelEmitter)->emitWithReport($document, $options),
+            'openapi-3.0' => (new OpenApi30DownlevelEmitter)->emitWithReport($document, $options),
+            default => new EmitResult((new OpenApi32Emitter)->emit($document, $options), new EmitReport),
         };
 
         $path = $this->outputPath($config);
@@ -93,8 +97,11 @@ final class ExportCommand extends Command
             @mkdir($directory, 0755, true);
         }
 
-        file_put_contents($path, $output);
+        file_put_contents($path, $result->output);
         $this->info(sprintf('Wrote %s (%s).', $path, $format));
+
+        // A downlevel drops or approximates things; say so rather than shipping a quieter contract.
+        $this->renderDiagnostics($format, $result->report->diagnostics);
     }
 
     private function outputPath(DocumentConfig $config): string
