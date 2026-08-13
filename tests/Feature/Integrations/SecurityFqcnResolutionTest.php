@@ -27,11 +27,30 @@ it('resolves every registrar guard + matcher FQCN string against the installed p
     'Sanctum CheckForAnyAbility matcher' => ['Laravel\\Sanctum\\Http\\Middleware\\CheckForAnyAbility'],
     'Sanctum legacy CheckScopes matcher' => ['Laravel\\Sanctum\\Http\\Middleware\\CheckScopes'],
     'Sanctum legacy CheckForAnyScope matcher' => ['Laravel\\Sanctum\\Http\\Middleware\\CheckForAnyScope'],
-    'Passport CheckScopes matcher' => ['Laravel\\Passport\\Http\\Middleware\\CheckScopes'],
-    'Passport CheckForAnyScope matcher' => ['Laravel\\Passport\\Http\\Middleware\\CheckForAnyScope'],
-    'Passport CheckClientCredentials matcher' => ['Laravel\\Passport\\Http\\Middleware\\CheckClientCredentials'],
-    'Passport CheckClientCredentialsForAnyScope matcher' => ['Laravel\\Passport\\Http\\Middleware\\CheckClientCredentialsForAnyScope'],
     'Permission RoleMiddleware matcher' => ['Spatie\\Permission\\Middleware\\RoleMiddleware'],
     'Permission PermissionMiddleware matcher' => ['Spatie\\Permission\\Middleware\\PermissionMiddleware'],
     'Permission RoleOrPermissionMiddleware matcher' => ['Spatie\\Permission\\Middleware\\RoleOrPermissionMiddleware'],
 ]);
+
+/**
+ * Passport's scope middleware were all renamed in Passport 13, so which spellings must resolve depends
+ * on the installed major. Asserting only "one of the spellings resolves" would let a typo in the other
+ * generation through, so the expected set is chosen from the install and asserted in full — the CI
+ * Laravel 12 and Laravel 13 legs then cover one generation each.
+ */
+it('resolves every Passport scope-middleware FQCN for the installed Passport major', function (string $fqcn): void {
+    expect(class_exists($fqcn))->toBeTrue("FQCN string does not resolve: {$fqcn}");
+})->with(
+    class_exists('Laravel\\Passport\\Http\\Middleware\\CheckToken')
+        ? [
+            'CheckToken (all-of)' => ['Laravel\\Passport\\Http\\Middleware\\CheckToken'],
+            'CheckTokenForAnyScope (any-of)' => ['Laravel\\Passport\\Http\\Middleware\\CheckTokenForAnyScope'],
+            'EnsureClientIsResourceOwner (client credentials)' => ['Laravel\\Passport\\Http\\Middleware\\EnsureClientIsResourceOwner'],
+        ]
+        : [
+            'CheckScopes (all-of)' => ['Laravel\\Passport\\Http\\Middleware\\CheckScopes'],
+            'CheckForAnyScope (any-of)' => ['Laravel\\Passport\\Http\\Middleware\\CheckForAnyScope'],
+            'CheckClientCredentials (client credentials)' => ['Laravel\\Passport\\Http\\Middleware\\CheckClientCredentials'],
+            'CheckClientCredentialsForAnyScope (client credentials, any-of)' => ['Laravel\\Passport\\Http\\Middleware\\CheckClientCredentialsForAnyScope'],
+        ]
+);

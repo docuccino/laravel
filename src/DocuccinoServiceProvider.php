@@ -293,8 +293,9 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
 
         $scopes = [];
         foreach (Passport::scopes() as $scope) {
-            if ($scope instanceof Scope) {
-                $scopes[$scope->id] = $scope->description;
+            $entry = self::passportScopeEntry($scope);
+            if ($entry !== null) {
+                $scopes[$entry[0]] = $entry[1];
             }
         }
 
@@ -303,6 +304,18 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             Passport::$passwordGrantEnabled === true,
             Passport::$implicitGrantEnabled === true,
         );
+    }
+
+    /**
+     * One scope catalogue entry as `[id, description]`, or null for anything else. Takes `mixed` on
+     * purpose: Passport 13 types `Passport::scopes()` as a `Scope` collection while 12 leaves the
+     * element type open, so the narrowing has to be meaningful under both.
+     *
+     * @return array{0: string, 1: string}|null
+     */
+    private static function passportScopeEntry(mixed $scope): ?array
+    {
+        return $scope instanceof Scope ? [$scope->id, $scope->description] : null;
     }
 
     /**

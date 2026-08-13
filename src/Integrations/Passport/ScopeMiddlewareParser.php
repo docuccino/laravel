@@ -6,19 +6,26 @@ namespace Docuccino\Laravel\Integrations\Passport;
 
 /**
  * Extracts the OAuth scopes a route requires from its Passport scope middleware. Passport registers
- * `scope`/`CheckForAnyScope` (any-of) and `scopes`/`CheckScopes` (all-of); both take a comma-separated
- * list and both ship a `::using()` helper that renders the middleware as its class FQCN. The
- * client-credentials middleware carry scopes the same way — `client`/`CheckClientCredentials` (all-of),
- * `CheckClientCredentialsForAnyScope` (any-of) — so machine-to-machine routes get scopes too.
+ * `scope` (any-of) and `scopes` (all-of); both take a comma-separated list and both ship a `::using()`
+ * helper that renders the middleware as its class FQCN. The client-credentials middleware carry scopes
+ * the same way — `client` (all-of) — so machine-to-machine routes get scopes too.
+ *
+ * Passport 13 renamed every one of those classes (`CheckScopes` → `CheckToken`, `CheckForAnyScope` →
+ * `CheckTokenForAnyScope`, `CheckClientCredentials` → `EnsureClientIsResourceOwner`, and it dropped the
+ * any-scope client variant). The aliases did not change, so both generations of FQCN are matched and an
+ * app on either major is read correctly.
  *
  * All-of and any-of are kept apart in {@see ScopeRequirements} so the security requirement models each
  * correctly. Pure, so the middleware map is dataset-testable.
  */
 final class ScopeMiddlewareParser
 {
-    private const CHECK_CLIENT_CREDENTIALS = 'Laravel\\Passport\\Http\\Middleware\\CheckClientCredentials';
-
-    private const CHECK_CLIENT_CREDENTIALS_FOR_ANY_SCOPE = 'Laravel\\Passport\\Http\\Middleware\\CheckClientCredentialsForAnyScope';
+    /** Passport 12 and 13 spellings of the client-credentials middleware. */
+    private const CLIENT_CREDENTIALS_FQCNS = [
+        'Laravel\\Passport\\Http\\Middleware\\CheckClientCredentials',
+        'Laravel\\Passport\\Http\\Middleware\\CheckClientCredentialsForAnyScope',
+        'Laravel\\Passport\\Http\\Middleware\\EnsureClientIsResourceOwner',
+    ];
 
     /**
      * All-of prefixes. Client-credentials belongs here: it validates every listed scope.
@@ -28,8 +35,10 @@ final class ScopeMiddlewareParser
     private const ALL_OF = [
         'scopes:',
         'Laravel\\Passport\\Http\\Middleware\\CheckScopes:',
+        'Laravel\\Passport\\Http\\Middleware\\CheckToken:',
         'client:',
-        self::CHECK_CLIENT_CREDENTIALS.':',
+        'Laravel\\Passport\\Http\\Middleware\\CheckClientCredentials:',
+        'Laravel\\Passport\\Http\\Middleware\\EnsureClientIsResourceOwner:',
     ];
 
     /**
@@ -40,7 +49,8 @@ final class ScopeMiddlewareParser
     private const ANY_OF = [
         'scope:',
         'Laravel\\Passport\\Http\\Middleware\\CheckForAnyScope:',
-        self::CHECK_CLIENT_CREDENTIALS_FOR_ANY_SCOPE.':',
+        'Laravel\\Passport\\Http\\Middleware\\CheckTokenForAnyScope:',
+        'Laravel\\Passport\\Http\\Middleware\\CheckClientCredentialsForAnyScope:',
     ];
 
     /**
@@ -55,7 +65,7 @@ final class ScopeMiddlewareParser
             if ($entry === 'client' || str_starts_with($entry, 'client:')) {
                 return true;
             }
-            foreach ([self::CHECK_CLIENT_CREDENTIALS, self::CHECK_CLIENT_CREDENTIALS_FOR_ANY_SCOPE] as $fqcn) {
+            foreach (self::CLIENT_CREDENTIALS_FQCNS as $fqcn) {
                 if ($entry === $fqcn || str_starts_with($entry, $fqcn.':')) {
                     return true;
                 }
