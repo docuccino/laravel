@@ -82,8 +82,9 @@ final class DocumentBuilder
      *
      * A missing engine package is a WARNING, not info: the configured mode asked for inference and the
      * document quietly lost a whole tier of facts (recovered types, response shapes, thrown errors).
-     * `mode: null` is an explicit opt-out, so it says nothing. The not-wired warning is suppressed when
-     * the engine is absent — which composition would have run is moot.
+     * `mode: null` is an explicit opt-out, so it says nothing. An unrecognised mode — a typo, or one a
+     * later version dropped — ran in-process instead of failing the build, which is worth saying out
+     * loud; it is suppressed when the engine is absent, since which mode was asked for is then moot.
      *
      * @return list<Diagnostic>
      */
@@ -103,12 +104,18 @@ final class DocumentBuilder
             )];
         }
 
-        if ($mode === TypeEngineMode::Orchestrated->value || $mode === TypeEngineMode::Caching->value) {
+        if (is_string($mode) && $mode !== '' && TypeEngineMode::tryFrom($mode) === null) {
             return [new Diagnostic(
                 severity: Severity::Warning,
-                code: 'engine.mode-not-wired',
-                message: sprintf('Engine mode "%s" is not yet wired; inference ran in-process.', $mode),
-                help: 'The orchestrated and caching engine modes are not plumbed through yet; set DOCUCCINO_ENGINE=in-process to silence this.',
+                code: 'engine.mode-unknown',
+                message: sprintf('Unknown engine mode "%s"; inference ran in-process.', $mode),
+                help: sprintf(
+                    'Valid modes are %s. Set DOCUCCINO_ENGINE=in-process to silence this.',
+                    implode(', ', array_map(
+                        static fn (TypeEngineMode $case): string => '"'.$case->value.'"',
+                        TypeEngineMode::cases(),
+                    )),
+                ),
             )];
         }
 

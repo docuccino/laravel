@@ -233,8 +233,7 @@ return [
     'engine' => [
         // 'in-process' runs PHPStan; 'null' skips inference entirely. Inference needs the dev-only
         // docuccino/inference-phpstan package — without it 'in-process' warns and falls back.
-        // (The engine's 'orchestrated' and 'caching' worker compositions are not plumbed through the
-        // adapter yet: picking one warns and runs in-process, so don't reach for them.)
+        // Anything else warns and runs in-process rather than failing the build.
         'mode' => env('DOCUCCINO_ENGINE', 'in-process'),
         // PHP memory limit for inference, which runs PHPStan inside the calling process. Applied on
         // console builds only, and only ever RAISES — an already-higher (or unlimited) process is left

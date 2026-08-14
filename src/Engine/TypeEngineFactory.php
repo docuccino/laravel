@@ -13,8 +13,8 @@ use Docuccino\Core\Support\GeneratedDirectory;
  * so does an absent engine package ({@see EnginePackage}) — the build reports that once per document, as
  * an `engine.not-installed` diagnostic. Otherwise the engine's builder takes over and degrades to a
  * {@see NullTypeEngine} on any container/Larastan boot failure, so callers always get a total engine and
- * the build survives. The enum's caching/orchestrated modes are not implemented yet and are treated as
- * in-process.
+ * the build survives. An unrecognised mode runs in-process rather than throwing — a typo, or a mode this
+ * version no longer has, must not fail a build (the document reports it: `engine.mode-unknown`).
  *
  * Process-wide side effects (the memory ceiling, the out-of-memory shutdown notice) are confined to a
  * {@see ConsoleBuild}: the viewer resolves a `TypeEngine` on any `.json` request — including

@@ -45,12 +45,11 @@ it('reports engine presence per mode', function (string $mode, string $expected)
     $result = app(DocumentBuilder::class)->build('default', new NullTypeEngine);
 
     expect(diagnosticsCoded($result->diagnostics, 'engine.not-installed'))->toHaveCount($expected === 'engine.not-installed' ? 1 : 0)
-        ->and(diagnosticsCoded($result->diagnostics, 'engine.mode-not-wired'))->toBe([]);
+        ->and(diagnosticsCoded($result->diagnostics, 'engine.mode-unknown'))->toBe([]);
 })->with([
-    // A missing engine outranks "which composition would have run" — one diagnostic, not two.
+    // A missing engine outranks an unknown mode — one diagnostic, not two.
     'in-process' => ['in-process', 'engine.not-installed'],
-    'orchestrated' => ['orchestrated', 'engine.not-installed'],
-    'caching' => ['caching', 'engine.not-installed'],
+    'unknown' => ['orchestrated', 'engine.not-installed'],
     // `null` is an explicit opt-out from inference, so nothing is missing.
     'null' => ['null', 'silent'],
 ]);
@@ -63,7 +62,7 @@ it('builds the null engine for every mode when the package is absent', function 
     ))->make(['mode' => $mode, 'project_paths' => ['app']]);
 
     expect($engine)->toBeInstanceOf(NullTypeEngine::class);
-})->with(['null', 'in-process', 'orchestrated', 'caching']);
+})->with(['null', 'in-process', 'orchestrated']);
 
 it('resolves the engine package entry class when it is installed', function (): void {
     // The BUILDER constant is the whole seam: a typo would disable inference silently and for ever.

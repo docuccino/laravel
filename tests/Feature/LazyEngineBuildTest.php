@@ -78,5 +78,5 @@ it('still reports the state of inference on a warm build that never wakes the en
         ->and((new UirEmitter)->emit($warm->document))->toBe((new UirEmitter)->emit($cold->document));
 })->with([
     'engine absent' => ['in-process', false, 'engine.not-installed'],
-    'mode not wired' => ['orchestrated', true, 'engine.mode-not-wired'],
+    'mode unknown' => ['orchestrated', true, 'engine.mode-unknown'],
 ]);
