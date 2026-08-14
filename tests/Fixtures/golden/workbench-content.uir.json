@@ -141,40 +141,7 @@
                 }
               ]
             },
-            "description": "Not Found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "x-docuccino": {
-                    "provenance": [
-                      {
-                        "producer": "integration:framework-errors",
-                        "layer": "integration",
-                        "fields": [
-                          "properties",
-                          "required",
-                          "type"
-                        ],
-                        "source": {
-                          "file": "workbench/app/Http/Controllers/FormController.php",
-                          "line": 32,
-                          "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
-                        }
-                      }
-                    ]
-                  },
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "message"
-                  ]
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error404"
           }
         }
       }
@@ -476,50 +443,7 @@
                 }
               ]
             },
-            "description": "Unprocessable Entity",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "x-docuccino": {
-                    "provenance": [
-                      {
-                        "producer": "integration:implicit-response",
-                        "layer": "integration",
-                        "fields": [
-                          "properties",
-                          "required",
-                          "type"
-                        ],
-                        "source": {
-                          "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                          "line": 26,
-                          "symbol": "implicit:validated-request"
-                        }
-                      }
-                    ]
-                  },
-                  "type": "object",
-                  "properties": {
-                    "errors": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      }
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "message",
-                    "errors"
-                  ]
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error422"
           }
         }
       }
@@ -1091,40 +1015,7 @@
                 }
               ]
             },
-            "description": "Not Found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "x-docuccino": {
-                    "provenance": [
-                      {
-                        "producer": "integration:framework-errors",
-                        "layer": "integration",
-                        "fields": [
-                          "properties",
-                          "required",
-                          "type"
-                        ],
-                        "source": {
-                          "file": "workbench/app/Http/Controllers/FormController.php",
-                          "line": 32,
-                          "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
-                        }
-                      }
-                    ]
-                  },
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "message"
-                  ]
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error404"
           }
         }
       }
@@ -2645,50 +2536,7 @@
                 }
               ]
             },
-            "description": "Unprocessable Entity",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "x-docuccino": {
-                    "provenance": [
-                      {
-                        "producer": "integration:implicit-response",
-                        "layer": "integration",
-                        "fields": [
-                          "properties",
-                          "required",
-                          "type"
-                        ],
-                        "source": {
-                          "file": "workbench/app/Http/Controllers/ValidationController.php",
-                          "line": 21,
-                          "symbol": "implicit:validated-request"
-                        }
-                      }
-                    ]
-                  },
-                  "type": "object",
-                  "properties": {
-                    "errors": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      }
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "message",
-                    "errors"
-                  ]
-                }
-              }
-            }
+            "$ref": "#/components/responses/Error422"
           }
         }
       }
@@ -3504,13 +3352,61 @@
           "published": "Live and accepting traffic."
         }
       }
+    },
+    "responses": {
+      "Error404": {
+        "description": "Not Found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "message"
+              ]
+            }
+          }
+        }
+      },
+      "Error422": {
+        "description": "Unprocessable Entity",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "errors": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "message",
+                "errors"
+              ]
+            }
+          }
+        }
+      }
     }
   },
   "x-docuccino": {
     "document": {
       "id": "doc:default",
       "configHash": "8903b4f374c3b972a3a11d8a690e06e636d06c9b2de2951807f6be4b1a0e7536",
-      "contentHash": "8555aca26ead5a21f41f68ea32e154d91e8be227e6bda5ba4d4a1f428bc1bc2a"
+      "contentHash": "1d0a043d7161c0da5998bd1412bde2adfe21f49241fe99a01a073feb8cb83ff0"
     },
     "generator": {
       "name": "docuccino/laravel",

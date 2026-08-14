@@ -91,14 +91,15 @@ it('documents the handler’s real status + shape, winning over the framework ti
     ]);
     app()->instance(TypeEngine::class, $engine);
 
-    $responses = generateDocument()->document->toArray()['paths']['/api/forms/{form}']['get']['responses'];
+    $document = generateDocument()->document->toArray();
+    $responses = $document['paths']['/api/forms/{form}']['get']['responses'];
 
     // The handler renders a 410 (its real status) — that wins; the framework 404 is not emitted.
     expect($responses)->toHaveKey('410')->and($responses)->not->toHaveKey('404');
 
     $producers = array_map(static fn (array $r): string => $r['producer'], $responses['410']['x-docuccino']['provenance'] ?? []);
     expect($producers)->toContain('integration:inferred-handler')
-        ->and($responses['410']['content']['application/json']['schema']['properties'] ?? [])->toHaveKeys(['error', 'id']);
+        ->and(resolveResponse($document, $responses['410'])['content']['application/json']['schema']['properties'] ?? [])->toHaveKeys(['error', 'id']);
 });
 
 it('defers to the framework tier + records a diagnostic when the body is too dynamic', function (): void {
@@ -152,12 +153,13 @@ it('documents an invokable renderer via method analysis, winning over the framew
     ]);
     app()->instance(TypeEngine::class, $engine);
 
-    $responses = generateDocument()->document->toArray()['paths']['/api/forms/{form}']['get']['responses'];
+    $document = generateDocument()->document->toArray();
+    $responses = $document['paths']['/api/forms/{form}']['get']['responses'];
 
     expect($responses)->toHaveKey('410')->and($responses)->not->toHaveKey('404');
     $producers = array_map(static fn (array $r): string => $r['producer'], $responses['410']['x-docuccino']['provenance'] ?? []);
     expect($producers)->toContain('integration:inferred-handler')
-        ->and($responses['410']['content']['application/json']['schema']['properties'] ?? [])->toHaveKey('error');
+        ->and(resolveResponse($document, $responses['410'])['content']['application/json']['schema']['properties'] ?? [])->toHaveKey('error');
 });
 
 it('documents the recovered content type (application/problem+json) from a refined helper shape', function (): void {
@@ -180,11 +182,12 @@ it('documents the recovered content type (application/problem+json) from a refin
     ]);
     app()->instance(TypeEngine::class, $engine);
 
-    $responses = generateDocument()->document->toArray()['paths']['/api/forms/{form}']['get']['responses'];
+    $document = generateDocument()->document->toArray();
+    $content = resolveResponse($document, $document['paths']['/api/forms/{form}']['get']['responses']['404'])['content'] ?? [];
 
-    expect($responses['404']['content'] ?? [])->toHaveKey('application/problem+json')
-        ->and($responses['404']['content'])->not->toHaveKey('application/json')
-        ->and($responses['404']['content']['application/problem+json']['schema']['properties'] ?? [])->toHaveKeys(['type', 'title']);
+    expect($content)->toHaveKey('application/problem+json')
+        ->and($content)->not->toHaveKey('application/json')
+        ->and($content['application/problem+json']['schema']['properties'] ?? [])->toHaveKeys(['type', 'title']);
 });
 
 it('assembles a media-type example from folded literals and const-pins each member', function (): void {
@@ -211,16 +214,17 @@ it('assembles a media-type example from folded literals and const-pins each memb
     ]);
     app()->instance(TypeEngine::class, $engine);
 
-    $media = generateDocument()->document->toArray()['paths']['/api/forms/{form}']['get']['responses']['403']['content']['application/problem+json'];
+    $media = mediaOf(generateDocument()->document->toArray(), '403', 'application/problem+json');
 
     expect($media['example'])->toBe(['type' => 'about:blank', 'title' => 'Forbidden', 'status' => 403])
         ->and($media['schema']['properties']['type']['const'])->toBe('about:blank')
         ->and($media['schema']['properties']['status']['const'])->toBe(403);
 });
 
-it('fills a status-provenance member with the response status, omits non-folding members, and is deterministic', function (): void {
-    // A StatusMarkerT member echoes the response status; a widened `detail` didn't fold. The example
-    // carries the concrete status and the folded type, and omits detail rather than fabricating it.
+it('fills a status-provenance member with the response status, completes the example, and is deterministic', function (): void {
+    // A StatusMarkerT member echoes the response status; a widened `detail` didn't fold. `detail` is still
+    // required, so it gets a type-derived placeholder rather than being left out — a partial example would
+    // fail validation against the very schema it sits beside. The schema itself claims nothing extra.
     $script = static fn (): ActionAnalysis => new ActionAnalysis(returns: [new ReturnSite(
         new ClassT('Illuminate\\Http\\JsonResponse', [
             new ArrayShapeT([
@@ -241,22 +245,25 @@ it('fills a status-provenance member with the response status, omits non-folding
         );
         app()->instance(TypeEngine::class, WorkbenchEngine::make([$symbol => $script()]));
 
-        return generateDocument()->document->toArray()['paths']['/api/forms/{form}']['get']['responses']['403']['content']['application/problem+json'];
+        return mediaOf(generateDocument()->document->toArray(), '403', 'application/problem+json');
     };
 
     $media = $build();
 
-    expect($media['example'])->toBe(['type' => 'about:blank', 'status' => 403])
+    expect($media['example'])->toBe(['type' => 'about:blank', 'detail' => 'string', 'status' => 403])
         ->and($media['schema']['properties']['status']['const'])->toBe(403)
-        ->and($media['schema']['properties']['detail'])->not->toHaveKey('const');
+        ->and($media['schema']['properties']['detail'])->not->toHaveKey('const')
+        ->and($media['schema']['required'])->toBe(['type', 'detail', 'status']);
 
     // Determinism is a product feature: a second build is byte-identical.
-    expect(json_encode($build()['example']))->toBe(json_encode($media['example']));
+    expect(json_encode($build()))->toBe(json_encode($media));
 });
 
-it('emits no example for a non-shape (object-typed) body — nothing statically known to assemble', function (): void {
-    // A handler rendering an object-typed body (not a keyed array literal) has no folded members, so
-    // there's nothing to example: the schema is still documented, no example is invented.
+it('examples an object-typed body from the component its $ref points at', function (): void {
+    // A handler rendering a Data object (not a keyed array literal) folds no members at all, so the example
+    // is built from the hoisted component's own required properties. This is the shape that matters most in
+    // practice: one shared error component, `$ref`'d, with a per-response example beside it so a viewer has
+    // something to render.
     $symbol = registerRenderCallback(
         static fn (ModelNotFoundException $e) => response()->json(['ignored' => true], 403),
         MODEL_NOT_FOUND,
@@ -273,9 +280,12 @@ it('emits no example for a non-shape (object-typed) body — nothing statically 
     ]);
     app()->instance(TypeEngine::class, $engine);
 
-    $media = generateDocument()->document->toArray()['paths']['/api/forms/{form}']['get']['responses']['403']['content']['application/json'];
+    $media = mediaOf(generateDocument()->document->toArray(), '403', 'application/json');
 
-    expect($media)->toHaveKey('schema')->and($media)->not->toHaveKey('example');
+    // The schema stays a bare $ref — the example is its sibling, so the shared component is reused as-is
+    // rather than wrapped in an allOf that would make codegen emit a distinct type per status.
+    expect($media['schema'])->toBe(['$ref' => '#/components/schemas/FormData'])
+        ->and($media['example'])->toBe(['id' => 0, 'title' => 'string']);
 });
 
 it('falls back to the exception status hint when the recovered status did not fold', function (): void {
@@ -298,13 +308,14 @@ it('falls back to the exception status hint when the recovered status did not fo
     ]);
     app()->instance(TypeEngine::class, $engine);
 
-    $responses = generateDocument()->document->toArray()['paths']['/api/forms/{form}']['get']['responses'];
+    $document = generateDocument()->document->toArray();
+    $responses = $document['paths']['/api/forms/{form}']['get']['responses'];
 
     // Documented under the exception hint (404), not the 200 default; producer is the inferred tier.
     expect($responses)->toHaveKey('404');
     $producers = array_map(static fn (array $r): string => $r['producer'], $responses['404']['x-docuccino']['provenance'] ?? []);
     expect($producers)->toContain('integration:inferred-handler')
-        ->and($responses['404']['content']['application/problem+json']['schema']['properties'] ?? [])->toHaveKey('type');
+        ->and(resolveResponse($document, $responses['404'])['content']['application/problem+json']['schema']['properties'] ?? [])->toHaveKey('type');
 });
 
 it('defers SILENTLY (no too-dynamic diagnostic) when an arm delegates to the framework (null/void)', function (): void {

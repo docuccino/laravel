@@ -20,7 +20,9 @@ final class CacheCommand extends Command
     use IteratesDocuments;
     use RendersDiagnostics;
 
-    protected $signature = 'docuccino:cache {document? : The configured document key (defaults to every document)}';
+    protected $signature = 'docuccino:cache
+        {document? : The configured document key (defaults to every document)}
+        {--memory-limit= : Raise the PHP memory limit for inference (e.g. 2G)}';
 
     protected $description = 'Build and cache the API document(s) for the runtime endpoint.';
 

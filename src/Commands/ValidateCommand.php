@@ -24,7 +24,8 @@ final class ValidateCommand extends Command
 
     protected $signature = 'docuccino:validate
         {document? : The configured document key (defaults to every document)}
-        {--fail-on=none : none | warning | error — extra diagnostic severity that also fails (a schema violation always fails)}';
+        {--fail-on=none : none | warning | error — extra diagnostic severity that also fails (a schema violation always fails)}
+        {--memory-limit= : Raise the PHP memory limit for inference (e.g. 2G)}';
 
     protected $description = 'Validate the generated document(s) against the bundled UIR schema.';
 

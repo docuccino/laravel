@@ -81,6 +81,35 @@ it('serves a warm cache hit byte-identically while skipping the engine', functio
         ->and($engine->analyzeCount)->toBe(0);
 });
 
+/**
+ * @param  array<string, mixed>  $raw
+ * @return array<string, mixed>
+ */
+function withProblemDetails(array $raw): array
+{
+    $raw['error_responses'] = ['preset' => 'problem-details'];
+
+    return $raw;
+}
+
+it('serves a warm cache hit byte-identically for a problem-details document', function (): void {
+    // A warm hit rebuilds `components` from the `$ref`s each fragment carries, so anything registered
+    // without being referenced exists only on a cold build — the preset's shared `Problem*` responses
+    // and the throttled route's 429 are where that asymmetry shows up.
+    enableFragmentCache();
+    $engine = new CountingTypeEngine(WorkbenchEngine::make());
+    app()->instance(TypeEngine::class, $engine);
+
+    $cold = (new UirEmitter)->emit(generateDocument(withProblemDetails(...))->document);
+    expect($engine->analyzeCount)->toBeGreaterThan(0);
+
+    $engine->analyzeCount = 0;
+    $warm = (new UirEmitter)->emit(generateDocument(withProblemDetails(...))->document);
+
+    expect($warm)->toBe($cold)
+        ->and($engine->analyzeCount)->toBe(0);
+});
+
 it('invalidates fragments when the document config changes', function (): void {
     enableFragmentCache();
     $engine = new CountingTypeEngine(WorkbenchEngine::make());

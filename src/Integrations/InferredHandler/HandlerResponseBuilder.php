@@ -22,15 +22,23 @@ use Docuccino\Laravel\Integrations\Support\FrameworkExceptionTable;
 
 /**
  * Builds an error {@see ResponseDraft} from a handler/closure analysis (design §6): reads the recovered
- * `JsonResponse<TPayload, TStatus, TContentType>` for the real status, payload shape and content type
- * (default `application/json`, `application/problem+json` when the helper set that header), then hoists
+ * `JsonResponse<TPayload, TStatus, TContentType, TMembers>` for the real status, payload shape and content
+ * type (default `application/json`, `application/problem+json` when the helper set that header), then hoists
  * the payload schema through the route's converter.
  *
  * The example carries only members that folded to a literal — including a {@see StatusMarkerT} member (a
  * value echoing the response status) resolved to this response's status, so the 403 arm says `403`.
- * Nothing else is invented. A status that didn't fold falls back to the exception's own status hint
- * rather than 200; a payload that didn't fold ({@see UnknownT}) drops the body schema but keeps the
- * status and media type.
+ * Required members that didn't fold are filled with type-derived placeholders (and the real status) so the
+ * example is a valid instance of the schema beside it — see {@see example()} for why that fill is confined
+ * to examples and nothing else. A status that didn't fold falls back to the exception's own status hint
+ * rather than 200; a payload that didn't fold ({@see UnknownT}) drops the body schema but keeps the status
+ * and media type.
+ *
+ * When the body is an object the engine watched being constructed, the fourth type arg names the arguments
+ * it was built with, and those decide the example's membership rather than the schema's `required` list: an
+ * argument passed at this call site is in THIS response even where the schema calls it optional, and one
+ * that wasn't passed is absent even where the schema calls it required. Only the schema is ever consulted
+ * for what such a member should look like.
  *
  * Null means no `JsonResponse` was recovered: either a `return null`/void arm ({@see isDelegation()} —
  * the renderer handing the type back to the framework, not a fold failure) or a body too dynamic to
@@ -38,6 +46,9 @@ use Docuccino\Laravel\Integrations\Support\FrameworkExceptionTable;
  */
 final class HandlerResponseBuilder
 {
+    /** How far a placeholder follows nested schemas before flattening — a self-referential one never ends. */
+    private const PLACEHOLDER_DEPTH = 4;
+
     public static function build(
         ActionAnalysis $analysis,
         RouteContext $context,
@@ -58,11 +69,12 @@ final class HandlerResponseBuilder
             if ($payload !== null && ! $payload instanceof VoidT && ! $payload instanceof NeverT && ! $payload instanceof UnknownT) {
                 $mediaType = self::contentType($type->typeArgs[2] ?? null);
                 $payload = self::resolveStatusMarkers($payload, (int) $status);
-                foreach ($context->converter()->toSchema($payload)->schema as $keyword => $value) {
+                $schema = $context->converter()->toSchema($payload)->schema;
+                foreach ($schema as $keyword => $value) {
                     $draft->content($mediaType)->set($keyword, $value, $contribution);
                 }
-                $example = self::assembleExample($payload);
-                if ($example !== []) {
+                $example = self::example($payload, $schema, (int) $status, $context, self::suppliedMembers($type->typeArgs[3] ?? null));
+                if ($example !== [] && self::satisfies($example, self::resolveSchema($schema, $context))) {
                     $draft->setExample($mediaType, $example);
                 }
             }
@@ -122,6 +134,275 @@ final class HandlerResponseBuilder
         return $payload->mapFieldTypes(
             static fn (DType $type): DType => $type instanceof StatusMarkerT ? new LiteralT($status) : $type,
         );
+    }
+
+    /**
+     * A complete example for the documented body, or `[]` when the schema gives nothing to build one from.
+     *
+     * Members that folded to a literal are used verbatim; every other member the response is known to carry
+     * is filled from the schema so the result is a valid instance rather than a partial one that fails
+     * validation against the very schema it sits beside. That fill is the one place this tier writes a value
+     * the code didn't state, and it is confined to examples — an example is illustrative by definition,
+     * whereas a schema is a claim. Filled values are obvious placeholders derived from the declared type,
+     * never a sentence invented on the app's behalf.
+     *
+     * "Known to carry" is `$members` first and the schema's `required` list second. A member the engine
+     * watched being passed to the payload's constructor is in this response whatever its optionality says,
+     * because being supplied at this call site is the stronger fact; a member the schema requires is in it
+     * too, because the schema says so. Everything else is left out — the example shows the body this branch
+     * produces, not every key that might appear.
+     *
+     * The single exception is `status`: a required, unconstrained integer member of that name is the status
+     * this response is documented under (RFC 9457's own convention, and most of what makes a rendered
+     * example worth reading), so it gets the real number.
+     *
+     * @param  array<string, mixed>  $schema  the converted body schema, possibly a bare `$ref`
+     * @param  array<string, DType>  $members  supplied constructor argument → its folded literal or {@see UnknownT}
+     * @return array<string, mixed>
+     */
+    private static function example(DType $payload, array $schema, int $status, RouteContext $context, array $members): array
+    {
+        $folded = self::assembleExample($payload);
+        $resolved = self::resolveSchema($schema, $context);
+
+        $properties = $resolved['properties'] ?? null;
+        if (! is_array($properties) || $properties === []) {
+            return $folded;
+        }
+
+        $required = is_array($resolved['required'] ?? null) ? $resolved['required'] : [];
+
+        $example = [];
+        foreach ($properties as $name => $spec) {
+            $name = (string) $name;
+            $spec = is_array($spec) ? $spec : [];
+
+            if (array_key_exists($name, $folded)) {
+                $example[$name] = $folded[$name];
+
+                continue;
+            }
+
+            $supplied = $members[$name] ?? null;
+            if ($supplied instanceof LiteralT) {
+                $example[$name] = $supplied->value;
+
+                continue;
+            }
+
+            $isRequired = in_array($name, $required, true);
+            if ($supplied === null && ! $isRequired) {
+                continue;
+            }
+
+            // A member the schema declares no type for has no truthful illustration — showing `"string"` for
+            // what may well be a list would state something the code never said. A REQUIRED one is filled
+            // anyway, since the alternative is dropping an example that would otherwise be complete.
+            if ($isRequired || self::illustratable($spec, $context)) {
+                $example[$name] = self::placeholder($name, $spec, $status, $context);
+            }
+        }
+
+        return $example;
+    }
+
+    /**
+     * Whether a member's schema says enough to build a placeholder from. A description and nothing else does
+     * not: that's what an unresolved property type looks like once it reaches the document.
+     *
+     * @param  array<array-key, mixed>  $spec
+     */
+    private static function illustratable(array $spec, RouteContext $context): bool
+    {
+        $effective = self::effectiveSpec($spec, $context);
+
+        return array_key_exists('const', $effective) || isset($effective['type']);
+    }
+
+    /**
+     * A stand-in for one member: the `const` the schema pins, the real status for an integer `status`, else
+     * a value that reads unmistakably as a placeholder for its declared type.
+     *
+     * @param  array<array-key, mixed>  $spec
+     */
+    private static function placeholder(string $name, array $spec, int $status, RouteContext $context): mixed
+    {
+        if (array_key_exists('const', $spec)) {
+            return $spec['const'];
+        }
+
+        if ($name === 'status' && self::isType($spec['type'] ?? null, 'integer')) {
+            return $status;
+        }
+
+        return self::typePlaceholder($spec, $context, 0);
+    }
+
+    /**
+     * The declared type's placeholder, following a `$ref` and descending into composites: an array with an
+     * `items` schema gets exactly ONE element built the same way, so a list of objects renders as a list of
+     * something rather than an empty pair of brackets, and an object gets its own required members. Nothing
+     * is invented for a member the schema doesn't require. The depth cap is what keeps a self-referential
+     * schema from unrolling forever.
+     *
+     * @param  array<array-key, mixed>  $spec
+     */
+    private static function typePlaceholder(array $spec, RouteContext $context, int $depth): mixed
+    {
+        $spec = self::effectiveSpec($spec, $context);
+
+        if (array_key_exists('const', $spec)) {
+            return $spec['const'];
+        }
+
+        $type = $spec['type'] ?? null;
+        $deeper = $depth + 1;
+
+        if (self::isType($type, 'array')) {
+            $items = $spec['items'] ?? null;
+
+            return is_array($items) && $deeper < self::PLACEHOLDER_DEPTH
+                ? [self::typePlaceholder($items, $context, $deeper)]
+                : [];
+        }
+
+        if (self::isType($type, 'object')) {
+            return $deeper < self::PLACEHOLDER_DEPTH ? self::objectPlaceholder($spec, $context, $deeper) : [];
+        }
+
+        return match (true) {
+            self::isType($type, 'integer'), self::isType($type, 'number') => 0,
+            self::isType($type, 'boolean') => false,
+            default => 'string',
+        };
+    }
+
+    /**
+     * A nested object's required members only. An object requiring nothing comes out empty rather than
+     * inventing a key, which is still a truthful instance of it.
+     *
+     * @param  array<array-key, mixed>  $spec
+     * @return array<string, mixed>
+     */
+    private static function objectPlaceholder(array $spec, RouteContext $context, int $depth): array
+    {
+        $properties = $spec['properties'] ?? null;
+        if (! is_array($properties)) {
+            return [];
+        }
+
+        $required = is_array($spec['required'] ?? null) ? $spec['required'] : [];
+
+        $example = [];
+        foreach ($properties as $name => $property) {
+            $name = (string) $name;
+            if (in_array($name, $required, true)) {
+                $example[$name] = self::typePlaceholder(is_array($property) ? $property : [], $context, $depth);
+            }
+        }
+
+        return $example;
+    }
+
+    /**
+     * The constructor arguments the engine watched the payload object being built with: name → its folded
+     * {@see LiteralT}, or the {@see UnknownT} meaning "supplied here, value not statically knowable". An
+     * absent name means the argument wasn't passed at that call site.
+     *
+     * Keyed by CONSTRUCTOR ARGUMENT name. A Data class whose properties are remapped on the way out simply
+     * matches nothing here, and the example falls back to the schema's required members.
+     *
+     * @return array<string, DType>
+     */
+    private static function suppliedMembers(mixed $membersArg): array
+    {
+        if (! $membersArg instanceof ArrayShapeT) {
+            return [];
+        }
+
+        $members = [];
+        foreach ($membersArg->fields as $field) {
+            $members[(string) $field->key] = $field->type;
+        }
+
+        return $members;
+    }
+
+    /** Whether a schema's `type` includes a name — it may be a nullable `[…, "null"]` array. */
+    private static function isType(mixed $type, string $name): bool
+    {
+        return is_array($type) ? in_array($name, $type, true) : $type === $name;
+    }
+
+    /**
+     * The schema a placeholder is actually derived from: the reference followed, and a nullable branch
+     * (`anyOf: [X, {type: null}]` — how a nullable `$ref` or composite is expressed) reduced to `X`, since
+     * illustrating the null branch would show nothing. The first non-null branch wins for a wider union;
+     * picking one member of a union is what an example is.
+     *
+     * @param  array<array-key, mixed>  $spec
+     * @return array<array-key, mixed>
+     */
+    private static function effectiveSpec(array $spec, RouteContext $context): array
+    {
+        $spec = self::resolveSchema($spec, $context);
+        $branches = $spec['anyOf'] ?? $spec['oneOf'] ?? null;
+
+        if (! is_array($branches)) {
+            return $spec;
+        }
+
+        foreach ($branches as $branch) {
+            if (is_array($branch) && ! self::isType($branch['type'] ?? null, 'null')) {
+                return self::resolveSchema($branch, $context);
+            }
+        }
+
+        return $spec;
+    }
+
+    /**
+     * The body schema with a `#/components/schemas/*` reference followed, so `properties` and `required` are
+     * visible. A hoisted Data class arrives as a bare `$ref`, which alone says nothing to build from.
+     *
+     * @param  array<array-key, mixed>  $schema
+     * @return array<array-key, mixed>
+     */
+    private static function resolveSchema(array $schema, RouteContext $context): array
+    {
+        $ref = $schema['$ref'] ?? null;
+        $prefix = '#/components/schemas/';
+
+        if (! is_string($ref) || ! str_starts_with($ref, $prefix)) {
+            return $schema;
+        }
+
+        $component = $context->components->schemas()[substr($ref, strlen($prefix))] ?? null;
+
+        return is_array($component) ? $component : $schema;
+    }
+
+    /**
+     * The invariant {@see example()} is built to satisfy, checked rather than assumed: an example still
+     * missing a required member would fail validation against its own schema, so it's dropped instead.
+     *
+     * @param  array<string, mixed>  $example
+     * @param  array<array-key, mixed>  $schema
+     */
+    private static function satisfies(array $example, array $schema): bool
+    {
+        $required = $schema['required'] ?? [];
+        if (! is_array($required)) {
+            return true;
+        }
+
+        foreach ($required as $member) {
+            if (! is_string($member) || ! array_key_exists($member, $example)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

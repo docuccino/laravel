@@ -2150,7 +2150,7 @@
           },
           "429": {
             "x-docuccino": {
-              "id": "res:v1:wsxqaxsawrdcptbs",
+              "id": "res:v1:xc2g7sl443l7ozhp",
               "provenance": [
                 {
                   "producer": "integration:rate-limit",
@@ -2197,7 +2197,7 @@
               }
             },
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
                   "x-docuccino": {
                     "provenance": [
@@ -2205,8 +2205,7 @@
                         "producer": "integration:rate-limit",
                         "layer": "integration",
                         "fields": [
-                          "properties",
-                          "type"
+                          "$ref"
                         ],
                         "source": {
                           "file": "workbench/app/Http/Controllers/FormController.php",
@@ -2216,12 +2215,12 @@
                       }
                     ]
                   },
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Error",
+                  "status": 429
                 }
               }
             }
@@ -3396,7 +3395,7 @@
     "document": {
       "id": "doc:pointer-list",
       "configHash": "8232eca8c6de2c57a33bbce8b03c3e08e85f5ee9723c30729d2c9422552337ff",
-      "contentHash": "bcd8d0c8fe5808851a13315dce557531c6a874760cf53f96f8f85f51d584eba0"
+      "contentHash": "3c2d7906830cec5f7d46590c72841e92d5dbac749ee42a03137bf0672150cb7b"
     },
     "generator": {
       "name": "docuccino/laravel",

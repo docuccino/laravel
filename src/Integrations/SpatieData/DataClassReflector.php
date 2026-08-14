@@ -73,6 +73,12 @@ final class DataClassReflector
      */
     public const BASE_COLLECTABLE = 'Spatie\\LaravelData\\Contracts\\BaseDataCollectable';
 
+    /**
+     * Implemented by everything that renders itself as a response — `Data`, `Resource` and every
+     * collectable — which is exactly the set that inherits a `calculateResponseStatus()` default.
+     */
+    public const RESPONSABLE_DATA = 'Spatie\\LaravelData\\Contracts\\ResponsableData';
+
     public const OPTIONAL = 'Spatie\\LaravelData\\Optional';
 
     public const LAZY = 'Spatie\\LaravelData\\Lazy';
@@ -154,6 +160,12 @@ final class DataClassReflector
         return $fqcn !== self::DATA
             && is_a($fqcn, self::BASE_DATA, true)
             && ! is_a($fqcn, self::BASE_COLLECTABLE, true);
+    }
+
+    /** Whether spatie renders this class itself, and so supplies it a response-status default. */
+    public static function isResponsable(string $fqcn): bool
+    {
+        return interface_exists(self::RESPONSABLE_DATA) && is_a($fqcn, self::RESPONSABLE_DATA, true);
     }
 
     /** Any spatie collectable, plain or paginated — rendered as array/envelope. */

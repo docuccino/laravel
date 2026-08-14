@@ -39,7 +39,8 @@ final class ExportCommand extends Command
         {--out= : Output path (defaults to the document export path)}
         {--fail-on=none : none | warning | error — the severity that makes the command exit non-zero}
         {--provenance=winners : none | winners | full — UIR provenance detail}
-        {--yaml : Emit YAML instead of JSON}';
+        {--yaml : Emit YAML instead of JSON}
+        {--memory-limit= : Raise the PHP memory limit for inference (e.g. 2G)}';
 
     protected $description = 'Generate and export API documentation from your routes.';
 

@@ -14,6 +14,11 @@ use Docuccino\Core\Inference\TypeEngine;
  * {@see NullTypeEngine} on any container/Larastan boot failure, so callers always get a total engine and
  * the build survives. The enum's caching/orchestrated modes are not implemented yet and are treated as
  * in-process.
+ *
+ * Process-wide side effects (the memory ceiling, the out-of-memory shutdown notice) are confined to a
+ * {@see ConsoleBuild}: the viewer resolves a `TypeEngine` on any `.json` request — including
+ * artifact/cache sources that never analyse anything — and a web request has no business changing the
+ * limits the process serves every other request under.
  */
 final readonly class TypeEngineFactory
 {
@@ -21,7 +26,17 @@ final readonly class TypeEngineFactory
         private string $basePath,
         private string $tmpDir,
         private EnginePackage $engine = new EnginePackage,
+        private bool $console = false,
     ) {}
+
+    /**
+     * Whether this build owns the process well enough to change its limits — true only for a
+     * {@see ConsoleBuild}. False on every web request, the viewer's `generate` source included.
+     */
+    public function mayTuneProcess(): bool
+    {
+        return $this->console;
+    }
 
     /**
      * @param  array<string, mixed>  $config  the `docuccino.engine` config array
@@ -38,6 +53,13 @@ final readonly class TypeEngineFactory
         $builder = $this->engine->builder();
         if ($builder === null) {
             return new NullTypeEngine;
+        }
+
+        // PHPStan is about to analyse inside this process, so the memory ceiling and the story an OOM
+        // tells are ours to settle first — every console entry point (the build commands, cache warm)
+        // comes through here, which is why it isn't done in the commands.
+        if ($this->mayTuneProcess()) {
+            $this->applyMemoryLimit($config);
         }
 
         $descendPaths = $this->projectPaths($config);
@@ -58,6 +80,29 @@ final readonly class TypeEngineFactory
             primePaths: $this->primePaths($descendPaths),
             descendPaths: $descendPaths,
         );
+    }
+
+    /**
+     * Raises the process ceiling to the configured limit when that's genuinely higher, and arms the
+     * out-of-memory explanation either way — a process already generous enough still benefits from being
+     * told what to change if it turns out not to be.
+     *
+     * @param  array<string, mixed>  $config
+     */
+    private function applyMemoryLimit(array $config): void
+    {
+        $configured = $config['memory_limit'] ?? null;
+
+        $target = MemoryLimit::target(
+            is_string($configured) ? $configured : null,
+            ini_get('memory_limit'),
+        );
+
+        if ($target !== null) {
+            ini_set('memory_limit', $target);
+        }
+
+        OutOfMemoryNotice::arm();
     }
 
     /**

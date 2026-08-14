@@ -15,41 +15,41 @@ use Docuccino\Core\Inference\DType\UnionT;
 use ReflectionClass;
 
 /**
- * Resolves the success status(es) a Data class documents by overriding `calculateResponseStatus()` —
- * spatie's `ResponsableData` returns 200 unless a subclass says otherwise. The override's return types
- * come from the engine, which folds plain ints, class constants (`Response::HTTP_CREATED`) and enum
- * constants to int literals. Several folded literals (a `$x ? 201 : 200`, or multiple return sites) are
- * each documented with the same body, matching runtime truth. A computed status leaves the default 200
- * and earns an info diagnostic — nothing is executed and nothing is guessed.
+ * Resolves the success status(es) a Data class documents, from two sources in order: the class's own
+ * `calculateResponseStatus()` override, else the default spatie's `ResponsableData` supplies —
+ * `201 Created` for a POST, `200 OK` for anything else. The override's return types come from the engine,
+ * which folds plain ints, class constants (`Response::HTTP_CREATED`) and enum constants to int literals.
+ * Several folded literals (a `$x ? 201 : 200`, or multiple return sites) are each documented with the same
+ * body, matching runtime truth. A computed status leaves the default 200 and earns an info diagnostic —
+ * nothing is executed and nothing is guessed.
  *
  * Only a real override counts: the inherited trait method reports the vendor trait's file, so comparing
- * files against the Data class's own tells the two apart. No override means no work and no diagnostic.
+ * files against the Data class's own tells the two apart.
  */
 final class DataResponseStatus implements ResponseStatusResolver
 {
     private const METHOD = 'calculateResponseStatus';
 
+    /** The concern that supplies the default; its file identifies an unoverridden inherited method. */
+    private const CONCERN = 'Spatie\\LaravelData\\Concerns\\ResponsableData';
+
     public function resolveStatuses(RouteContext $context, string $fqcn): array
     {
-        if (! DataClassReflector::isData($fqcn) || ! class_exists($fqcn)) {
+        if (! class_exists($fqcn) || ! DataClassReflector::isResponsable($fqcn)) {
             return [];
         }
 
         $reflection = new ReflectionClass($fqcn);
-        if (! $reflection->hasMethod(self::METHOD)) {
-            return [];
+        $override = self::override($reflection);
+
+        if ($override === null) {
+            // No override, so spatie's concern is what runs. Only POST is worth an opinion: 200 is already
+            // the documented default, so staying quiet there leaves the rest of the chain free to answer.
+            return self::inheritsSpatieDefault($reflection) && $context->httpMethod() === 'post' ? [201] : [];
         }
 
-        $method = $reflection->getMethod(self::METHOD);
-        $methodFile = $method->getFileName();
-
-        // A trait-provided method reports the trait's file, so only a same-file declaration is an override.
-        if ($methodFile === false || $methodFile !== $reflection->getFileName()) {
-            return [];
-        }
-
-        $line = $method->getStartLine();
-        $analysis = $context->engine->analyzeAction(new ActionRef($methodFile, $fqcn, self::METHOD, $line === false ? 0 : $line));
+        [$file, $line] = $override;
+        $analysis = $context->engine->analyzeAction(new ActionRef($file, $fqcn, self::METHOD, $line));
         $context->recordDependencyFiles($analysis->dependencyFiles);
 
         $statuses = [];
@@ -81,6 +81,48 @@ final class DataResponseStatus implements ResponseStatusResolver
         ));
 
         return [];
+    }
+
+    /**
+     * Whether the class takes `calculateResponseStatus()` straight from spatie's concern, which is when
+     * the vendor default — `201` for a POST, `200` otherwise — is the runtime truth. A trait-provided
+     * method reports the trait's own file, so matching that against the concern's file is exact: a class
+     * satisfying the response contract by hand is left alone rather than assumed to follow the default.
+     *
+     * @param  ReflectionClass<object>  $reflection
+     */
+    private static function inheritsSpatieDefault(ReflectionClass $reflection): bool
+    {
+        if (! trait_exists(self::CONCERN) || ! $reflection->hasMethod(self::METHOD)) {
+            return false;
+        }
+
+        return $reflection->getMethod(self::METHOD)->getFileName() === (new ReflectionClass(self::CONCERN))->getFileName();
+    }
+
+    /**
+     * The file and line of the class's OWN `calculateResponseStatus()` declaration, or null when it only
+     * inherits one. The trait-provided method reports the vendor trait's file, so a same-file declaration
+     * is the tell; a Data class that doesn't inherit the trait at all has no method to find.
+     *
+     * @param  ReflectionClass<object>  $reflection
+     * @return array{string, int}|null
+     */
+    private static function override(ReflectionClass $reflection): ?array
+    {
+        if (! $reflection->hasMethod(self::METHOD)) {
+            return null;
+        }
+
+        $method = $reflection->getMethod(self::METHOD);
+        $file = $method->getFileName();
+        if ($file === false || $file !== $reflection->getFileName()) {
+            return null;
+        }
+
+        $line = $method->getStartLine();
+
+        return [$file, $line === false ? 0 : $line];
     }
 
     /**

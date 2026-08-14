@@ -29,10 +29,10 @@ use Docuccino\Laravel\Tests\Fixtures\SpatieData\NotAData;
  * override is real reflection; the folded return type is scripted, since the engine's literal-int
  * inference (including class/enum constants) is proven separately.
  */
-function statusContext(StubTypeEngine $engine): RouteContext
+function statusContext(StubTypeEngine $engine, string $method = 'POST'): RouteContext
 {
     return new RouteContext(
-        route: new RouteDescriptor(['POST'], 'api/things'),
+        route: new RouteDescriptor([$method], 'api/things'),
         actionRef: new ActionRef('', null, 'store'),
         attributes: new AttributeSet,
         engine: $engine,
@@ -71,13 +71,29 @@ it('folds a conditional/ternary whose arms all fold to every constant status', f
     'two if/return sites' => [[new LiteralT(201), new LiteralT(200)]],
 ]);
 
-it('leaves a plain Data class (no override) at the inferred status with no diagnostic', function (): void {
-    // AccountData doesn't override calculateResponseStatus: the trait default reports the vendor file, so
-    // it isn't treated as a documentable override.
+it('documents a POST returning a plain Data class as 201, from spatie\'s inherited default', function (): void {
+    // AccountData doesn't override calculateResponseStatus, so the trait's own body applies:
+    // `$request->isMethod(POST) ? 201 : 200`. Reading only overrides used to leave every create endpoint
+    // confidently documented as 200.
     $context = statusContext(new StubTypeEngine);
+
+    expect((new DataResponseStatus)->resolveStatuses($context, AccountData::class))->toBe([201])
+        ->and($context->components->diagnostics())->toBe([]);
+});
+
+it('stays quiet for a non-POST Data class, whose inherited default is already the documented 200', function (string $method): void {
+    $context = statusContext(new StubTypeEngine, $method);
 
     expect((new DataResponseStatus)->resolveStatuses($context, AccountData::class))->toBe([])
         ->and($context->components->diagnostics())->toBe([]);
+})->with(['GET', 'PUT', 'PATCH', 'DELETE']);
+
+it('prefers a real override to the inherited POST default', function (): void {
+    // CreatedData overrides the method, so the override is folded and the inherited 201 never applies —
+    // an override returning 200 on a POST must document 200, not be overruled by the base default.
+    $context = statusContext(statusEngine(CreatedData::class, [new LiteralT(200)]));
+
+    expect((new DataResponseStatus)->resolveStatuses($context, CreatedData::class))->toBe([200]);
 });
 
 it('degrades a genuinely computed status to 200 with a diagnostic', function (array $returnTypes): void {
@@ -104,8 +120,8 @@ it('degrades a genuinely computed status to 200 with a diagnostic', function (ar
 ]);
 
 it('is inert for a class that is not a spatie Data class at all (no diagnostic)', function (): void {
-    // The isData() guard comes first: a plain class isn't this resolver's business even if it happens to
-    // declare calculateResponseStatus() in its own file, so it yields no statuses and no diagnostic.
+    // The ResponsableData-contract guard comes first: a plain class isn't this resolver's business even if
+    // it happens to declare calculateResponseStatus() in its own file, so no statuses and no diagnostic.
     $context = statusContext(statusEngine(NotAData::class, [new LiteralT(201)]));
 
     expect((new DataResponseStatus)->resolveStatuses($context, NotAData::class))->toBe([])
@@ -119,9 +135,10 @@ it('is inert for a non-existent class (nothing to reflect)', function (): void {
         ->and($context->components->diagnostics())->toBe([]);
 });
 
-it('is inert for a Data class whose calculateResponseStatus is absent entirely (hasMethod false)', function (): void {
-    // NoStatusData is a Data class that doesn't inherit the ResponsableData trait, so the method is absent
-    // rather than trait-provided — the hasMethod() guard, distinct from the trait-file check.
+it('assumes no default for a Data class that renders itself without spatie\'s concern', function (): void {
+    // NoStatusData satisfies Contracts\BaseData but neither the response contract nor the concern, so
+    // there is no vendor default to inherit — a hand-rolled renderer's status is its own business, and
+    // guessing 201 on a POST would be inventing one.
     $context = statusContext(new StubTypeEngine);
 
     expect((new DataResponseStatus)->resolveStatuses($context, NoStatusData::class))->toBe([])

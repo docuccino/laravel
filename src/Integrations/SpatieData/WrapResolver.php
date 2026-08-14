@@ -4,25 +4,44 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\SpatieData;
 
+use Docuccino\Laravel\Integrations\Support\ParsedClassFile;
+use PhpParser\Node\Expr;
+use PhpParser\Node\Expr\ClassConstFetch;
+use PhpParser\Node\Expr\MethodCall;
+use PhpParser\Node\Expr\Variable;
+use PhpParser\Node\Identifier;
+use PhpParser\Node\Name;
 use PhpParser\Node\Scalar\String_;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\Node\Stmt\Return_;
 use PhpParser\NodeFinder;
-use PhpParser\ParserFactory;
+use ReflectionClass;
 use ReflectionMethod;
-use Throwable;
 
 /**
  * Resolves the wrap key spatie nests a response payload under — `{ "data": <payload> }` by default.
- * Precedence mirrors spatie's `ContextableData`/`Wrap`: a class-level `defaultWrap()` override, else the
- * global `config('data.wrap')` injected by the service provider, else unwrapped.
+ * Precedence mirrors spatie's `ContextableData`/`Wrap`: an explicit `withoutWrapping()` in the class beats
+ * everything, then a class-level `defaultWrap()` override, then the global `config('data.wrap')` injected by
+ * the service provider, else unwrapped.
  *
- * The override's literal is read statically off the class file, never invoked. The base `Data` class
- * doesn't define `defaultWrap()`, so `method_exists` being true already means a real override.
- * {@see DataSchema} applies the key at the response root only.
+ * Both class-level reads are static AST reads over method bodies, never invoked — the class's own file for
+ * the unwrapping scan, and whichever file *declares* `defaultWrap()` for the key, which is the trait's file
+ * when the override arrives through one. The base `Data` class doesn't define `defaultWrap()`, so
+ * `method_exists` being true already means a real override. Answers are memoised per FQCN, since a document
+ * asks for the same class once per operation that returns it. {@see DataSchema} applies the key at the
+ * response root only.
  */
 final class WrapResolver
 {
+    /** Spatie's transformation-level wrapping switch, matched post-NameResolver so an alias can't hide it. */
+    private const WRAP_EXECUTION_TYPE = 'Spatie\\LaravelData\\Support\\Wrapping\\WrapExecutionType';
+
+    /** @var array<string, string|null> FQCN → resolved wrap key */
+    private array $keys = [];
+
+    /** @var array<string, array<string, ClassMethod>> file → its class-method nodes */
+    private array $parsed = [];
+
     public function __construct(private readonly ?string $globalWrap = null) {}
 
     /**
@@ -31,51 +50,106 @@ final class WrapResolver
      */
     public function key(?string $fqcn): ?string
     {
-        return ($fqcn !== null ? $this->defaultWrap($fqcn) : null) ?? $this->globalWrap;
+        if ($fqcn === null) {
+            return $this->globalWrap;
+        }
+
+        if (! array_key_exists($fqcn, $this->keys)) {
+            $this->keys[$fqcn] = $this->resolve($fqcn);
+        }
+
+        return $this->keys[$fqcn];
+    }
+
+    private function resolve(string $fqcn): ?string
+    {
+        if (! class_exists($fqcn)) {
+            return $this->globalWrap;
+        }
+
+        $file = (new ReflectionClass($fqcn))->getFileName();
+
+        if ($file !== false && self::disablesWrapping($this->methods($file))) {
+            return null;
+        }
+
+        return $this->defaultWrap($fqcn) ?? $this->globalWrap;
+    }
+
+    /**
+     * Whether the class renders ITSELF through `withoutWrapping()`. A class that strips the envelope on its
+     * way to a response is unwrapped however `config('data.wrap')` is set — documenting the global key over
+     * the top would describe a body the class explicitly removes. The canonical case is an RFC 9457 problem
+     * document: it has to sit at the root, so a globally-wrapped app calls `withoutWrapping()` for it.
+     *
+     * The receiver decides it. Spatie puts `withoutWrapping()` on paginated collections and on
+     * `TransformationContextFactory` too, so a class unwrapping a NESTED collection
+     * (`$this->items->withoutWrapping()`) says nothing about its own root — only a call chained straight off
+     * `$this` does.
+     *
+     * @param  array<string, ClassMethod>  $methods
+     */
+    private static function disablesWrapping(array $methods): bool
+    {
+        foreach ($methods as $method) {
+            $body = $method->stmts ?? [];
+
+            foreach ((new NodeFinder)->findInstanceOf($body, MethodCall::class) as $call) {
+                if ($call->name instanceof Identifier
+                    && $call->name->toString() === 'withoutWrapping'
+                    && self::rootedInThis($call->var)) {
+                    return true;
+                }
+            }
+
+            // The other spelling, for a class that builds its own response and disables wrapping on the
+            // transformation instead: `withWrapExecutionType(WrapExecutionType::Disabled)`.
+            foreach ((new NodeFinder)->findInstanceOf($body, ClassConstFetch::class) as $fetch) {
+                if ($fetch->class instanceof Name
+                    && $fetch->class->toString() === self::WRAP_EXECUTION_TYPE
+                    && $fetch->name instanceof Identifier
+                    && $fetch->name->toString() === 'Disabled') {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /** Whether a receiver chain is `$this` plus method hops only — a property or static hop is somebody else. */
+    private static function rootedInThis(Expr $receiver): bool
+    {
+        while ($receiver instanceof MethodCall) {
+            $receiver = $receiver->var;
+        }
+
+        return $receiver instanceof Variable && $receiver->name === 'this';
     }
 
     /** The literal an overridden `defaultWrap()` returns, or null when there's none or it's dynamic. */
     private function defaultWrap(string $fqcn): ?string
     {
-        if (! class_exists($fqcn) || ! method_exists($fqcn, 'defaultWrap')) {
+        if (! method_exists($fqcn, 'defaultWrap')) {
             return null;
         }
 
-        try {
-            $method = new ReflectionMethod($fqcn, 'defaultWrap');
-            $file = $method->getFileName();
-            $node = $file === false ? null : $this->methodNode($file, $method->getName());
+        $file = (new ReflectionMethod($fqcn, 'defaultWrap'))->getFileName();
+        $node = $file === false ? null : ($this->methods($file)['defaultWrap'] ?? null);
 
-            return $node === null ? null : $this->literalReturn($node);
-        } catch (Throwable) {
-            return null;
-        }
+        return $node === null ? null : self::literalReturn($node);
     }
 
-    /** The named method's AST node, or null when the file is unparseable or lacks it. */
-    private function methodNode(string $file, string $name): ?ClassMethod
+    /**
+     * @return array<string, ClassMethod>
+     */
+    private function methods(string $file): array
     {
-        $code = file_get_contents($file);
-        if ($code === false) {
-            return null;
-        }
-
-        $ast = (new ParserFactory)->createForNewestSupportedVersion()->parse($code);
-        if ($ast === null) {
-            return null;
-        }
-
-        foreach ((new NodeFinder)->findInstanceOf($ast, ClassMethod::class) as $method) {
-            if ($method->name->toString() === $name) {
-                return $method;
-            }
-        }
-
-        return null;
+        return $this->parsed[$file] ??= ParsedClassFile::methods($file);
     }
 
     /** The first `return '<literal>';` in a body, or null when every return is dynamic. */
-    private function literalReturn(ClassMethod $method): ?string
+    private static function literalReturn(ClassMethod $method): ?string
     {
         foreach ((new NodeFinder)->findInstanceOf($method->stmts ?? [], Return_::class) as $return) {
             if ($return->expr instanceof String_) {

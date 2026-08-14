@@ -18,7 +18,10 @@ use Docuccino\Laravel\Integrations\SpatieData\DataClassReflector;
 use Docuccino\Laravel\Integrations\SpatieData\DataSchema;
 use Docuccino\Laravel\Integrations\SpatieData\WrapResolver;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\AuthorData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\NestedUnwrappedData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\OwnResponseProblemData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\PlainCasedData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\ProblemDocumentData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\WrappedData;
 use Illuminate\Routing\Router;
 use Workbench\App\Http\Controllers\FormController;
@@ -40,6 +43,13 @@ function waveDEngine(): StubTypeEngine
         AuthorData::class => new ClassMetadata(AuthorData::class, [
             new PropertyMetadata('name', ScalarT::string()),
             new PropertyMetadata('email', ScalarT::string()),
+        ]),
+        OwnResponseProblemData::class => new ClassMetadata(OwnResponseProblemData::class, [
+            new PropertyMetadata('type', ScalarT::string()),
+            new PropertyMetadata('status', ScalarT::int()),
+        ]),
+        NestedUnwrappedData::class => new ClassMetadata(NestedUnwrappedData::class, [
+            new PropertyMetadata('id', ScalarT::int()),
         ]),
     ]);
 }
@@ -78,6 +88,34 @@ it('wraps a top-level Data object under the global config key when there is no d
         'properties' => ['data' => ['$ref' => '#/components/schemas/AuthorData']],
         'required' => ['data'],
     ]);
+});
+
+it('leaves a Data object that renders through withoutWrapping() unwrapped, whatever the global config', function (): void {
+    // An RFC 9457 problem document has to sit at the root, so a globally-wrapped app strips the envelope
+    // for it. Documenting the global 'data' key over the top would describe a body the class removes.
+    $result = convertWithWrap(new ClassT(ProblemDocumentData::class), new WrapResolver('data'));
+
+    // With the global wrap applied the root would be `{properties: {data: …}, required: [data]}`.
+    expect($result['root']['properties']['data'] ?? null)->toBeNull()
+        ->and($result['root']['required'] ?? [])->not->toContain('data');
+});
+
+it('leaves a Data object that disables wrapping on the transformation unwrapped too', function (): void {
+    // The other spelling: a class that writes its own response and passes
+    // `withWrapExecutionType(WrapExecutionType::Disabled)` to transform(). Same fact, different API.
+    $result = convertWithWrap(new ClassT(OwnResponseProblemData::class), new WrapResolver('data'));
+
+    expect($result['root']['properties']['data'] ?? null)->toBeNull()
+        ->and($result['root']['required'] ?? [])->not->toContain('data');
+});
+
+it('still wraps a class that only unwraps a nested collection', function (): void {
+    // `$this->authors->withoutWrapping()` is about the collection, not this class's root — reading it as
+    // self-unwrapping would silently delete the envelope from a body that really has one.
+    $result = convertWithWrap(new ClassT(NestedUnwrappedData::class), new WrapResolver('data'));
+
+    expect(array_keys($result['root']['properties'] ?? []))->toBe(['data'])
+        ->and($result['root']['required'] ?? [])->toContain('data');
 });
 
 it('leaves a top-level Data object unwrapped when neither defaultWrap() nor global config is set', function (): void {

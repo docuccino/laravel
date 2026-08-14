@@ -17,8 +17,10 @@ use Docuccino\Laravel\Commands\CacheCommand;
 use Docuccino\Laravel\Commands\ClearCommand;
 use Docuccino\Laravel\Commands\DiffCommand;
 use Docuccino\Laravel\Commands\ExportCommand;
+use Docuccino\Laravel\Commands\MemoryLimitOption;
 use Docuccino\Laravel\Commands\ValidateCommand;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
+use Docuccino\Laravel\Engine\ConsoleBuild;
 use Docuccino\Laravel\Engine\TypeEngineFactory;
 use Docuccino\Laravel\Http\DocsController;
 use Docuccino\Laravel\Integrations\InferredHandler\HandlerDeferralLog;
@@ -43,8 +45,10 @@ use Docuccino\Laravel\Routing\LaravelRouteResolver;
 use Docuccino\Laravel\Routing\ResolvedRouteIndex;
 use Docuccino\Laravel\Routing\VendorRoutePolicy;
 use Docuccino\Laravel\Runtime\DocumentCache;
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Laravel\Passport\Passport;
 use Laravel\Passport\Scope;
@@ -118,6 +122,12 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
         $this->app->when(TypeEngineFactory::class)
             ->needs('$tmpDir')
             ->give(fn (): string => $this->app->storagePath('docuccino'));
+
+        // Resolved (not captured) so it reads the marker as it stands when the engine is built — which is
+        // after CommandStarting has run for one of our commands, and never during a web request.
+        $this->app->when(TypeEngineFactory::class)
+            ->needs('$console')
+            ->give(static fn (): bool => ConsoleBuild::active());
 
         // null = Laravel's default cache store.
         $this->app->when(DocumentCache::class)
@@ -325,6 +335,10 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
      */
     public function packageBooted(): void
     {
+        // Ahead of the off-switch: `--memory-limit` has to reach config before a command's dependencies
+        // resolve the engine, and this listener is the last hook early enough (see MemoryLimitOption).
+        Event::listen(CommandStarting::class, MemoryLimitOption::capture(...));
+
         // Master off-switch: no runtime endpoints exist at all when it's off.
         if (config('docuccino.enabled', true) === false) {
             return;

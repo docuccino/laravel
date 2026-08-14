@@ -7,6 +7,7 @@ namespace Docuccino\Laravel\Registry;
 use Docuccino\Core\Extensions\BuiltIn\AttributeOverridesExtension;
 use Docuccino\Core\Extensions\BuiltIn\DefaultTypeMappers;
 use Docuccino\Core\Extensions\BuiltIn\EnumSchema;
+use Docuccino\Core\Extensions\BuiltIn\SharedErrorResponses;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Lint\SensitiveFieldLint;
 use Docuccino\Laravel\Exceptions\DefaultExceptionToResponse;
@@ -91,6 +92,8 @@ final class DefaultExtensions
             // Data-leakage lint: warns on sensitive-looking property names. Diagnostics only, never
             // mutates output.
             SensitiveFieldLint::class,
+            // Collapses an error body repeated across operations into one shared component + $refs.
+            SharedErrorResponses::class,
         ];
     }
 }

@@ -104,5 +104,5 @@ it('documents the real 404 under the framework-errors producer through the pipel
     );
 
     expect($producers)->toContain('integration:framework-errors')
-        ->and($response['content']['application/json']['schema']['properties'] ?? [])->toHaveKey('message');
+        ->and(resolveResponse($document, $response)['content']['application/json']['schema']['properties'] ?? [])->toHaveKey('message');
 });

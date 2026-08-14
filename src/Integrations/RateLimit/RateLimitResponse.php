@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\RateLimit;
 
 /**
- * Builds the `429 Too Many Requests` response: a JSON `{message}` body plus the `Retry-After` and
- * `X-RateLimit-*` headers Laravel's ThrottleRequests middleware sets. A known numeric throttle puts concrete
- * numbers in the header examples; an unfolded named limiter documents the headers without values. Pure, so
- * the header shape is dataset-testable.
+ * Builds the `429 Too Many Requests` response: the `Retry-After` and `X-RateLimit-*` headers Laravel's
+ * ThrottleRequests middleware sets, plus Laravel's stock JSON `{message}` body. A known numeric throttle
+ * puts concrete numbers in the header examples; an unfolded named limiter documents the headers without
+ * values. Pure, so the header shape is dataset-testable.
+ *
+ * The `{message}` body is only the fallback: the extension prefers whatever the error-response chain
+ * documents for a throttle exception, so an app with its own error shape doesn't get a contradictory 429.
  */
 final class RateLimitResponse
 {

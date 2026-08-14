@@ -38,7 +38,8 @@ final class DiffCommand extends Command
         {document? : The configured document key to generate as the new side (defaults to "default")}
         {--against= : Read `old` from this git ref (git show <ref>:<old>) instead of the working tree}
         {--enforce : Enforce the document\'s versioning policy; exit non-zero on a violation}
-        {--format=terminal : terminal | json}';
+        {--format=terminal : terminal | json}
+        {--memory-limit= : Raise the PHP memory limit for inference (e.g. 2G)}';
 
     public function __construct(
         private readonly DocumentDiffer $differ = new DocumentDiffer,
