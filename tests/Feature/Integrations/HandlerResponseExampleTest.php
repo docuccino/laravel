@@ -275,6 +275,67 @@ it('keeps the hint when nothing in the body states a status either', function ()
     expect($draft?->status)->toBe('500');
 });
 
+it('fills a member from the value its own schema states, not from its type', function (): void {
+    // A spatie property's `@example`, and the PHP default a property carries, both reach the component
+    // schema. Either is the app's own word for what the member looks like, so `"string"` is strictly worse
+    // — and `const` still outranks both, because that one is a claim rather than an illustration.
+    $context = handlerContext(new StubTypeEngine(classes: [
+        'App\\Data\\StatedProblem' => new ClassMetadata('App\\Data\\StatedProblem', [
+            new PropertyMetadata('type', ScalarT::string()),
+            new PropertyMetadata('title', ScalarT::string()),
+            new PropertyMetadata('detail', ScalarT::string()),
+        ]),
+    ]));
+
+    // The schema the converter would hand back, with the annotations the spatie integration adds.
+    $context->components->registerSchema('StatedProblem', [
+        'type' => 'object',
+        'properties' => [
+            'type' => ['type' => 'string', 'default' => 'about:blank'],
+            'title' => ['type' => 'string', 'example' => 'Unprocessable Content'],
+            'detail' => ['type' => 'string', 'const' => 'pinned', 'default' => 'ignored'],
+        ],
+        'required' => ['type', 'title', 'detail'],
+    ], 'App\\Data\\StatedProblem');
+
+    $draft = HandlerResponseBuilder::build(
+        handlerAnalysis(new ClassT('App\\Data\\StatedProblem'), 422),
+        $context,
+        Contribution::integration('inferred-handler'),
+    );
+
+    expect($draft?->freeze()->toArray()['content']['application/problem+json']['example'] ?? null)->toBe([
+        'type' => 'about:blank',
+        'title' => 'Unprocessable Content',
+        'detail' => 'pinned',
+    ]);
+});
+
+it('still pins a status member to the response status over a stated default', function (): void {
+    // `status` echoes the status THIS response is documented under (RFC 9457's convention). A default the
+    // class happens to carry describes some other response, so it must not win here.
+    $context = handlerContext(new StubTypeEngine(classes: [
+        'App\\Data\\DefaultedStatus' => new ClassMetadata('App\\Data\\DefaultedStatus', [
+            new PropertyMetadata('status', ScalarT::int()),
+        ]),
+    ]));
+
+    $context->components->registerSchema('DefaultedStatus', [
+        'type' => 'object',
+        'properties' => ['status' => ['type' => 'integer', 'default' => 500]],
+        'required' => ['status'],
+    ], 'App\\Data\\DefaultedStatus');
+
+    $draft = HandlerResponseBuilder::build(
+        handlerAnalysis(new ClassT('App\\Data\\DefaultedStatus'), 404),
+        $context,
+        Contribution::integration('inferred-handler'),
+    );
+
+    expect($draft?->freeze()->toArray()['content']['application/problem+json']['example'] ?? null)
+        ->toBe(['status' => 404]);
+});
+
 it('leaves out a supplied member the schema declares no type for', function (): void {
     // An unresolved property type reaches the document as a description and nothing else. The member IS in
     // this response, but `"string"` for something that may well be a list would state what the code never

@@ -192,8 +192,9 @@ final class HandlerResponseBuilder
      * is filled from the schema so the result is a valid instance rather than a partial one that fails
      * validation against the very schema it sits beside. That fill is the one place this tier writes a value
      * the code didn't state, and it is confined to examples — an example is illustrative by definition,
-     * whereas a schema is a claim. Filled values are obvious placeholders derived from the declared type,
-     * never a sentence invented on the app's behalf.
+     * whereas a schema is a claim. A member whose schema states a value of its own (an `@example`, a PHP
+     * default) is filled with that; everything else gets an obvious placeholder derived from the declared
+     * type, never a sentence invented on the app's behalf.
      *
      * "Known to carry" is `$members` first and the schema's `required` list second. A member the engine
      * watched being passed to the payload's constructor is in this response whatever its optionality says,
@@ -265,7 +266,28 @@ final class HandlerResponseBuilder
     {
         $effective = self::effectiveSpec($spec, $context);
 
-        return array_key_exists('const', $effective) || isset($effective['type']);
+        return array_key_exists('const', $effective)
+            || isset($effective['type'])
+            || self::statedValue($effective) !== null;
+    }
+
+    /**
+     * A value the schema states for a member itself, or null when it states none. An `example` the author
+     * wrote outranks a `default` the property merely carries: both are the app's own words, but only one was
+     * written to illustrate. A null either side counts as unstated — a placeholder of `null` illustrates
+     * nothing, and spatie only emits a non-null default in the first place.
+     *
+     * @param  array<array-key, mixed>  $spec
+     */
+    private static function statedValue(array $spec): mixed
+    {
+        foreach (['example', 'default'] as $keyword) {
+            if (($spec[$keyword] ?? null) !== null) {
+                return $spec[$keyword];
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -294,6 +316,10 @@ final class HandlerResponseBuilder
      * is invented for a member the schema doesn't require. The depth cap is what keeps a self-referential
      * schema from unrolling forever.
      *
+     * A value the schema states for the member itself is preferred to anything derived from its type: a
+     * spatie property's `@example` or its PHP default reaches the component schema, and either is the app's
+     * own word for what this member looks like — which `"string"` is not.
+     *
      * @param  array<array-key, mixed>  $spec
      */
     private static function typePlaceholder(array $spec, RouteContext $context, int $depth): mixed
@@ -302,6 +328,11 @@ final class HandlerResponseBuilder
 
         if (array_key_exists('const', $spec)) {
             return $spec['const'];
+        }
+
+        $stated = self::statedValue($spec);
+        if ($stated !== null) {
+            return $stated;
         }
 
         $type = $spec['type'] ?? null;
