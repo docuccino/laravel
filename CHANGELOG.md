@@ -5,7 +5,17 @@
 
 User-facing changes to `docuccino/laravel` — features, fixes, performance work and anything breaking —
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
-the [monorepo](https://github.com/docuccino/docuccino) git log.
+the [repository](https://github.com/docuccino/docuccino) git log.
+
+## v0.3.0
+
+### Features
+
+- recover the Query Builder allow-lists a method or a constructor builds ([#19](https://github.com/docuccino/docuccino/pull/19))
+
+### Bug fixes
+
+- illustrate an error member with the value its schema states ([#16](https://github.com/docuccino/docuccino/pull/16))
 
 ## v0.2.1
 
