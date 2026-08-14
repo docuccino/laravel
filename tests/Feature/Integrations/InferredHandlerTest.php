@@ -14,6 +14,9 @@ use Docuccino\Core\Inference\DType\UnknownT;
 use Docuccino\Core\Inference\DType\VoidT;
 use Docuccino\Core\Inference\ReturnSite;
 use Docuccino\Core\Inference\SourceLocation;
+use Docuccino\Core\Inference\ThrowConfidence;
+use Docuccino\Core\Inference\ThrowDisposition;
+use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Laravel\Tests\Support\InvokableRenderer;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
@@ -316,6 +319,54 @@ it('falls back to the exception status hint when the recovered status did not fo
     $producers = array_map(static fn (array $r): string => $r['producer'], $responses['404']['x-docuccino']['provenance'] ?? []);
     expect($producers)->toContain('integration:inferred-handler')
         ->and(resolveResponse($document, $responses['404'])['content']['application/problem+json']['schema']['properties'] ?? [])->toHaveKey('type');
+});
+
+it('prefers the status the recovered body states over the exception hint', function (): void {
+    // The hint is a classification of the exception TYPE, made without reading the renderer; a `status`
+    // member the same render path folded to a literal is evidence from the render path itself. When the
+    // response status didn't fold, the body wins — otherwise the response is filed under one status while
+    // the body beside it states another, and the shared component is named for the wrong one.
+    //
+    // This is not exotic: a body rendered through a Data object's own `toResponse()` reads its status off
+    // `$this->status`, which never folds, while the construction that built it folds `status:` fine.
+    $symbol = registerRenderCallback(
+        static fn (RuntimeException $e) => response()->json(['status' => 400], 400),
+        RuntimeException::class,
+    );
+
+    $engine = WorkbenchEngine::make(
+        [$symbol => new ActionAnalysis(returns: [new ReturnSite(
+            new ClassT('Illuminate\\Http\\JsonResponse', [
+                new ArrayShapeT([
+                    new ArrayShapeField('type', new LiteralT('https://httpstatuses.io/400')),
+                    new ArrayShapeField('title', ScalarT::string()),
+                    new ArrayShapeField('status', new LiteralT(400)),
+                ]),
+                new UnknownT('status not folded'),
+                new LiteralT('application/problem+json'),
+            ]),
+            new SourceLocation(''),
+        )])],
+        analysisOverrides: [
+            // An exception outside the framework table: classified 500 by fallback, rendered as a 400.
+            'Workbench\\App\\Http\\Controllers\\FormController::show' => new ActionAnalysis(
+                returns: [new ReturnSite(new ClassT('Workbench\\App\\Data\\FormData'), new SourceLocation(''))],
+                throws: [new ThrownException(RuntimeException::class, 500, [], ThrowConfidence::Certain, ThrowDisposition::Signal)],
+            ),
+        ],
+    );
+    app()->instance(TypeEngine::class, $engine);
+
+    $document = generateDocument()->document->toArray();
+    $responses = $document['paths']['/api/forms/{form}']['get']['responses'];
+
+    expect($responses)->toHaveKey('400')->and($responses)->not->toHaveKey('500');
+
+    $response = resolveResponse($document, $responses['400']);
+
+    // The description is the reason phrase for the status actually documented, not the hint's.
+    expect($response['description'] ?? null)->toBe('Bad Request')
+        ->and($response['content']['application/problem+json']['example']['status'] ?? null)->toBe(400);
 });
 
 it('defers SILENTLY (no too-dynamic diagnostic) when an arm delegates to the framework (null/void)', function (): void {

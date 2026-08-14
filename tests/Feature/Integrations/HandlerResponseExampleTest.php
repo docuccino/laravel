@@ -53,10 +53,13 @@ function handlerContext(?TypeEngine $engine = null): RouteContext
     );
 }
 
-/** A handler analysis returning `JsonResponse<$payload, $status, 'application/problem+json'[, $members]>`. */
-function handlerAnalysis(DType $payload, int $status, ?ArrayShapeT $members = null): ActionAnalysis
+/**
+ * A handler analysis returning `JsonResponse<$payload, $status, 'application/problem+json'[, $members]>`.
+ * A DType status stands in for one that didn't fold, which is what a `$this->status` read makes.
+ */
+function handlerAnalysis(DType $payload, int|DType $status, ?ArrayShapeT $members = null): ActionAnalysis
 {
-    $args = [$payload, new LiteralT($status), new LiteralT('application/problem+json')];
+    $args = [$payload, is_int($status) ? new LiteralT($status) : $status, new LiteralT('application/problem+json')];
     if ($members !== null) {
         $args[] = $members;
     }
@@ -232,6 +235,44 @@ it('still fills a required member no argument accounted for', function (): void 
         'status' => 404,
         'detail' => 'string',
     ]);
+});
+
+it('documents an object body under the status its own construction folded', function (): void {
+    // The shape a Data object that writes its own `toResponse()` produces: `status: $this->status` is a
+    // property read, so the RESPONSE status never folds — while the construction that built the object
+    // folded `status: 503` fine. Documenting the hint here would file a 503 body under 500.
+    $draft = HandlerResponseBuilder::build(
+        handlerAnalysis(
+            new ClassT('App\\Data\\ProblemDocument'),
+            new UnknownT('status not folded'),
+            suppliedMembers(['type' => 'about:blank', 'title' => 'Service Unavailable', 'status' => 503, 'detail' => null]),
+        ),
+        problemDocumentContext(),
+        Contribution::integration('inferred-handler'),
+        statusHint: 500,
+    );
+
+    $frozen = $draft?->freeze()->toArray() ?? [];
+
+    expect($draft?->status)->toBe('503')
+        ->and($frozen['description'] ?? null)->toBe('Service Unavailable')
+        ->and($frozen['content']['application/problem+json']['example']['status'] ?? null)->toBe(503);
+});
+
+it('keeps the hint when nothing in the body states a status either', function (): void {
+    // Neither side folded, so there is nothing to prefer: the exception's own classification stands.
+    $draft = HandlerResponseBuilder::build(
+        handlerAnalysis(
+            new ClassT('App\\Data\\ProblemDocument'),
+            new UnknownT('status not folded'),
+            suppliedMembers(['type' => null, 'title' => null, 'status' => null, 'detail' => null]),
+        ),
+        problemDocumentContext(),
+        Contribution::integration('inferred-handler'),
+        statusHint: 500,
+    );
+
+    expect($draft?->status)->toBe('500');
 });
 
 it('leaves out a supplied member the schema declares no type for', function (): void {

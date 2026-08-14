@@ -30,9 +30,9 @@ use Docuccino\Laravel\Integrations\Support\FrameworkExceptionTable;
  * value echoing the response status) resolved to this response's status, so the 403 arm says `403`.
  * Required members that didn't fold are filled with type-derived placeholders (and the real status) so the
  * example is a valid instance of the schema beside it — see {@see example()} for why that fill is confined
- * to examples and nothing else. A status that didn't fold falls back to the exception's own status hint
- * rather than 200; a payload that didn't fold ({@see UnknownT}) drops the body schema but keeps the status
- * and media type.
+ * to examples and nothing else. A status that didn't fold falls back to the one the body itself states, and
+ * only then to the exception's own status hint ({@see foldStatus()}); a payload that didn't fold
+ * ({@see UnknownT}) drops the body schema but keeps the status and media type.
  *
  * When the body is an object the engine watched being constructed, the fourth type arg names the arguments
  * it was built with, and those decide the example's membership rather than the schema's `required` list: an
@@ -61,11 +61,13 @@ final class HandlerResponseBuilder
                 continue;
             }
 
-            $status = self::foldStatus($type->typeArgs[1] ?? null, $statusHint);
+            $payload = $type->typeArgs[0] ?? null;
+            $members = self::suppliedMembers($type->typeArgs[3] ?? null);
+
+            $status = self::foldStatus($type->typeArgs[1] ?? null, $payload, $members, $statusHint);
             $draft = new ResponseDraft($status);
             $draft->setDescription(FrameworkExceptionTable::reason($status), $contribution);
 
-            $payload = $type->typeArgs[0] ?? null;
             if ($payload !== null && ! $payload instanceof VoidT && ! $payload instanceof NeverT && ! $payload instanceof UnknownT) {
                 $mediaType = self::contentType($type->typeArgs[2] ?? null);
                 $payload = self::resolveStatusMarkers($payload, (int) $status);
@@ -73,7 +75,7 @@ final class HandlerResponseBuilder
                 foreach ($schema as $keyword => $value) {
                     $draft->content($mediaType)->set($keyword, $value, $contribution);
                 }
-                $example = self::example($payload, $schema, (int) $status, $context, self::suppliedMembers($type->typeArgs[3] ?? null));
+                $example = self::example($payload, $schema, (int) $status, $context, $members);
                 if ($example !== [] && self::satisfies($example, self::resolveSchema($schema, $context))) {
                     $draft->setExample($mediaType, $example);
                 }
@@ -104,14 +106,61 @@ final class HandlerResponseBuilder
         return true;
     }
 
-    private static function foldStatus(mixed $statusArg, ?int $statusHint): string
+    /**
+     * @param  array<string, DType>  $members
+     */
+    private static function foldStatus(mixed $statusArg, ?DType $payload, array $members, ?int $statusHint): string
     {
         if ($statusArg instanceof LiteralT && is_int($statusArg->value)) {
             return (string) $statusArg->value;
         }
 
-        // Didn't fold (e.g. an enum method result) — prefer the exception's own classification to 200.
+        // Didn't fold (e.g. an enum method result, or a `$this->status` read a Data object's own
+        // `toResponse()` makes). The body's own `status` may still have folded on the very same path, and
+        // that beats the hint: the hint classifies the exception TYPE without reading the renderer at all,
+        // so trusting it over folded evidence files the response under one status while the body beside it
+        // states another — and names the shared component for the wrong one.
+        $stated = self::statedStatus($payload, $members);
+        if ($stated !== null) {
+            return (string) $stated;
+        }
+
+        // Nothing folded either side — prefer the exception's own classification to 200.
         return (string) ($statusHint ?? 200);
+    }
+
+    /**
+     * The status the body itself states, when a `status` member folded to a real HTTP status. A
+     * {@see StatusMarkerT} member is deliberately not one: it means "echoes the response status", so
+     * reading the status back out of it would be circular.
+     *
+     * @param  array<string, DType>  $members
+     */
+    private static function statedStatus(?DType $payload, array $members): ?int
+    {
+        $member = $members['status'] ?? self::shapeField($payload, 'status');
+
+        if (! $member instanceof LiteralT || ! is_int($member->value) || $member->value < 100 || $member->value > 599) {
+            return null;
+        }
+
+        return $member->value;
+    }
+
+    /** One field of an array-shape payload, by key. */
+    private static function shapeField(?DType $payload, string $key): ?DType
+    {
+        if (! $payload instanceof ArrayShapeT || $payload->isList) {
+            return null;
+        }
+
+        foreach ($payload->fields as $field) {
+            if ((string) $field->key === $key) {
+                return $field->type;
+            }
+        }
+
+        return null;
     }
 
     private static function contentType(mixed $contentTypeArg): string
