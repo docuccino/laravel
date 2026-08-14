@@ -6,6 +6,7 @@ namespace Docuccino\Laravel\Engine;
 
 use Docuccino\Core\Inference\NullTypeEngine;
 use Docuccino\Core\Inference\TypeEngine;
+use Docuccino\Core\Support\GeneratedDirectory;
 
 /**
  * Builds the configured {@see TypeEngine} (design §Inference). `null` mode skips analysis entirely, and
@@ -39,12 +40,43 @@ final readonly class TypeEngineFactory
     }
 
     /**
+     * The configured engine, built on the first question asked of it ({@see LazyTypeEngine}) — a build
+     * that answers every route from its fragment cache asks none, and must not pay a PHPStan boot to
+     * do it. This is what the container binding hands out; {@see make()} is the eager build.
+     *
+     * @param  array<string, mixed>  $config  the `docuccino.engine` config array
+     */
+    public function deferred(array $config): TypeEngine
+    {
+        return new LazyTypeEngine(
+            fn (): TypeEngine => $this->make($config),
+            $this->engineIdentity($config),
+        );
+    }
+
+    /**
+     * Names what {@see make()} will resolve without building it: the builder that will build the
+     * engine, or {@see NullTypeEngine} when nothing will. The fragment cache keys on which engine
+     * resolved and computes that key before the first route, so it cannot wait for the engine to
+     * exist. This partitions builds exactly as the resolved class does — nothing to analyse with on
+     * one side, a real analyser on the other — and the analyser's own version reaches the key through
+     * the app's `composer.lock`.
+     *
+     * @param  array<string, mixed>  $config  the `docuccino.engine` config array
+     */
+    public function engineIdentity(array $config): string
+    {
+        return $this->mode($config) === TypeEngineMode::Null || ! $this->engine->installed()
+            ? NullTypeEngine::class
+            : EnginePackage::BUILDER;
+    }
+
+    /**
      * @param  array<string, mixed>  $config  the `docuccino.engine` config array
      */
     public function make(array $config): TypeEngine
     {
-        $mode = TypeEngineMode::tryFrom(is_string($config['mode'] ?? null) ? $config['mode'] : '')
-            ?? TypeEngineMode::InProcess;
+        $mode = $this->mode($config);
 
         if ($mode === TypeEngineMode::Null) {
             return new NullTypeEngine;
@@ -64,9 +96,7 @@ final readonly class TypeEngineFactory
 
         $descendPaths = $this->projectPaths($config);
 
-        if (! is_dir($this->tmpDir)) {
-            @mkdir($this->tmpDir, 0755, true);
-        }
+        GeneratedDirectory::ensure($this->tmpDir);
 
         // PRIME scope is wider than DESCEND scope on purpose: PHPStan strips the bodies of files it
         // doesn't analyse, so a class a trace hops into must be primed even though descent
@@ -80,6 +110,17 @@ final readonly class TypeEngineFactory
             primePaths: $this->primePaths($descendPaths),
             descendPaths: $descendPaths,
         );
+    }
+
+    /**
+     * The configured mode; anything unrecognised runs in-process.
+     *
+     * @param  array<string, mixed>  $config  the `docuccino.engine` config array
+     */
+    private function mode(array $config): TypeEngineMode
+    {
+        return TypeEngineMode::tryFrom(is_string($config['mode'] ?? null) ? $config['mode'] : '')
+            ?? TypeEngineMode::InProcess;
     }
 
     /**

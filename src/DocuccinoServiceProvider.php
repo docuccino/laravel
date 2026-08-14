@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel;
 
+use Composer\InstalledVersions;
 use Docuccino\Core\Content\ContentCompiler;
 use Docuccino\Core\Extensions\BuiltIn\AttributeOverridesExtension;
 use Docuccino\Core\Inference\TypeEngine;
@@ -21,6 +22,7 @@ use Docuccino\Laravel\Commands\MemoryLimitOption;
 use Docuccino\Laravel\Commands\ValidateCommand;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
 use Docuccino\Laravel\Engine\ConsoleBuild;
+use Docuccino\Laravel\Engine\EnginePackage;
 use Docuccino\Laravel\Engine\TypeEngineFactory;
 use Docuccino\Laravel\Http\DocsController;
 use Docuccino\Laravel\Integrations\InferredHandler\HandlerDeferralLog;
@@ -38,8 +40,10 @@ use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParametersExtension;
 use Docuccino\Laravel\Integrations\SpatieData\DataClassReflector;
 use Docuccino\Laravel\Integrations\SpatieData\DataSchema;
 use Docuccino\Laravel\Integrations\SpatieData\WrapResolver;
+use Docuccino\Laravel\Pipeline\BuildFingerprint;
 use Docuccino\Laravel\Pipeline\DocumentBuilder;
 use Docuccino\Laravel\Pipeline\DocumentGenerator;
+use Docuccino\Laravel\Pipeline\FragmentStore;
 use Docuccino\Laravel\Registry\ExtensionRegistry;
 use Docuccino\Laravel\Routing\LaravelRouteResolver;
 use Docuccino\Laravel\Routing\ResolvedRouteIndex;
@@ -54,6 +58,7 @@ use Laravel\Passport\Passport;
 use Laravel\Passport\Scope;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
+use Throwable;
 
 /**
  * The adapter's service provider (spatie/laravel-package-tools): config, commands, the late-bound
@@ -148,19 +153,38 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             ->needs('$generatorName')
             ->give('docuccino/laravel');
 
-        // The OperationFragment cache (design §10): filesystem, off by default.
-        $this->app->bind(FragmentCache::class, function (Application $app): FragmentCache {
+        // The OperationFragment cache (design §10): filesystem, off by default. The store resolves the
+        // directory once for both the cache that writes it and the command that clears it.
+        $this->app->bind(FragmentStore::class, function (Application $app): FragmentStore {
             /** @var array<string, mixed> $cache */
             $cache = (array) config('docuccino.cache', []);
             $path = is_string($cache['path'] ?? null) ? $cache['path'] : $app->storagePath('docuccino/fragments');
 
-            return new FragmentCache(
+            return new FragmentStore(
                 enabled: (bool) ($cache['enabled'] ?? false),
                 path: str_starts_with($path, '/') ? $path : $app->basePath($path),
-                toolVersion: self::VERSION,
+            );
+        });
+
+        $this->app->bind(FragmentCache::class, function (Application $app): FragmentCache {
+            $store = $app->make(FragmentStore::class);
+
+            return new FragmentCache(
+                enabled: $store->enabled,
+                path: $store->path,
+                toolVersion: self::VERSION.self::sourceReference(),
                 specVersion: '1.0.0',
                 identityVersion: 'v1',
             );
+        });
+
+        // What that cache keys on beyond config and routes: the engine that resolved, its
+        // output-shaping config and the app's locked dependencies.
+        $this->app->bind(BuildFingerprint::class, function (Application $app): BuildFingerprint {
+            /** @var array<string, mixed> $engine */
+            $engine = (array) config('docuccino.engine', []);
+
+            return new BuildFingerprint($engine, $app->basePath(), $app->make(EnginePackage::class));
         });
 
         $this->app->when(DocumentBuilder::class)
@@ -280,13 +304,37 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
         });
 
         // Resolved from the container so tests (and users) can swap in a stub or the NullTypeEngine;
-        // otherwise built from config, degrading to null on boot failure.
+        // otherwise built from config, degrading to null on boot failure. Deferred, because commands
+        // method-inject a TypeEngine and a fully cached build never asks it anything (LazyTypeEngine).
         $this->app->bind(TypeEngine::class, static function (Application $app): TypeEngine {
             /** @var array<string, mixed> $config */
             $config = (array) config('docuccino.engine', []);
 
-            return $app->make(TypeEngineFactory::class)->make($config);
+            return $app->make(TypeEngineFactory::class)->deferred($config);
         });
+    }
+
+    /**
+     * The installed source reference of this package (a commit hash for a dev/path checkout), for the
+     * fragment cache's tool version ONLY — never for the generator version, whose bytes are locked.
+     * The app's `composer.lock` already keys the cache, so a released upgrade invalidates fragments;
+     * a checkout of Docuccino's own source does not appear there at all, and that is the maintainer's
+     * dev loop. Empty when Composer's runtime API can't answer, which is back to keying on the version
+     * alone.
+     */
+    private static function sourceReference(): string
+    {
+        if (! class_exists(InstalledVersions::class)) {
+            return '';
+        }
+
+        try {
+            $reference = InstalledVersions::getReference('docuccino/laravel');
+        } catch (Throwable) {
+            return '';
+        }
+
+        return is_string($reference) ? '@'.$reference : '';
     }
 
     /** A non-empty string config value, or null when unset/blank. */

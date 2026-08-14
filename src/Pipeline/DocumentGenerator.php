@@ -56,6 +56,7 @@ final class DocumentGenerator
         private readonly string $generatorVersion,
         ?FragmentCache $cache = null,
         private readonly IdentityGenerator $identity = new IdentityGenerator,
+        private readonly BuildFingerprint $fingerprint = new BuildFingerprint,
     ) {
         $this->cache = $cache ?? FragmentCache::disabled();
     }
@@ -86,7 +87,11 @@ final class DocumentGenerator
         [$content, $contentDiagnostics] = $this->contentCompiler->compile($document);
         $bag->addAll($contentDiagnostics);
 
-        $configHash = $document->hash().'|env:'.$this->environmentDigest($resolved);
+        // Document config, booted-app facts and the build environment the engine runs in: the three
+        // document-level inputs every route's fragment-cache key carries.
+        $configHash = $document->hash()
+            .'|env:'.$this->environmentDigest($resolved)
+            .'|build:'.$this->fingerprint->digest($engine);
         $extensionClasses = $resolved->cacheSignature();
 
         $fragments = [];

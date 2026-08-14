@@ -60,6 +60,7 @@ function enableFragmentCache(): string
 afterEach(function (): void {
     foreach (glob(sys_get_temp_dir().'/docuccino-fragments-*') ?: [] as $dir) {
         array_map('unlink', glob($dir.'/*') ?: []);
+        @unlink($dir.'/.gitignore');
         @rmdir($dir);
     }
 });
@@ -443,6 +444,27 @@ it('invalidates a fragment when an annotated custom rule class is edited', funct
     } finally {
         file_put_contents($ruleFile, $original);
     }
+});
+
+it('ignores its own cache directory so the fragments never reach the repository', function (): void {
+    $dir = enableFragmentCache();
+    app()->instance(TypeEngine::class, WorkbenchEngine::make());
+
+    generateDocument();
+
+    expect(glob($dir.'/*.json') ?: [])->not->toBe([])
+        ->and(file_get_contents($dir.'/.gitignore'))->toBe("*\n!.gitignore\n");
+});
+
+it('leaves a .gitignore the user has customised in the cache directory alone', function (): void {
+    $dir = enableFragmentCache();
+    mkdir($dir, 0755, true);
+    file_put_contents($dir.'/.gitignore', "# mine\n");
+    app()->instance(TypeEngine::class, WorkbenchEngine::make());
+
+    generateDocument();
+
+    expect(file_get_contents($dir.'/.gitignore'))->toBe("# mine\n");
 });
 
 it('is a no-op when disabled (default): the engine runs on every build', function (): void {

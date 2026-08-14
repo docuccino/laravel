@@ -9,9 +9,9 @@ use Illuminate\Contracts\Config\Repository as ConfigRepository;
 
 /**
  * Feeds the booted-app state that shapes Passport output into the environment digest (design §10): `app.url`
- * behind the oauth2 flow URLs, the `Passport::tokensCan()` catalogue, and whether the password/implicit
- * grants were opted into. Runtime facts arrive pre-read via {@see PassportRuntime}, keeping this integration
- * free of vendor imports.
+ * and `passport.path`, the two halves of every emitted oauth2 flow URL, the `Passport::tokensCan()`
+ * catalogue, and whether the password/implicit grants were opted into. Runtime facts arrive pre-read via
+ * {@see PassportRuntime}, keeping this integration free of vendor imports.
  */
 final class PassportDigestContributor implements EnvironmentDigestContributor
 {
@@ -25,6 +25,8 @@ final class PassportDigestContributor implements EnvironmentDigestContributor
         $url = $this->config->get('app.url');
         $appUrl = is_string($url) ? $url : '';
 
+        $path = $this->config->get('passport.path');
+
         $scopes = $this->runtime->scopes;
         ksort($scopes);
         $records = [];
@@ -34,6 +36,7 @@ final class PassportDigestContributor implements EnvironmentDigestContributor
 
         return implode('|', [
             'appurl:'.$appUrl,
+            'path:'.(is_string($path) ? $path : ''),
             'scopes:'.implode(',', $records),
             'grants:'.($this->runtime->passwordGrant ? 'password' : '').($this->runtime->implicitGrant ? 'implicit' : ''),
         ]);
