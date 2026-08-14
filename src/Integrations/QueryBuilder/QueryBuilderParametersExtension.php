@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\QueryBuilder;
 
 use BackedEnum;
+use Closure;
 use Docuccino\Attributes\QueryParameter;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
@@ -27,12 +28,10 @@ use Docuccino\Laravel\Integrations\Eloquent\CastSchema;
 use ReflectionClass;
 
 /**
- * Documents a `spatie/laravel-query-builder` list endpoint. Traces the action with a
- * {@see QueryBuilderTraceVisitor} (via {@see RouteContext::trace()}, so the walk's files join the
- * fragment-cache key) to recover the subject model, allow-lists and pagination, then enriches each
- * filter with its column's cast — an enum's backing values through the shared enum machinery, so
- * `#[CaseDescription]` prose lands as `x-enumDescriptions`, or a native cast type. The facts become
- * query parameters under the document's representation policy and the package's own parameter names.
+ * Documents a `spatie/laravel-query-builder` list endpoint: a {@see QueryBuilderTraceVisitor} recovers the
+ * subject model, allow-lists and pagination from the action and from the constructor of every builder
+ * subclass it is handed, then each filter is typed by its column's cast and the facts become query
+ * parameters under the document's representation policy and the package's own parameter names.
  *
  * Writes at the integration layer, so docblocks and attributes still override.
  */
@@ -48,6 +47,8 @@ final class QueryBuilderParametersExtension implements OperationExtension
         private readonly ScopeParameterResolver $scopes = new ScopeParameterResolver,
         private readonly CustomFilterReader $customFilters = new CustomFilterReader,
         private readonly ResponseDraftApplier $errors = new ResponseDraftApplier,
+        /** The app's vendor boundary, supplied by the service provider — see {@see QbBuilderRoots}. */
+        private readonly ?Closure $isVendorFile = null,
     ) {}
 
     private const INVALID_QUERY = 'Spatie\\QueryBuilder\\Exceptions\\InvalidQuery';
@@ -59,8 +60,14 @@ final class QueryBuilderParametersExtension implements OperationExtension
 
     public function handle(OperationDraft $operation, RouteContext $context): void
     {
-        $visitor = new QueryBuilderTraceVisitor(customTerminals: $this->customTerminals($context));
+        $visitor = new QueryBuilderTraceVisitor(
+            customTerminals: $this->customTerminals($context),
+            paths: $context->pathResolver,
+        );
+        // The action first — the outermost paginating terminal has to be the one the action itself writes —
+        // then each injected builder's constructor, into the same facts.
         $context->trace($visitor);
+        $this->traceInjectedBuilders($visitor, $context);
 
         $facts = $visitor->facts;
         if ($facts->isEmpty()) {
@@ -81,6 +88,19 @@ final class QueryBuilderParametersExtension implements OperationExtension
         $this->reportNoAllowLists($facts, $context);
         $this->reportDefaultConfig($context);
         $this->documentStrictModeError($operation, $context);
+    }
+
+    /**
+     * Traces the constructor of every builder subclass the action is handed ({@see QbBuilderRoots}) with the
+     * SAME visitor, so a query object that configures itself in its constructor contributes to the same
+     * facts. {@see RouteContext::traceFrom()} records each walk's files, so editing the query class
+     * invalidates the fragment.
+     */
+    private function traceInjectedBuilders(QueryBuilderTraceVisitor $visitor, RouteContext $context): void
+    {
+        foreach (QbBuilderRoots::forAction($context->actionRef, $this->isVendorFile) as $root) {
+            $context->traceFrom($root, $visitor);
+        }
     }
 
     /**
@@ -321,7 +341,7 @@ final class QueryBuilderParametersExtension implements OperationExtension
             code: 'query-builder.no-allowlists-recovered',
             message: sprintf('A paginating Query Builder terminal was reached in %s but no allowed filters/sorts/includes were recovered.', $context->actionRef->symbol()),
             routeSignature: $context->route->signature(),
-            help: 'If this endpoint offers filters/sorts, declare them via allowedFilters()/allowedSorts() where the trace can reach them (a method returning your QueryBuilder subclass is followed); otherwise this is expected.',
+            help: 'If this endpoint offers filters/sorts, declare them via allowedFilters()/allowedSorts() somewhere the trace reaches: a method returning your QueryBuilder subclass is followed, and so is the constructor of a QueryBuilder subclass the action is type-hinted on (type-hint the subclass itself, not an interface or the base builder). Otherwise this is expected.',
         ));
     }
 

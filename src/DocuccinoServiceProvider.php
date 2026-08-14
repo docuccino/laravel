@@ -223,11 +223,17 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
 
         // Likewise query-builder: filter/sort/include/fields are renamable, and its digest contributor
         // keys the fragment cache on the same names + strict mode.
-        $this->app->bind(QueryBuilderParametersExtension::class, static function (): QueryBuilderParametersExtension {
+        $this->app->bind(QueryBuilderParametersExtension::class, static function (Application $app): QueryBuilderParametersExtension {
             /** @var array<string, mixed> $config */
             $config = (array) config('query-builder', []);
+            // That integration picks its own extra trace roots off an action's type hints, so it needs the
+            // same vendor boundary the route filter uses to refuse a package-shipped builder subclass.
+            $vendor = new VendorRoutePolicy($app->basePath('vendor'));
 
-            return new QueryBuilderParametersExtension(QueryBuilderConfig::fromArray($config));
+            return new QueryBuilderParametersExtension(
+                QueryBuilderConfig::fromArray($config),
+                isVendorFile: $vendor->isVendorFile(...),
+            );
         });
 
         $this->app->bind(QueryBuilderConfigDigestContributor::class, static function (): QueryBuilderConfigDigestContributor {

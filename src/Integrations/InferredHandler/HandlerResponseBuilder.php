@@ -68,7 +68,7 @@ final class HandlerResponseBuilder
             $draft = new ResponseDraft($status);
             $draft->setDescription(FrameworkExceptionTable::reason($status), $contribution);
 
-            if ($payload !== null && ! $payload instanceof VoidT && ! $payload instanceof NeverT && ! $payload instanceof UnknownT) {
+            if (! $draft->isBodyless() && $payload !== null && ! $payload instanceof VoidT && ! $payload instanceof NeverT && ! $payload instanceof UnknownT) {
                 $mediaType = self::contentType($type->typeArgs[2] ?? null);
                 $payload = self::resolveStatusMarkers($payload, (int) $status);
                 $schema = $context->converter()->toSchema($payload)->schema;

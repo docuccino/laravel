@@ -58,6 +58,10 @@ it('recovers the column of the simple where shapes from a callback closure', fun
     'receiver is not the query parameter' => ['function ($q, $value) { $other->where(\'a\', $value); }', null],
     'three-arg value not second parameter' => ['function ($q, $value) { $q->where(\'a\', \'=\', $other); }', null],
     'no value parameter' => ['function ($q) { $q->where(\'a\', 1); }', null],
+    // A first-class callable filters on nothing, and php-parser asserts on getArgs() for one — an
+    // AssertionError the engine swallows, taking the whole query-builder trace with it.
+    'first-class callable where' => ['function ($q, $value) { $q->where(...); }', null],
+    'arrow first-class callable where' => ['fn ($q, $value) => $q->where(...)', null],
 ]);
 
 it('recovers the column from a custom filter __invoke body', function (string $body, ?string $column): void {

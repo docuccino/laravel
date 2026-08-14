@@ -19,13 +19,19 @@ use PhpParser\ParserFactory;
 final class QbTraceScript
 {
     /**
+     * @param  string  $file  the file the snippet stands for — one document may script SEVERAL walks (an
+     *                        action, then each injected builder's constructor), and two of them claiming
+     *                        one file would put two different call sites at the same place
      * @return callable(TraceVisitor): void
      */
-    public static function forChain(string $chain, string $builderFqcn = 'Spatie\\QueryBuilder\\QueryBuilder'): callable
-    {
-        return static function (TraceVisitor $visitor) use ($chain, $builderFqcn): void {
+    public static function forChain(
+        string $chain,
+        string $builderFqcn = 'Spatie\\QueryBuilder\\QueryBuilder',
+        string $file = 'test.php',
+    ): callable {
+        return static function (TraceVisitor $visitor) use ($chain, $builderFqcn, $file): void {
             $ast = (new ParserFactory)->createForNewestSupportedVersion()->parse("<?php\n\$q = ".$chain.";\n") ?? [];
-            $scope = new StubTraceScope(new ClassT($builderFqcn));
+            $scope = new StubTraceScope(new ClassT($builderFqcn), file: $file);
 
             $traverser = new NodeTraverser(new class($visitor, $scope) extends NodeVisitorAbstract
             {

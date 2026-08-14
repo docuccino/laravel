@@ -8,6 +8,8 @@ use Docuccino\Attributes\Example;
 use Docuccino\Attributes\IgnoreResponse;
 use Docuccino\Attributes\Response;
 use Docuccino\Attributes\ResponseHeader;
+use Docuccino\Core\Diagnostics\Diagnostic;
+use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Draft\OperationDraft;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\OperationExtension;
@@ -49,16 +51,38 @@ final class AttributeResponsesExtension implements OperationExtension
             $response->setDescription('OK', Contribution::fallback());
             $response->setDescription($attribute->description, Contribution::attribute($context->actionSource()));
 
-            if ($attribute->type !== null) {
-                $schema = $context->converter()->toSchema($this->types->parse($attribute->type, $imports))->schema;
-                foreach ($schema as $keyword => $value) {
-                    $response->content($attribute->mediaType)->set($keyword, $value, Contribution::attribute($context->actionSource()));
-                }
+            if ($attribute->type === null) {
+                continue;
+            }
+
+            // Unlike the idiomatic `response()->json(null, 204)` inference drops in silence, naming a body
+            // AND a bodyless status in one attribute is a deliberate statement that can't be honoured.
+            if ($response->isBodyless()) {
+                $this->reportBodylessBody($context, $status, $attribute->type);
+
+                continue;
+            }
+
+            $schema = $context->converter()->toSchema($this->types->parse($attribute->type, $imports))->schema;
+            foreach ($schema as $keyword => $value) {
+                $response->content($attribute->mediaType)->set($keyword, $value, Contribution::attribute($context->actionSource()));
             }
         }
 
         $this->applyResponseHeaders($operation, $context, $imports);
         $this->applyExamples($operation, $context);
+    }
+
+    private function reportBodylessBody(RouteContext $context, string $status, string $type): void
+    {
+        $context->components->addDiagnostic(new Diagnostic(
+            severity: Severity::Warning,
+            code: 'attribute.body-on-bodyless-status',
+            message: sprintf('#[Response(status: %s, type: %s)] names a body under a status HTTP forbids one on; the body is not documented.', $status, $type),
+            source: $context->actionSource(),
+            routeSignature: $context->route->signature(),
+            help: 'Document the body under a status that may carry one, or drop `type:` — 1xx, 204, 205 and 304 responses never carry content (RFC 9110).',
+        ));
     }
 
     private function applyResponseHeaders(OperationDraft $operation, RouteContext $context, ImportContext $imports): void

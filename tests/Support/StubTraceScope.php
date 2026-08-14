@@ -6,6 +6,7 @@ namespace Docuccino\Laravel\Tests\Support;
 
 use Docuccino\Core\Inference\ConstValue;
 use Docuccino\Core\Inference\DType\DType;
+use Docuccino\Core\Inference\FoldsCallReturns;
 use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Inference\TraceVisitor;
 use Docuccino\Core\Inference\TypeScope;
@@ -19,10 +20,54 @@ use PhpParser\Node;
  * expressions to instance
  * values (mirroring what the real engine hands back, so the visitor's harvest logic is exercised for
  * real). Non-constant sub-expressions (a variable) fold to `unknown`, exercising the degradation path.
+ *
+ * It also stands in for the engine's deferred return folds ({@see FoldsCallReturns}): `$foldedReturns` says
+ * what a call to a given method name answers with, queued and then drained by {@see drainReturnFolds()} the
+ * way the Tracer drains once a walk is over. A method the map doesn't mention is one the engine declines to
+ * queue at all — a vendor or unresolvable callee.
  */
-final class StubTraceScope implements TypeScope
+final class StubTraceScope implements FoldsCallReturns, TypeScope
 {
-    public function __construct(private readonly DType $receiverType) {}
+    /** @var list<array{0: callable(?ConstValue, ?Node\Expr): void, 1: ?ConstValue, 2: ?Node\Expr}> */
+    private array $pending = [];
+
+    /**
+     * @param  array<string, array{0: ?ConstValue, 1: ?Node\Expr}>  $foldedReturns  method name → the fold's answer
+     * @param  string  $file  the file this snippet stands for — two scripted walks over DIFFERENT code must
+     *                        not claim the same one, or its call sites collide
+     */
+    public function __construct(
+        private readonly DType $receiverType,
+        private readonly array $foldedReturns = [],
+        private readonly string $file = 'test.php',
+    ) {}
+
+    public function deferReturnFold(Node\Expr $call, callable $onFolded): bool
+    {
+        $name = ($call instanceof Node\Expr\MethodCall || $call instanceof Node\Expr\StaticCall)
+            && $call->name instanceof Node\Identifier
+                ? $call->name->toString()
+                : null;
+
+        if ($name === null || ! array_key_exists($name, $this->foldedReturns)) {
+            return false;
+        }
+
+        $this->pending[] = [$onFolded, ...$this->foldedReturns[$name]];
+
+        return true;
+    }
+
+    /** Answer every queued fold, in request order, as the engine does after the walk. */
+    public function drainReturnFolds(): void
+    {
+        $pending = $this->pending;
+        $this->pending = [];
+
+        foreach ($pending as [$onFolded, $value, $expr]) {
+            $onFolded($value, $expr);
+        }
+    }
 
     public function typeOf(Node\Expr $expr): DType
     {
@@ -36,7 +81,7 @@ final class StubTraceScope implements TypeScope
 
     public function location(Node $node): SourceLocation
     {
-        return new SourceLocation('test.php', $node->getStartLine(), $node->getStartFilePos());
+        return new SourceLocation($this->file, $node->getStartLine(), $node->getStartFilePos());
     }
 
     private function fold(Node\Expr $expr): ?ConstValue
@@ -93,6 +138,24 @@ final class StubTraceScope implements TypeScope
             }
 
             return ConstValue::descriptor($factory, $args);
+        }
+
+        // A fluent call over a descriptor receiver appends to its chain, as the real engine does, so
+        // `AllowedFilter::partial('email')->nullable()` keeps both halves. A first-class callable carries no
+        // args (and `getArgs()` asserts on one), so it declines.
+        if ($expr instanceof Node\Expr\MethodCall
+            && $expr->name instanceof Node\Identifier
+            && ! $expr->isFirstClassCallable()
+        ) {
+            $receiver = $this->fold($expr->var);
+            if ($receiver !== null && $receiver->isDescriptor()) {
+                $args = [];
+                foreach ($expr->getArgs() as $arg) {
+                    $args[] = $this->fold($arg->value) ?? ConstValue::unknown('non-constant arg');
+                }
+
+                return $receiver->withChainedCall($expr->name->toString(), $args);
+            }
         }
 
         // `new Iban('GB')` folds to an instance value, as the real engine does — the rules recovery keys

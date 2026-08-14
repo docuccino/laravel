@@ -215,6 +215,38 @@ it('emits a native (non-enum) cast schema as its scalar type keeping the plain-s
         ->and($byName['filter[active]']->description)->toBe('Exact-match filter');
 });
 
+/**
+ * Every filter kind, typed by nothing (no column resolved), in both policies. A kind whose matching is
+ * `LIKE`/column-comparison is a string on the wire and says so; `callback`/`custom` take whatever their
+ * user code takes, so they stay untyped rather than pinning a guess a better-informed producer could
+ * then only shadow. An unrecognised kind degrades to the string default.
+ */
+it('leaves an untypable filter untyped only where the kind is user code', function (string $kind, ?string $type): void {
+    $facts = factsWith(function (QueryBuilderFacts $f) use ($kind): void {
+        $f->filters = [new QbEntry('thing', $kind)];
+    });
+
+    $bracketed = specsByName((new QueryBuilderParameters)->build($facts, bracketedPolicy()))['filter[thing]']->schema;
+    $property = (new QueryBuilderParameters)->build($facts, deepObjectPolicy())[0]->schema['properties']['thing'];
+
+    expect($bracketed['type'] ?? null)->toBe($type)
+        ->and($property['type'] ?? null)->toBe($type)
+        // Untyped is not empty: the description still documents the parameter.
+        ->and($property['description'] ?? null)->toBeString();
+})->with([
+    'callback (opaque)' => ['callback', null],
+    'custom (opaque)' => ['custom', null],
+    'default' => ['default', 'string'],
+    'partial' => ['partial', 'string'],
+    'exact' => ['exact', 'string'],
+    'beginsWithStrict' => ['beginsWithStrict', 'string'],
+    'endsWithStrict' => ['endsWithStrict', 'string'],
+    'scope' => ['scope', 'string'],
+    'operator' => ['operator', 'string'],
+    'belongsTo' => ['belongsTo', 'string'],
+    'unknown kind' => ['no-such-kind', 'string'],
+]);
+
 it('carries a constant ->default() onto the schema as the single value (not a wrapped list)', function (): void {
     $facts = factsWith(function (QueryBuilderFacts $f): void {
         $f->filters = [

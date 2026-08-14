@@ -230,7 +230,7 @@ final class InferredResponsesExtension implements OperationExtension
         $response = $operation->response($status);
         $response->setDescription(self::REASONS[$status] ?? 'OK', Contribution::fallback());
 
-        if ($payloads === []) {
+        if ($payloads === [] || $response->isBodyless()) {
             return;
         }
 

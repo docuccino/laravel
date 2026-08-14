@@ -26,6 +26,9 @@ final class QueryBuilderParameters
     /** Spatie's `FiltersTrashed` accepts exactly these. */
     private const TRASHED_VALUES = ['with', 'only'];
 
+    /** Filter kinds whose value type is user code's to decide — never guessed. See {@see schemaWithoutColumn()}. */
+    private const OPAQUE_KINDS = ['callback', 'custom'];
+
     /**
      * Filter kind → human description fragment.
      *
@@ -102,7 +105,7 @@ final class QueryBuilderParameters
     /**
      * `[schema, style, explode]` for a bracketed filter: the soft-delete filter is a fixed enum, an
      * enum-typed one a comma-serialised array so a `whereIn` list validates, a resolved column its
-     * scalar schema, everything else a plain string.
+     * scalar schema, everything else {@see schemaWithoutColumn()}.
      *
      * @return array{0: array<string, mixed>, 1: string|null, 2: bool|null}
      */
@@ -118,9 +121,21 @@ final class QueryBuilderParameters
             return [$this->withDefault($schema, $filter), 'form', false];
         }
 
-        $schema = $filter->columnSchema ?? ['type' => 'string'];
+        $schema = $filter->columnSchema ?? self::schemaWithoutColumn($filter);
 
         return [$this->withDefault($schema, $filter), null, null];
+    }
+
+    /**
+     * The schema for a filter no column typed. A `LIKE`-matching kind is a string by construction; a
+     * `callback`/`custom` one takes whatever its user code takes, so it says NOTHING rather than pinning a
+     * `type` a better-informed producer downstream could only contradict.
+     *
+     * @return array<string, mixed>
+     */
+    private static function schemaWithoutColumn(QbEntry $filter): array
+    {
+        return in_array($filter->kind, self::OPAQUE_KINDS, true) ? [] : ['type' => 'string'];
     }
 
     /**
@@ -135,7 +150,7 @@ final class QueryBuilderParameters
         } elseif ($filter->enumTyped && $filter->columnSchema !== null) {
             $schema = ['type' => 'array', 'items' => $filter->columnSchema];
         } else {
-            $schema = $filter->columnSchema ?? ['type' => 'string'];
+            $schema = $filter->columnSchema ?? self::schemaWithoutColumn($filter);
         }
 
         $schema['description'] = $this->filterDescription($filter);

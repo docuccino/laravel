@@ -73,7 +73,10 @@ final class WhereColumnAnalyzer
         return $expr === null ? null : $this->fromWhereCall($expr, $queryVar, $valueVar);
     }
 
-    /** COLUMN from either accepted `where` shape, else null. */
+    /**
+     * COLUMN from either accepted `where` shape, else null. A first-class callable (`$query->where(...)`)
+     * filters on nothing and carries no arguments to read, so it bails with the rest.
+     */
     private function fromWhereCall(Node\Expr $expr, string $queryVar, string $valueVar): ?string
     {
         if (! $expr instanceof Node\Expr\MethodCall
@@ -81,6 +84,7 @@ final class WhereColumnAnalyzer
             || $expr->var->name !== $queryVar
             || ! $expr->name instanceof Node\Identifier
             || $expr->name->toString() !== 'where'
+            || $expr->isFirstClassCallable()
         ) {
             return null;
         }

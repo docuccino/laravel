@@ -32,11 +32,16 @@ final class VendorRoutePolicy
             return false;
         }
 
-        if ($controllerFile === null || $controllerFile === '') {
-            return false; // closure / unreflectable — never a vendor controller
-        }
+        return $this->isVendorFile($controllerFile);
+    }
 
-        return $this->isUnderVendor($controllerFile);
+    /**
+     * Whether a file lives inside the application's vendor directory — the boundary itself, without the
+     * route-exclusion question wrapped around it. Nothing (a closure, an unreflectable action) is vendor.
+     */
+    public function isVendorFile(?string $file): bool
+    {
+        return $file !== null && $file !== '' && $this->isUnderVendor($file);
     }
 
     private function isUnderVendor(string $file): bool
