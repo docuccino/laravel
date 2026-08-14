@@ -59,6 +59,18 @@ it('omits provenance from UIR with --provenance=none, and includes it by default
     expect(exportTo(['--format' => 'uir']))->toContain('"provenance"');
 });
 
+it('keeps node identities by default, and drops them with --drop-ids', function (): void {
+    // The nested `x-docuccino` never survives OAS emission — it holds provenance (file, line, symbol),
+    // which has no business in a published spec. The flat id is the half worth keeping: an opaque hash of
+    // members the document already publishes, and the only thing that lets `docuccino:diff` pair this
+    // artifact by identity instead of falling back to method + path.
+    expect(exportTo([]))->toContain('"x-docuccino-id"')
+        ->and(exportTo([]))->not->toContain('"x-docuccino"')
+        ->and(exportTo([]))->not->toContain('provenance');
+
+    expect(exportTo(['--drop-ids' => true]))->not->toContain('x-docuccino');
+});
+
 it('fails for an unknown document', function (): void {
     $this->artisan('docuccino:export', ['document' => 'ghost'])
         ->expectsOutputToContain('Unknown document')

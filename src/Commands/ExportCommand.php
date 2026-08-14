@@ -39,6 +39,7 @@ final class ExportCommand extends Command
         {--out= : Output path (defaults to the document export path)}
         {--fail-on=none : none | warning | error — the severity that makes the command exit non-zero}
         {--provenance=winners : none | winners | full — UIR provenance detail}
+        {--drop-ids : Omit the flat x-docuccino-id member OpenAPI output carries by default (the artifact then diffs by method + path)}
         {--yaml : Emit YAML instead of JSON}
         {--memory-limit= : Raise the PHP memory limit for inference (e.g. 2G)}';
 
@@ -83,7 +84,10 @@ final class ExportCommand extends Command
             : 'openapi-3.2';
         $yaml = (bool) $this->option('yaml');
 
-        $options = (new EmitOptions)->withYaml($yaml)->withProvenance($this->provenanceLevel());
+        $options = (new EmitOptions)
+            ->withYaml($yaml)
+            ->withProvenance($this->provenanceLevel())
+            ->withKeepIds(! $this->option('drop-ids'));
 
         $result = match ($format) {
             'uir' => new EmitResult((new UirEmitter)->emit($document, $options), new EmitReport),

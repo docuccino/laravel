@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Docuccino\Core\Diagnostics\Severity;
+use Docuccino\Core\Emit\EmitOptions;
 use Docuccino\Core\Emit\OpenApi32Emitter;
 use Docuccino\Core\Emit\UirEmitter;
 use Docuccino\Laravel\Facades\Docuccino;
@@ -22,17 +23,35 @@ it('exports UIR and OpenAPI byte-identical to the committed goldens', function (
 });
 
 it('writes the artifact end-to-end via docuccino:export', function (): void {
+    // The command keeps node ids where a bare emit drops them: an artifact you commit is one you will
+    // later diff, and identities are what make that diff semantic rather than method + path guesswork.
     bindStubEngine();
 
+    $document = generateDocument()->document;
+
+    expect(exportedArtifact([]))
+        ->toBe((new OpenApi32Emitter)->emit($document, (new EmitOptions)->withKeepIds()));
+
+    // …and --drop-ids gives back the pure-OpenAPI bytes the emitter produces on its own.
+    expect(exportedArtifact(['--drop-ids' => true]))
+        ->toBe(file_get_contents(golden('workbench.openapi.json')));
+});
+
+/**
+ * @param  array<string, mixed>  $options
+ */
+function exportedArtifact(array $options): string
+{
     $out = sys_get_temp_dir().'/docuccino-export-'.uniqid().'.json';
 
-    $this->artisan('docuccino:export', ['--format' => 'openapi-3.2', '--out' => $out])
+    test()->artisan('docuccino:export', ['--format' => 'openapi-3.2', '--out' => $out] + $options)
         ->assertSuccessful();
 
-    expect(file_get_contents($out))->toBe(file_get_contents(golden('workbench.openapi.json')));
-
+    $contents = (string) file_get_contents($out);
     @unlink($out);
-});
+
+    return $contents;
+}
 
 it('picks up an extension registered AFTER the app has booted (late-binding trap)', function (): void {
     bindStubEngine();
