@@ -10,7 +10,6 @@ use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
 use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
-use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Docuccino\Core\Patch\Contribution;
 
 /**
@@ -32,9 +31,7 @@ final class ActionHtmlResponseExtension implements OperationExtension
 
     public function handle(OperationDraft $operation, RouteContext $context): void
     {
-        // `htmlResponse()` and the action traits are both inheritance-answered, so a base action decides
-        // whether this endpoint serves HTML.
-        $context->recordDependencyFiles(DeclarationFiles::of($context->actionRef->class));
+        LaravelAction::dependsOnDeclaration($context);
 
         if (! LaravelAction::definesHtmlResponse($context->actionRef->class)) {
             return;

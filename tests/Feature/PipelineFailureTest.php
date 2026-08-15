@@ -21,7 +21,7 @@ use Illuminate\Routing\Router;
 
 /**
  * Pipeline failure semantics (design §5): --fail-on exit-code matrix, the validate command's
- * schema-violation failure, per-route engine-exception isolation, and component rollback (arch A3).
+ * schema-violation failure, per-route engine-exception isolation, and component rollback.
  */
 it('honours the --fail-on matrix against the broken route', function (string $failOn, bool $fails): void {
     app()->instance(TypeEngine::class, WorkbenchEngine::make());

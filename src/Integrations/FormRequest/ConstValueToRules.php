@@ -7,6 +7,7 @@ namespace Docuccino\Laravel\Integrations\FormRequest;
 use Docuccino\Core\Extensions\Schema\EnumReflection;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 use Docuccino\Core\Inference\ConstValue;
+use Docuccino\Laravel\Integrations\Support\DependencyFileSet;
 use Docuccino\Laravel\Integrations\Support\RuleParsing;
 use Docuccino\Laravel\Integrations\Validation\CustomRuleReader;
 
@@ -22,14 +23,13 @@ use Docuccino\Laravel\Integrations\Validation\CustomRuleReader;
  */
 final class ConstValueToRules
 {
-    /**
-     * @var list<string>
-     */
-    private array $dependencyFiles = [];
+    private readonly DependencyFileSet $dependencyFiles;
 
     public function __construct(
         private readonly CustomRuleReader $customRules = new CustomRuleReader,
-    ) {}
+    ) {
+        $this->dependencyFiles = new DependencyFileSet;
+    }
 
     /**
      * @return list<ValidationRule>
@@ -79,15 +79,7 @@ final class ConstValueToRules
      */
     public function dependencyFiles(): array
     {
-        return $this->dependencyFiles;
-    }
-
-    /** Remember a file the fold read, if there was one. */
-    private function remember(?string $file): void
-    {
-        if ($file !== null && ! in_array($file, $this->dependencyFiles, true)) {
-            $this->dependencyFiles[] = $file;
-        }
+        return $this->dependencyFiles->all();
     }
 
     /**
@@ -100,7 +92,7 @@ final class ConstValueToRules
     {
         $facts = $this->customRules->read(ltrim((string) $value->class, '\\'));
 
-        $this->remember($facts->file);
+        $this->dependencyFiles->add($facts->file);
 
         return $facts->rules;
     }
@@ -131,7 +123,7 @@ final class ConstValueToRules
 
         // The backing VALUES go into the rule, so adding a case rewrites it while the request class the
         // rule was read from hasn't moved.
-        $this->remember($fqcn === '' ? null : EnumReflection::file($fqcn));
+        $this->dependencyFiles->add($fqcn === '' ? null : EnumReflection::file($fqcn));
 
         $values = $fqcn === '' ? [] : array_map(strval(...), EnumReflection::values($fqcn));
 

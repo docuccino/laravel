@@ -158,7 +158,7 @@ it('synthesises timestamps + soft-delete columns and a uuid primary key', functi
 it('resolves the route-key schema for a bound model across every key kind', function (string $fqcn, array $expected): void {
     // The pure resolver a bound `{model}` path parameter uses (uuid/ulid/int/string), degrading to
     // integer for a non-model or unreflectable FQCN.
-    expect(EloquentModelReflector::keySchemaFor($fqcn))->toBe($expected);
+    expect((new EloquentModelReflector)->keySchemaFor($fqcn))->toBe($expected);
 })->with([
     'HasUuids → string/uuid' => [Vault::class, ['type' => 'string', 'format' => 'uuid']],
     'HasUlids → string/ulid' => [Waybill::class, ['type' => 'string', 'format' => 'ulid']],

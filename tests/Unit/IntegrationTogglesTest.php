@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
+use Docuccino\Core\Extensions\ResolvedExtensions;
 use Docuccino\Laravel\Integrations\Permission\PermissionExtension;
 use Docuccino\Laravel\Integrations\Sanctum\SanctumSecurityExtension;
 use Docuccino\Laravel\Registry\DefaultExtensions;
@@ -101,13 +102,15 @@ it('changes the resolved-extension cache signature when an integration is toggle
     $withPermission = $registry->resolve(app(), DefaultExtensions::all(toggleDocument(['permission' => ['enabled' => true]])), []);
     $withoutPermission = $registry->resolve(app(), DefaultExtensions::all(toggleDocument(['permission' => ['enabled' => false]])), []);
 
-    // Flipping `enabled` adds or removes PermissionExtension from the resolved set, so the FQCN-list
-    // cache-key input differs and the fragment cache can't serve a stale cross-toggle hit.
-    expect($withPermission->classSignature())->toContain(PermissionExtension::class)
-        ->and($withoutPermission->classSignature())->not->toContain(PermissionExtension::class)
+    // Flipping `enabled` adds or removes PermissionExtension from the resolved set, so the cache-key
+    // input differs and the fragment cache can't serve a stale cross-toggle hit.
+    $entries = static fn (ResolvedExtensions $resolved): string => implode("\n", $resolved->cacheSignature());
+
+    expect($entries($withPermission))->toContain(PermissionExtension::class)
+        ->and($entries($withoutPermission))->not->toContain(PermissionExtension::class)
         ->and($withPermission->cacheSignature())->not->toBe($withoutPermission->cacheSignature());
 
     // Sanctum is likewise a cache-key discriminator: its security extension leaves the signature.
     $withoutSanctum = $registry->resolve(app(), DefaultExtensions::all(toggleDocument(['sanctum' => ['enabled' => false]])), []);
-    expect($withoutSanctum->classSignature())->not->toContain(SanctumSecurityExtension::class);
+    expect($entries($withoutSanctum))->not->toContain(SanctumSecurityExtension::class);
 });

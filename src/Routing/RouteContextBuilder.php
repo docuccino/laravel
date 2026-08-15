@@ -11,6 +11,7 @@ use Docuccino\Core\Extensions\Contracts\ExceptionToResponse;
 use Docuccino\Core\Extensions\Contracts\PayloadMediaTypeResolver;
 use Docuccino\Core\Extensions\Contracts\ResponseAnalysisTarget;
 use Docuccino\Core\Extensions\Contracts\ResponseStatusResolver;
+use Docuccino\Core\Extensions\Contracts\RouteBindingFieldSchemaResolver;
 use Docuccino\Core\Extensions\Contracts\RouteBindingSchemaResolver;
 use Docuccino\Core\Extensions\Contracts\RuleTransformer;
 use Docuccino\Core\Extensions\Contracts\TypeToSchema;
@@ -50,6 +51,7 @@ final class RouteContextBuilder
      * @param  list<ResponseStatusResolver>  $responseStatusResolvers
      * @param  list<PayloadMediaTypeResolver>  $payloadMediaTypeResolvers
      * @param  list<RouteBindingSchemaResolver>  $routeBindingSchemaResolvers
+     * @param  list<RouteBindingFieldSchemaResolver>  $routeBindingFieldSchemaResolvers
      */
     public function build(
         RouteDescriptor $descriptor,
@@ -64,6 +66,7 @@ final class RouteContextBuilder
         array $responseStatusResolvers = [],
         array $payloadMediaTypeResolvers = [],
         array $routeBindingSchemaResolvers = [],
+        array $routeBindingFieldSchemaResolvers = [],
     ): ?RouteContext {
         // Reuse the Route + reflection the resolver already produced. On a container miss the index is
         // empty, so fall back to a lookup and fresh reflection.
@@ -106,6 +109,7 @@ final class RouteContextBuilder
             payloadMediaTypeResolvers: $payloadMediaTypeResolvers,
             routeBindingSchemaResolvers: $routeBindingSchemaResolvers,
             formRequestClass: $this->formRequestClass($reflected),
+            routeBindingFieldSchemaResolvers: $routeBindingFieldSchemaResolvers,
         );
     }
 
@@ -158,8 +162,7 @@ final class RouteContextBuilder
                 continue;
             }
 
-            $domain = $route->getDomain();
-            if (($domain === null || $domain === '' ? null : strtolower($domain)) === $descriptor->domain) {
+            if (RouteHost::of($route) === $descriptor->domain) {
                 return $route;
             }
 

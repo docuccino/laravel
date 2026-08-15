@@ -30,21 +30,12 @@ beforeEach(function (): void {
         return [$result->document->toArray(), $result->diagnostics, $result->document];
     };
 
-    $this->cacheInto = static function (string $slug): string {
-        $dir = sys_get_temp_dir().'/docuccino-'.$slug.'-'.uniqid('', true);
-        config()->set('docuccino.cache.enabled', true);
-        config()->set('docuccino.cache.path', $dir);
-
-        return $dir;
-    };
 });
 
 afterEach(function (): void {
     $path = config('docuccino.cache.path');
-    if (is_string($path) && is_dir($path)) {
-        array_map('unlink', glob($path.'/*') ?: []);
-        @unlink($path.'/.gitignore');
-        @rmdir($path);
+    if (is_string($path)) {
+        removeFragmentCacheDir($path);
     }
 });
 
@@ -87,8 +78,8 @@ it('keeps the same host of the pair whichever order the routes were registered i
 });
 
 it('lets a host-less route keep the URI when a hosted sibling arrives, byte for byte', function (): void {
-    // Locality: adding a route must not move an unrelated route's emitted representation — and the
-    // identity of every operation ever emitted for a host-less route has to survive this change.
+    // Locality: adding a route must not move an unrelated route's emitted representation, and a
+    // host-less route's operation id must not depend on whether a hosted sibling exists.
     [$alone] = ($this->hostedDocument)(static function ($router): void {
         $router->get('api/zz-hosts', [ApiReportController::class, 'index']);
     });
@@ -200,7 +191,7 @@ it('carries over a variable the inherited base path still names, and drops the r
 /**
  * `Route::domain(config('app.admin_domain'))` is ordinary Laravel, and the value behind it is env. The
  * published server URL is then exactly as unreachable as an unpinned `app.url`, so it gets the same
- * rule — a host-bound URL was the one path around it.
+ * rule; a host-bound URL is otherwise the one published URL nothing checks.
  */
 it('warns when the host a route binds itself to names the build machine', function (): void {
     [, $diagnostics] = ($this->hostedDocument)(static function ($router): void {
@@ -217,10 +208,9 @@ it('warns when the host a route binds itself to names the build machine', functi
 });
 
 it('serves a warm build the same bytes and the same diagnostics as a cold one', function (): void {
-    // Through `assertWarmEqualsCold()` rather than by building twice into one cache directory: nothing
-    // in that shape checked the cache was written OR hit, so both builds could be cold and agree — the
-    // test would stay green with the fragment cache entirely inert. The helper proves the cache file
-    // exists and that the warm build reached the type engine strictly less often.
+    // Through `assertWarmEqualsCold()` rather than by building twice into one cache directory: that
+    // shape checks neither that the cache was written nor that it was hit, so both builds can be cold
+    // and agree, and the test stays green with the fragment cache entirely inert.
     $routes = static function (Router $router): void {
         $router->domain('a.example.com')->get('api/zz-hosts', [ApiReportController::class, 'index']);
         $router->domain('b.example.com')->get('api/zz-hosts', [AdminReportController::class, 'index']);
@@ -241,7 +231,7 @@ it('never serves one host the fragment cached for its sibling on the same URI', 
     // action — a tenant group and a public one pointing at one controller is exactly that shape — so
     // the host is the ONLY thing between them. Leave it out of the key and the second build is served
     // the first host's fragment: a document describing an endpoint that is not there.
-    $dir = ($this->cacheInto)('hosts-swap');
+    $dir = fragmentCacheDir('hosts-swap');
 
     [$first] = ($this->hostedDocument)(static function ($router): void {
         $router->domain('a.example.com')->get('api/zz-swap', [ApiReportController::class, 'index']);

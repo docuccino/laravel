@@ -24,10 +24,9 @@ use Illuminate\Routing\Router;
 use Workbench\App\Http\Controllers\FormController;
 
 /**
- * Real-path coverage (design §Phase 4 — rate limiting): the extension reads the actual gathered
- * route middleware through the pipeline and contributes a 429 with rate headers. The 429 is the same
- * for every throttled route whatever its limit; only a route throttling on a limiter name nothing
- * registered raises a diagnostic.
+ * Real-path coverage: the extension reads the actual gathered route middleware through the pipeline and
+ * contributes a 429 with rate headers. The 429 is the same for every throttled route whatever its
+ * limit; only a route throttling on a limiter name nothing registered raises a diagnostic.
  */
 /** @return array{array<string, mixed>, array<string, mixed>} the emitted document and the GET operation */
 function throttledOperation(string $path): array
@@ -56,8 +55,9 @@ it('adds a 429 with Retry-After + X-RateLimit-* headers for a numeric throttle',
     [$document, $operation] = throttledOperation('api/throttled');
 
     expect($operation['responses'])->toHaveKey('429');
-    // The headers are a per-operation fact — a Reference Object cannot carry them beside a `$ref`, so
-    // only the body SHAPE is shared and each throttled operation states its own header block.
+    // Resolved through the components, because every throttled 429 is identical down to its headers and
+    // so the whole response hoists — the operation carries a bare `$ref`. The row after this one pins
+    // that; this one pins what the resolved response says.
     $response = resolveResponse($document, $operation['responses']['429']);
     expect($response['headers'])->toHaveKeys(['Retry-After', 'X-RateLimit-Limit', 'X-RateLimit-Remaining'])
         ->and($response['headers']['X-RateLimit-Limit']['schema'])->toBe(['type' => 'integer'])
@@ -67,9 +67,9 @@ it('adds a 429 with Retry-After + X-RateLimit-* headers for a numeric throttle',
 
 it('documents routes on different limits with ONE shared 429 shape', function (): void {
     // The payoff. `throttle:60,1` and `throttle:120,1` state the same contract — a 429 with rate-limit
-    // headers — so they have to state it in the same bytes. Baking the limits in split that into an
-    // `Error429` and an `Error429_2` whose description and content were byte-identical, plus two routes
-    // that folded with nothing and stayed inline.
+    // headers — so they have to state it in the same bytes. Baking each route's limits into the
+    // description or the header schemas splits one shape into several byte-identical ones, and leaves
+    // the routes nothing to fold with.
     /** @var Router $router */
     $router = app('router');
     $router->get('api/throttled-sixty', [FormController::class, 'index'])->middleware('throttle:60,1');

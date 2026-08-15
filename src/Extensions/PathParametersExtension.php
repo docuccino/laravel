@@ -10,6 +10,7 @@ use Docuccino\Core\Draft\OperationDraft;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
+use Docuccino\Core\Extensions\Contracts\RouteBindingFieldSchemaResolver;
 use Docuccino\Core\Extensions\Contracts\RouteBindingSchemaResolver;
 use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
@@ -81,9 +82,9 @@ final class PathParametersExtension implements OperationExtension
 
     /**
      * The schema a bound parameter resolves to: the named column's when the route names one
-     * (`{post:slug}`), else the model's route key. The two are NOT interchangeable — a route bound on a
-     * slug accepts a slug, and answering with the key's `integer` would be a confident wrong type — so an
-     * untyped column falls through to the caller's string fallback rather than back to the key.
+     * (`{post:slug}`), else the model's route key. The two are NOT interchangeable, so an untyped column
+     * falls through to the caller's string fallback rather than back to the key
+     * ({@see RouteBindingFieldSchemaResolver}).
      *
      * @return array<string, mixed>|null
      */

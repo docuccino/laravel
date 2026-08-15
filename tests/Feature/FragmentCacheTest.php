@@ -51,26 +51,12 @@ function tempDependencyFile(): string
  * The OperationFragment cache: warm hits are byte-identical and skip the engine, and fragments
  * invalidate when the document config or a dependency file changes.
  */
-function enableFragmentCache(): string
-{
-    $dir = sys_get_temp_dir().'/docuccino-fragments-'.uniqid('', true);
-
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', $dir);
-
-    return $dir;
-}
-
 afterEach(function (): void {
-    foreach (glob(sys_get_temp_dir().'/docuccino-fragments-*') ?: [] as $dir) {
-        array_map('unlink', glob($dir.'/*') ?: []);
-        @unlink($dir.'/.gitignore');
-        @rmdir($dir);
-    }
+    removeFragmentCacheDirs('fragments');
 });
 
 it('serves a warm cache hit byte-identically while skipping the engine', function (): void {
-    enableFragmentCache();
+    fragmentCacheDir('fragments');
     $engine = new CountingTypeEngine(WorkbenchEngine::make());
     app()->instance(TypeEngine::class, $engine);
 
@@ -101,7 +87,7 @@ it('serves a warm cache hit byte-identically for a problem-details document', fu
     // A warm hit rebuilds `components` from the `$ref`s each fragment carries, so anything registered
     // without being referenced exists only on a cold build — the preset's shared `Problem*` responses
     // and the throttled route's 429 are where that asymmetry shows up.
-    enableFragmentCache();
+    fragmentCacheDir('fragments');
     $engine = new CountingTypeEngine(WorkbenchEngine::make());
     app()->instance(TypeEngine::class, $engine);
 
@@ -116,7 +102,7 @@ it('serves a warm cache hit byte-identically for a problem-details document', fu
 });
 
 it('invalidates fragments when the document config changes', function (): void {
-    enableFragmentCache();
+    fragmentCacheDir('fragments');
     $engine = new CountingTypeEngine(WorkbenchEngine::make());
     app()->instance(TypeEngine::class, $engine);
 
@@ -131,7 +117,7 @@ it('invalidates fragments when the document config changes', function (): void {
 });
 
 it('invalidates a fragment when one of its dependency files changes', function (): void {
-    enableFragmentCache();
+    fragmentCacheDir('fragments');
 
     $dependency = sys_get_temp_dir().'/docuccino-dep-'.uniqid('', true).'.php';
     file_put_contents($dependency, '<?php // v1');
@@ -161,7 +147,7 @@ it('invalidates a fragment when one of its dependency files changes', function (
 });
 
 it('invalidates a fragment when a returned DTO file is edited (classMetadata dependency)', function (): void {
-    enableFragmentCache();
+    fragmentCacheDir('fragments');
 
     $dto = tempDependencyFile();
     // FormData's reflected shape now declares the temp file as its dependency, mirroring what the
@@ -187,7 +173,7 @@ it('invalidates a fragment when a returned DTO file is edited (classMetadata dep
 });
 
 it('invalidates a fragment when a returned model file is edited (classMetadata dependency)', function (): void {
-    enableFragmentCache();
+    fragmentCacheDir('fragments');
 
     $model = tempDependencyFile();
     $widget = 'Docuccino\\Laravel\\Tests\\Fixtures\\Eloquent\\Widget';
@@ -211,7 +197,7 @@ it('invalidates a fragment when a returned model file is edited (classMetadata d
 });
 
 it('invalidates a fragment when a resource toArray file is edited (analysis dependency propagated)', function (): void {
-    enableFragmentCache();
+    fragmentCacheDir('fragments');
 
     $resourceFile = tempDependencyFile();
     // The resource's toArray analysis declares the temp file as a dependency; ToArrayObject
@@ -241,7 +227,7 @@ it('invalidates a fragment when a resource toArray file is edited (analysis depe
 });
 
 it('invalidates fragments when Relation::morphMap() changes (booted-app cache input)', function (): void {
-    enableFragmentCache();
+    fragmentCacheDir('fragments');
     $engine = new CountingTypeEngine(WorkbenchEngine::make());
     app()->instance(TypeEngine::class, $engine);
 
@@ -259,7 +245,7 @@ it('invalidates fragments when Relation::morphMap() changes (booted-app cache in
 });
 
 it('invalidates fragments when a render callback is registered (booted-app cache input)', function (): void {
-    enableFragmentCache();
+    fragmentCacheDir('fragments');
     $engine = new CountingTypeEngine(WorkbenchEngine::make());
     app()->instance(TypeEngine::class, $engine);
 
@@ -277,7 +263,7 @@ it('invalidates fragments when a render callback is registered (booted-app cache
 });
 
 it('invalidates fragments when app.url changes (booted-app cache input)', function (): void {
-    enableFragmentCache();
+    fragmentCacheDir('fragments');
     $engine = new CountingTypeEngine(WorkbenchEngine::make());
     app()->instance(TypeEngine::class, $engine);
 
@@ -292,7 +278,7 @@ it('invalidates fragments when app.url changes (booted-app cache input)', functi
 });
 
 it('invalidates fragments when a RateLimiter::for registration is added (booted-app cache input)', function (): void {
-    enableFragmentCache();
+    fragmentCacheDir('fragments');
     $engine = new CountingTypeEngine(WorkbenchEngine::make());
     app()->instance(TypeEngine::class, $engine);
 
@@ -309,7 +295,7 @@ it('invalidates fragments when a RateLimiter::for registration is added (booted-
 });
 
 it('invalidates fragments when the query-builder parameter names change (booted-app cache input)', function (): void {
-    enableFragmentCache();
+    fragmentCacheDir('fragments');
     $engine = new CountingTypeEngine(WorkbenchEngine::make());
     app()->instance(TypeEngine::class, $engine);
 
@@ -326,10 +312,10 @@ it('invalidates fragments when the query-builder parameter names change (booted-
 
 it('invalidates fragments when the auth guard map changes (booted-app cache input)', function (string $key, mixed $value): void {
     // Which security integration owns a route is decided by the guard's DRIVER, so re-pointing a guard
-    // re-documents every operation behind it while touching no route file. It used to be keyed by
-    // Sanctum's contributor alone, which registers only when Sanctum is installed — so a Passport-only
-    // app had nobody keying it, and its own contributor read neither key.
-    enableFragmentCache();
+    // re-documents every operation behind it while touching no route file. Keyed by Sanctum's
+    // contributor alone — which registers only when Sanctum is installed — a Passport-only app would
+    // have nobody keying it, and its own contributor reads neither key.
+    fragmentCacheDir('fragments');
     $engine = new CountingTypeEngine(WorkbenchEngine::make());
     app()->instance(TypeEngine::class, $engine);
 
@@ -377,7 +363,7 @@ it('gates each integration environment-digest contributor with its integration',
 });
 
 it('invalidates every fragment when the resolved extension set changes', function (): void {
-    enableFragmentCache();
+    fragmentCacheDir('fragments');
     $engine = new CountingTypeEngine(WorkbenchEngine::make());
     app()->instance(TypeEngine::class, $engine);
 
@@ -393,9 +379,9 @@ it('invalidates every fragment when the resolved extension set changes', functio
 
 it('invalidates every fragment when one extension INSTANCE is reconfigured', function (): void {
     // An extension is registrable as an object on every surface there is, so its configuration lives on
-    // the instance. Keyed by class name alone, `new MyExtension(mode: 'a')` and `mode: 'b'` were the
-    // same extension set, and the warm cache answered the second with output built under the first.
-    enableFragmentCache();
+    // the instance. Keyed by class name alone, `new MyExtension(mode: 'a')` and `mode: 'b'` are one
+    // extension set, and the warm cache answers the second with output built under the first.
+    fragmentCacheDir('fragments');
     $engine = new CountingTypeEngine(WorkbenchEngine::make());
     app()->instance(TypeEngine::class, $engine);
 
@@ -414,7 +400,7 @@ it('invalidates every fragment when one extension INSTANCE is reconfigured', fun
 });
 
 it('invalidates a fragment when one of its dependency files is REMOVED', function (): void {
-    enableFragmentCache();
+    fragmentCacheDir('fragments');
 
     $dependency = sys_get_temp_dir().'/docuccino-dep-'.uniqid('', true).'.php';
     file_put_contents($dependency, '<?php // v1');
@@ -452,7 +438,7 @@ it('keys fragments per route so distinct routes never collide', function (): voi
 });
 
 it('invalidates the query-builder fragment when an enum-cast filter file changes (feature 1 dependency)', function (): void {
-    enableFragmentCache();
+    fragmentCacheDir('fragments');
     $engine = new CountingTypeEngine(WorkbenchEngine::make());
     app()->instance(TypeEngine::class, $engine);
 
@@ -479,7 +465,7 @@ it('invalidates the query-builder fragment when an enum-cast filter file changes
 });
 
 it('invalidates a fragment when an annotated custom rule class is edited', function (): void {
-    enableFragmentCache();
+    fragmentCacheDir('fragments');
     app('router')->post('api/custom-rule-payments', [CustomRuleController::class, 'store']);
 
     $engine = new CountingTypeEngine(WorkbenchEngine::make(classOverrides: [
@@ -510,7 +496,7 @@ it('invalidates a fragment when an annotated custom rule class is edited', funct
 });
 
 it('ignores its own cache directory so the fragments never reach the repository', function (): void {
-    $dir = enableFragmentCache();
+    $dir = fragmentCacheDir('fragments');
     app()->instance(TypeEngine::class, WorkbenchEngine::make());
 
     generateDocument();
@@ -520,7 +506,7 @@ it('ignores its own cache directory so the fragments never reach the repository'
 });
 
 it('leaves a .gitignore the user has customised in the cache directory alone', function (): void {
-    $dir = enableFragmentCache();
+    $dir = fragmentCacheDir('fragments');
     mkdir($dir, 0755, true);
     file_put_contents($dir.'/.gitignore', "# mine\n");
     app()->instance(TypeEngine::class, WorkbenchEngine::make());

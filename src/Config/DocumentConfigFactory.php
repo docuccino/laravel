@@ -48,9 +48,9 @@ final readonly class DocumentConfigFactory
         $rawInfo = Hydrate::map($config['info'] ?? []);
         $info = $this->resolveInfo($rawInfo);
 
-        // The raw bag keeps the description's PATH and nothing else, so the fingerprint hashed a
-        // filename and not a word of what it says. Carry the contents BESIDE the path rather than in
-        // place of it — the path is what the machine-dependent-path check reads.
+        // The raw bag keeps the description's PATH and nothing else, so a fingerprint over it alone
+        // hashes a filename and not a word of what it says. Carry the contents BESIDE the path rather
+        // than in place of it — the path is what the machine-dependent-path check reads.
         $description = $rawInfo['description'] ?? null;
         if (is_array($description) && is_string($description['file'] ?? null) && is_string($info['description'])) {
             $description['contents'] = $info['description'];

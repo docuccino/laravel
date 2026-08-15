@@ -252,6 +252,7 @@ final class DocumentGenerator
                 $resolved->responseStatusResolvers,
                 $resolved->payloadMediaTypeResolvers,
                 $resolved->routeBindingSchemaResolvers,
+                $resolved->routeBindingFieldSchemaResolvers,
             );
 
             if ($context === null) {

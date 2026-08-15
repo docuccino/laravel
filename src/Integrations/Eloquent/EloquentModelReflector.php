@@ -50,7 +50,7 @@ final class EloquentModelReflector
      *
      * @return array<string, mixed>
      */
-    public static function keySchemaFor(string $fqcn): array
+    public function keySchemaFor(string $fqcn): array
     {
         if (! self::isModel($fqcn) || ! class_exists($fqcn)) {
             return ['type' => 'integer'];
@@ -62,11 +62,10 @@ final class EloquentModelReflector
     }
 
     /**
-     * The schema for the NAMED column a `{post:slug}` parameter binds on, or null when nothing types it —
-     * and null is the point: the route key's schema would say `integer` for a slug, which is worse than
-     * saying nothing. Precedence mirrors {@see ModelSchema}'s so a column can't be documented one way in a
-     * response and another way in the path: a uuid/ulid key beats a stale docblock, a `$casts` entry beats
-     * the inferred type, and the engine's `@property` type is the floor.
+     * The schema for the NAMED column a `{post:slug}` parameter binds on, or null when nothing types it.
+     * Precedence mirrors {@see ModelSchema}'s so a column can't be documented one way in a response and
+     * another way in the path: a uuid/ulid key beats a stale docblock, a `$casts` entry beats the
+     * inferred type, and the engine's `@property` type is the floor.
      *
      * A column whose type can't be carried in a URL segment (an `array` cast, a `@property` naming a class)
      * is refused rather than emitted — the parameter is a path segment, not the serialised attribute.

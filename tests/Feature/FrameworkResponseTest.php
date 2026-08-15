@@ -202,7 +202,7 @@ it('gives a bare JsonResponse an open JSON body and says so out loud', function 
 
 it('documents only the status for a framework response with no provable media type', function (): void {
     // A file download or a stream carries a body, but neither its media type nor its shape is stated
-    // anywhere — so claiming `application/json` would be a fresh lie in place of the old one.
+    // anywhere — so claiming `application/json` would be a confident wrong answer.
     $fqcn = 'Symfony\\Component\\HttpFoundation\\BinaryFileResponse';
 
     [$responses, $components, $diagnostics] = documentForReturn(

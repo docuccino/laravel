@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\LaravelActions;
 
+use Docuccino\Core\Extensions\Context\RouteContext;
+use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Docuccino\Core\Inference\ActionRef;
 use ReflectionMethod;
 
@@ -25,6 +27,18 @@ final class LaravelAction
 
     /** The methods the package treats as non-explicit (it remaps invokable routes onto these). */
     private const DISPATCH_METHODS = ['asController', 'handle', '__invoke'];
+
+    /**
+     * Record the dispatched action's declaration hierarchy as a fragment dependency. Every question
+     * below is answered by inheritance — a parent or a trait decides whether this endpoint validates,
+     * throws a 403, redirects its success body or serves HTML, without the action class itself moving
+     * ({@see DeclarationFiles}). Called before any decline, so "nothing to document here" goes stale
+     * with the file that decided it.
+     */
+    public static function dependsOnDeclaration(RouteContext $context): void
+    {
+        $context->recordDependencyFiles(DeclarationFiles::of($context->actionRef->class));
+    }
 
     public static function isAction(string $fqcn): bool
     {

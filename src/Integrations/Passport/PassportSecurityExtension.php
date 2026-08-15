@@ -132,8 +132,8 @@ final class PassportSecurityExtension implements OperationExtension
      * The unpinned path is reported rather than trusted. Laravel's shipped `config/app.php` reads
      * `env('APP_URL', 'http://localhost')`, so an app that never set `APP_URL` hands us a perfectly
      * good STRING and the fallback below never fires — the document then tells every client to get its
-     * tokens from the machine the build ran on. The URLs stay (OAS requires a `tokenUrl` on every flow,
-     * and removing one would be the worse defect); what changes is that the value stops being silent.
+     * tokens from the machine the build ran on. The URLs stay — OAS requires a `tokenUrl` on every
+     * flow, and removing one is the worse defect — and a diagnostic says where they came from.
      */
     private function baseUrl(RouteContext $context): string
     {

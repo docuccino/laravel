@@ -6,7 +6,7 @@ use Illuminate\Routing\Router;
 use Workbench\App\Http\Controllers\FormController;
 
 /**
- * Real-path coverage for withTrashed route-binding flagging (design §Phase 4): a bound-model route
+ * Real-path coverage for withTrashed route-binding flagging: a bound-model route
  * declared with ->withTrashed() flags each bound path parameter with a description note and a stable
  * x-docuccino.routeBinding.withTrashed semantic fact; a normal binding carries neither.
  */

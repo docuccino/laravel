@@ -12,20 +12,17 @@ use Docuccino\Laravel\Tests\Support\LocalityEngine;
 use Illuminate\Routing\Router;
 
 /**
- * Determinism says the same code emits the same bytes. LOCALITY says the rest: adding a route may add
- * operations and may never change one it did not touch. Every defect of this class found so far was
- * silent and green — the build repeated perfectly, it just repeated something different.
- *
  * One row per shape that mints a name or shares structure ACROSS routes, each held to byte-identical
  * output for a subject operation the extra route has nothing to do with — its own node and every
- * component it transitively `$ref`s. See {@see assertUnaffectedByUnrelatedRoute()}.
+ * component it transitively `$ref`s. The locality rule itself, and why a projection is the closure
+ * rather than the node: {@see assertUnaffectedByUnrelatedRoute()}.
  */
 it('does not move a route it did not touch', function (callable $baseline, callable $extra, string $subject, ?callable $engine): void {
     assertUnaffectedByUnrelatedRoute($baseline, $extra, $subject, $engine);
 })->with([
 
-    // One class, two shapes. The request side used to land on `Portal`/`Portal_2` by route order, so
-    // documenting the read endpoint renamed the write endpoint's body.
+    // One class, two shapes. On a slot-based name the request side lands on `Portal`/`Portal_2` by
+    // route order, so documenting the read endpoint renames the write endpoint's body.
     'the same class hoisted as a request and as a response' => [
         static fn (Router $r) => $r->post('api/zz-portal', [ClaimController::class, 'store']),
         static fn (Router $r) => $r->get('api/zz-portal', [ClaimController::class, 'show']),
@@ -45,9 +42,9 @@ it('does not move a route it did not touch', function (callable $baseline, calla
         LocalityEngine::factory(),
     ],
 
-    // Two classes of one short name whose shapes COINCIDE. Structural dedupe used to collapse them into
-    // one component, dropping the newcomer's identity — so the surviving `x-docuccino.id` was whichever
-    // route ran first, under a `$ref` name that never moved to say so.
+    // Two classes of one short name whose shapes COINCIDE. Structural dedupe on bytes alone collapses
+    // them into one component and drops the newcomer's identity, leaving the surviving `x-docuccino.id`
+    // to whichever route ran first, under a `$ref` name that never moved to say so.
     'two same-short-name classes whose bodies are byte-equal' => [
         static function (Router $r): void {
             $r->get('api/zz-receipt-billing', [ClaimController::class, 'billingReceipt']);
@@ -163,9 +160,9 @@ it('does not move a route it did not touch', function (callable $baseline, calla
 
 it('counts an operation\'s named security schemes as part of its emitted representation', function (): void {
     // What every row above compares is the operation's node plus the components it reaches. A `security`
-    // requirement names its scheme by KEY and not through a `$ref`, so a ref-only walk left the scheme
-    // DEFINITION outside the projection altogether — the blind spot that let a first-come
-    // `components.securitySchemes` name go uncaught for a whole layer.
+    // requirement names its scheme by KEY and not through a `$ref`, so a ref-only walk leaves the scheme
+    // DEFINITION outside the projection altogether — and a first-come `components.securitySchemes` name
+    // goes uncaught by every row above.
     $document = emittedArray(localityBuild(static function (Router $r): void {
         $r->get('api/zz-scoped', [ApiReportController::class, 'index'])->middleware('scope:read');
     }));

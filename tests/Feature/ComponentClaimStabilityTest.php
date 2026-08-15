@@ -20,11 +20,10 @@ use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
  * published under is a function of what it IS, so adding, removing or reordering a route can add a
  * component and can never change one it did not touch.
  *
- * Three claims that used to break it, all silently and all in a green build: a class hoisted twice —
- * its request shape beside its response shape — landed on `Foo`/`Foo_2` by route order; a `#[SchemaId]`
- * pin carrying no namespace made its whole group fall back to that same positional suffix; and a class
- * the analyser could not expand held a name it never published, renaming a working component that
- * shared it.
+ * Three claims that break it silently, in a green build, if the name is the slot: a class hoisted twice
+ * — its request shape beside its response shape — lands on `Foo`/`Foo_2` by route order; a `#[SchemaId]`
+ * pin carrying no namespace makes its whole group fall back to that same positional suffix; and a class
+ * the analyser cannot expand holds a name it never publishes, renaming a working component beside it.
  */
 const CLAIM_PORTAL = 'Docuccino\\Laravel\\Tests\\Fixtures\\ComponentNames\\PortalData';
 const CLAIM_API_USER = 'Docuccino\\Laravel\\Tests\\Fixtures\\ComponentNames\\Api\\UserData';
@@ -104,6 +103,10 @@ function claimRef(GenerationResult $result, string ...$path): ?string
     return is_array($node) ? ($node['$ref'] ?? null) : null;
 }
 
+afterEach(function (): void {
+    removeFragmentCacheDirs('claims');
+});
+
 it('names a class request shape for what it is, so its own shape can keep the plain name', function (): void {
     // `GET api/zz-portal` sorts first, so the RESPONSE registers before the request — the opposite of
     // the order the workbench meets them in, and under a positional suffix that alone decided which
@@ -174,9 +177,9 @@ it('warns about the pinned pair, naming each pin and the name it was published u
 });
 
 it('lets a class it cannot expand degrade without touching the working class beside it', function (): void {
-    // The reservation defect: the unexpandable class took `Gizmo` up front and never published
-    // anything, so the working one was pushed onto `Gizmo_2` — renamed by a route that contributed
-    // nothing to the document, and with no collision to warn anyone about.
+    // A reservation taken up front and never released holds `Gizmo` for a class that publishes nothing,
+    // pushing the working one onto `Gizmo_2` — renamed by a route that contributed nothing to the
+    // document, and with no collision to warn anyone about.
     $without = claimDocument(['workingGizmo']);
     $with = claimDocument(['brokenGizmo', 'workingGizmo']);
 
@@ -192,9 +195,7 @@ it('lets a class it cannot expand degrade without touching the working class bes
 });
 
 it('publishes the same claims, and the same diagnostics, on a warm fragment-cache build', function (): void {
-    $dir = sys_get_temp_dir().'/docuccino-claims-'.uniqid('', true);
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', $dir);
+    $dir = fragmentCacheDir('claims');
 
     $cold = claimDocument();
     $warm = claimDocument();
@@ -203,8 +204,4 @@ it('publishes the same claims, and the same diagnostics, on a warm fragment-cach
         ->and(diagnosticsCoded($warm->diagnostics, 'components.name-collision'))
         ->toEqual(diagnosticsCoded($cold->diagnostics, 'components.name-collision'))
         ->not->toBeEmpty();
-
-    array_map('unlink', glob($dir.'/*') ?: []);
-    @unlink($dir.'/.gitignore');
-    @rmdir($dir);
 });

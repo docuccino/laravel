@@ -37,9 +37,10 @@ final class ResolvedRouteIndex
     }
 
     /**
-     * The descriptor's cache signature, which is the widest thing that tells two descriptors apart —
-     * host included. Method and URI alone are not enough: two routes on different hosts share those,
-     * and the loser's reflection would silently overwrite the winner's here.
+     * The descriptor's methods plus its full {@see RouteDescriptor::cacheSignature()}. Wider than this
+     * index strictly needs — two entries agreeing on everything but middleware would key alike either
+     * way — and deliberately so: a narrower key here is a silent overwrite of one route's reflection by
+     * another's, which method and URI alone would cause for two routes on different hosts.
      */
     private static function key(RouteDescriptor $descriptor): string
     {

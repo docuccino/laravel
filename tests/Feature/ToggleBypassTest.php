@@ -65,9 +65,12 @@ it('drops the spatie-data response-status resolver when the integration is disab
         ->and(chainHas(resolvedWith('spatie_data', false)->responseStatusResolvers, DataResponseStatus::class))->toBeFalse();
 });
 
-it('drops the eloquent route-binding schema resolver when the integration is disabled', function (): void {
+it('drops the eloquent route-binding schema resolvers when the integration is disabled', function (): void {
+    // Both chains, because the column question is its own contract and so its own partition.
     expect(chainHas(resolvedWith('eloquent', true)->routeBindingSchemaResolvers, EloquentRouteBindingSchema::class))->toBeTrue()
-        ->and(chainHas(resolvedWith('eloquent', false)->routeBindingSchemaResolvers, EloquentRouteBindingSchema::class))->toBeFalse();
+        ->and(chainHas(resolvedWith('eloquent', false)->routeBindingSchemaResolvers, EloquentRouteBindingSchema::class))->toBeFalse()
+        ->and(chainHas(resolvedWith('eloquent', true)->routeBindingFieldSchemaResolvers, EloquentRouteBindingSchema::class))->toBeTrue()
+        ->and(chainHas(resolvedWith('eloquent', false)->routeBindingFieldSchemaResolvers, EloquentRouteBindingSchema::class))->toBeFalse();
 });
 
 it('drops each resource media-type matcher when its own integration is disabled', function (): void {

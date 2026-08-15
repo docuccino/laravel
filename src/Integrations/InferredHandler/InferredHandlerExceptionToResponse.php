@@ -56,10 +56,8 @@ final class InferredHandlerExceptionToResponse implements ExceptionToResponse
         RouteContext $context,
         ComponentRegistry $components,
     ): ?ResponseDraft {
-        // Whether this tier claims the exception at all is an inheritance question: a `render()` added to
-        // a parent, or `Responsable` implemented up the chain, changes the answer without touching the
-        // class that was thrown. Recorded before the decline, or "no handler" is the answer that never
-        // goes stale.
+        // A `render()` added to a parent, or `Responsable` implemented up the chain, decides whether
+        // this tier claims the exception. Recorded before the decline, so "no handler" goes stale too.
         $context->recordDependencyFiles(DeclarationFiles::of($exception->exceptionFqcn));
 
         $callable = $this->candidate($exception->exceptionFqcn);

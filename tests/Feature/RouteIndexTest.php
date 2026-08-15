@@ -15,8 +15,7 @@ use Docuccino\Laravel\Tests\Fixtures\TagNames\Api\ReportController as ApiReportC
 /**
  * The resolver reflects each route once while filtering and records it in the shared, scoped
  * ResolvedRouteIndex; the context builder reads that back O(1) instead of re-scanning and
- * re-reflecting the route table (S1). This guards the scoped wiring against a silent regression to
- * the old double-reflection / O(n^2) re-location.
+ * re-reflecting the route table — so nothing is reflected or re-located twice.
  */
 it('records each resolved route in the shared index for O(1) reuse by the builder', function (): void {
     $index = app(ResolvedRouteIndex::class);

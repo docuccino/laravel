@@ -63,11 +63,6 @@ final class LaravelRouteResolver implements RouteResolver
 
     private function describe(Route $route): RouteDescriptor
     {
-        // `Route::domain()` accepts a scheme and Laravel strips it, so this is host[:port]. Lower-cased
-        // here rather than at every reader: hosts are case-insensitive, so `Admin.Example.com` and
-        // `admin.example.com` are one host and must not become two operations.
-        $domain = $route->getDomain();
-
         return new RouteDescriptor(
             methods: self::strings($route->methods()),
             uri: '/'.ltrim($route->uri(), '/'),
@@ -83,7 +78,7 @@ final class LaravelRouteResolver implements RouteResolver
                 ...($route->allowsTrashedBindings() ? ['trashed'] : []),
                 ...RouteBindingFields::cacheInputs($route),
             ],
-            domain: $domain === null || $domain === '' ? null : strtolower($domain),
+            domain: RouteHost::of($route),
             fallback: $route->isFallback,
         );
     }

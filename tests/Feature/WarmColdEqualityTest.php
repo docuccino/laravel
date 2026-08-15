@@ -66,7 +66,7 @@ it('serves a warm build exactly what a cold one would', function (callable $befo
     // cached `$ref` — settled while it was contested — has to come back to the plain name by itself.
     'a route removed' => [$base, $survivor],
 
-    // The route name is the operationId, so a fragment keyed without it answers under the old name.
+    // The route name is the operationId, so a fragment keyed without it answers under the wrong name.
     'a route renamed' => [
         static function (Router $r) use ($base): void {
             $base($r);
@@ -116,9 +116,9 @@ it('serves a warm build exactly what a cold one would', function (callable $befo
     ],
 
     // Security lives in `components.securitySchemes`, which the operation names as a KEY rather than
-    // reaching through a `$ref` — so a fragment that carried only its `$ref` closure came back warm
-    // holding a `security` requirement for a scheme no longer in the document. Both rows below are
-    // fully warm on the secured route, which is precisely when nothing re-registers it.
+    // reaching through a `$ref` — so a fragment carrying only its `$ref` closure comes back warm holding
+    // a `security` requirement for a scheme no longer in the document. Both rows below are fully warm on
+    // the secured route, which is precisely when nothing re-registers it.
     'a secured route, twice' => [$secured, $secured],
 
     // …and the secured fragment coming back warm into a build that is NOT fully warm, since an added

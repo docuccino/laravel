@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\LaravelActions;
 
 use Docuccino\Core\Extensions\Context\RouteContext;
-use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Docuccino\Core\Extensions\Validation\RuleSet;
 use Docuccino\Laravel\Integrations\FormRequest\RulesFromClass;
 
@@ -23,9 +22,7 @@ final class ActionRules
     public function recover(RouteContext $context): ?RuleSet
     {
         $class = $context->actionRef->class;
-        // Which traits an action carries is a hierarchy question, and it decides whether a request body
-        // is documented at all — recorded before the decline, so "no body" goes stale too.
-        $context->recordDependencyFiles(DeclarationFiles::of($class));
+        LaravelAction::dependsOnDeclaration($context);
 
         // An explicitly-registered method or a WithAttributes action never validates at runtime, so a
         // request body built from rules() there would describe an endpoint that doesn't exist.

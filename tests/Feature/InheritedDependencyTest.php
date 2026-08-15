@@ -13,19 +13,15 @@ use Docuccino\Laravel\Tests\Fixtures\InheritedShapes\EnvelopedResource;
 use Docuccino\Laravel\Tests\Fixtures\InheritedShapes\InheritedController;
 
 /**
- * Fragment-cache soundness for facts inheritance answers. A class's own file is only where a question
- * was ASKED — a static `$wrap`, a `render()`, an action trait can all be declared a level up, and a
- * fragment that records only the class it was asked about survives an edit that changed its answer.
+ * Fragment-cache soundness for facts inheritance answers ({@see DeclarationFiles}): a static `$wrap`, a
+ * `render()`, an action trait can all be declared a level up, and a fragment that records only the class
+ * it was asked about survives an edit that changed its answer.
  *
  * These read the dependency list the cache actually stored rather than editing a tracked fixture: the
  * list is what freshness is checked against, so naming the file is the whole of the claim.
  */
 afterEach(function (): void {
-    foreach (glob(sys_get_temp_dir().'/docuccino-inherited-*') ?: [] as $dir) {
-        array_map('unlink', glob($dir.'/*') ?: []);
-        @unlink($dir.'/.gitignore');
-        @rmdir($dir);
-    }
+    removeFragmentCacheDirs('inherited');
 });
 
 /**
@@ -48,9 +44,7 @@ function recordedDependencies(string $dir): array
 }
 
 it('records the file that declares an inherited fact, not just the class it was asked about', function (): void {
-    $dir = sys_get_temp_dir().'/docuccino-inherited-'.uniqid('', true);
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', $dir);
+    $dir = fragmentCacheDir('inherited');
 
     app('router')->get('api/enveloped', [InheritedController::class, 'enveloped']);
     app()->instance(TypeEngine::class, new StubTypeEngine(analyses: [
@@ -67,6 +61,6 @@ it('records the file that declares an inherited fact, not just the class it was 
         ->toHaveKey('envelope')
         ->and($recorded)->not->toBeEmpty()
         ->and($recorded)->toContain((string) (new ReflectionClass(BaseEnvelopeResource::class))->getFileName())
-        // …and the class the question was asked about is there too, as it always was.
+        // …and the class the question was asked about is there too.
         ->and($recorded)->toContain((string) (new ReflectionClass(EnvelopedResource::class))->getFileName());
 });

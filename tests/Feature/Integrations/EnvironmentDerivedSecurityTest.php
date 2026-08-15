@@ -122,10 +122,10 @@ it('publishes the environment-derived session cookie name, and warns once', func
 });
 
 /**
- * The defect this gate closes: an app whose `config/session.php` states a cookie name of its own has
- * pinned it, so the document says the same thing wherever it is built — and warning about that made
- * `--fail-on=warning` red-light a correct production build. A diagnostic that fires on correct code is
- * a defect, not a stricter setting.
+ * An app whose `config/session.php` states a cookie name of its own has pinned it, so the document says
+ * the same thing wherever it is built. Warning about that would red-light a correct production build
+ * under `--fail-on=warning`, and a diagnostic that fires on correct code is a defect rather than a
+ * stricter setting.
  */
 it('says nothing when config/session.php names the cookie itself', function (): void {
     /** @var Router $router */

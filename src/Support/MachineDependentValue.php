@@ -8,35 +8,11 @@ use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 
 /**
- * One rule for any value a producer publishes that came from the build environment rather than from
+ * One rule for a value a producer publishes that came from the build environment rather than from
  * something the document pins: emit it, and say so. Never refuse and never omit — these values are
  * contract-bearing (OAS requires a `tokenUrl` on every flow object, and an `apiKey`-in-cookie scheme
- * with the wrong `name` sends the client's request without the cookie), and a local preview has to
- * keep working.
- *
- * The signal used is the strongest one available for the value:
- *
- * - a URL has a host, and a loopback or local-development host is positive evidence that no consumer
- *   of the published document can reach it ({@see isLocalUrl()}). A public host is equally positive
- *   evidence the value is fine, so it is not reported;
- * - a value no config key answered for is arbitrary — a hard-coded default stood in;
- * - an opaque value (a cookie name) offers neither signal, so the only thing left to go on is that
- *   nothing pinned it and the framework key it came from is one the environment supplies.
- *
- * Severity is Warning throughout, and deliberately: nothing is unbuildable or malformed, so it isn't
- * an Error, but what got published is arbitrary — chosen by the machine rather than by the
- * application — which is exactly the Warning tier. `--fail-on=warning` then stops such a document
- * becoming a released artifact without breaking anyone's local build.
- *
- * The code shares a family with the adapter's `config.machine-dependent-path`, because both say the
- * same thing about the same kind of defect and both are fixed the same way — pin it. That one stays
- * Info: an absolute path only churns the `configHash`, while these are published for a client to act
- * on.
- *
- * It lives under `Support` rather than beside its callers because those callers sit on both sides of
- * the Extensions/Integrations line — a route's host-bound `servers` URL is published by an adapter
- * extension, the OAuth and cookie values by integrations — and an extension may not import an
- * integration. One rule, one place; a second copy is how the two would drift apart.
+ * with the wrong `name` sends the client's request without the cookie), and a local preview has to keep
+ * working. Which signal each kind of value is judged on, and why the tier is Warning: design §9.
  */
 final class MachineDependentValue
 {

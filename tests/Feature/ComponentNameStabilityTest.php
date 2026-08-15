@@ -90,6 +90,10 @@ function ssoSchemas(GenerationResult $result): array
     return is_array($schemas) ? $schemas : [];
 }
 
+afterEach(function (): void {
+    removeFragmentCacheDirs('sso');
+});
+
 it('publishes both shapes under names that say which is which', function (): void {
     $schemas = ssoSchemas(ssoDocument());
 
@@ -149,9 +153,7 @@ it('warns once, naming every class and the name it was published under', functio
 it('publishes the same names, and the same warning, on a warm fragment-cache build', function (): void {
     // The names are settled from the finished registry, which a warm hit restores — so unlike a
     // registration-time report, neither the names nor the warning can go missing when no route runs.
-    $dir = sys_get_temp_dir().'/docuccino-sso-'.uniqid('', true);
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', $dir);
+    $dir = fragmentCacheDir('sso');
 
     $cold = ssoDocument();
     $warm = ssoDocument();
@@ -160,19 +162,13 @@ it('publishes the same names, and the same warning, on a warm fragment-cache bui
         ->and(diagnosticsCoded($warm->diagnostics, 'components.name-collision'))
         ->toEqual(diagnosticsCoded($cold->diagnostics, 'components.name-collision'))
         ->not->toBeEmpty();
-
-    array_map('unlink', glob($dir.'/*') ?: []);
-    @unlink($dir.'/.gitignore');
-    @rmdir($dir);
 });
 
 it('keeps a warm fragment pointing at its own shape when a new route takes the name it cached', function (): void {
-    // The nastiest form of the defect. A cached fragment recorded `$ref: SSOConnectionData`; a route
-    // added since registers the OTHER class under that name first, so the restored operation would
-    // silently point at the wrong shape — and the document would still be internally consistent.
-    $dir = sys_get_temp_dir().'/docuccino-sso-warm-'.uniqid('', true);
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', $dir);
+    // The nastiest form of it. A cached fragment recorded `$ref: SSOConnectionData`; a route added since
+    // registers the OTHER class under that name first, so a restored operation that trusted the cached
+    // name would silently point at the wrong shape — in a document still internally consistent.
+    $dir = fragmentCacheDir('sso-warm');
 
     ssoDocument();
     $grown = ssoDocument([['get', 'api/aaa-unrelated', 'unrelated']]);
@@ -183,20 +179,14 @@ it('keeps a warm fragment pointing at its own shape when a new route takes the n
     expect($doc['paths']['/api/zz-sso-b']['get']['responses']['200']['content']['application/json']['schema']['$ref'] ?? null)
         ->toBe('#/components/schemas/SSOSSOConnectionData')
         ->and(array_keys($schemas['SSOSSOConnectionData']['properties'] ?? []))->toBe(['issuerUrl', 'verified']);
-
-    array_map('unlink', glob($dir.'/*') ?: []);
-    @unlink($dir.'/.gitignore');
-    @rmdir($dir);
 });
 
 it('gives the plain name back to the survivor when the route that contested it is deleted', function (): void {
     // A warm fragment carries the slot it was cached in. Delete the route that held the plain name and
-    // nothing invalidates the survivor's fragment, so it used to re-register as `SSOConnectionData_2`
-    // — a suffix naming a class no longer in the document, and different bytes on CI (cold) and on the
-    // machine that deleted the route (warm).
-    $dir = sys_get_temp_dir().'/docuccino-sso-deleted-'.uniqid('', true);
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', $dir);
+    // nothing invalidates the survivor's fragment, so re-registering off the slot would publish
+    // `SSOConnectionData_2` — a suffix naming a class the document no longer holds, and different bytes
+    // on CI (cold) and on the machine that deleted the route (warm).
+    $dir = fragmentCacheDir('sso-deleted');
 
     ssoDocument();
 
@@ -215,8 +205,4 @@ it('gives the plain name back to the survivor when the route that contested it i
         ->and($warm->document->toArray()['paths']['/api/zz-sso-a']['post']['requestBody']['content']['application/json']['schema']['properties']['connection']['$ref'] ?? null)
         ->toBe('#/components/schemas/SSOConnectionData')
         ->and((new UirEmitter)->emit($warm->document))->toBe((new UirEmitter)->emit($cold->document));
-
-    array_map('unlink', glob($dir.'/*') ?: []);
-    @unlink($dir.'/.gitignore');
-    @rmdir($dir);
 });

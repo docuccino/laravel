@@ -17,16 +17,11 @@ use Workbench\App\Http\Controllers\FormController;
  * the store.
  */
 afterEach(function (): void {
-    foreach (glob(sys_get_temp_dir().'/docuccino-staleness-*') ?: [] as $dir) {
-        array_map('unlink', glob($dir.'/*') ?: []);
-        @unlink($dir.'/.gitignore');
-        @rmdir($dir);
-    }
+    removeFragmentCacheDirs('staleness');
 });
 
 it('rebuilds a renamed route rather than serving its old operationId', function (): void {
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', sys_get_temp_dir().'/docuccino-staleness-'.uniqid('', true));
+    fragmentCacheDir('staleness');
     app()->instance(TypeEngine::class, WorkbenchEngine::make());
 
     app('router')->get('api/renamable', [FormController::class, 'index'])->name('forms.alpha');
@@ -41,8 +36,7 @@ it('rebuilds a renamed route rather than serving its old operationId', function 
 });
 
 it('rebuilds a route that gained withTrashed rather than serving its untrashed answer', function (): void {
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', sys_get_temp_dir().'/docuccino-staleness-'.uniqid('', true));
+    fragmentCacheDir('staleness');
     app()->instance(TypeEngine::class, WorkbenchEngine::make());
 
     app('router')->get('api/trashable/{form}', [FormController::class, 'show']);
@@ -65,8 +59,7 @@ it('rebuilds a route that gained withTrashed rather than serving its untrashed a
 });
 
 it('rebuilds a route that named a binding column rather than serving its route-key answer', function (): void {
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', sys_get_temp_dir().'/docuccino-staleness-'.uniqid('', true));
+    fragmentCacheDir('staleness');
     app()->instance(TypeEngine::class, WorkbenchEngine::make());
 
     app('router')->get('api/bindable/{form}', [FormController::class, 'show']);
@@ -82,8 +75,7 @@ it('rebuilds a route that named a binding column rather than serving its route-k
 });
 
 it('never serves inference-free fragments once the engine package is installed', function (): void {
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', sys_get_temp_dir().'/docuccino-staleness-'.uniqid('', true));
+    fragmentCacheDir('staleness');
 
     // Engine-less build: the adapter degrades to the NullTypeEngine, so every fragment is written
     // without a single inferred fact.
@@ -97,15 +89,14 @@ it('never serves inference-free fragments once the engine package is installed',
     $warm = (new UirEmitter)->emit(generateDocument()->document);
 
     // The truth: the same build with a cold store.
-    config()->set('docuccino.cache.path', sys_get_temp_dir().'/docuccino-staleness-'.uniqid('', true));
+    fragmentCacheDir('staleness');
     $cold = (new UirEmitter)->emit(generateDocument()->document);
 
     expect($warm)->toBe($cold);
 });
 
 it('invalidates fragments when the engine descend paths change', function (): void {
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', sys_get_temp_dir().'/docuccino-staleness-'.uniqid('', true));
+    fragmentCacheDir('staleness');
     $engine = new CountingTypeEngine(WorkbenchEngine::make());
     app()->instance(TypeEngine::class, $engine);
 
@@ -120,8 +111,7 @@ it('invalidates fragments when the engine descend paths change', function (): vo
 });
 
 it('keeps the fragments warm when only the engine memory limit changes', function (): void {
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', sys_get_temp_dir().'/docuccino-staleness-'.uniqid('', true));
+    fragmentCacheDir('staleness');
     $engine = new CountingTypeEngine(WorkbenchEngine::make());
     app()->instance(TypeEngine::class, $engine);
 
@@ -136,8 +126,7 @@ it('keeps the fragments warm when only the engine memory limit changes', functio
 });
 
 it('invalidates fragments when the Passport endpoint path changes', function (): void {
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', sys_get_temp_dir().'/docuccino-staleness-'.uniqid('', true));
+    fragmentCacheDir('staleness');
     $engine = new CountingTypeEngine(WorkbenchEngine::make());
     app()->instance(TypeEngine::class, $engine);
 
@@ -152,9 +141,7 @@ it('invalidates fragments when the Passport endpoint path changes', function ():
 });
 
 it('empties the fragment store on docuccino:clear --fragments', function (): void {
-    $dir = sys_get_temp_dir().'/docuccino-staleness-'.uniqid('', true);
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', $dir);
+    $dir = fragmentCacheDir('staleness');
     $engine = new CountingTypeEngine(WorkbenchEngine::make());
     app()->instance(TypeEngine::class, $engine);
 

@@ -23,6 +23,7 @@ use Docuccino\Core\Inference\DType\ScalarT;
 use Docuccino\Core\Inference\DType\UnionT;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Laravel\Integrations\FormRequest\RulesFromClass;
+use Docuccino\Laravel\Integrations\Support\DependencyFileSet;
 use Docuccino\Laravel\Integrations\Support\RuleParsing;
 use Docuccino\Laravel\Integrations\Validation\CustomRuleReader;
 use Docuccino\Laravel\Integrations\Validation\RuleOrdering;
@@ -59,10 +60,7 @@ final class DataValidationRules
     /** File-implying rules — a property already stating one never gets a synthesised second. */
     private const FILE_RULES = ['file', 'image'];
 
-    /**
-     * @var list<string>
-     */
-    private array $dependencyFiles = [];
+    private readonly DependencyFileSet $dependencyFiles;
 
     /** The collaborators one build runs against, set at the entry points below alongside them. */
     private ?TypeEngine $engine = null;
@@ -76,7 +74,9 @@ final class DataValidationRules
         private readonly CustomRuleReader $customRules = new CustomRuleReader,
         private readonly RuleSetNormalizer $normalizer = new RuleSetNormalizer,
         private readonly RuleOrdering $ordering = new RuleOrdering,
-    ) {}
+    ) {
+        $this->dependencyFiles = new DependencyFileSet;
+    }
 
     public function reflector(): DataClassReflector
     {
@@ -92,7 +92,7 @@ final class DataValidationRules
      */
     public function dependencyFiles(): array
     {
-        return $this->dependencyFiles;
+        return $this->dependencyFiles->all();
     }
 
     /**
@@ -135,7 +135,7 @@ final class DataValidationRules
     /** Resets the per-build state every entry point above starts from. */
     private function begin(TypeEngine $engine, ?SchemaContext $schema, ?ValidationRulesToSchema $validation): void
     {
-        $this->dependencyFiles = [];
+        $this->dependencyFiles->clear();
         $this->engine = $engine;
         $this->schema = $schema;
         $this->validation = $validation;
@@ -330,7 +330,7 @@ final class DataValidationRules
         $metadata = $engine->classMetadata(new ClassRef($type->fqcn));
         // A nested Data class's shape is as much a part of this rule set as the root's, so the files it
         // was recovered from are as much a dependency.
-        $this->remember($metadata->dependencyFiles);
+        $this->dependencyFiles->add(...$metadata->dependencyFiles);
 
         $fields = $this->fieldsFor($type->fqcn, $metadata, '', [...$visiting, $type->fqcn]);
 
@@ -382,7 +382,7 @@ final class DataValidationRules
         $rules = [];
         foreach ($this->reflector->ruleObjectClasses($fqcn, $property) as $ruleClass) {
             $facts = $this->customRules->read($ruleClass);
-            $this->remember($facts->file === null ? [] : [$facts->file]);
+            $this->dependencyFiles->add($facts->file);
 
             $rules = [...$rules, ...$facts->rules];
         }
@@ -462,7 +462,7 @@ final class DataValidationRules
         }
 
         $metadata = $this->engine->classMetadata(new ClassRef($childFqcn));
-        $this->remember($metadata->dependencyFiles);
+        $this->dependencyFiles->add(...$metadata->dependencyFiles);
 
         return [$childFqcn, $isCollection, $metadata];
     }
@@ -527,27 +527,11 @@ final class DataValidationRules
             return null;
         }
 
-        $file = EnumReflection::file($type->fqcn);
-        $this->remember($file === null ? [] : [$file]);
+        $this->dependencyFiles->add(EnumReflection::file($type->fqcn));
 
         $values = array_map(strval(...), EnumReflection::values($type->fqcn));
 
         return $values === [] ? null : ValidationRule::of('enum', $values, $type->fqcn);
-    }
-
-    /**
-     * Remember a file the rule set in flight was built from, so the caller can record it as a fragment
-     * dependency. Deduped, and reset per entry point by {@see begin()}.
-     *
-     * @param  list<string>  $files
-     */
-    private function remember(array $files): void
-    {
-        foreach ($files as $file) {
-            if (! in_array($file, $this->dependencyFiles, true)) {
-                $this->dependencyFiles[] = $file;
-            }
-        }
     }
 
     private static function typeRule(DType $type): ?string

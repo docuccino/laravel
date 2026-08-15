@@ -13,8 +13,8 @@ use Illuminate\Contracts\Config\Repository as ConfigRepository;
  * Says once, per document, that the stateful scheme's cookie name came from the build environment.
  *
  * It is a document transformer and not part of {@see SanctumSecurityExtension} because the fact is a
- * document fact: one cookie name reaches every stateful operation, so raising it per route gave a
- * 200-route app 200 identical warnings and made `--fail-on=warning` a thing teams switch off. Reading
+ * document fact: one cookie name reaches every stateful operation, so raising it per route gives a
+ * 200-route app 200 identical warnings and makes `--fail-on=warning` a thing teams switch off. Reading
  * it off the FINISHED document is also what keeps a warm build's diagnostics equal to a cold one's —
  * no route has to re-run for the report to be there. Whether to report at all is
  * {@see SanctumCookie::report()}'s decision.
@@ -42,8 +42,8 @@ final class SanctumCookieReport implements DocumentTransformer
 
     /**
      * Whether the build actually published the stateful scheme this cookie name belongs to. Matched on
-     * the definition rather than on its key, since the key a scheme is published under is settled at
-     * assembly and two contested definitions do not both keep the name they asked for.
+     * the definition rather than on its key, because the key a scheme is published under is settled at
+     * assembly, from the whole set of definitions contesting it.
      *
      * @param  array<string, mixed>  $document
      */

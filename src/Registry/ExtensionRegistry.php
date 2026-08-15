@@ -12,6 +12,7 @@ use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\PayloadMediaTypeResolver;
 use Docuccino\Core\Extensions\Contracts\ResponseAnalysisTarget;
 use Docuccino\Core\Extensions\Contracts\ResponseStatusResolver;
+use Docuccino\Core\Extensions\Contracts\RouteBindingFieldSchemaResolver;
 use Docuccino\Core\Extensions\Contracts\RouteBindingSchemaResolver;
 use Docuccino\Core\Extensions\Contracts\RouteResolver;
 use Docuccino\Core\Extensions\Contracts\RuleTransformer;
@@ -71,6 +72,7 @@ final class ExtensionRegistry
             responseStatusResolvers: $sorter->sort($this->partition($instances, ResponseStatusResolver::class)),
             payloadMediaTypeResolvers: $sorter->sort($this->partition($instances, PayloadMediaTypeResolver::class)),
             routeBindingSchemaResolvers: $sorter->sort($this->partition($instances, RouteBindingSchemaResolver::class)),
+            routeBindingFieldSchemaResolvers: $sorter->sort($this->partition($instances, RouteBindingFieldSchemaResolver::class)),
             environmentDigestContributors: $sorter->sort($this->partition($instances, EnvironmentDigestContributor::class)),
         );
     }

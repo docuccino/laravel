@@ -6,46 +6,44 @@ namespace Docuccino\Laravel\Integrations\Eloquent;
 
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\RouteBindingFieldSchemaResolver;
+use Docuccino\Core\Extensions\Contracts\RouteBindingSchemaResolver;
 use Docuccino\Core\Inference\ClassRef;
 
 /**
- * The gated route-binding schema resolver contributed by the Eloquent integration: types a
- * route-model-bound path parameter from the bound model's route key (uuid/ulid/string/integer) via
- * {@see EloquentModelReflector::keySchemaFor()}, and a `{post:slug}` parameter from THAT column via
- * {@see EloquentModelReflector::columnSchemaFor()}. Contributed only when `eloquent` is enabled, so a
- * disabled integration leaves the path parameter to the built-in string fallback rather than typing
- * it off the model.
+ * The gated route-binding resolvers contributed by the Eloquent integration: it answers both binding
+ * questions, typing a path parameter from the bound model's route key (uuid/ulid/string/integer) and a
+ * `{post:slug}` parameter from THAT column. Contributed only when `eloquent` is enabled, so a disabled
+ * integration leaves the path parameter to the built-in string fallback rather than typing it off the
+ * model.
  */
-final class EloquentRouteBindingSchema implements RouteBindingFieldSchemaResolver
+final class EloquentRouteBindingSchema implements RouteBindingFieldSchemaResolver, RouteBindingSchemaResolver
 {
     public function __construct(
         private readonly EloquentModelReflector $reflector = new EloquentModelReflector,
     ) {}
 
     /**
-     * Always resolves a schema (the historical `integer` default for a non-model binding, else the
-     * model's route-key schema) — never null — so an ENABLED Eloquent integration types every bound
-     * path parameter exactly as before. A DISABLED integration contributes no resolver at all, which
-     * is where the string fallback comes from.
+     * Always resolves a schema — an `integer` default for a non-model binding, else the model's
+     * route-key schema — and never null. The string fallback comes from a DISABLED integration
+     * contributing no resolver at all, not from this answering nothing.
      *
      * @return array<string, mixed>
      */
     public function keySchemaFor(string $modelFqcn): array
     {
-        return EloquentModelReflector::keySchemaFor($modelFqcn);
+        return $this->reflector->keySchemaFor($modelFqcn);
     }
 
     /**
      * Unlike {@see keySchemaFor()} this one DOES answer null — for a non-Eloquent binding, or a column
-     * nothing types — and the caller then documents a plain string. There is no `integer` default to
-     * degrade to: the route key is a different column, so its schema would be a wrong answer rather
-     * than a weak one.
+     * nothing types — and the caller then documents a plain string
+     * ({@see RouteBindingFieldSchemaResolver}).
      *
      * @return array<string, mixed>|null
      */
     public function fieldSchemaFor(RouteContext $context, string $modelFqcn, string $field): ?array
     {
-        if (! EloquentModelReflector::isModel($modelFqcn)) {
+        if (! EloquentModelReflector::isModel($modelFqcn)) { // a pure predicate on a class name
             return null;
         }
 

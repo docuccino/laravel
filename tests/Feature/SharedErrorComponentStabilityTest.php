@@ -9,10 +9,10 @@ use Illuminate\Routing\Router;
 /**
  * The shared error shape, proven through the whole adapter rather than over a hand-built document.
  *
- * The defect these pin is the one `ComponentNameStabilityTest` pins for class-identified schemas, one
- * bucket over: `Error403` used to go to whichever shape the document walk met first, so adding an
- * unrelated route could silently repoint every operation that returned the other one. And a difference
- * in how two operations DESCRIBED one body used to split it into two components at all.
+ * These pin what `ComponentNameStabilityTest` pins for class-identified schemas, one bucket over:
+ * `Error403` must not go to whichever shape the document walk meets first, which would silently repoint
+ * every operation returning the other one; and a difference in how two operations DESCRIBE one body must
+ * not split it into two components at all.
  */
 
 /**
@@ -131,8 +131,7 @@ it('publishes the same bytes and the same diagnostics on a warm fragment-cache b
     //
     // Through `assertWarmEqualsCold()` rather than by building twice and comparing: two builds against a
     // cache nobody proved was written or hit are two COLD builds, and they agree whether the cache works
-    // or is inert. The helper checks the cache file exists and that the warm build really did reach the
-    // type engine less often than the cold one.
+    // or is inert.
     $routes = static function (Router $router): void {
         $router->get('api/zz-denied', [ErrorsController::class, 'denied']);
         $router->get('api/zz-denied-again', [ErrorsController::class, 'deniedAgain']);

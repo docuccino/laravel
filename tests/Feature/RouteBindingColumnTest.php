@@ -121,8 +121,8 @@ it('documents a column it cannot type as a plain string, and says which one', fu
 ]);
 
 it('leaves an ordinary bound parameter untouched and unreported', function (): void {
-    // The negative half. A route naming no column must emit exactly what it emitted before this
-    // existed, and must not collect a diagnostic about a column it never named.
+    // The negative half. A route naming no column takes the model's route-key schema as it always
+    // does, and must not collect a diagnostic about a column it never named.
     [$document, $diagnostics] = ($this->boundDocument)(static function (Router $router): void {
         $router->get('api/zz-blanks/{blank}', [BindingController::class, 'blank']);
     });
@@ -156,9 +156,7 @@ it('replays the untyped-column report on a warm build', function (): void {
     // The report is the route's, so it rides its fragment. A warm hit reassembles the operation without
     // running a single extension — and a build that quietly loses the report is one that looks more
     // confident than the cold build it is meant to be identical to.
-    $dir = sys_get_temp_dir().'/docuccino-binding-warm-'.uniqid('', true);
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', $dir);
+    $dir = fragmentCacheDir('binding-warm');
 
     try {
         [, $cold] = ($this->boundDocument)(static function (Router $router): void {
@@ -174,21 +172,17 @@ it('replays the untyped-column report on a warm build', function (): void {
             ->toBe(diagnosticRecords(diagnosticsCoded($cold, 'route-binding.column-untyped')))
             ->not->toBeEmpty();
     } finally {
-        array_map('unlink', glob($dir.'/*') ?: []);
-        @unlink($dir.'/.gitignore');
-        @rmdir($dir);
+        removeFragmentCacheDir($dir);
     }
 });
 
 it('keys the fragment on every file the column type was read from', function (): void {
     // The column type comes off files the engine names — the model's, and its parents' and traits'. Any
     // of them can be edited without the route moving an inch, so all of them have to reach the key or a
-    // retyped column keeps answering with the type it used to have.
-    $dir = sys_get_temp_dir().'/docuccino-binding-deps-'.uniqid('', true);
+    // retyped column keeps answering with the type a warm fragment cached.
+    $dir = fragmentCacheDir('binding-deps');
     $parentFile = $dir.'-parent.php';
     file_put_contents($parentFile, "<?php\n");
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', $dir);
 
     try {
         ($this->boundDocument)(
@@ -217,8 +211,6 @@ it('keys the fragment on every file the column type was read from', function ():
         expect($files)->toContain($parentFile);
     } finally {
         @unlink($parentFile);
-        array_map('unlink', glob($dir.'/*') ?: []);
-        @unlink($dir.'/.gitignore');
-        @rmdir($dir);
+        removeFragmentCacheDir($dir);
     }
 });
