@@ -2172,15 +2172,13 @@
               "Retry-After": {
                 "description": "Seconds to wait before making another request.",
                 "schema": {
-                  "type": "integer",
-                  "example": 60
+                  "type": "integer"
                 }
               },
               "X-RateLimit-Limit": {
                 "description": "The maximum number of requests permitted in the current window.",
                 "schema": {
-                  "type": "integer",
-                  "example": 60
+                  "type": "integer"
                 }
               },
               "X-RateLimit-Remaining": {
@@ -3395,7 +3393,7 @@
     "document": {
       "id": "doc:pointer-list",
       "configHash": "8232eca8c6de2c57a33bbce8b03c3e08e85f5ee9723c30729d2c9422552337ff",
-      "contentHash": "3c2d7906830cec5f7d46590c72841e92d5dbac749ee42a03137bf0672150cb7b"
+      "contentHash": "80dba64e0244d22b1aeef800752f87832568e3590d7e5e6425de1fb131df1899"
     },
     "generator": {
       "name": "docuccino/laravel",

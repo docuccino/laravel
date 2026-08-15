@@ -8,11 +8,12 @@ use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Routing\Middleware\ThrottleRequestsWithRedis;
 
 /**
- * Parses a `throttle` middleware string into a {@see ThrottleLimit}: `throttle:60,1` → 60 attempts per
- * minute, `throttle:60` → 60 per the default 1 minute, `throttle:api` → the named limiter `api`. Also
- * handles the `ThrottleRequests::using()`/`::with()` FQCN forms (including the Redis variant), the
- * guest|authenticated pipe form `throttle:10|60`, and float decay `throttle:60,0.5`. Null for anything
- * that isn't a throttle.
+ * Parses a `throttle` middleware string into a {@see ThrottleLimit}. Only one distinction is left to
+ * draw — a named limiter (`throttle:api`) against an inline allowance (`throttle:60,1`, `throttle:60`,
+ * `throttle:60,0.5`, bare `throttle`, the guest|authenticated `throttle:10|60`) — but drawing it still
+ * takes the whole parameter grammar, or an inline form gets mistaken for a limiter nobody registered.
+ * Also handles the `ThrottleRequests::using()`/`::with()` FQCN forms, including the Redis variant. Null
+ * for anything that isn't a throttle.
  */
 final class ThrottleParser
 {
@@ -23,35 +24,20 @@ final class ThrottleParser
             return null;
         }
 
+        // No arguments: Laravel's middleware defaults, 60 per minute — an allowance, not a name.
         if ($parameters === '') {
-            // No arguments: Laravel's middleware defaults, 60 per minute — a concrete limit, not a name.
-            return new ThrottleLimit(maxAttempts: 60, decayMinutes: 1.0);
+            return new ThrottleLimit;
         }
 
-        $parts = explode(',', $parameters);
-        $first = trim($parts[0]);
+        $first = trim(explode(',', $parameters)[0]);
 
-        // Pipe form `10|60` is guest|authenticated allowances — see Laravel's resolveMaxAttempts.
+        // Pipe form `10|60` is guest|authenticated allowances — see Laravel's resolveMaxAttempts. Never a
+        // limiter name: the lookup uses the whole string, and nobody registers one containing a pipe.
         if (str_contains($first, '|')) {
-            [$guest, $auth] = array_pad(explode('|', $first, 2), 2, '');
-            $guest = trim($guest);
-            $auth = trim($auth);
-            if (ctype_digit($guest) && ctype_digit($auth)) {
-                return new ThrottleLimit(
-                    maxAttempts: (int) $auth,
-                    decayMinutes: $this->decay($parts),
-                    guestMaxAttempts: (int) $guest,
-                );
-            }
-
-            return new ThrottleLimit(name: $first);
+            return new ThrottleLimit;
         }
 
-        if (! ctype_digit($first)) {
-            return new ThrottleLimit(name: $first);
-        }
-
-        return new ThrottleLimit(maxAttempts: (int) $first, decayMinutes: $this->decay($parts));
+        return ctype_digit($first) ? new ThrottleLimit : new ThrottleLimit(name: $first);
     }
 
     /**
@@ -70,19 +56,5 @@ final class ThrottleParser
         }
 
         return null;
-    }
-
-    /**
-     * @param  list<string>  $parts
-     */
-    private function decay(array $parts): float
-    {
-        if (! isset($parts[1])) {
-            return 1.0;
-        }
-
-        $raw = trim($parts[1]);
-
-        return is_numeric($raw) ? (float) $raw : 1.0;
     }
 }

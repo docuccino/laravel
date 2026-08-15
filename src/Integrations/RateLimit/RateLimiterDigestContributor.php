@@ -4,19 +4,20 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\RateLimit;
 
-use Closure;
 use Docuccino\Core\Extensions\Contracts\EnvironmentDigestContributor;
 use Illuminate\Cache\RateLimiter;
-use ReflectionFunction;
 use ReflectionObject;
 use Throwable;
 
 /**
- * Feeds the app's `RateLimiter::for` registration set into the environment digest (design §10), catching
- * what per-fragment dependency hashes can't: a route carrying `throttle:api` while `api` is unregistered
- * documents the numberless 429 floor and records no closure dependency, so registering the limiter
- * afterwards would never refresh that warm fragment. Each limiter contributes its name plus the closure's
- * source location, sorted by name. An unreflectable limiter set contributes the empty string.
+ * Feeds the NAMES of the app's `RateLimiter::for` registrations into the environment digest (design §10),
+ * catching what per-fragment dependency hashes can't: a route carrying `throttle:api` while `api` is
+ * unregistered records that diagnostic in its fragment and depends on no file of its own, so registering
+ * the limiter afterwards would never refresh the warm fragment.
+ *
+ * The name set is the whole input — what a limiter's closure says never reaches the document, so editing
+ * a limiter's rate invalidates nothing. Names are sorted; an unreadable limiter set contributes the
+ * empty string.
  */
 final class RateLimiterDigestContributor implements EnvironmentDigestContributor
 {
@@ -35,36 +36,10 @@ final class RateLimiterDigestContributor implements EnvironmentDigestContributor
                 return 'rate-limiters:';
             }
 
-            $records = [];
-            foreach ($value as $name => $closure) {
-                $records[(string) $name] = $this->fingerprint($closure);
-            }
-            ksort($records);
+            $names = array_map(strval(...), array_keys($value));
+            sort($names);
 
-            $parts = [];
-            foreach ($records as $name => $fingerprint) {
-                $parts[] = $name.'@'.$fingerprint;
-            }
-
-            return 'rate-limiters:'.implode(',', $parts);
-        } catch (Throwable) {
-            return '';
-        }
-    }
-
-    /** The registered limiter closure's source location, or empty when it cannot be reflected. */
-    private function fingerprint(mixed $closure): string
-    {
-        if (! $closure instanceof Closure) {
-            return '';
-        }
-
-        try {
-            $function = new ReflectionFunction($closure);
-            $file = $function->getFileName();
-            $line = $function->getStartLine();
-
-            return $file === false || $line === false ? '' : $file.':'.$line;
+            return 'rate-limiters:'.implode(',', $names);
         } catch (Throwable) {
             return '';
         }

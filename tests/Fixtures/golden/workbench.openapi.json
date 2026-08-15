@@ -792,15 +792,13 @@
               "Retry-After": {
                 "description": "Seconds to wait before making another request.",
                 "schema": {
-                  "type": "integer",
-                  "example": 60
+                  "type": "integer"
                 }
               },
               "X-RateLimit-Limit": {
                 "description": "The maximum number of requests permitted in the current window.",
                 "schema": {
-                  "type": "integer",
-                  "example": 60
+                  "type": "integer"
                 }
               },
               "X-RateLimit-Remaining": {

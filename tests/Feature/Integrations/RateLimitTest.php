@@ -12,28 +12,22 @@ use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Extensions\Contracts\ExceptionToResponse;
 use Docuccino\Core\Extensions\Schema\ComponentRegistry;
 use Docuccino\Core\Inference\ActionRef;
-use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\NullTypeEngine;
 use Docuccino\Core\Inference\ThrownException;
-use Docuccino\Core\Inference\TraceVisitor;
-use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Patch\Contribution;
-use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Laravel\Integrations\ProblemDetails\ProblemDetailsExceptionToResponse;
 use Docuccino\Laravel\Integrations\RateLimit\RateLimitResponsesExtension;
-use Docuccino\Laravel\Tests\Support\StubTraceScope;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
-use PhpParser\Node;
-use PhpParser\ParserFactory;
 use Workbench\App\Http\Controllers\FormController;
 
 /**
  * Real-path coverage (design §Phase 4 — rate limiting): the extension reads the actual gathered
- * route middleware through the pipeline and contributes a 429 with rate headers. A numeric throttle
- * documents the numbers; a named limiter degrades to a numberless 429 + an info diagnostic.
+ * route middleware through the pipeline and contributes a 429 with rate headers. The 429 is the same
+ * for every throttled route whatever its limit; only a route throttling on a limiter name nothing
+ * registered raises a diagnostic.
  */
 /** @return array{array<string, mixed>, array<string, mixed>} the emitted document and the GET operation */
 function throttledOperation(string $path): array
@@ -43,6 +37,16 @@ function throttledOperation(string $path): array
 
     return [$document, $document['paths']['/'.$path]['get'] ?? []];
 }
+
+// Own prefix, own cleanup: the suite runs in parallel, so globbing another file's fragment dirs would
+// delete a cache another process is mid-test on.
+afterEach(function (): void {
+    foreach (glob(sys_get_temp_dir().'/docuccino-ratelimit-fragments-*') ?: [] as $dir) {
+        array_map('unlink', glob($dir.'/*') ?: []);
+        @unlink($dir.'/.gitignore');
+        @rmdir($dir);
+    }
+});
 
 it('adds a 429 with Retry-After + X-RateLimit-* headers for a numeric throttle', function (): void {
     /** @var Router $router */
@@ -56,29 +60,68 @@ it('adds a 429 with Retry-After + X-RateLimit-* headers for a numeric throttle',
     // component, so the headers resolve through the $ref along with the body.
     $response = resolveResponse($document, $operation['responses']['429']);
     expect($response['headers'])->toHaveKeys(['Retry-After', 'X-RateLimit-Limit', 'X-RateLimit-Remaining'])
-        ->and($response['headers']['X-RateLimit-Limit']['schema']['example'])->toBe(60)
+        ->and($response['headers']['X-RateLimit-Limit']['schema'])->toBe(['type' => 'integer'])
         ->and($response['content']['application/json']['schema']['properties'])->toHaveKey('message');
 });
 
-it('documents a named limiter 429 without numbers and reports an info diagnostic', function (): void {
+it('documents routes on different limits with ONE shared 429 component', function (): void {
+    // The payoff. `throttle:60,1` and `throttle:120,1` state the same contract — a 429 with rate-limit
+    // headers — so they have to state it in the same bytes. Baking the limits in split that into an
+    // `Error429` and an `Error429_2` whose description and content were byte-identical, plus two routes
+    // that folded with nothing and stayed inline.
+    /** @var Router $router */
+    $router = app('router');
+    $router->get('api/throttled-sixty', [FormController::class, 'index'])->middleware('throttle:60,1');
+    $router->get('api/throttled-oneish', [FormController::class, 'index'])->middleware('throttle:120,1');
+    $router->get('api/throttled-oneish-too', [FormController::class, 'index'])->middleware('throttle:120,1');
+    $router->get('api/throttled-guests', [FormController::class, 'index'])->middleware('throttle:10|60');
+    $router->get('api/throttled-named', [FormController::class, 'index'])->middleware('throttle:reports');
+
+    $document = stubDocumentArray();
+
+    $error429s = array_keys(array_filter(
+        $document['components']['responses'] ?? [],
+        static fn (string $name): bool => str_starts_with($name, 'Error429'),
+        ARRAY_FILTER_USE_KEY,
+    ));
+    expect($error429s)->toBe(['Error429']);
+
+    $paths = ['throttled-sixty', 'throttled-oneish', 'throttled-oneish-too', 'throttled-guests', 'throttled-named'];
+    foreach ($paths as $path) {
+        expect($document['paths']['/api/'.$path]['get']['responses']['429']['$ref'] ?? null)
+            ->toBe('#/components/responses/Error429');
+    }
+});
+
+it('reports a throttle on a limiter name nothing registered, and documents the same 429 anyway', function (): void {
+    // The route is broken — Laravel's named-limiter lookup misses and `resolveMaxAttempts` casts
+    // "reports" to 0, so every guest request 429s — but that is an app bug, not a documentation one:
+    // the 429 the operation states is exactly the one a registered limiter would state.
     /** @var Router $router */
     $router = app('router');
     $router->get('api/named-throttle', [FormController::class, 'index'])->middleware('throttle:reports');
 
     bindStubEngine();
     $result = generateDocument();
-    $operation = $result->document->toArray()['paths']['/api/named-throttle']['get'] ?? [];
+    $document = $result->document->toArray();
+    $operation = $document['paths']['/api/named-throttle']['get'] ?? [];
 
     expect($operation['responses'])->toHaveKey('429');
-    expect($operation['responses']['429']['headers']['X-RateLimit-Limit']['schema'])->toBe(['type' => 'integer']);
+    expect(resolveResponse($document, $operation['responses']['429'])['headers']['X-RateLimit-Limit']['schema'])
+        ->toBe(['type' => 'integer']);
 
-    $codes = array_map(static fn ($d): string => $d->code, $result->diagnostics);
-    expect($codes)->toContain('rate-limit.dynamic-limit')
+    $reported = diagnosticsCoded($result->diagnostics, 'rate-limit.unregistered-limiter');
+    expect($reported)->toHaveCount(1)
+        ->and($reported[0]->message)->toContain('"reports"')
+        ->and($reported[0]->help)->toContain("RateLimiter::for('reports'")
+        ->and($reported[0]->routeSignature)->toBe('GET /api/named-throttle')
         ->and($result->has(Severity::Info))->toBeTrue();
 });
 
-it('reflects a registered named limiter in the diagnostic message', function (): void {
-    app(RateLimiter::class)->for('reports', static fn () => Limit::perMinute(30));
+it('reports nothing for a registered named limiter, however dynamic it is', function (): void {
+    // A conditional limiter documents exactly what a literal one does, so there is nothing to say about
+    // either. Registration is the only thing checked.
+    app(RateLimiter::class)->for('reports', static fn (Request $request): Limit => $request->user() ? Limit::none() : Limit::perMinute(30));
 
     /** @var Router $router */
     $router = app('router');
@@ -86,44 +129,38 @@ it('reflects a registered named limiter in the diagnostic message', function ():
 
     bindStubEngine();
     $result = generateDocument();
+    $document = $result->document->toArray();
+    $operation = $document['paths']['/api/registered-throttle']['get'] ?? [];
 
-    $messages = array_map(static fn ($d): string => $d->message, $result->diagnostics);
-    expect(implode("\n", $messages))->toContain('is registered but its limit is defined by a closure');
+    $headers = resolveResponse($document, $operation['responses']['429'] ?? [])['headers'] ?? [];
+    expect($headers['X-RateLimit-Limit']['schema'])->toBe(['type' => 'integer'])
+        ->and($headers['Retry-After']['schema'])->toBe(['type' => 'integer'])
+        ->and(diagnosticsCoded($result->diagnostics, 'rate-limit.unregistered-limiter'))->toBe([]);
 });
 
-it('folds a registered named limiter to concrete numbers with no diagnostic', function (): void {
-    // The idiomatic Laravel-11 default shape: an arrow closure partitioned by ip.
-    $limiter = fn (Request $request) => Limit::perMinute(30)->by($request->ip());
-    app(RateLimiter::class)->for('reports', $limiter);
+it('replays the unregistered-limiter report on a warm cache hit, and retires it once the limiter exists', function (): void {
+    // The diagnostic lives inside the fragment, and the route depends on no file that registering a
+    // limiter would touch — so a warm build has to replay it, and only the environment digest can
+    // retire it. Under-key that digest and the stale report outlives the fix.
+    $dir = sys_get_temp_dir().'/docuccino-ratelimit-fragments-'.uniqid('', true);
+    config()->set('docuccino.cache.enabled', true);
+    config()->set('docuccino.cache.path', $dir);
 
     /** @var Router $router */
     $router = app('router');
-    $router->get('api/folded-throttle', [FormController::class, 'index'])->middleware('throttle:reports');
+    $router->get('api/warm-throttle', [FormController::class, 'index'])->middleware('throttle:reports');
 
-    // Script the engine's closure trace for THIS limiter's ref (file::{closure}, the symbol the
-    // extension builds from ReflectionFunction) so the fold runs end-to-end in-process. The real
-    // engine folding an arrow limiter is proven separately by the fixture-group test.
-    $reflection = new ReflectionFunction($limiter);
-    $symbol = $reflection->getFileName().'::{closure}';
-    $script = static function (TraceVisitor $visitor): void {
-        $ast = (new ParserFactory)->createForNewestSupportedVersion()
-            ->parse("<?php\nreturn \\Illuminate\\Cache\\RateLimiting\\Limit::perMinute(30)->by('ip');\n") ?? [];
-        $statement = $ast[0] ?? null;
-        if ($statement instanceof Node\Stmt\Return_ && $statement->expr !== null) {
-            $visitor->enterNode($statement->expr, new StubTraceScope(new ClassT('Illuminate\\Cache\\RateLimiting\\Limit')));
-        }
-    };
+    bindStubEngine();
 
-    app()->instance(TypeEngine::class, new StubTypeEngine(traces: [$symbol => $script]));
-    $result = generateDocument();
-    $operation = $result->document->toArray()['paths']['/api/folded-throttle']['get'] ?? [];
+    $cold = generateDocument();
+    $warm = generateDocument();
 
-    $headers = $operation['responses']['429']['headers'] ?? [];
-    expect($headers['X-RateLimit-Limit']['schema'])->toBe(['type' => 'integer', 'example' => 30])
-        ->and($headers['Retry-After']['schema'])->toBe(['type' => 'integer', 'example' => 60]);
+    expect(diagnosticsCoded($cold->diagnostics, 'rate-limit.unregistered-limiter'))->toHaveCount(1)
+        ->and(diagnosticsCoded($warm->diagnostics, 'rate-limit.unregistered-limiter'))->toHaveCount(1);
 
-    $codes = array_map(static fn ($d): string => $d->code, $result->diagnostics);
-    expect($codes)->not->toContain('rate-limit.dynamic-limit');
+    app(RateLimiter::class)->for('reports', static fn (): Limit => Limit::perMinute(30));
+
+    expect(diagnosticsCoded(generateDocument()->diagnostics, 'rate-limit.unregistered-limiter'))->toBe([]);
 });
 
 it('adds no 429 to an unthrottled route', function (): void {

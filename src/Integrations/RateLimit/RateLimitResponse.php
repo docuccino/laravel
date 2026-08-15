@@ -6,9 +6,15 @@ namespace Docuccino\Laravel\Integrations\RateLimit;
 
 /**
  * Builds the `429 Too Many Requests` response: the `Retry-After` and `X-RateLimit-*` headers Laravel's
- * ThrottleRequests middleware sets, plus Laravel's stock JSON `{message}` body. A known numeric throttle
- * puts concrete numbers in the header examples; an unfolded named limiter documents the headers without
- * values. Pure, so the header shape is dataset-testable.
+ * ThrottleRequests middleware sets, plus Laravel's stock JSON `{message}` body. Pure and value-free —
+ * the same bytes for every throttled route, so the header shape is dataset-testable.
+ *
+ * The headers say what they MEAN, never what this route's limit happens to be. A documented number
+ * duplicates what the app's own prose says, goes stale the moment somebody edits the middleware, and
+ * makes a rate-limit tweak rewrite bytes — firing the semantic diff — across operations whose contract
+ * did not change. It also splits an otherwise-identical 429 into `Error429`, `Error429_2`, … one per
+ * distinct limit. The live response headers are authoritative, and a client learns the real numbers from
+ * its first call. An app that genuinely wants a number in its published spec can state one in an overlay.
  *
  * The `{message}` body is only the fallback: the extension prefers whatever the error-response chain
  * documents for a throttle exception, so an app with its own error shape doesn't get a contradictory 429.
@@ -18,34 +24,18 @@ final class RateLimitResponse
     /**
      * @return array<string, mixed>
      */
-    public function build(ThrottleLimit $limit): array
+    public function build(): array
     {
-        $retryAfter = ['type' => 'integer'];
-        $rateLimit = ['type' => 'integer'];
-
-        if (! $limit->isNamed()) {
-            $rateLimit['example'] = $limit->maxAttempts;
-            $retryAfter['example'] = $limit->retryAfterSeconds();
-        }
-
-        $description = 'Too Many Requests — the rate limit for this endpoint has been exceeded.';
-        if ($limit->guestMaxAttempts !== null) {
-            $description .= sprintf(
-                ' The documented limit applies to authenticated requests; unauthenticated requests are limited to %d per window.',
-                $limit->guestMaxAttempts,
-            );
-        }
-
         return [
-            'description' => $description,
+            'description' => 'Too Many Requests — the rate limit for this endpoint has been exceeded.',
             'headers' => [
                 'Retry-After' => [
                     'description' => 'Seconds to wait before making another request.',
-                    'schema' => $retryAfter,
+                    'schema' => ['type' => 'integer'],
                 ],
                 'X-RateLimit-Limit' => [
                     'description' => 'The maximum number of requests permitted in the current window.',
-                    'schema' => $rateLimit,
+                    'schema' => ['type' => 'integer'],
                 ],
                 'X-RateLimit-Remaining' => [
                     'description' => 'The number of requests remaining in the current window.',
