@@ -134,7 +134,7 @@ it('reports two routes that published one operationId, naming both', function ()
     );
 
     $reported = array_values(array_filter(
-        diagnosticsCoded($result->diagnostics, 'identity.duplicate-operation-id'),
+        diagnosticsCoded($result->diagnostics, 'route.duplicate-operation-id'),
         static fn ($d): bool => str_contains($d->message, 'ReportController@index'),
     ));
 
@@ -153,7 +153,7 @@ it('reports no duplicate operationId when every route publishes its own', functi
         $router->get('api/zz-api-ledgers', [LedgerController::class, 'index']);
     });
 
-    expect(diagnosticsCoded($result->diagnostics, 'identity.duplicate-operation-id'))->toBe([]);
+    expect(diagnosticsCoded($result->diagnostics, 'route.duplicate-operation-id'))->toBe([]);
 });
 
 it('still reports the duplicate operationId on a warm fragment-cache build', function (): void {
@@ -175,8 +175,8 @@ it('still reports the duplicate operationId on a warm fragment-cache build', fun
     $cold = tagCollisionDocument($routes, $config);
     $warm = generateDocument($config);
 
-    expect(diagnosticsCoded($warm->diagnostics, 'identity.duplicate-operation-id'))
-        ->toEqual(diagnosticsCoded($cold->diagnostics, 'identity.duplicate-operation-id'))
+    expect(diagnosticsCoded($warm->diagnostics, 'route.duplicate-operation-id'))
+        ->toEqual(diagnosticsCoded($cold->diagnostics, 'route.duplicate-operation-id'))
         ->not->toBeEmpty();
 
     array_map('unlink', glob($dir.'/*') ?: []);

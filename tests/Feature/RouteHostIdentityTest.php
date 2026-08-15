@@ -47,7 +47,7 @@ it('documents one of two hosts on a URI and reports the one OpenAPI has no slot 
 
     $collisions = array_values(array_filter(
         $diagnostics,
-        fn (Diagnostic $d): bool => $d->code === 'paths.operation-collision',
+        fn (Diagnostic $d): bool => $d->code === 'route.operation-collision',
     ));
 
     expect($document['paths']['/api/zz-hosts'])->toHaveKey('get')
@@ -94,7 +94,7 @@ it('lets a host-less route keep the URI when a hosted sibling arrives, byte for 
     expect($withSibling['paths']['/api/zz-hosts']['get'])->toEqual($alone['paths']['/api/zz-hosts']['get'])
         ->and($withSibling['paths']['/api/zz-hosts']['get'])->not->toHaveKey('servers')
         // …and the sibling that could not be emitted is still reported, not lost quietly.
-        ->and(diagnosticsCoded($diagnostics, 'paths.operation-collision'))->toHaveCount(1);
+        ->and(diagnosticsCoded($diagnostics, 'route.operation-collision'))->toHaveCount(1);
 });
 
 it('names the host a route is bound to in operation-level servers', function (): void {
@@ -223,7 +223,7 @@ it('serves a warm build the same bytes and the same diagnostics as a cold one', 
     // Equal diagnostics that are equally EMPTY would prove nothing, so the two facts this build is
     // supposed to carry are pinned outright.
     expect($document['paths']['/api/zz-tenant']['get'])->toHaveKey('servers')
-        ->and(diagnosticsCoded($warm->diagnostics, 'paths.operation-collision'))->toHaveCount(1);
+        ->and(diagnosticsCoded($warm->diagnostics, 'route.operation-collision'))->toHaveCount(1);
 });
 
 it('never serves one host the fragment cached for its sibling on the same URI', function (): void {
