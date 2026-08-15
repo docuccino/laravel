@@ -50,6 +50,38 @@ it('folds Rule::in with an array argument into an in rule', function (): void {
         ->and($rules[0]->parameters)->toBe(['a', 'b']);
 });
 
+it('folds a choice descriptor whose values do not fold to nothing at all', function (string $method, array $args): void {
+    // `Rule::in(MediaCollections::validNames())` / `Rule::enum($runtimeClass)`: the values are only known
+    // at runtime. An empty `in`/`enum` rule would be worse than none — it wins the per-field merge over
+    // whatever else documents the field, then contributes no keyword — so it folds to nothing and the
+    // field is reported unrecoverable instead.
+    $value = ConstValue::descriptor('Illuminate\\Validation\\Rule::'.$method, $args);
+
+    expect((new ConstValueToRules)->fold($value))->toBe([]);
+})->with([
+    'in with an unfoldable argument' => ['in', []],
+    'in with a non-scalar argument' => ['in', [ConstValue::array([])]],
+    'enum naming no class' => ['enum', []],
+    'enum naming a class that is not an enum' => ['enum', [ConstValue::scalar(ConstValueToRules::class)]],
+]);
+
+it('folds a Rule::enum narrowed to nothing to no rule', function (): void {
+    $value = ConstValue::descriptor('Illuminate\\Validation\\Rule::enum', [ConstValue::scalar(WidgetStatus::class)])
+        ->withChainedCall('only', [ConstValue::array([ConstValue::scalar('NoSuchCase')])]);
+
+    expect((new ConstValueToRules)->fold($value))->toBe([]);
+});
+
+it('keeps exists and unique, which legitimately carry no values', function (string $method): void {
+    $value = ConstValue::descriptor('Illuminate\\Validation\\Rule::'.$method, [ConstValue::scalar('users')]);
+
+    $rules = (new ConstValueToRules)->fold($value);
+
+    expect($rules)->toHaveCount(1)
+        ->and($rules[0]->name)->toBe($method)
+        ->and($rules[0]->parameters)->toBe([]);
+})->with(['exists', 'unique']);
+
 it('ignores a descriptor it does not recognise', function (): void {
     $value = ConstValue::descriptor('Illuminate\\Validation\\Rule::mystery', [ConstValue::scalar('x')]);
 

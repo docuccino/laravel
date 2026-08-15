@@ -30,6 +30,9 @@ final class RuleOrdering
         'bool' => 10, 'array' => 10, 'email' => 10, 'uuid' => 10, 'ulid' => 10, 'url' => 10,
         'ip' => 10, 'date' => 10, 'date_format' => 10, 'json' => 10, 'list' => 10,
         'accepted' => 10, 'accepted_if' => 10, 'declined' => 10, 'declined_if' => 10,
+        // Straight after the type rules: it REPLACES the `array` one for a recovered map, and the
+        // type-aware constraint rules below have to see the object it settles on.
+        'additional_properties' => 12,
         'file' => 15, 'image' => 15,
         'in' => 20, 'enum' => 20, 'not_in' => 20, 'exists' => 20, 'unique' => 20,
         'regex' => 25, 'alpha' => 25, 'alpha_num' => 25, 'alpha_dash' => 25,

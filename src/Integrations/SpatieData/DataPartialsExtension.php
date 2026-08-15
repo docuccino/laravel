@@ -11,7 +11,7 @@ use Docuccino\Core\Extensions\Contracts\OperationPhase;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\DType\DType;
 use Docuccino\Core\Patch\Contribution;
-use Docuccino\Laravel\Integrations\Support\FrameworkClasses;
+use Docuccino\Laravel\Support\FrameworkClasses;
 
 /**
  * Documents spatie's `include`/`exclude`/`only`/`except` query partials on an operation whose action

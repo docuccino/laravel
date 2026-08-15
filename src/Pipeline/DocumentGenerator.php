@@ -14,6 +14,7 @@ use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Extensions\ResolvedExtensions;
+use Docuccino\Core\Extensions\Schema\ComponentNames;
 use Docuccino\Core\Extensions\Schema\ComponentRegistry;
 use Docuccino\Core\Identity\IdentityGenerator;
 use Docuccino\Core\Inference\TypeEngine;
@@ -197,9 +198,7 @@ final class DocumentGenerator
         $cached = $this->cache->get($cacheKey);
         if ($cached !== null) {
             // Warm hit: restore components without waking the type engine (design §10).
-            $this->restoreComponents($cached, $components);
-
-            return $cached;
+            return $this->restoreComponents($cached, $components);
         }
 
         // Snapshot the shared registry: a route that throws mid-build rolls back, so it can't leave
@@ -236,7 +235,11 @@ final class DocumentGenerator
             $frozen = $operation->freeze();
             [$referencedSchemas, $referencedSchemaIds, $referencedResponses] = $this->componentClosure($frozen->toArray(), $components);
 
-            $fragment = new OperationFragment($path, $method, $frozen, $signature, $diagnostics, $referencedSchemas, $referencedSchemaIds, $referencedResponses);
+            // What this route's component work reported moves onto the fragment, so a warm hit — which
+            // restores components without re-registering anything — still replays it.
+            $diagnostics = [...$diagnostics, ...$components->takeDiagnosticsSince($snapshot)];
+
+            $fragment = new OperationFragment($path, $method, $frozen, $signature, $diagnostics, $referencedSchemas, $referencedSchemaIds, $referencedResponses, $context->actionRef->class);
             // Trace-derived dependency files widen the key, so a deep chain invalidates when any file
             // it walked changes (design §10 seam).
             $this->cache->put($cacheKey, $fragment, $context->dependencyFiles());
@@ -340,14 +343,48 @@ final class DocumentGenerator
         return $refs;
     }
 
-    private function restoreComponents(OperationFragment $fragment, ComponentRegistry $components): void
+    /**
+     * Put a cached fragment's components back without waking the type engine, and hand back the
+     * fragment on the names they ACTUALLY landed on. A component the fragment recorded as `Foo` can
+     * land as `Foo_2` when a route added since this fragment was cached registered a different class
+     * under `Foo` first — and then the restored operation's `$ref` would silently point at the other
+     * class's shape. So anything that moved is repointed, in the fragment and in the bodies it just
+     * filed. (Which name a contested schema is finally PUBLISHED under is a separate, FQCN-derived
+     * question the assembler settles; see {@see ComponentNames}.)
+     */
+    private function restoreComponents(OperationFragment $fragment, ComponentRegistry $components): OperationFragment
     {
+        $schemas = [];
         foreach ($fragment->componentSchemas as $name => $schema) {
-            $components->registerSchema($name, $schema, $fragment->componentSchemaIds[$name] ?? null);
+            $actual = $components->registerSchema($name, $schema, $fragment->componentSchemaIds[$name] ?? null);
+            if ($actual !== $name) {
+                $schemas[$name] = $actual;
+            }
         }
+
+        $responses = [];
         foreach ($fragment->componentResponses as $name => $response) {
-            $components->registerResponse($name, $response);
+            $actual = $components->registerResponse($name, $response);
+            if ($actual !== $name) {
+                $responses[$name] = $actual;
+            }
         }
+
+        if ($schemas === [] && $responses === []) {
+            return $fragment;
+        }
+
+        // The bodies went in carrying the names this fragment was cached with, so re-file them on the
+        // ones they now point at. Only components this fragment's identities still hold are touched.
+        foreach ($fragment->componentSchemas as $name => $schema) {
+            $components->replaceSchema(
+                $schemas[$name] ?? (string) $name,
+                ComponentNames::rename($schema, $schemas),
+                $fragment->componentSchemaIds[$name] ?? null,
+            );
+        }
+
+        return $fragment->withRenamedComponents($schemas, $responses);
     }
 
     private function onFailure(

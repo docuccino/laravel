@@ -432,7 +432,9 @@ final class DataClassReflector
 
     /**
      * The property's constructor default, read off the signature — nothing is instantiated. A defaulted
-     * property is non-required and its value is a documentable schema default.
+     * property is non-required whatever the default is; `value` is separately the *documentable* default,
+     * so a non-scalar one (`[]`, `new Optional`) still says "not required" while contributing no
+     * `default` keyword.
      *
      * @return array{hasDefault: bool, value: mixed}
      */
@@ -451,7 +453,7 @@ final class DataClassReflector
             if ($parameter->getName() === $property && $parameter->isDefaultValueAvailable()) {
                 $value = $parameter->getDefaultValue();
 
-                return ['hasDefault' => is_scalar($value) || $value === null, 'value' => $value];
+                return ['hasDefault' => true, 'value' => is_scalar($value) ? $value : null];
             }
         }
 

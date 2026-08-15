@@ -177,6 +177,25 @@ it('maps every schema-producing string rule to its fragment', function (array $r
     'list' => [[['list']], ['type' => 'array']],
     'distinct' => [[['distinct']], ['type' => 'array', 'uniqueItems' => true]],
 
+    // AdditionalPropertiesRuleTransformer — a recovered `array<string, V>`: the value schema arrives as
+    // JSON, and `object` replaces the `array` a Laravel type rule can only have said.
+    'additional_properties' => [[['additional_properties', ['{"type":"string"}']]], ['additionalProperties' => ['type' => 'string'], 'type' => 'object']],
+    'additional_properties (open values)' => [[['additional_properties', ['{}']]], ['additionalProperties' => [], 'type' => 'object']],
+    'additional_properties (overrides the array rule beside it)' => [[['array'], ['additional_properties', ['{"type":"integer"}']]], ['additionalProperties' => ['type' => 'integer'], 'type' => 'object']],
+    // Degradation: nothing to decode, or a parameter that isn't a schema, leaves the field untouched.
+    'additional_properties (no parameter)' => [[['string'], ['additional_properties']], ['type' => 'string']],
+    'additional_properties (unparseable parameter)' => [[['string'], ['additional_properties', ['not json']]], ['type' => 'string']],
+
+    // ProhibitedRuleTransformer — the conditional forms stay documented, with the condition as a note.
+    // (A bare `prohibited` never reaches a field at all; RuleSetNormalizerTest covers that.)
+    'prohibited (no schema effect)' => [[['string'], ['prohibited']], ['type' => 'string']],
+    'prohibited_if' => [[['string'], ['prohibited_if', ['status', 'locked']]], ['description' => 'Must not be sent when status is locked.', 'type' => 'string']],
+    'prohibited_if (presence form)' => [[['string'], ['prohibited_if', ['status']]], ['description' => 'Must not be sent when status is present.', 'type' => 'string']],
+    'prohibited_unless' => [[['string'], ['prohibited_unless', ['role', 'admin']]], ['description' => 'Must not be sent unless role is admin.', 'type' => 'string']],
+    'prohibited_unless (presence form)' => [[['string'], ['prohibited_unless', ['role']]], ['description' => 'Must not be sent unless role is present.', 'type' => 'string']],
+    'prohibits' => [[['string'], ['prohibits', ['legacy_name']]], ['description' => 'Sending this field requires legacy_name to be absent.', 'type' => 'string']],
+    'prohibits (no parameters)' => [[['string'], ['prohibits']], ['type' => 'string']],
+
     // FileRuleTransformer — dimensions has no OpenAPI keyword, so the constraint list is a note
     // (multipart switch asserted separately).
     'dimensions' => [[['dimensions', ['min_width=100', 'min_height=200']]], ['description' => 'Image dimensions: min_width=100, min_height=200.']],
@@ -258,7 +277,7 @@ it('switches to multipart on mimes/mimetypes/extensions but adds nothing else', 
         ->and($bare->schema['properties']['f'])->toBe([]);
 });
 
-it('flips multipart on dimensions and notes the constraints, and consumes prohibited rules', function (): void {
+it('flips multipart on dimensions and notes the constraints, and leaves prohibited fields optional', function (): void {
     // `dimensions` implies an uploaded image: multipart, plus a description note (no wrong keyword).
     // Alongside `image` it appends to the image note rather than clobbering it.
     $dimensions = convertFieldRules([['image'], ['dimensions', ['min_width=100', 'max_width=1000']]]);
@@ -271,7 +290,8 @@ it('flips multipart on dimensions and notes the constraints, and consumes prohib
     expect($bare->mediaType)->toBe('multipart/form-data')
         ->and($bare->schema['properties']['f'])->toBe([]);
 
-    // `prohibited`/`prohibits` are presence-negations: consumed with no schema effect, field optional.
+    // Presence-negations reaching the chain: consumed with no schema effect, field optional. An
+    // unconditional `prohibited` is dropped from the rule set before this point (RuleSetNormalizerTest).
     foreach (['prohibited', 'prohibits'] as $rule) {
         $result = convertFieldRules([['string'], [$rule]]);
         expect($result->schema['properties']['f'])->toBe(['type' => 'string'])

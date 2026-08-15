@@ -10,6 +10,7 @@ use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
 use Docuccino\Core\Extensions\Validation\RecoveredRequest;
 use Docuccino\Laravel\Integrations\Validation\RuleOrdering;
+use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
 
 /**
  * Documents an action's request from its own `rules()` — the action-class analogue of the Form Request
@@ -22,6 +23,7 @@ final class ActionValidationExtension implements OperationExtension
     public function __construct(
         private readonly ActionRules $rules = new ActionRules,
         private readonly RuleOrdering $ordering = new RuleOrdering,
+        private readonly RuleSetNormalizer $normalizer = new RuleSetNormalizer,
         private readonly RecoveredRequest $request = new RecoveredRequest,
     ) {}
 
@@ -37,7 +39,7 @@ final class ActionValidationExtension implements OperationExtension
             return;
         }
 
-        $result = $context->validation()->convert($this->ordering->order($rules), $context->converter());
+        $result = $context->validation()->convert($this->ordering->order($this->normalizer->normalize($rules)), $context->converter());
         if ($result->isEmpty()) {
             return;
         }

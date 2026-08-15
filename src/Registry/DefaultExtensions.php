@@ -16,6 +16,7 @@ use Docuccino\Laravel\Extensions\AttributeRequestBodyExtension;
 use Docuccino\Laravel\Extensions\AttributeResponsesExtension;
 use Docuccino\Laravel\Extensions\AttributeSecurityExtension;
 use Docuccino\Laravel\Extensions\ErrorResponsesExtension;
+use Docuccino\Laravel\Extensions\FrameworkResponseTypeToSchema;
 use Docuccino\Laravel\Extensions\ImplicitResponsesExtension;
 use Docuccino\Laravel\Extensions\InferredResponsesExtension;
 use Docuccino\Laravel\Extensions\PathParametersExtension;
@@ -88,6 +89,9 @@ final class DefaultExtensions
             ...$enabled('sanctum'),
             ...$enabled('passport'),
             ...$enabled('permission'),
+            // Ahead of the core mappers: a framework response object is transport, not a body, so it
+            // must never reach the framework-agnostic class mapper and be reflected into a component.
+            FrameworkResponseTypeToSchema::class,
             ...DefaultTypeMappers::all(),
             // Data-leakage lint: warns on sensitive-looking property names. Diagnostics only, never
             // mutates output.

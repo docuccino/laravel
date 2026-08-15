@@ -13,6 +13,7 @@ use Docuccino\Core\Extensions\Contracts\OperationPhase;
 use Docuccino\Core\Extensions\Validation\RecoveredRequest;
 use Docuccino\Core\Extensions\Validation\RuleSet;
 use Docuccino\Laravel\Integrations\Validation\RuleOrdering;
+use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
 
 /**
  * Documents a request from its validation rules. Recovers a rule set statically — a FormRequest's
@@ -27,6 +28,7 @@ final class ValidationRequestExtension implements OperationExtension
     public function __construct(
         private readonly FormRequestRules $formRequest = new FormRequestRules,
         private readonly RuleOrdering $ordering = new RuleOrdering,
+        private readonly RuleSetNormalizer $normalizer = new RuleSetNormalizer,
         private readonly RecoveredRequest $request = new RecoveredRequest,
     ) {}
 
@@ -42,7 +44,7 @@ final class ValidationRequestExtension implements OperationExtension
             return;
         }
 
-        $result = $context->validation()->convert($this->ordering->order($rules), $context->converter());
+        $result = $context->validation()->convert($this->ordering->order($this->normalizer->normalize($rules)), $context->converter());
         if ($result->isEmpty()) {
             return;
         }

@@ -9,6 +9,7 @@ use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\DType\DType;
 use Docuccino\Core\Patch\Contribution;
+use Docuccino\Laravel\Support\FrameworkClasses;
 
 /**
  * The shared applier for the two JSON:API query parameters both JSON:API resource families resolve —

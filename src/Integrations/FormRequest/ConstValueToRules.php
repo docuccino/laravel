@@ -103,16 +103,21 @@ final class ConstValueToRules
         $factory = strtolower($descriptor->factory ?? '');
         $method = str_contains($factory, '::') ? substr($factory, strrpos($factory, '::') + 2) : $factory;
 
-        return match ($method) {
-            'enum' => $this->enum($descriptor),
-            'in' => ValidationRule::of('in', $this->scalarArgs($descriptor)),
-            'exists' => ValidationRule::of('exists'),
-            'unique' => ValidationRule::of('unique'),
+        // A choice descriptor whose values didn't fold is worth LESS than nothing: it would win the merge
+        // and then contribute no keyword, so it stays unrecovered for the caller to diagnose.
+        // `exists`/`unique` legitimately carry no values.
+        $choices = $method === 'in' ? $this->scalarArgs($descriptor) : [];
+
+        return match (true) {
+            $method === 'enum' => $this->enum($descriptor),
+            $method === 'in' => $choices === [] ? null : ValidationRule::of('in', $choices),
+            $method === 'exists' => ValidationRule::of('exists'),
+            $method === 'unique' => ValidationRule::of('unique'),
             default => null,
         };
     }
 
-    private function enum(ConstValue $descriptor): ValidationRule
+    private function enum(ConstValue $descriptor): ?ValidationRule
     {
         $class = $descriptor->args[0] ?? null;
         $fqcn = $class !== null && $class->isScalar() && is_string($class->scalar) ? ltrim($class->scalar, '\\') : '';
@@ -123,7 +128,7 @@ final class ConstValueToRules
             $values = $this->narrowEnum($fqcn, $values, $descriptor->chain);
         }
 
-        return ValidationRule::of('enum', $values, $fqcn === '' ? null : $fqcn);
+        return $values === [] ? null : ValidationRule::of('enum', $values, $fqcn);
     }
 
     /**

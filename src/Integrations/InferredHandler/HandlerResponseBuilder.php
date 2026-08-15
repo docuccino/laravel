@@ -17,8 +17,8 @@ use Docuccino\Core\Inference\DType\StatusMarkerT;
 use Docuccino\Core\Inference\DType\UnknownT;
 use Docuccino\Core\Inference\DType\VoidT;
 use Docuccino\Core\Patch\Contribution;
-use Docuccino\Laravel\Integrations\Support\FrameworkClasses;
 use Docuccino\Laravel\Integrations\Support\FrameworkExceptionTable;
+use Docuccino\Laravel\Support\FrameworkClasses;
 
 /**
  * Builds an error {@see ResponseDraft} from a handler/closure analysis (design §6): reads the recovered

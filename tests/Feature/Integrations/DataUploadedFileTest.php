@@ -18,6 +18,7 @@ use Docuccino\Core\Inference\NullTypeEngine;
 use Docuccino\Core\Inference\PropertyMetadata;
 use Docuccino\Laravel\Integrations\SpatieData\DataValidationRules;
 use Docuccino\Laravel\Integrations\Validation\RuleOrdering;
+use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
 use Docuccino\Laravel\Integrations\Validation\ValidationIntegration;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\UploadData;
 
@@ -76,17 +77,17 @@ it('documents a mixed json+file body under multipart with scalar fields intact',
 
 /**
  * Build the request schema for a subset of {@see UploadData}'s properties through the real
- * DataValidationRules recovery + the shared Laravel validation chain.
+ * DataValidationRules recovery + the shared normalise/order/convert sequence the extension runs.
  *
  * @param  list<PropertyMetadata>  $properties
  */
 function buildUploadSchema(array $properties): ValidationSchema
 {
     $metadata = new ClassMetadata(UploadData::class, $properties);
-    $ruleSet = (new DataValidationRules)->build(UploadData::class, $metadata, new NullTypeEngine);
-    $ordered = (new RuleOrdering)->order($ruleSet);
-
     $context = new SchemaConverter(DefaultTypeMappers::all(), new NullTypeEngine, new ComponentRegistry, new RepresentationPolicy);
+
+    $ruleSet = (new DataValidationRules)->build(UploadData::class, $metadata, new NullTypeEngine, null, $context);
+    $ordered = (new RuleOrdering)->order((new RuleSetNormalizer)->normalize($ruleSet));
 
     return (new DefaultValidationRulesToSchema(ValidationIntegration::transformers()))->convert($ordered, $context);
 }

@@ -18,9 +18,11 @@ use Docuccino\Laravel\Integrations\SpatieData\DataValidationRules;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\AccountData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\AccountStatus;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\AddressData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\ContainerShapeData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\PinnedRuleData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ProfileResource;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\RequestExclusionData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\SaveAnswersData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\TagData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\TimestampData;
 
@@ -90,6 +92,21 @@ it('reflects the new attribute facts off the real class', function (): void {
         ->and($reflector->dataCollectionOf(AccountData::class, 'tags'))->toBe(TagData::class)
         ->and($reflector->validationTokens(AccountData::class, 'code'))->toBe(['max:5'])
         ->and($reflector->validationTokens(AccountData::class, 'status'))->toBe(['in:active,suspended']);
+});
+
+it('separates having a default from having a documentable one', function (): void {
+    // The two questions the one call answers: a defaulted property is never REQUIRED, whatever the
+    // default is, while only a scalar default is a `default` keyword. Conflating them made
+    // `$touched_fields = []` a required request property.
+    $reflector = new DataClassReflector;
+
+    expect($reflector->propertyDefault(SaveAnswersData::class, 'touched_fields'))
+        ->toBe(['hasDefault' => true, 'value' => null])
+        ->and($reflector->propertyDefault(ContainerShapeData::class, 'extras')['hasDefault'])->toBeTrue()
+        ->and($reflector->propertyDefault(ContainerShapeData::class, 'extras')['value'])->toBeNull()
+        // A property with no default at all is unchanged.
+        ->and($reflector->propertyDefault(SaveAnswersData::class, 'zone_key'))
+        ->toBe(['hasDefault' => false, 'value' => null]);
 });
 
 it('silently drops an object-valued #[Rule(new …)] but recovers the string form', function (): void {

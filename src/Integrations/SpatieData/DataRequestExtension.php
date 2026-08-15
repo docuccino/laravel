@@ -14,6 +14,7 @@ use Docuccino\Core\Extensions\Validation\RecoveredRequest;
 use Docuccino\Core\Inference\ClassRef;
 use Docuccino\Laravel\Integrations\FormRequest\RulesFromClass;
 use Docuccino\Laravel\Integrations\Validation\RuleOrdering;
+use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
 use ReflectionClass;
 use ReflectionMethod;
 use ReflectionNamedType;
@@ -30,6 +31,7 @@ final class DataRequestExtension implements OperationExtension
     public function __construct(
         private readonly DataValidationRules $rules = new DataValidationRules,
         private readonly RuleOrdering $ordering = new RuleOrdering,
+        private readonly RuleSetNormalizer $normalizer = new RuleSetNormalizer,
         private readonly RecoveredRequest $request = new RecoveredRequest,
         private readonly RulesFromClass $rulesOverride = new RulesFromClass,
     ) {}
@@ -60,13 +62,15 @@ final class DataRequestExtension implements OperationExtension
         $documentedByProperties = $this->rules->propertyFieldKeys($fqcn, $metadata, $context->engine);
         $overrides = $this->rulesOverride->analyse($context, $fqcn, $documentedByProperties);
 
-        $ruleSet = $this->rules->build($fqcn, $metadata, $context->engine, $overrides);
+        $converter = $context->converter();
+        $validation = $context->validation();
+        $ruleSet = $this->normalizer->normalize($this->rules->build($fqcn, $metadata, $context->engine, $overrides, $converter, $validation));
         $context->recordDependencyFiles($this->rules->dependencyFiles());
         if ($ruleSet->isEmpty()) {
             return;
         }
 
-        $result = $context->validation()->convert($this->ordering->order($ruleSet), $context->converter());
+        $result = $validation->convert($this->ordering->order($ruleSet), $converter);
         if ($result->isEmpty()) {
             return;
         }

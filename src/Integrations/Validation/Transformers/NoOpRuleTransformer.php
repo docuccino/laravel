@@ -13,8 +13,8 @@ use Docuccino\Core\Extensions\Validation\ValidationRule;
  * Legitimate Laravel rules that say nothing about the request shape. Consuming them here keeps each from
  * raising a spurious `validation.rule-unhandled` diagnostic. `bail` is about failure handling; the
  * `exclude` family drops the field from validated output, not from the accepted input;
- * `current_password` is a runtime credential check; `prohibited`/`prohibits` are presence *negations*, so
- * the field just stays optional — the honest contract for something you must not send.
+ * `current_password` is a runtime credential check. The prohibition family is NOT here — a field that
+ * must not be sent is a real fact about the request, handled by {@see ProhibitedRuleTransformer}.
  */
 final class NoOpRuleTransformer implements RuleTransformer
 {
@@ -26,8 +26,6 @@ final class NoOpRuleTransformer implements RuleTransformer
         'exclude_with',
         'exclude_without',
         'current_password',
-        'prohibited',
-        'prohibits',
     ];
 
     public function supports(ValidationRule $rule): bool

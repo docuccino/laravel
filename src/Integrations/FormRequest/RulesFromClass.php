@@ -23,7 +23,8 @@ use ReflectionClass;
  * The descriptor path wins per field, being strictly more complete for the fields it recovers.
  *
  * A field present in the array but recovered by neither path raises a `validation.rule-unrecoverable` info
- * diagnostic, so a closure or an undocumented custom rule object never vanishes silently.
+ * diagnostic, so a closure or an undocumented custom rule object never vanishes silently — worded for
+ * whether the field is omitted outright or kept by another producer minus its constraints.
  */
 final class RulesFromClass
 {
@@ -34,7 +35,8 @@ final class RulesFromClass
     /**
      * @param  list<string>  $documentedElsewhere  fields another producer already documents (e.g. a spatie
      *                                             Data property typed as an upload); unrecoverable rules
-     *                                             for these aren't a real omission, so no diagnostic.
+     *                                             for these aren't an omission, so they're diagnosed as a
+     *                                             loss of constraints instead.
      */
     public function analyse(RouteContext $context, string $class, array $documentedElsewhere = []): ?RuleSet
     {
@@ -76,13 +78,18 @@ final class RulesFromClass
         $traceFields = $visitor->ruleSet()->fields;
 
         foreach ($visitor->unrecoverableFields() as $field) {
-            if (isset($shapeFields[$field]) || isset($traceFields[$field]) || in_array($field, $documentedElsewhere, true)) {
+            if (isset($shapeFields[$field]) || isset($traceFields[$field])) {
                 continue;
             }
+
+            // Another producer documenting the field changes WHAT was lost — its shape survives, its
+            // constraints don't — but not that something was lost, so it's reported either way.
             $context->components->addDiagnostic(new Diagnostic(
                 severity: Severity::Info,
                 code: 'validation.rule-unrecoverable',
-                message: sprintf('Validation field "%s" on %s has no statically recoverable rules; it is omitted from the request schema.', $field, $class),
+                message: in_array($field, $documentedElsewhere, true)
+                    ? sprintf('Validation field "%s" on %s has no statically recoverable rules; it is documented from its type alone, without the constraints they state.', $field, $class)
+                    : sprintf('Validation field "%s" on %s has no statically recoverable rules; it is omitted from the request schema.', $field, $class),
                 help: 'Its rules are a closure, a custom Rule object with no #[RuleSchema], or a Rule::when()/conditional descriptor. Express the field with recoverable rules (string/array rules, Rule::enum(), Rule::in(), …), or annotate the rule class with #[RuleSchema], so it is documented.',
             ));
         }

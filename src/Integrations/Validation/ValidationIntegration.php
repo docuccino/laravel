@@ -7,6 +7,7 @@ namespace Docuccino\Laravel\Integrations\Validation;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\RuleTransformer;
 use Docuccino\Core\Extensions\Validation\RuleSet;
+use Docuccino\Laravel\Integrations\Validation\Transformers\AdditionalPropertiesRuleTransformer;
 use Docuccino\Laravel\Integrations\Validation\Transformers\AffixRuleTransformer;
 use Docuccino\Laravel\Integrations\Validation\Transformers\AlphaRuleTransformer;
 use Docuccino\Laravel\Integrations\Validation\Transformers\AnnotationRuleTransformer;
@@ -25,6 +26,7 @@ use Docuccino\Laravel\Integrations\Validation\Transformers\NoOpRuleTransformer;
 use Docuccino\Laravel\Integrations\Validation\Transformers\NotInRuleTransformer;
 use Docuccino\Laravel\Integrations\Validation\Transformers\NumericRuleTransformer;
 use Docuccino\Laravel\Integrations\Validation\Transformers\PresenceRuleTransformer;
+use Docuccino\Laravel\Integrations\Validation\Transformers\ProhibitedRuleTransformer;
 use Docuccino\Laravel\Integrations\Validation\Transformers\RegexRuleTransformer;
 use Docuccino\Laravel\Integrations\Validation\Transformers\SizeRuleTransformer;
 use Docuccino\Laravel\Integrations\Validation\Transformers\TimezoneRuleTransformer;
@@ -50,6 +52,7 @@ final class ValidationIntegration
         return [
             new PresenceRuleTransformer,
             new TypeRuleTransformer,
+            new AdditionalPropertiesRuleTransformer,
             new DateFormatRuleTransformer,
             new DateComparisonRuleTransformer,
             new FileRuleTransformer,
@@ -68,6 +71,7 @@ final class ValidationIntegration
             new SizeRuleTransformer,
             new ConfirmedRuleTransformer,
             new ConditionalRequiredRuleTransformer,
+            new ProhibitedRuleTransformer,
             new AnnotationRuleTransformer,
             new NoOpRuleTransformer,
         ];

@@ -52,6 +52,12 @@ arch('built-in integrations consume only the public extension surface')
         // to a component name exactly as core does, so allow-listing the one class beats every
         // integration inlining a private copy.
         'Docuccino\Core\Support\Fqcn',
+        // Same shape of exemption, same reason: a constants-and-pure-predicates class naming the
+        // framework classes the adapter matches by string. Its consumers span both sides of the
+        // Extensions/Integrations line (the response guard needs the same list the JsonResponse
+        // unwrappers do), and the Extensions side cannot reach into Integrations — so it lives under
+        // Laravel\Support and is allow-listed here rather than existing twice.
+        'Docuccino\Laravel\Support\FrameworkClasses',
     ]);
 
 arch('built-in integrations never reach into core internals or adapter wiring')

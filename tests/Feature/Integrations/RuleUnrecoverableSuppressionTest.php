@@ -19,11 +19,12 @@ use PhpParser\NodeVisitorAbstract;
 use PhpParser\ParserFactory;
 
 /**
- * A field whose rules() cannot be statically recovered is normally reported as
- * `validation.rule-unrecoverable` ("omitted from the request schema"). But when ANOTHER producer
- * already documents that field — e.g. a spatie Data property typed `UploadedFile`, which is
- * documented from its type regardless of its dynamic rules() — the warning is stale and misleading, so
- * it is suppressed. It still fires for a field nothing else recovered.
+ * A field whose rules() cannot be statically recovered is reported as `validation.rule-unrecoverable`.
+ * What was lost differs by whether ANOTHER producer documents the field — a spatie Data property typed
+ * `UploadedFile`, say, which documents from its type regardless of its dynamic rules() — so the message
+ * differs too: the field is omitted outright, or kept without the constraints its rules stated. What is
+ * never right is silence — an unfoldable `Rule::in()` erases a field's allow-list, and the build has to
+ * say so (SpatieDataRealShapeTest pins that recovery half against the real engine).
  */
 function unrecoverableDiagnostics(array $documentedElsewhere): array
 {
@@ -68,13 +69,16 @@ function unrecoverableDiagnostics(array $documentedElsewhere): array
     ));
 }
 
-it('suppresses the diagnostic for a field documented by another producer', function (): void {
+it('reports a field documented by another producer as a loss of constraints, not an omission', function (): void {
     $messages = unrecoverableDiagnostics(documentedElsewhere: ['file']);
 
-    // Only `secret` remains — `file` is documented elsewhere (e.g. its UploadedFile type).
-    expect($messages)->toHaveCount(1)
-        ->and($messages[0])->toContain('"secret"')
-        ->and(implode("\n", $messages))->not->toContain('"file"');
+    // `file` is documented elsewhere (e.g. its UploadedFile type), so only its constraints were lost.
+    expect($messages)->toHaveCount(2)
+        ->and($messages[0])->toContain('"file"')
+        ->and($messages[0])->toContain('documented from its type alone')
+        ->and($messages[0])->not->toContain('omitted from the request schema')
+        ->and($messages[1])->toContain('"secret"')
+        ->and($messages[1])->toContain('omitted from the request schema');
 });
 
 it('still fires for every unrecoverable field when nothing recovered them', function (): void {
@@ -82,5 +86,6 @@ it('still fires for every unrecoverable field when nothing recovered them', func
 
     expect($messages)->toHaveCount(2)
         ->and(implode("\n", $messages))->toContain('"file"')
-        ->and(implode("\n", $messages))->toContain('"secret"');
+        ->and(implode("\n", $messages))->toContain('"secret"')
+        ->and(implode("\n", $messages))->not->toContain('documented from its type alone');
 });
