@@ -7,6 +7,17 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.4.0
+
+### Bug fixes
+
+- warn when a published value came from the build machine ([#34](https://github.com/docuccino/docuccino/pull/34))
+- type a bound parameter from the column it names, and stop publishing the catch-all ([#32](https://github.com/docuccino/docuccino/pull/32))
+- document a route bound to a host as an operation of its own ([#29](https://github.com/docuccino/docuccino/pull/29))
+- document rate-limit headers by meaning, not by value ([#24](https://github.com/docuccino/docuccino/pull/24))
+- emit real types where the schemas documented nothing ([#23](https://github.com/docuccino/docuccino/pull/23))
+- make the fragment cache safe to turn on, and warm builds cheap ([#20](https://github.com/docuccino/docuccino/pull/20))
+
 ## v0.3.0
 
 ### Features
