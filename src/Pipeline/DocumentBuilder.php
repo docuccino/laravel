@@ -166,7 +166,12 @@ final class DocumentBuilder
         $diagnostics = [];
 
         foreach ($config->overlays as $pattern) {
-            foreach (glob(Paths::absolute($pattern, $this->basePath)) ?: [] as $file) {
+            $files = glob(Paths::absolute($pattern, $this->basePath)) ?: [];
+            // Overlays are applied in order and the later one wins, so the order is part of what they
+            // MEAN — and glob(3) sorts by the machine's LC_COLLATE. Byte order, everywhere.
+            sort($files, SORT_STRING);
+
+            foreach ($files as $file) {
                 try {
                     /** @var array<string, mixed> $parsed */
                     $parsed = (array) Yaml::parseFile($file);

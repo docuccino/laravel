@@ -18,11 +18,15 @@ use Docuccino\Core\Pipeline\FragmentCache;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
 use Docuccino\Laravel\Facades\Docuccino;
+use Docuccino\Laravel\Integrations\Sanctum\SanctumDigestContributor;
 use Docuccino\Laravel\Integrations\SpatieData\SpatieDataDigestContributor;
+use Docuccino\Laravel\Integrations\Support\AuthConfigDigestContributor;
+use Docuccino\Laravel\Pipeline\DocumentGenerator;
 use Docuccino\Laravel\Registry\DefaultExtensions;
 use Docuccino\Laravel\Tests\Fixtures\Rules\BankReference;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\CustomRuleController;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\CustomRuleData;
+use Docuccino\Laravel\Tests\Support\ConfiguredMarker;
 use Docuccino\Laravel\Tests\Support\CountingTypeEngine;
 use Docuccino\Laravel\Tests\Support\LateBoundMarker;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
@@ -320,6 +324,43 @@ it('invalidates fragments when the query-builder parameter names change (booted-
     expect($engine->analyzeCount)->toBeGreaterThan(0);
 });
 
+it('invalidates fragments when the auth guard map changes (booted-app cache input)', function (string $key, mixed $value): void {
+    // Which security integration owns a route is decided by the guard's DRIVER, so re-pointing a guard
+    // re-documents every operation behind it while touching no route file. It used to be keyed by
+    // Sanctum's contributor alone, which registers only when Sanctum is installed — so a Passport-only
+    // app had nobody keying it, and its own contributor read neither key.
+    enableFragmentCache();
+    $engine = new CountingTypeEngine(WorkbenchEngine::make());
+    app()->instance(TypeEngine::class, $engine);
+
+    generateDocument()->document;
+    $engine->analyzeCount = 0;
+
+    config()->set($key, $value);
+    generateDocument()->document;
+
+    expect($engine->analyzeCount)->toBeGreaterThan(0);
+})->with([
+    'a guard re-pointed at another driver' => ['auth.guards', ['api' => ['driver' => 'passport', 'provider' => 'users']]],
+    'the default guard' => ['auth.defaults.guard', 'api'],
+]);
+
+it('keys auth config whether or not an auth package is installed', function (): void {
+    // The gap the row above closes is a gating one: the contributor that reads auth config has to be in
+    // the set for a document with every integration turned off, or an app running only one of them is
+    // covered by accident.
+    /** @var array<string, mixed> $raw */
+    $raw = config('docuccino.documents.default');
+    foreach (['sanctum', 'passport'] as $integration) {
+        $raw['integrations'][$integration]['enabled'] = false;
+    }
+
+    $extensions = DefaultExtensions::all(app(DocumentConfigFactory::class)->make('default', $raw, 'skeleton'));
+
+    expect($extensions)->toContain(AuthConfigDigestContributor::class)
+        ->and($extensions)->not->toContain(SanctumDigestContributor::class);
+});
+
 it('gates each integration environment-digest contributor with its integration', function (): void {
     // The spatie-data digest contributor is contributed when the integration is enabled and omitted when
     // the document disables it, so a disabled integration's globals never key the cache.
@@ -346,6 +387,28 @@ it('invalidates every fragment when the resolved extension set changes', functio
     // Registering a new extension changes the resolved extension signature → every key changes.
     Docuccino::extend(new LateBoundMarker);
     generateDocument()->document;
+
+    expect($engine->analyzeCount)->toBeGreaterThan(0);
+});
+
+it('invalidates every fragment when one extension INSTANCE is reconfigured', function (): void {
+    // An extension is registrable as an object on every surface there is, so its configuration lives on
+    // the instance. Keyed by class name alone, `new MyExtension(mode: 'a')` and `mode: 'b'` were the
+    // same extension set, and the warm cache answered the second with output built under the first.
+    enableFragmentCache();
+    $engine = new CountingTypeEngine(WorkbenchEngine::make());
+    app()->instance(TypeEngine::class, $engine);
+
+    $build = static function (string $title) use ($engine): void {
+        /** @var array<string, mixed> $raw */
+        $raw = config('docuccino.documents.default');
+        $config = app(DocumentConfigFactory::class)->make('default', $raw, 'skeleton');
+        app(DocumentGenerator::class)->generate($config, $engine, [new ConfiguredMarker($title)]);
+    };
+
+    $build('A');
+    $engine->analyzeCount = 0;
+    $build('B');
 
     expect($engine->analyzeCount)->toBeGreaterThan(0);
 });

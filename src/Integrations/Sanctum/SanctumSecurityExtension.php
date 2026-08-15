@@ -102,19 +102,17 @@ final class SanctumSecurityExtension implements OperationExtension
     }
 
     /**
-     * Sanctum's stateful cookie *is* the Laravel session cookie, so: per-document override, else the app's
-     * real `session.cookie`, else Laravel's default name.
+     * The cookie the stateful scheme names — {@see SanctumCookie}, which also decides whether the value
+     * is one anybody chose. That report is raised once for the document by {@see SanctumCookieReport},
+     * not here: one cookie name reaches every stateful operation, so reporting it per route said the
+     * same thing once per route.
      */
     private function sessionCookie(RouteContext $context): string
     {
-        $cookie = $context->document->integration('sanctum')['cookie'] ?? null;
-        if (is_string($cookie) && $cookie !== '') {
-            return $cookie;
-        }
-
-        $sessionCookie = $this->config?->get('session.cookie');
-
-        return is_string($sessionCookie) && $sessionCookie !== '' ? $sessionCookie : 'laravel_session';
+        return SanctumCookie::resolve(
+            $context->document->integration('sanctum')['cookie'] ?? null,
+            $this->config?->get('session.cookie'),
+        );
     }
 
     /** The app's default auth guard, for resolving bare `auth`. */

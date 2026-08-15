@@ -90,11 +90,13 @@ it('resolves an invokable action to handle(), documenting its summary, rules() b
     expect($operation['summary'])->toBe('Publish an article.');
 
     // rules() became the JSON request body, hoisted to a component named after the action class
-    // (single source class); the full document carries the component the operation $refs.
+    // (single source class) and marked as the shape a client SENDS, so the action's own shape can
+    // never come to mean it; the full document carries the component the operation $refs.
     expect($operation['requestBody']['content']['application/json']['schema'])
-        ->toBe(['$ref' => '#/components/schemas/PublishArticleAction']);
+        ->toBe(['$ref' => '#/components/schemas/PublishArticleActionRequest']);
     $document = generateDocument()->document->toArray();
-    $properties = $document['components']['schemas']['PublishArticleAction']['properties'] ?? [];
+    expect($document['components']['schemas'])->toHaveKey('PublishArticleActionRequest');
+    $properties = $document['components']['schemas']['PublishArticleActionRequest']['properties'] ?? [];
     expect($properties)->toHaveKeys(['title', 'body']);
 
     // authorize() became a 403.

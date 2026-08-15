@@ -84,8 +84,9 @@ final class DataValidationRules
     }
 
     /**
-     * Rule classes read while building the last rule set — recorded by the caller so editing an
-     * annotated rule invalidates the fragment. Reset on each entry point below.
+     * Every file the last rule set was built from beyond the root class's own — an annotated rule class,
+     * a nested Data class's declaration, an enum whose backing values were quoted into a rule. Recorded
+     * by the caller so editing any of them invalidates the fragment. Reset on each entry point below.
      *
      * @return list<string>
      */
@@ -243,7 +244,7 @@ final class DataValidationRules
         $rules = $this->mapRules($inner, $visiting);
 
         if ($rules === []) {
-            $enum = self::enumRule($inner);
+            $enum = $this->enumRule($inner);
             $typeRule = self::typeRule($inner);
             $rules = match (true) {
                 $enum !== null => [$enum],
@@ -315,7 +316,10 @@ final class DataValidationRules
      */
     private function requestObject(DType $type, array $visiting): ?array
     {
-        if ($this->validation === null || $this->schema === null || $this->engine === null) {
+        $validation = $this->validation;
+        $schema = $this->schema;
+        $engine = $this->engine;
+        if ($validation === null || $schema === null || $engine === null) {
             return null;
         }
 
@@ -323,16 +327,16 @@ final class DataValidationRules
             return null;
         }
 
-        $fields = $this->fieldsFor(
-            $type->fqcn,
-            $this->engine->classMetadata(new ClassRef($type->fqcn)),
-            '',
-            [...$visiting, $type->fqcn],
-        );
+        $metadata = $engine->classMetadata(new ClassRef($type->fqcn));
+        // A nested Data class's shape is as much a part of this rule set as the root's, so the files it
+        // was recovered from are as much a dependency.
+        $this->remember($metadata->dependencyFiles);
 
-        return $this->validation->convert(
+        $fields = $this->fieldsFor($type->fqcn, $metadata, '', [...$visiting, $type->fqcn]);
+
+        return $validation->convert(
             $this->ordering->order($this->normalizer->normalize(new RuleSet($fields))),
-            $this->schema,
+            $schema,
         )->schema;
     }
 
@@ -378,9 +382,7 @@ final class DataValidationRules
         $rules = [];
         foreach ($this->reflector->ruleObjectClasses($fqcn, $property) as $ruleClass) {
             $facts = $this->customRules->read($ruleClass);
-            if ($facts->file !== null && ! in_array($facts->file, $this->dependencyFiles, true)) {
-                $this->dependencyFiles[] = $facts->file;
-            }
+            $this->remember($facts->file === null ? [] : [$facts->file]);
 
             $rules = [...$rules, ...$facts->rules];
         }
@@ -459,7 +461,10 @@ final class DataValidationRules
             return null;
         }
 
-        return [$childFqcn, $isCollection, $this->engine->classMetadata(new ClassRef($childFqcn))];
+        $metadata = $this->engine->classMetadata(new ClassRef($childFqcn));
+        $this->remember($metadata->dependencyFiles);
+
+        return [$childFqcn, $isCollection, $metadata];
     }
 
     /**
@@ -496,7 +501,7 @@ final class DataValidationRules
             return $out;
         }
 
-        $enum = self::enumRule($stripped);
+        $enum = $this->enumRule($stripped);
         if ($enum !== null && array_intersect(self::TYPE_RULES, $named) === []) {
             $out[] = $enum;
 
@@ -511,17 +516,38 @@ final class DataValidationRules
         return $out;
     }
 
-    /** An `enum` rule carrying the backing values plus the FQCN, for an enum-typed property. */
-    private static function enumRule(DType $stripped): ?ValidationRule
+    /**
+     * An `enum` rule carrying the backing values plus the FQCN, for an enum-typed property. The backing
+     * VALUES go into the rule, so the enum's file is a dependency of the rule set that quotes them.
+     */
+    private function enumRule(DType $stripped): ?ValidationRule
     {
         $type = self::unwrapNull($stripped);
         if (! $type instanceof EnumT) {
             return null;
         }
 
+        $file = EnumReflection::file($type->fqcn);
+        $this->remember($file === null ? [] : [$file]);
+
         $values = array_map(strval(...), EnumReflection::values($type->fqcn));
 
         return $values === [] ? null : ValidationRule::of('enum', $values, $type->fqcn);
+    }
+
+    /**
+     * Remember a file the rule set in flight was built from, so the caller can record it as a fragment
+     * dependency. Deduped, and reset per entry point by {@see begin()}.
+     *
+     * @param  list<string>  $files
+     */
+    private function remember(array $files): void
+    {
+        foreach ($files as $file) {
+            if (! in_array($file, $this->dependencyFiles, true)) {
+                $this->dependencyFiles[] = $file;
+            }
+        }
     }
 
     private static function typeRule(DType $type): ?string

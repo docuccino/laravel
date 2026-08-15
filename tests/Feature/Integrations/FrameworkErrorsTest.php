@@ -103,6 +103,9 @@ it('documents the real 404 under the framework-errors producer through the pipel
         $response['x-docuccino']['provenance'] ?? [],
     );
 
+    $schema = resolveResponse($document, $response)['content']['application/json']['schema'] ?? null;
+
     expect($producers)->toContain('integration:framework-errors')
-        ->and(resolveResponse($document, $response)['content']['application/json']['schema']['properties'] ?? [])->toHaveKey('message');
+        ->and(resolveSchema($document, $schema))->toHaveKey('properties')
+        ->and(resolveSchema($document, $schema)['properties'])->toHaveKey('message');
 });

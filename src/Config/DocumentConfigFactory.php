@@ -45,9 +45,21 @@ final readonly class DocumentConfigFactory
         $preset = is_array($errorResponses) ? ($errorResponses['preset'] ?? 'none') : $errorResponses;
         $errorsShape = is_array($errorResponses) ? ($errorResponses['errors_shape'] ?? 'map') : 'map';
 
+        $rawInfo = Hydrate::map($config['info'] ?? []);
+        $info = $this->resolveInfo($rawInfo);
+
+        // The raw bag keeps the description's PATH and nothing else, so the fingerprint hashed a
+        // filename and not a word of what it says. Carry the contents BESIDE the path rather than in
+        // place of it — the path is what the machine-dependent-path check reads.
+        $description = $rawInfo['description'] ?? null;
+        if (is_array($description) && is_string($description['file'] ?? null) && is_string($info['description'])) {
+            $description['contents'] = $info['description'];
+            $config['info'] = [...$rawInfo, 'description' => $description];
+        }
+
         return new DocumentConfig(
             key: $key,
-            info: $this->resolveInfo(Hydrate::map($config['info'] ?? [])),
+            info: $info,
             servers: Hydrate::listOfMaps($config['servers'] ?? null) ?? [],
             routeInclude: Hydrate::stringList($routes['include'] ?? []),
             routeExclude: Hydrate::stringList($routes['exclude'] ?? []),

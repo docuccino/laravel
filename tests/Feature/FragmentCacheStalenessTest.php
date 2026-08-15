@@ -40,6 +40,47 @@ it('rebuilds a renamed route rather than serving its old operationId', function 
         ->and($warm['paths']['/api/renamable']['get']['operationId'] ?? null)->toBe('forms.beta');
 });
 
+it('rebuilds a route that gained withTrashed rather than serving its untrashed answer', function (): void {
+    config()->set('docuccino.cache.enabled', true);
+    config()->set('docuccino.cache.path', sys_get_temp_dir().'/docuccino-staleness-'.uniqid('', true));
+    app()->instance(TypeEngine::class, WorkbenchEngine::make());
+
+    app('router')->get('api/trashable/{form}', [FormController::class, 'show']);
+    $cold = generateDocument()->document->toArray();
+
+    // `->withTrashed()` puts a note and a fact on every bound parameter, and — like the rename above —
+    // changes nothing else the key already carries and no file the fragment depends on.
+    app('router')->get('api/trashable/{form}', [FormController::class, 'show'])->withTrashed();
+    $warm = generateDocument()->document->toArray();
+
+    $coldParameter = $cold['paths']['/api/trashable/{form}']['get']['parameters'][0];
+    $warmParameter = $warm['paths']['/api/trashable/{form}']['get']['parameters'][0];
+
+    expect($coldParameter['x-docuccino'])->not->toHaveKey('facts')
+        ->and($coldParameter)->not->toHaveKey('description')
+        ->and($warmParameter['x-docuccino'])->toHaveKey('facts')
+        ->and($warmParameter['x-docuccino']['facts']['routeBinding']['withTrashed'])->toBeTrue()
+        ->and($warmParameter)->toHaveKey('description')
+        ->and($warmParameter['description'])->toContain('trashed');
+});
+
+it('rebuilds a route that named a binding column rather than serving its route-key answer', function (): void {
+    config()->set('docuccino.cache.enabled', true);
+    config()->set('docuccino.cache.path', sys_get_temp_dir().'/docuccino-staleness-'.uniqid('', true));
+    app()->instance(TypeEngine::class, WorkbenchEngine::make());
+
+    app('router')->get('api/bindable/{form}', [FormController::class, 'show']);
+    $cold = generateDocument()->document->toArray();
+
+    // Laravel parses `:slug` OUT of `uri()`, so this route has the same method, URI, name, action and
+    // middleware as the one above while typing its parameter off a different column entirely.
+    app('router')->get('api/bindable/{form:slug}', [FormController::class, 'show']);
+    $warm = generateDocument()->document->toArray();
+
+    expect($cold['paths']['/api/bindable/{form}']['get']['parameters'][0]['schema']['type'])->toBe('integer')
+        ->and($warm['paths']['/api/bindable/{form}']['get']['parameters'][0]['schema']['type'])->toBe('string');
+});
+
 it('never serves inference-free fragments once the engine package is installed', function (): void {
     config()->set('docuccino.cache.enabled', true);
     config()->set('docuccino.cache.path', sys_get_temp_dir().'/docuccino-staleness-'.uniqid('', true));

@@ -11,6 +11,7 @@ use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
 use Docuccino\Core\Patch\Contribution;
 use Docuccino\Laravel\Integrations\Support\AuthGuardDrivers;
+use Docuccino\Laravel\Support\MachineDependentValue;
 use Illuminate\Contracts\Config\Repository;
 
 /**
@@ -23,6 +24,9 @@ use Illuminate\Contracts\Config\Repository;
  */
 final class PassportSecurityExtension implements OperationExtension
 {
+    /** What a machine-dependent-value report names, since the scheme's own slot isn't settled yet. */
+    private const PUBLISHED = "The Passport scheme's OAuth2 flow URLs";
+
     public function __construct(
         private readonly Repository $config,
         private readonly PassportRuntime $runtime = new PassportRuntime,
@@ -122,6 +126,15 @@ final class PassportSecurityExtension implements OperationExtension
         return is_string($path) && $path !== '' ? $path : 'oauth';
     }
 
+    /**
+     * The base every flow URL hangs off: the document's own pin, else the app's `app.url`.
+     *
+     * The unpinned path is reported rather than trusted. Laravel's shipped `config/app.php` reads
+     * `env('APP_URL', 'http://localhost')`, so an app that never set `APP_URL` hands us a perfectly
+     * good STRING and the fallback below never fires — the document then tells every client to get its
+     * tokens from the machine the build ran on. The URLs stay (OAS requires a `tokenUrl` on every flow,
+     * and removing one would be the worse defect); what changes is that the value stops being silent.
+     */
     private function baseUrl(RouteContext $context): string
     {
         $configured = $context->document->integration('passport')['url'] ?? null;
@@ -129,8 +142,25 @@ final class PassportSecurityExtension implements OperationExtension
             return $configured;
         }
 
+        $signature = $context->route->signature($context->httpMethod());
         $appUrl = $this->config->get('app.url');
 
-        return is_string($appUrl) ? $appUrl : 'http://localhost';
+        if (! is_string($appUrl) || $appUrl === '') {
+            $context->components->addDiagnostic(MachineDependentValue::forDefault(
+                self::PUBLISHED, 'http://localhost', 'app.url', 'integrations.passport.url', $signature,
+            ));
+
+            return 'http://localhost';
+        }
+
+        $report = MachineDependentValue::forUrl(
+            self::PUBLISHED, $appUrl, 'app.url', 'integrations.passport.url', $signature,
+        );
+
+        if ($report !== null) {
+            $context->components->addDiagnostic($report);
+        }
+
+        return $appUrl;
     }
 }

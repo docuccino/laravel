@@ -94,6 +94,7 @@ final class RouteContextBuilder
             pathParameters: $pathParameters,
             optionalPathParameters: $optional,
             routeBindings: $this->routeBindings($reflected, $pathParameters),
+            routeBindingFields: self::bindingFields($route, $pathParameters),
             summary: $prose['summary'],
             description: $prose['description'],
             components: $components,
@@ -132,22 +133,40 @@ final class RouteContextBuilder
         return null;
     }
 
+    /**
+     * The degraded lookup for a descriptor the shared index never saw. A URI and a method name one
+     * route only until two hosts share them, so the host decides between them.
+     *
+     * The fallback below applies ONLY to a descriptor that names no host, which is what a resolver that
+     * doesn't model hosts produces: it has said nothing to choose by, so the first candidate is the best
+     * answer available. A descriptor that DOES name a host and finds no route on it gets a skeleton —
+     * handing it a sibling bound elsewhere would document that sibling's middleware, bindings and action
+     * under a host it does not answer on, which is worse than saying nothing.
+     */
     private function locate(RouteDescriptor $descriptor): ?Route
     {
         /** @var iterable<Route> $routes */
         $routes = $this->router->getRoutes();
 
+        $fallback = null;
         foreach ($routes as $route) {
             if ('/'.ltrim($route->uri(), '/') !== $descriptor->uri) {
                 continue;
             }
 
-            if (array_values(array_filter($route->methods(), 'is_string')) === $descriptor->methods) {
+            if (array_values(array_filter($route->methods(), 'is_string')) !== $descriptor->methods) {
+                continue;
+            }
+
+            $domain = $route->getDomain();
+            if (($domain === null || $domain === '' ? null : strtolower($domain)) === $descriptor->domain) {
                 return $route;
             }
+
+            $fallback ??= $route;
         }
 
-        return null;
+        return $descriptor->domain === null ? $fallback : null;
     }
 
     /**
@@ -169,6 +188,22 @@ final class RouteContextBuilder
         }
 
         return [$names, $optional];
+    }
+
+    /**
+     * The binding fields restricted to parameters the template actually declares — nothing else could
+     * consume one.
+     *
+     * @param  list<string>  $pathParameters
+     * @return array<string, string>
+     */
+    private static function bindingFields(Route $route, array $pathParameters): array
+    {
+        return array_filter(
+            RouteBindingFields::of($route),
+            static fn (string $parameter): bool => in_array($parameter, $pathParameters, true),
+            ARRAY_FILTER_USE_KEY,
+        );
     }
 
     /**

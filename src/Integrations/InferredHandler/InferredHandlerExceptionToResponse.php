@@ -10,6 +10,7 @@ use Docuccino\Core\Extensions\Contracts\ExceptionToResponse;
 use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Extensions\Schema\ComponentRegistry;
+use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Docuccino\Core\Inference\CallableRef;
 use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Patch\Contribution;
@@ -55,6 +56,12 @@ final class InferredHandlerExceptionToResponse implements ExceptionToResponse
         RouteContext $context,
         ComponentRegistry $components,
     ): ?ResponseDraft {
+        // Whether this tier claims the exception at all is an inheritance question: a `render()` added to
+        // a parent, or `Responsable` implemented up the chain, changes the answer without touching the
+        // class that was thrown. Recorded before the decline, or "no handler" is the answer that never
+        // goes stale.
+        $context->recordDependencyFiles(DeclarationFiles::of($exception->exceptionFqcn));
+
         $callable = $this->candidate($exception->exceptionFqcn);
         if ($callable === null) {
             return null;

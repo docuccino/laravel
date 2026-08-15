@@ -10,17 +10,6 @@ use Workbench\App\Http\Controllers\FormController;
  * declared with ->withTrashed() flags each bound path parameter with a description note and a stable
  * x-docuccino.routeBinding.withTrashed semantic fact; a normal binding carries neither.
  */
-function pathParameter(array $operation, string $name): ?array
-{
-    foreach ($operation['parameters'] ?? [] as $parameter) {
-        if (($parameter['in'] ?? null) === 'path' && ($parameter['name'] ?? null) === $name) {
-            return $parameter;
-        }
-    }
-
-    return null;
-}
-
 it('flags a withTrashed bound parameter with a note and an x-docuccino fact', function (): void {
     /** @var Router $router */
     $router = app('router');

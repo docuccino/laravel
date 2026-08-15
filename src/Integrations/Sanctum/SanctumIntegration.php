@@ -32,6 +32,7 @@ final class SanctumIntegration
         return [
             SanctumSecurityExtension::class,
             SanctumAbilitiesExtension::class,
+            SanctumCookieReport::class,
             SanctumDigestContributor::class,
         ];
     }

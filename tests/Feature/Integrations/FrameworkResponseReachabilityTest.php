@@ -90,7 +90,7 @@ it('keeps a really-recovered RedirectResponse out of components and documents it
     expect(array_keys($responses))->toBe(['3XX'])
         ->and($responses['3XX'])->not->toHaveKey('content')
         ->and($responses['3XX']['headers'])->toHaveKey('Location')
-        ->and($components)->toBe([]);
+        ->and(typeSchemas($components))->toBe([]);
 })->group('fixture');
 
 it('keeps a really-recovered bare JsonResponse out of components and says the body is unrecovered', function (): void {
@@ -111,7 +111,7 @@ it('keeps a really-recovered bare JsonResponse out of components and says the bo
     );
 
     expect($responses['200']['content']['application/json']['schema'])->toBe([])
-        ->and($components)->toBe([])
+        ->and(typeSchemas($components))->toBe([])
         ->and(array_map(static fn ($d): string => $d->code, $diagnostics))
         ->toContain('inferred-response.payload-unrecoverable');
 })->group('fixture');

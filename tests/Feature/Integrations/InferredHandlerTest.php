@@ -101,8 +101,11 @@ it('documents the handler’s real status + shape, winning over the framework ti
     expect($responses)->toHaveKey('410')->and($responses)->not->toHaveKey('404');
 
     $producers = array_map(static fn (array $r): string => $r['producer'], $responses['410']['x-docuccino']['provenance'] ?? []);
+    $schema = errorSchemaOf($document, '410', 'application/json');
+
     expect($producers)->toContain('integration:inferred-handler')
-        ->and(resolveResponse($document, $responses['410'])['content']['application/json']['schema']['properties'] ?? [])->toHaveKeys(['error', 'id']);
+        ->and($schema)->toHaveKey('properties')
+        ->and($schema['properties'])->toHaveKeys(['error', 'id']);
 });
 
 it('defers to the framework tier + records a diagnostic when the body is too dynamic', function (): void {
@@ -161,8 +164,11 @@ it('documents an invokable renderer via method analysis, winning over the framew
 
     expect($responses)->toHaveKey('410')->and($responses)->not->toHaveKey('404');
     $producers = array_map(static fn (array $r): string => $r['producer'], $responses['410']['x-docuccino']['provenance'] ?? []);
+    $schema = errorSchemaOf($document, '410', 'application/json');
+
     expect($producers)->toContain('integration:inferred-handler')
-        ->and(resolveResponse($document, $responses['410'])['content']['application/json']['schema']['properties'] ?? [])->toHaveKey('error');
+        ->and($schema)->toHaveKey('properties')
+        ->and($schema['properties'])->toHaveKey('error');
 });
 
 it('documents the recovered content type (application/problem+json) from a refined helper shape', function (): void {
@@ -188,9 +194,12 @@ it('documents the recovered content type (application/problem+json) from a refin
     $document = generateDocument()->document->toArray();
     $content = resolveResponse($document, $document['paths']['/api/forms/{form}']['get']['responses']['404'])['content'] ?? [];
 
+    $schema = errorSchemaOf($document, '404', 'application/problem+json');
+
     expect($content)->toHaveKey('application/problem+json')
         ->and($content)->not->toHaveKey('application/json')
-        ->and($content['application/problem+json']['schema']['properties'] ?? [])->toHaveKeys(['type', 'title']);
+        ->and($schema)->toHaveKey('properties')
+        ->and($schema['properties'])->toHaveKeys(['type', 'title']);
 });
 
 it('assembles a media-type example from folded literals and const-pins each member', function (): void {
@@ -217,11 +226,16 @@ it('assembles a media-type example from folded literals and const-pins each memb
     ]);
     app()->instance(TypeEngine::class, $engine);
 
-    $media = mediaOf(generateDocument()->document->toArray(), '403', 'application/problem+json');
+    $document = generateDocument()->document->toArray();
+    $media = mediaOf($document, '403', 'application/problem+json');
+    $schema = errorSchemaOf($document, '403', 'application/problem+json');
 
+    // The shape is shared; the example is the operation's own, which is exactly the split this hoist
+    // exists to make.
     expect($media['example'])->toBe(['type' => 'about:blank', 'title' => 'Forbidden', 'status' => 403])
-        ->and($media['schema']['properties']['type']['const'])->toBe('about:blank')
-        ->and($media['schema']['properties']['status']['const'])->toBe(403);
+        ->and($schema)->toHaveKey('properties')
+        ->and($schema['properties']['type']['const'])->toBe('about:blank')
+        ->and($schema['properties']['status']['const'])->toBe(403);
 });
 
 it('fills a status-provenance member with the response status, completes the example, and is deterministic', function (): void {
@@ -248,18 +262,21 @@ it('fills a status-provenance member with the response status, completes the exa
         );
         app()->instance(TypeEngine::class, WorkbenchEngine::make([$symbol => $script()]));
 
-        return mediaOf(generateDocument()->document->toArray(), '403', 'application/problem+json');
+        $document = generateDocument()->document->toArray();
+
+        return [mediaOf($document, '403', 'application/problem+json'), errorSchemaOf($document, '403', 'application/problem+json')];
     };
 
-    $media = $build();
+    [$media, $schema] = $build();
 
     expect($media['example'])->toBe(['type' => 'about:blank', 'detail' => 'string', 'status' => 403])
-        ->and($media['schema']['properties']['status']['const'])->toBe(403)
-        ->and($media['schema']['properties']['detail'])->not->toHaveKey('const')
-        ->and($media['schema']['required'])->toBe(['type', 'detail', 'status']);
+        ->and($schema)->toHaveKey('properties')
+        ->and($schema['properties']['status']['const'])->toBe(403)
+        ->and($schema['properties']['detail'])->not->toHaveKey('const')
+        ->and($schema['required'])->toBe(['type', 'detail', 'status']);
 
     // Determinism is a product feature: a second build is byte-identical.
-    expect(json_encode($build()))->toBe(json_encode($media));
+    expect(json_encode($build()))->toBe(json_encode([$media, $schema]));
 });
 
 it('examples an object-typed body from the component its $ref points at', function (): void {
@@ -287,7 +304,10 @@ it('examples an object-typed body from the component its $ref points at', functi
 
     // The schema stays a bare $ref — the example is its sibling, so the shared component is reused as-is
     // rather than wrapped in an allOf that would make codegen emit a distinct type per status.
-    expect($media['schema'])->toBe(['$ref' => '#/components/schemas/FormData'])
+    $schema = $media['schema'];
+    unset($schema['x-docuccino']);
+
+    expect($schema)->toBe(['$ref' => '#/components/schemas/FormData'])
         ->and($media['example'])->toBe(['id' => 0, 'title' => 'string']);
 });
 
@@ -317,8 +337,11 @@ it('falls back to the exception status hint when the recovered status did not fo
     // Documented under the exception hint (404), not the 200 default; producer is the inferred tier.
     expect($responses)->toHaveKey('404');
     $producers = array_map(static fn (array $r): string => $r['producer'], $responses['404']['x-docuccino']['provenance'] ?? []);
+    $schema = errorSchemaOf($document, '404', 'application/problem+json');
+
     expect($producers)->toContain('integration:inferred-handler')
-        ->and(resolveResponse($document, $responses['404'])['content']['application/problem+json']['schema']['properties'] ?? [])->toHaveKey('type');
+        ->and($schema)->toHaveKey('properties')
+        ->and($schema['properties'])->toHaveKey('type');
 });
 
 it('prefers the status the recovered body states over the exception hint', function (): void {

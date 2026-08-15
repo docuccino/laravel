@@ -13,8 +13,11 @@ use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
 use Docuccino\Laravel\Facades\Docuccino;
 use Docuccino\Laravel\Pipeline\DocumentGenerator;
+use Docuccino\Laravel\Tests\Fixtures\ComponentNames\ClaimController;
+use Docuccino\Laravel\Tests\Support\LocalityEngine;
 use Docuccino\Laravel\Tests\Support\ThrowingTypeEngine;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
+use Illuminate\Routing\Router;
 
 /**
  * Pipeline failure semantics (design §5): --fail-on exit-code matrix, the validate command's
@@ -101,4 +104,40 @@ it('rolls back components registered by a route that then throws (A3)', function
     expect($document['components']['schemas'] ?? [])->not->toHaveKey('OrphanFromPing')
         // ...while a healthy route's real component survives.
         ->and($document['components']['schemas'] ?? [])->toHaveKey('FormData');
+});
+
+it('cannot rename a neighbour by registering a component and then throwing', function (): void {
+    // The other half of the rollback claim. The row above proves the failed route leaves no ORPHAN; a
+    // registration is also a CLAIM on a name, and a claim that outlives its route moves the component a
+    // healthy neighbour was already published under — a rename performed by a route that documented
+    // nothing at all, with no collision left in the document to explain it.
+    assertUnaffectedByUnrelatedRoute(
+        static fn (Router $router) => $router->get('api/zz-portal', [ClaimController::class, 'show']),
+        static function (Router $router): void {
+            $router->get('api/zz-doomed', [ClaimController::class, 'show']);
+
+            Docuccino::extend(new class implements OperationExtension
+            {
+                public function phase(): OperationPhase
+                {
+                    return OperationPhase::Finalize;
+                }
+
+                public function handle(OperationDraft $operation, RouteContext $context): void
+                {
+                    if ($context->route->uri !== '/api/zz-doomed') {
+                        return;
+                    }
+
+                    // A different class asking for the name the neighbour holds: contested, both claims
+                    // climb, and the neighbour's `$ref` moves with them.
+                    $context->components->registerSchema('Portal', ['type' => 'string'], 'App\\Doomed\\PortalData');
+
+                    throw new RuntimeException('boom after claiming a name');
+                }
+            });
+        },
+        'GET /api/zz-portal',
+        LocalityEngine::factory(),
+    );
 });

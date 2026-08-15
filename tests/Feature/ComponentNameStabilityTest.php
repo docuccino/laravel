@@ -14,6 +14,7 @@ use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Pipeline\GenerationResult;
 use Docuccino\Laravel\Tests\Fixtures\ComponentNames\SsoController;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
+use Illuminate\Routing\RouteCollection;
 
 /**
  * The permanent collision a real app carries: an INPUT `SSOConnectionData` and an OUTPUT one, in
@@ -35,12 +36,18 @@ const SSO_LEGACY = 'Docuccino\\Laravel\\Tests\\Fixtures\\ComponentNames\\Legacy\
  * `GET api/aaa-*` beats everything below and decides who registers first.
  *
  * @param  list<array{string, string, string}>  $extra  [method, uri, action]
+ * @param  list<string>  $sides  which of the two SSO routes exist — one of them is the app that
+ *                               deleted the other endpoint
  */
-function ssoDocument(array $extra = []): GenerationResult
+function ssoDocument(array $extra = [], array $sides = ['write', 'read']): GenerationResult
 {
     $router = app('router');
-    $router->post('api/zz-sso-a', [SsoController::class, 'store']);
-    $router->get('api/zz-sso-b', [SsoController::class, 'show']);
+    if (in_array('write', $sides, true)) {
+        $router->post('api/zz-sso-a', [SsoController::class, 'store']);
+    }
+    if (in_array('read', $sides, true)) {
+        $router->get('api/zz-sso-b', [SsoController::class, 'show']);
+    }
     foreach ($extra as [$method, $uri, $action]) {
         $router->{$method}($uri, [SsoController::class, $action]);
     }
@@ -176,6 +183,38 @@ it('keeps a warm fragment pointing at its own shape when a new route takes the n
     expect($doc['paths']['/api/zz-sso-b']['get']['responses']['200']['content']['application/json']['schema']['$ref'] ?? null)
         ->toBe('#/components/schemas/SSOSSOConnectionData')
         ->and(array_keys($schemas['SSOSSOConnectionData']['properties'] ?? []))->toBe(['issuerUrl', 'verified']);
+
+    array_map('unlink', glob($dir.'/*') ?: []);
+    @unlink($dir.'/.gitignore');
+    @rmdir($dir);
+});
+
+it('gives the plain name back to the survivor when the route that contested it is deleted', function (): void {
+    // A warm fragment carries the slot it was cached in. Delete the route that held the plain name and
+    // nothing invalidates the survivor's fragment, so it used to re-register as `SSOConnectionData_2`
+    // — a suffix naming a class no longer in the document, and different bytes on CI (cold) and on the
+    // machine that deleted the route (warm).
+    $dir = sys_get_temp_dir().'/docuccino-sso-deleted-'.uniqid('', true);
+    config()->set('docuccino.cache.enabled', true);
+    config()->set('docuccino.cache.path', $dir);
+
+    ssoDocument();
+
+    // The endpoint is gone, so its route is gone with it — and nothing tells the survivor's fragment.
+    app('router')->setRoutes(new RouteCollection);
+    $warm = ssoDocument(sides: ['write']);
+
+    config()->set('docuccino.cache.enabled', false);
+    app('router')->setRoutes(new RouteCollection);
+    $cold = ssoDocument(sides: ['write']);
+
+    $schemas = ssoSchemas($warm);
+
+    expect($schemas)->toHaveKey('SSOConnectionData')
+        ->and($schemas)->not->toHaveKey('SSOConnectionData_2')
+        ->and($warm->document->toArray()['paths']['/api/zz-sso-a']['post']['requestBody']['content']['application/json']['schema']['properties']['connection']['$ref'] ?? null)
+        ->toBe('#/components/schemas/SSOConnectionData')
+        ->and((new UirEmitter)->emit($warm->document))->toBe((new UirEmitter)->emit($cold->document));
 
     array_map('unlink', glob($dir.'/*') ?: []);
     @unlink($dir.'/.gitignore');

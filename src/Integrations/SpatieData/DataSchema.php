@@ -9,6 +9,7 @@ use Docuccino\Core\Extensions\Contracts\TypeToSchema;
 use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Extensions\Schema\ComponentHoist;
+use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Docuccino\Core\Extensions\Schema\SchemaResult;
 use Docuccino\Core\Inference\ClassMetadata;
 use Docuccino\Core\Inference\ClassRef;
@@ -74,6 +75,10 @@ final class DataSchema implements TypeToSchema
         if ($context->depth() !== 1) {
             return $result;
         }
+
+        // `withoutWrapping()` and `defaultWrap()` are both inheritance-answered, so the envelope can be
+        // decided in a file this class does not name.
+        $context->dependsOn(...DeclarationFiles::of($fqcn));
 
         $key = $this->wrap->key($fqcn);
         if ($key === null) {

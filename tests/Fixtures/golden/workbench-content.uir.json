@@ -385,7 +385,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Article"
+                "$ref": "#/components/schemas/ArticleRequest"
               }
             }
           }
@@ -420,7 +420,7 @@
                       }
                     ]
                   },
-                  "$ref": "#/components/schemas/Article_2"
+                  "$ref": "#/components/schemas/Article"
                 }
               }
             }
@@ -2993,43 +2993,28 @@
     "schemas": {
       "Article": {
         "x-docuccino": {
-          "id": "sch:v1:gzk6w6s72s2leqqe"
+          "id": "sch:v1:rimzqk43cb4hshik"
         },
         "type": "object",
         "properties": {
           "author": {
-            "type": [
-              "object",
-              "null"
-            ],
-            "properties": {
-              "email": {
-                "type": "string"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthorData"
               },
-              "name": {
-                "type": "string"
+              {
+                "type": "null"
               }
-            },
-            "required": [
-              "name",
-              "email"
             ]
           },
           "body": {
-            "type": "string",
-            "maxLength": 500
+            "type": "string"
           },
-          "heading": {
+          "headline": {
             "type": "string"
           },
           "id": {
             "type": "integer"
-          },
-          "internal": {
-            "type": "integer"
-          },
-          "secret": {
-            "type": "string"
           },
           "subtitle": {
             "type": "string"
@@ -3037,10 +3022,9 @@
         },
         "required": [
           "id",
-          "heading",
+          "headline",
           "body",
-          "secret",
-          "internal"
+          "author"
         ]
       },
       "ArticleJsonApiResource": {
@@ -3093,6 +3077,58 @@
           "type"
         ]
       },
+      "ArticleRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:gzk6w6s72s2leqqe"
+        },
+        "type": "object",
+        "properties": {
+          "author": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "email": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "email"
+            ]
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "heading": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "internal": {
+            "type": "integer"
+          },
+          "secret": {
+            "type": "string"
+          },
+          "subtitle": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "heading",
+          "body",
+          "secret",
+          "internal"
+        ]
+      },
       "ArticleResource": {
         "x-docuccino": {
           "id": "sch:v1:enlevzeqn7cjoivp"
@@ -3118,42 +3154,6 @@
         "required": [
           "id",
           "title"
-        ]
-      },
-      "Article_2": {
-        "x-docuccino": {
-          "id": "sch:v1:rimzqk43cb4hshik"
-        },
-        "type": "object",
-        "properties": {
-          "author": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/AuthorData"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "body": {
-            "type": "string"
-          },
-          "headline": {
-            "type": "string"
-          },
-          "id": {
-            "type": "integer"
-          },
-          "subtitle": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "headline",
-          "body",
-          "author"
         ]
       },
       "AuthorData": {
@@ -3190,6 +3190,44 @@
         "required": [
           "name",
           "email"
+        ]
+      },
+      "Error404": {
+        "x-docuccino": {
+          "id": "sch:v1:b5f2vpxbxyjqvu27"
+        },
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "Error422": {
+        "x-docuccino": {
+          "id": "sch:v1:ez2xsveykvmdgo67"
+        },
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "errors"
         ]
       },
       "FormData": {
@@ -3357,15 +3395,7 @@
         "content": {
           "application/json": {
             "schema": {
-              "type": "object",
-              "properties": {
-                "message": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "message"
-              ]
+              "$ref": "#/components/schemas/Error404"
             }
           }
         }
@@ -3375,25 +3405,7 @@
         "content": {
           "application/json": {
             "schema": {
-              "type": "object",
-              "properties": {
-                "errors": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  }
-                },
-                "message": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "message",
-                "errors"
-              ]
+              "$ref": "#/components/schemas/Error422"
             }
           }
         }
@@ -3404,7 +3416,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "8903b4f374c3b972a3a11d8a690e06e636d06c9b2de2951807f6be4b1a0e7536",
-      "contentHash": "8de34d623a5a70a8c33f01bc04159a8a0df58a9b4f3d7022b931e6b7bfbdbe38"
+      "contentHash": "94264f17b160d492c410509563d87254400f79e5f3c4a28f4b3763db4bbb8996"
     },
     "generator": {
       "name": "docuccino/laravel",

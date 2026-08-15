@@ -56,15 +56,16 @@ it('adds a 429 with Retry-After + X-RateLimit-* headers for a numeric throttle',
     [$document, $operation] = throttledOperation('api/throttled');
 
     expect($operation['responses'])->toHaveKey('429');
-    // Two throttled routes sharing an identical 429 — headers included — collapse into one shared
-    // component, so the headers resolve through the $ref along with the body.
+    // The headers are a per-operation fact — a Reference Object cannot carry them beside a `$ref`, so
+    // only the body SHAPE is shared and each throttled operation states its own header block.
     $response = resolveResponse($document, $operation['responses']['429']);
     expect($response['headers'])->toHaveKeys(['Retry-After', 'X-RateLimit-Limit', 'X-RateLimit-Remaining'])
         ->and($response['headers']['X-RateLimit-Limit']['schema'])->toBe(['type' => 'integer'])
-        ->and($response['content']['application/json']['schema']['properties'])->toHaveKey('message');
+        ->and(resolveSchema($document, $response['content']['application/json']['schema'])['properties'] ?? [])
+        ->toHaveKey('message');
 });
 
-it('documents routes on different limits with ONE shared 429 component', function (): void {
+it('documents routes on different limits with ONE shared 429 shape', function (): void {
     // The payoff. `throttle:60,1` and `throttle:120,1` state the same contract — a 429 with rate-limit
     // headers — so they have to state it in the same bytes. Baking the limits in split that into an
     // `Error429` and an `Error429_2` whose description and content were byte-identical, plus two routes
@@ -80,11 +81,26 @@ it('documents routes on different limits with ONE shared 429 component', functio
     $document = stubDocumentArray();
 
     $error429s = array_keys(array_filter(
-        $document['components']['responses'] ?? [],
+        $document['components']['schemas'] ?? [],
         static fn (string $name): bool => str_starts_with($name, 'Error429'),
         ARRAY_FILTER_USE_KEY,
     ));
+    // One shape, and it keeps the plain name: nothing contests it, so no route sees a discriminator.
     expect($error429s)->toBe(['Error429']);
+
+    // Every throttled 429 is identical — headers included — so the whole response hoists as well, and
+    // the one component points at the one shape.
+    $shared = $document['components']['responses']['Error429'] ?? [];
+
+    expect(array_keys(array_filter(
+        $document['components']['responses'] ?? [],
+        static fn (string $name): bool => str_starts_with($name, 'Error429'),
+        ARRAY_FILTER_USE_KEY,
+    )))->toBe(['Error429'])
+        ->and($shared)->toHaveKey('description')
+        ->and($shared['headers'] ?? [])->toHaveKey('X-RateLimit-Limit')
+        ->and($shared['content']['application/json']['schema'] ?? null)
+        ->toBe(['$ref' => '#/components/schemas/Error429']);
 
     $paths = ['throttled-sixty', 'throttled-oneish', 'throttled-oneish-too', 'throttled-guests', 'throttled-named'];
     foreach ($paths as $path) {

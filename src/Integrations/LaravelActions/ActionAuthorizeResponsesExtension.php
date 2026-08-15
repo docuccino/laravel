@@ -8,6 +8,7 @@ use Docuccino\Core\Draft\OperationDraft;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
+use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Docuccino\Core\Extensions\Validation\ResponseDraftApplier;
 use Docuccino\Core\Inference\ThrowConfidence;
 use Docuccino\Core\Inference\ThrowDisposition;
@@ -37,6 +38,11 @@ final class ActionAuthorizeResponsesExtension implements OperationExtension
 
     public function handle(OperationDraft $operation, RouteContext $context): void
     {
+        // Every question below — is this an action, does it opt out of validation, does it define
+        // authorize() — is answered by inheritance, so a parent or a trait can add or remove the 403
+        // without this class moving.
+        $context->recordDependencyFiles(DeclarationFiles::of($context->actionRef->class));
+
         if ($context->document->errorResponses === 'none' || ! $this->definesAuthorize($context)) {
             return;
         }

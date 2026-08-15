@@ -36,8 +36,13 @@ final class ResolvedRouteIndex
         return $this->entries[self::key($descriptor)] ?? null;
     }
 
+    /**
+     * The descriptor's cache signature, which is the widest thing that tells two descriptors apart —
+     * host included. Method and URI alone are not enough: two routes on different hosts share those,
+     * and the loser's reflection would silently overwrite the winner's here.
+     */
     private static function key(RouteDescriptor $descriptor): string
     {
-        return implode(',', $descriptor->methods)."\0".$descriptor->uri;
+        return implode(',', $descriptor->methods)."\0".$descriptor->cacheSignature();
     }
 }

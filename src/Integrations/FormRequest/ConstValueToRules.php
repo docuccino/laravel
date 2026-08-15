@@ -72,13 +72,22 @@ final class ConstValueToRules
     }
 
     /**
-     * Files whose contents shaped the fold — the rule classes read for their `#[RuleSchema]`.
+     * Files whose contents shaped the fold — the rule classes read for their `#[RuleSchema]`, and any
+     * enum whose backing values were quoted into a rule.
      *
      * @return list<string>
      */
     public function dependencyFiles(): array
     {
         return $this->dependencyFiles;
+    }
+
+    /** Remember a file the fold read, if there was one. */
+    private function remember(?string $file): void
+    {
+        if ($file !== null && ! in_array($file, $this->dependencyFiles, true)) {
+            $this->dependencyFiles[] = $file;
+        }
     }
 
     /**
@@ -91,9 +100,7 @@ final class ConstValueToRules
     {
         $facts = $this->customRules->read(ltrim((string) $value->class, '\\'));
 
-        if ($facts->file !== null && ! in_array($facts->file, $this->dependencyFiles, true)) {
-            $this->dependencyFiles[] = $facts->file;
-        }
+        $this->remember($facts->file);
 
         return $facts->rules;
     }
@@ -121,6 +128,10 @@ final class ConstValueToRules
     {
         $class = $descriptor->args[0] ?? null;
         $fqcn = $class !== null && $class->isScalar() && is_string($class->scalar) ? ltrim($class->scalar, '\\') : '';
+
+        // The backing VALUES go into the rule, so adding a case rewrites it while the request class the
+        // rule was read from hasn't moved.
+        $this->remember($fqcn === '' ? null : EnumReflection::file($fqcn));
 
         $values = $fqcn === '' ? [] : array_map(strval(...), EnumReflection::values($fqcn));
 

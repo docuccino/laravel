@@ -19,6 +19,11 @@ arch('built-in integrations consume only the public extension surface')
         // not silently expose. Adding a class here widens the public surface — never add an @internal one.
         'Docuccino\Core\Extensions\Schema\ComponentHoist',
         'Docuccino\Core\Extensions\Schema\ComponentRegistry',
+        // Same exemption as EnumReflection beside it, and for the same reason: the one answer to "which
+        // files does this class's declaration span", which an integration needs whenever it records a
+        // fact inheritance decided (a static `$wrap`, a `render()` on a parent, an action trait). Every
+        // integration inlining its own hierarchy walk is precisely what this list exists to prevent.
+        'Docuccino\Core\Extensions\Schema\DeclarationFiles',
         'Docuccino\Core\Extensions\Schema\EnumReflection',
         'Docuccino\Core\Extensions\Schema\SchemaIdentity',
         'Docuccino\Core\Extensions\Schema\SchemaResult',
@@ -52,12 +57,22 @@ arch('built-in integrations consume only the public extension surface')
         // to a component name exactly as core does, so allow-listing the one class beats every
         // integration inlining a private copy.
         'Docuccino\Core\Support\Fqcn',
+        // Same exemption, same reason: the one PHP-scalar → JSON-Schema `type` table, which the built-in
+        // mappers already share. An integration typing a recovered scalar itself (a route-bound column
+        // becoming a path parameter) must answer exactly what a response body would, and allow-listing
+        // the table is how that stays true — a private copy is how the two drift apart.
+        'Docuccino\Core\Extensions\BuiltIn\JsonTypes',
         // Same shape of exemption, same reason: a constants-and-pure-predicates class naming the
         // framework classes the adapter matches by string. Its consumers span both sides of the
         // Extensions/Integrations line (the response guard needs the same list the JsonResponse
         // unwrappers do), and the Extensions side cannot reach into Integrations — so it lives under
         // Laravel\Support and is allow-listed here rather than existing twice.
         'Docuccino\Laravel\Support\FrameworkClasses',
+        // And again: the one rule for "this value came from the build machine, say so". Its callers sit
+        // on both sides of the line — a route's host-bound `servers` URL is an adapter extension's, the
+        // OAuth and cookie values are integrations' — and an extension may not import an integration, so
+        // the rule lives under Laravel\Support and is allow-listed here rather than existing twice.
+        'Docuccino\Laravel\Support\MachineDependentValue',
     ]);
 
 arch('built-in integrations never reach into core internals or adapter wiring')

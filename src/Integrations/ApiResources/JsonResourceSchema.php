@@ -9,6 +9,7 @@ use Docuccino\Core\Extensions\Contracts\TypeToSchema;
 use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Extensions\Schema\ComponentHoist;
+use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Docuccino\Core\Extensions\Schema\SchemaResult;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\DType\DType;
@@ -72,6 +73,10 @@ final class JsonResourceSchema implements TypeToSchema
         if ($context->depth() !== 1) {
             return $result;
         }
+
+        // `$wrap` is a static property, so a parent resource declaring one decides the envelope of a
+        // subclass that mentions it nowhere.
+        $context->dependsOn(...DeclarationFiles::of($itemFqcn));
 
         $key = ResourceWrapping::key($itemFqcn, $context->representation());
         if ($key === null) {

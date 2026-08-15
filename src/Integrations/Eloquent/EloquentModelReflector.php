@@ -5,7 +5,12 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\Eloquent;
 
 use Docuccino\Attributes\Hidden as DocuccinoHidden;
+use Docuccino\Core\Extensions\BuiltIn\JsonTypes;
 use Docuccino\Core\Inference\ClassMetadata;
+use Docuccino\Core\Inference\DType\DType;
+use Docuccino\Core\Inference\DType\NullT;
+use Docuccino\Core\Inference\DType\ScalarT;
+use Docuccino\Core\Inference\DType\UnionT;
 use ReflectionClass;
 
 /**
@@ -38,8 +43,10 @@ final class EloquentModelReflector
     /**
      * The schema a `{model}` path parameter resolves to, without the full {@see facts()} pass. Shares
      * {@see keySchema()} with the model mapper so a bound path param and the model's own key column can't
-     * disagree; anything unreflectable falls back to `integer`. A model that overrides `getRouteKeyName()`
-     * to bind on some other column is out of scope — the PK schema is still the closest static answer.
+     * disagree; anything unreflectable falls back to `integer`. A route naming its own column —
+     * `{post:slug}` — goes through {@see columnSchemaFor()} instead. A model that overrides
+     * `getRouteKeyName()` to bind on some other column is still out of scope: the override is a method
+     * body, not a declaration, so the PK schema remains the closest static answer.
      *
      * @return array<string, mixed>
      */
@@ -52,6 +59,95 @@ final class EloquentModelReflector
         $reflection = new ReflectionClass($fqcn);
 
         return self::keySchema($reflection->getDefaultProperties(), self::traits($fqcn));
+    }
+
+    /**
+     * The schema for the NAMED column a `{post:slug}` parameter binds on, or null when nothing types it —
+     * and null is the point: the route key's schema would say `integer` for a slug, which is worse than
+     * saying nothing. Precedence mirrors {@see ModelSchema}'s so a column can't be documented one way in a
+     * response and another way in the path: a uuid/ulid key beats a stale docblock, a `$casts` entry beats
+     * the inferred type, and the engine's `@property` type is the floor.
+     *
+     * A column whose type can't be carried in a URL segment (an `array` cast, a `@property` naming a class)
+     * is refused rather than emitted — the parameter is a path segment, not the serialised attribute.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function columnSchemaFor(string $fqcn, string $column, ClassMetadata $metadata): ?array
+    {
+        if (! self::isModel($fqcn) || ! class_exists($fqcn)) {
+            return null;
+        }
+
+        $facts = $this->facts($fqcn);
+        $isKey = $column === $facts['keyName'];
+
+        // HasUuids/HasUlids fix the key's format outright.
+        if ($isKey && isset($facts['keySchema']['format'])) {
+            return $facts['keySchema'];
+        }
+
+        $cast = $facts['casts'][$column] ?? null;
+        if ($cast !== null) {
+            $schema = self::asPathSegment(
+                $facts['overridesSerializeDate'] && CastSchema::isDateCast($cast)
+                    ? ['type' => 'string']
+                    : CastSchema::forCast($cast),
+            );
+            if ($schema !== null) {
+                return $schema;
+            }
+        }
+
+        foreach ($metadata->properties as $property) {
+            if ($property->name === $column) {
+                $schema = self::segmentSchema($property->type);
+                if ($schema !== null) {
+                    return $schema;
+                }
+            }
+        }
+
+        // A `$dates` entry is a date-time column, ranked below the engine's types exactly as it is in a
+        // response body. A `$fillable`-only name is deliberately NOT a floor here: it types the column
+        // as "anything", which for a path segment is no answer at all.
+        if (in_array($column, $facts['dates'], true)) {
+            return $facts['overridesSerializeDate'] ? ['type' => 'string'] : ['type' => 'string', 'format' => 'date-time'];
+        }
+
+        return $isKey ? $facts['keySchema'] : null;
+    }
+
+    /**
+     * A recovered column type as a path segment: a plain scalar, `null` stripped off a nullable one
+     * because a bound segment always carries a value. Anything else — a class, an array shape, an enum,
+     * `unknown` — has no truthful single-scalar form, so it is refused.
+     *
+     * @return array<string, mixed>|null
+     */
+    private static function segmentSchema(DType $type): ?array
+    {
+        if ($type instanceof UnionT) {
+            $type = $type->without(static fn (DType $member): bool => $member instanceof NullT);
+        }
+
+        return $type instanceof ScalarT ? ['type' => JsonTypes::forScalar($type->scalar)] : null;
+    }
+
+    /**
+     * A schema fragment kept only when it types a single JSON scalar. `array`/`object` casts serialise
+     * that way in a response body but can never be what a client puts in a URL segment.
+     *
+     * @param  array<string, mixed>|null  $schema
+     * @return array<string, mixed>|null
+     */
+    private static function asPathSegment(?array $schema): ?array
+    {
+        $type = $schema['type'] ?? null;
+
+        return is_string($type) && in_array($type, ['string', 'integer', 'number', 'boolean'], true)
+            ? $schema
+            : null;
     }
 
     /**

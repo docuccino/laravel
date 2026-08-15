@@ -120,7 +120,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Article"
+                "$ref": "#/components/schemas/ArticleRequest"
               }
             }
           }
@@ -131,7 +131,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Article_2"
+                  "$ref": "#/components/schemas/Article"
                 }
               }
             }
@@ -1030,38 +1030,23 @@
         "type": "object",
         "properties": {
           "author": {
-            "type": [
-              "object",
-              "null"
-            ],
-            "properties": {
-              "email": {
-                "type": "string"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthorData"
               },
-              "name": {
-                "type": "string"
+              {
+                "type": "null"
               }
-            },
-            "required": [
-              "name",
-              "email"
             ]
           },
           "body": {
-            "type": "string",
-            "maxLength": 500
+            "type": "string"
           },
-          "heading": {
+          "headline": {
             "type": "string"
           },
           "id": {
             "type": "integer"
-          },
-          "internal": {
-            "type": "integer"
-          },
-          "secret": {
-            "type": "string"
           },
           "subtitle": {
             "type": "string"
@@ -1069,10 +1054,9 @@
         },
         "required": [
           "id",
-          "heading",
+          "headline",
           "body",
-          "secret",
-          "internal"
+          "author"
         ]
       },
       "ArticleJsonApiResource": {
@@ -1122,6 +1106,55 @@
           "type"
         ]
       },
+      "ArticleRequest": {
+        "type": "object",
+        "properties": {
+          "author": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "email": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "email"
+            ]
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "heading": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "internal": {
+            "type": "integer"
+          },
+          "secret": {
+            "type": "string"
+          },
+          "subtitle": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "heading",
+          "body",
+          "secret",
+          "internal"
+        ]
+      },
       "ArticleResource": {
         "type": "object",
         "properties": {
@@ -1144,39 +1177,6 @@
         "required": [
           "id",
           "title"
-        ]
-      },
-      "Article_2": {
-        "type": "object",
-        "properties": {
-          "author": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/AuthorData"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "body": {
-            "type": "string"
-          },
-          "headline": {
-            "type": "string"
-          },
-          "id": {
-            "type": "integer"
-          },
-          "subtitle": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "headline",
-          "body",
-          "author"
         ]
       },
       "AuthorData": {
@@ -1207,6 +1207,38 @@
         "required": [
           "name",
           "email"
+        ]
+      },
+      "Error404": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "Error422": {
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "errors"
         ]
       },
       "FormData": {
@@ -1356,15 +1388,7 @@
         "content": {
           "application/json": {
             "schema": {
-              "type": "object",
-              "properties": {
-                "message": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "message"
-              ]
+              "$ref": "#/components/schemas/Error404"
             }
           }
         }
@@ -1374,25 +1398,7 @@
         "content": {
           "application/json": {
             "schema": {
-              "type": "object",
-              "properties": {
-                "errors": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  }
-                },
-                "message": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "message",
-                "errors"
-              ]
+              "$ref": "#/components/schemas/Error422"
             }
           }
         }

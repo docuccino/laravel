@@ -47,7 +47,7 @@ function responseObjectMetadata(string $fqcn): ClassMetadata
 it('never hoists a framework response class as a component', function (string $fqcn): void {
     [, $components] = documentForReturn(new ClassT($fqcn), [$fqcn => responseObjectMetadata($fqcn)]);
 
-    expect($components)->toBe([]);
+    expect(typeSchemas($components))->toBe([]);
 })->with(FrameworkClasses::RESPONSE_CLASSES);
 
 it('recognises every listed framework response class', function (string $fqcn): void {
@@ -65,7 +65,7 @@ it('recognises an app response subclass the list does not name', function (): vo
         [CustomJsonResponse::class => responseObjectMetadata(CustomJsonResponse::class)],
     );
 
-    expect($components)->toBe([]);
+    expect(typeSchemas($components))->toBe([]);
 });
 
 it('leaves a class that is not a framework response to hoist normally', function (): void {
@@ -130,7 +130,7 @@ it('documents a redirect as a 3xx with a Location header and no body', function 
             ],
         ])
         ->and($responses['3XX']['description'])->toBe('Redirect')
-        ->and($components)->toBe([]);
+        ->and(typeSchemas($components))->toBe([]);
 });
 
 it('raises the pin-the-status advice as a diagnostic, never in the published description', function (): void {
@@ -187,7 +187,7 @@ it('gives a bare JsonResponse an open JSON body and says so out loud', function 
     );
 
     expect($responses['200']['content']['application/json']['schema'])->toBe([])
-        ->and($components)->toBe([]);
+        ->and(typeSchemas($components))->toBe([]);
 
     $raised = array_values(array_filter(
         $diagnostics,
@@ -211,7 +211,7 @@ it('documents only the status for a framework response with no provable media ty
     );
 
     expect($responses['200'])->not->toHaveKey('content')
-        ->and($components)->toBe([])
+        ->and(typeSchemas($components))->toBe([])
         ->and(array_map(static fn ($d): string => $d->code, $diagnostics))
         ->toContain('inferred-response.payload-unrecoverable');
 });
@@ -238,7 +238,7 @@ it('still documents the payload of a JsonResponse whose generic was recovered', 
             'properties' => ['id' => ['type' => 'integer'], 'name' => ['type' => 'string']],
             'required' => ['id', 'name'],
         ])
-        ->and($components)->toBe([]);
+        ->and(typeSchemas($components))->toBe([]);
 });
 
 it('recognises the redirect family and nothing else', function (string $fqcn, bool $expected): void {

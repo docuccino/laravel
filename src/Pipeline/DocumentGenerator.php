@@ -97,6 +97,12 @@ final class DocumentGenerator
 
         $fragments = [];
         foreach ($this->descriptors($resolved, $document) as $descriptor) {
+            if ($descriptor->fallback) {
+                $bag->add(self::fallbackOmitted($descriptor));
+
+                continue;
+            }
+
             // A route registered for several verbs documents one operation per method.
             foreach ($descriptor->documentableMethods() as $method) {
                 $fragment = $this->processRoute($descriptor, $method, $document, $documentId, $engine, $resolved, $components, $bag, $configHash, $extensionClasses);
@@ -132,6 +138,25 @@ final class DocumentGenerator
     }
 
     /**
+     * A catch-all route answers whatever no other route matched, so its template is a placeholder
+     * (`/{fallbackPlaceholder}`) rather than a path any client can call. Publishing it would hand a code
+     * generator a method for an endpoint that does not exist, and OpenAPI has no "any unmatched path"
+     * to publish it as honestly — so it is omitted, and said out loud rather than dropped in silence.
+     */
+    private static function fallbackOmitted(RouteDescriptor $descriptor): Diagnostic
+    {
+        $signature = $descriptor->signature();
+
+        return new Diagnostic(
+            severity: Severity::Info,
+            code: 'route.fallback-omitted',
+            message: sprintf('%s is a fallback route, so it is omitted: its path is a placeholder for every unmatched request, not an endpoint.', $signature),
+            routeSignature: $signature,
+            help: 'Document what a client gets for an unknown path as a 404 response on the operations that can produce one, rather than as an operation of its own.',
+        );
+    }
+
+    /**
      * Digests the booted-app facts the fragment cache must key on beyond config, routes and
      * extensions (design §10, A4) — morph maps, guards, registered rate limiters and friends. They're
      * global, so any change can alter any fragment: hence document-level. Each is contributed by its
@@ -157,6 +182,11 @@ final class DocumentGenerator
     }
 
     /**
+     * The discovered routes, deduped by everything that makes one route a different route: method, URI
+     * and the host it is bound to. Two resolvers reporting the same route collapse; two routes that
+     * differ only by host do NOT — they are two operations, and the host-less one sorts first so which
+     * of them a reader meets first is a fact about the routes, never about registration order.
+     *
      * @return list<RouteDescriptor>
      */
     private function descriptors(ResolvedExtensions $resolved, DocumentConfig $document): array
@@ -164,7 +194,10 @@ final class DocumentGenerator
         $descriptors = [];
         foreach ($resolved->routeResolvers as $resolver) {
             foreach ($resolver->resolve($document) as $descriptor) {
-                $descriptors[$descriptor->primaryMethod().' '.$descriptor->uri] ??= $descriptor;
+                // NUL sorts below every printable byte, so appending the host leaves the host-less
+                // routes' order exactly as it was.
+                $key = $descriptor->primaryMethod().' '.$descriptor->uri."\0".($descriptor->domain ?? '');
+                $descriptors[$key] ??= $descriptor;
             }
         }
 
@@ -190,7 +223,7 @@ final class DocumentGenerator
     ): ?OperationFragment {
         $path = $this->oasPath($descriptor->uri);
         // Naming the specific method keeps multi-method routes' diagnostics distinct.
-        $signature = strtoupper($method).' '.$descriptor->uri;
+        $signature = $descriptor->signature($method);
 
         // The method is part of the cache key: GET query vs POST body are different fragments with
         // different operation identities.
@@ -230,16 +263,16 @@ final class DocumentGenerator
             $operation = new OperationDraft;
             $this->pipeline->run($operation, $context, $resolved);
             $diagnostics = $this->analysisDiagnostics($context, $signature);
-            $this->assignIds($operation, $documentId, $method, $path);
+            $this->assignIds($operation, $documentId, $method, $path, $descriptor->domain);
 
             $frozen = $operation->freeze();
-            [$referencedSchemas, $referencedSchemaIds, $referencedResponses] = $this->componentClosure($frozen->toArray(), $components);
+            [$referencedSchemas, $referencedSchemaIds, $referencedResponses, $referencedSchemaBases, $referencedSecuritySchemes, $referencedResponseBases, $referencedSchemeBases] = $this->componentClosure($frozen->toArray(), $components);
 
             // What this route's component work reported moves onto the fragment, so a warm hit — which
             // restores components without re-registering anything — still replays it.
             $diagnostics = [...$diagnostics, ...$components->takeDiagnosticsSince($snapshot)];
 
-            $fragment = new OperationFragment($path, $method, $frozen, $signature, $diagnostics, $referencedSchemas, $referencedSchemaIds, $referencedResponses, $context->actionRef->class);
+            $fragment = new OperationFragment($path, $method, $frozen, $signature, $diagnostics, $referencedSchemas, $referencedSchemaIds, $referencedResponses, $context->actionRef->class, $referencedSchemaBases, $referencedSecuritySchemes, $referencedResponseBases, $referencedSchemeBases);
             // Trace-derived dependency files widen the key, so a deep chain invalidates when any file
             // it walked changes (design §10 seam).
             $this->cache->put($cacheKey, $fragment, $context->dependencyFiles());
@@ -254,22 +287,31 @@ final class DocumentGenerator
 
     /**
      * The transitive closure of schema and response components this operation `$ref`s, following refs
-     * through the components themselves (design §5 hoist). The full closure — not just what this route
-     * registered first — is what makes a cached fragment self-sufficient: deleting the route that
-     * happened to own a shared component can't leave a survivor with a dangling `$ref`.
+     * through the components themselves (design §5 hoist), plus the security schemes its `security`
+     * requirement names — which is a name, not a `$ref`, but self-sufficiency means the same thing for
+     * it. The full closure — not just what this route registered first — is what makes a cached
+     * fragment self-sufficient: deleting the route that happened to own a shared component can't leave
+     * a survivor with a dangling `$ref`, and a build where every fragment came back warm still has the
+     * schemes its operations authenticate with.
      *
      * @param  array<string, mixed>  $operation
-     * @return array{0: array<string, array<string, mixed>>, 1: array<string, string>, 2: array<string, array<string, mixed>>}
+     * @return array{0: array<string, array<string, mixed>>, 1: array<string, string>, 2: array<string, array<string, mixed>>, 3: array<string, string>, 4: array<string, array<string, mixed>>, 5: array<string, string>, 6: array<string, string>}
      */
     private function componentClosure(array $operation, ComponentRegistry $components): array
     {
         $schemaRegistry = $components->schemas();
         $schemaIdMap = $components->schemaIds();
+        $schemaBaseMap = $components->schemaBases();
         $responseRegistry = $components->responses();
+        $responseBaseMap = $components->responseBases();
+        $schemeBaseMap = $components->securitySchemeBases();
 
         $schemas = [];
         $schemaIds = [];
+        $schemaBases = [];
         $responses = [];
+        $responseBases = [];
+        $schemeBases = [];
         $seenSchema = [];
         $seenResponse = [];
         $schemaQueue = $this->refs($operation, 'schemas');
@@ -283,6 +325,9 @@ final class DocumentGenerator
             }
             $seenResponse[$name] = true;
             $responses[$name] = $responseRegistry[$name];
+            if (isset($responseBaseMap[$name])) {
+                $responseBases[$name] = $responseBaseMap[$name];
+            }
 
             foreach ($this->refs($responseRegistry[$name], 'responses') as $nested) {
                 if (! isset($seenResponse[$nested])) {
@@ -305,6 +350,9 @@ final class DocumentGenerator
             if (isset($schemaIdMap[$name])) {
                 $schemaIds[$name] = $schemaIdMap[$name];
             }
+            if (isset($schemaBaseMap[$name])) {
+                $schemaBases[$name] = $schemaBaseMap[$name];
+            }
 
             foreach ($this->refs($schemaRegistry[$name], 'schemas') as $nested) {
                 if (! isset($seenSchema[$nested])) {
@@ -313,7 +361,39 @@ final class DocumentGenerator
             }
         }
 
-        return [$schemas, $schemaIds, $responses];
+        $registered = $components->securitySchemes();
+        $securitySchemes = [];
+        foreach (self::securityNames($operation) as $name) {
+            if (isset($registered[$name])) {
+                $securitySchemes[$name] = $registered[$name];
+                if (isset($schemeBaseMap[$name])) {
+                    $schemeBases[$name] = $schemeBaseMap[$name];
+                }
+            }
+        }
+
+        return [$schemas, $schemaIds, $responses, $schemaBases, $securitySchemes, $responseBases, $schemeBases];
+    }
+
+    /**
+     * The scheme names an operation's `security` requirement lists. A requirement declared in config
+     * rather than registered by an extension is absent from the registry and simply doesn't travel:
+     * the assembler puts those back from config on every build, warm or cold.
+     *
+     * @param  array<string, mixed>  $operation
+     * @return list<string>
+     */
+    private static function securityNames(array $operation): array
+    {
+        $names = [];
+
+        foreach (is_array($operation['security'] ?? null) ? $operation['security'] : [] as $requirement) {
+            foreach (is_array($requirement) ? $requirement : [] as $name => $_scopes) {
+                $names[] = (string) $name;
+            }
+        }
+
+        return array_values(array_unique($names));
     }
 
     /**
@@ -345,32 +425,50 @@ final class DocumentGenerator
 
     /**
      * Put a cached fragment's components back without waking the type engine, and hand back the
-     * fragment on the names they ACTUALLY landed on. A component the fragment recorded as `Foo` can
+     * fragment on the slots they ACTUALLY landed in. A component the fragment recorded as `Foo` can
      * land as `Foo_2` when a route added since this fragment was cached registered a different class
      * under `Foo` first — and then the restored operation's `$ref` would silently point at the other
      * class's shape. So anything that moved is repointed, in the fragment and in the bodies it just
-     * filed. (Which name a contested schema is finally PUBLISHED under is a separate, FQCN-derived
-     * question the assembler settles; see {@see ComponentNames}.)
+     * filed.
+     *
+     * Each schema goes back in under the name it ASKED for rather than the slot it was cached in, so
+     * that a suffix is re-earned against this build's registry: deleting the route that owned the
+     * plain name has to give it back to the survivor, and nothing invalidates the survivor's fragment.
+     * (Which name a schema is finally PUBLISHED under is settled from the finished registry by
+     * {@see ComponentNames}, which is why a warm build names things exactly as a cold one does.)
      */
     private function restoreComponents(OperationFragment $fragment, ComponentRegistry $components): OperationFragment
     {
         $schemas = [];
         foreach ($fragment->componentSchemas as $name => $schema) {
-            $actual = $components->registerSchema($name, $schema, $fragment->componentSchemaIds[$name] ?? null);
-            if ($actual !== $name) {
-                $schemas[$name] = $actual;
+            $asked = $fragment->componentSchemaBases[$name] ?? (string) $name;
+            $actual = $components->registerSchema($asked, $schema, $fragment->componentSchemaIds[$name] ?? null);
+            if ($actual !== (string) $name) {
+                $schemas[(string) $name] = $actual;
             }
         }
 
         $responses = [];
         foreach ($fragment->componentResponses as $name => $response) {
-            $actual = $components->registerResponse($name, $response);
+            $actual = $components->registerResponse($name, $response, $fragment->componentResponseBases[$name] ?? null);
             if ($actual !== $name) {
                 $responses[$name] = $actual;
             }
         }
 
-        if ($schemas === [] && $responses === []) {
+        // Security schemes go back in under the name they were cached with: unlike a schema name, that
+        // name is vocabulary the registrar chose (`passport`, `sanctumStateful`), never a slot derived
+        // from a class. A suffix is still possible — two routes referencing scopes the other doesn't
+        // build two different `passport` definitions — so a slot that moved is repointed too.
+        $securitySchemes = [];
+        foreach ($fragment->componentSecuritySchemes as $name => $scheme) {
+            $actual = $components->registerSecurityScheme((string) $name, $scheme, $fragment->componentSecuritySchemeBases[$name] ?? null);
+            if ($actual !== (string) $name) {
+                $securitySchemes[(string) $name] = $actual;
+            }
+        }
+
+        if ($schemas === [] && $responses === [] && $securitySchemes === []) {
             return $fragment;
         }
 
@@ -384,7 +482,7 @@ final class DocumentGenerator
             );
         }
 
-        return $fragment->withRenamedComponents($schemas, $responses);
+        return $fragment->withRenamedComponents($schemas, $responses, $securitySchemes);
     }
 
     private function onFailure(
@@ -396,7 +494,7 @@ final class DocumentGenerator
         string $reason,
         DiagnosticCollector $bag,
     ): ?OperationFragment {
-        $signature = strtoupper($method).' '.$descriptor->uri;
+        $signature = $descriptor->signature($method);
 
         $bag->add(new Diagnostic(
             severity: Severity::Error,
@@ -412,14 +510,14 @@ final class DocumentGenerator
 
         $operation = new OperationDraft;
         $operation->setDescription('Documentation could not be generated for this route.', Contribution::fallback());
-        $this->assignIds($operation, $documentId, $method, $path);
+        $this->assignIds($operation, $documentId, $method, $path, $descriptor->domain);
 
         return new OperationFragment($path, $method, $operation->freeze(), $signature);
     }
 
-    private function assignIds(OperationDraft $operation, string $documentId, string $method, string $path): void
+    private function assignIds(OperationDraft $operation, string $documentId, string $method, string $path, ?string $host = null): void
     {
-        $operationId = $this->identity->operationId($documentId, $method, $path);
+        $operationId = $this->identity->operationId($documentId, $method, $path, $host);
         $operation->assignId($operationId);
         $operation->assignChildIds(
             fn (string $in, string $name): string => $this->identity->parameterId($operationId, $in, $name),

@@ -7,6 +7,7 @@ namespace Docuccino\Laravel\Integrations\LaravelActions;
 use Docuccino\Core\Extensions\Context\ResponseAnalysisRedirect;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\ResponseAnalysisTarget;
+use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 
 /**
  * Redirects success-body analysis to `jsonResponse()` when the action defines one — see
@@ -20,6 +21,10 @@ final class LaravelActionResponseAnalysis implements ResponseAnalysisTarget
 
     public function resolve(RouteContext $context): ?ResponseAnalysisRedirect
     {
+        // Whether a `jsonResponse()` exists to redirect to is answered by inheritance, and the answer
+        // decides which method's return type becomes the 200 body.
+        $context->recordDependencyFiles(DeclarationFiles::of($context->actionRef->class));
+
         $ref = LaravelAction::responseAnalysisRef($context->actionRef);
 
         return $ref === null ? null : new ResponseAnalysisRedirect($ref, self::PRODUCER);

@@ -20,11 +20,13 @@ use Docuccino\Laravel\Extensions\FrameworkResponseTypeToSchema;
 use Docuccino\Laravel\Extensions\ImplicitResponsesExtension;
 use Docuccino\Laravel\Extensions\InferredResponsesExtension;
 use Docuccino\Laravel\Extensions\PathParametersExtension;
+use Docuccino\Laravel\Extensions\RouteServersExtension;
 use Docuccino\Laravel\Extensions\SecurityExtension;
 use Docuccino\Laravel\Integrations\FormRequest\ValidationRequestExtension;
 use Docuccino\Laravel\Integrations\FrameworkErrors\FrameworkErrorsIntegration;
 use Docuccino\Laravel\Integrations\InferredHandler\InferredHandlerIntegration;
 use Docuccino\Laravel\Integrations\ProblemDetails\ProblemDetailsIntegration;
+use Docuccino\Laravel\Integrations\Support\AuthConfigDigestContributor;
 use Docuccino\Laravel\Integrations\Validation\ValidationIntegration;
 use Docuccino\Laravel\Routing\LaravelRouteResolver;
 
@@ -63,7 +65,11 @@ final class DefaultExtensions
             ImplicitResponsesExtension::class,
             SecurityExtension::class,
             AttributeSecurityExtension::class,
+            // Auth config is the framework's, not any auth package's, so it keys the cache whether or
+            // not one of them is installed.
+            AuthConfigDigestContributor::class,
             AttributeOverridesExtension::class,
+            RouteServersExtension::class,
             // Error-response chain, first supports() wins (design §6): the app's real error shapes,
             // then the Problem Details preset (self-gated on error_responses), then framework defaults,
             // then a generic fallback.
