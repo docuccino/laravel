@@ -39,7 +39,8 @@ use Docuccino\Laravel\Integrations\InferredHandler\HandlerResponseBuilder;
  *
  * When the body is an object the engine watched being constructed, the arguments it was built with decide
  * membership instead: supplied beats optional (this branch passed it, so this response has it) and
- * unsupplied beats required (this branch didn't, so it doesn't).
+ * unsupplied beats required (this branch didn't, so it doesn't). An argument that renders the key only on
+ * some responses decides nothing, and the schema answers for it.
  */
 function handlerContext(?TypeEngine $engine = null): RouteContext
 {
@@ -93,14 +94,18 @@ function problemDocumentContext(): RouteContext
     ]));
 }
 
-/** The member map the engine channels a watched construction through: name → folded literal or "supplied". */
-function suppliedMembers(array $members): ArrayShapeT
+/**
+ * The member map the engine channels a watched construction through: name → folded literal or "supplied".
+ * A name in `$conditional` is one the branch renders only sometimes — spatie's `X ?? new Optional`.
+ */
+function suppliedMembers(array $members, array $conditional = []): ArrayShapeT
 {
     $fields = [];
     foreach ($members as $name => $value) {
         $fields[] = new ArrayShapeField(
             $name,
             $value === null ? new UnknownT('constructor argument not folded') : new LiteralT($value),
+            in_array($name, $conditional, true),
         );
     }
 
@@ -207,6 +212,56 @@ it('shows the values an object body was constructed with, through its hoisted $r
         'instance' => 'string',
         // An `items` schema renders as a list OF something; an empty array would show nothing at all.
         'errors' => [['pointer' => 'string']],
+    ]);
+});
+
+it('leaves out a member the branch renders only sometimes', function (): void {
+    // `instance` was passed, but as a value that renders the key on some responses and omits it on others.
+    // Showing it would tell a reader of the example to expect a key that need not be there; the component
+    // still describes it, which is where a sometimes-present member belongs.
+    $draft = HandlerResponseBuilder::build(
+        handlerAnalysis(
+            new ClassT('App\\Data\\ProblemDocument'),
+            422,
+            suppliedMembers(
+                ['type' => 'about:blank', 'title' => 'Unprocessable Content', 'status' => 422, 'detail' => null, 'instance' => null],
+                conditional: ['instance'],
+            ),
+        ),
+        problemDocumentContext(),
+        Contribution::integration('inferred-handler'),
+    );
+
+    expect($draft?->freeze()->toArray()['content']['application/problem+json']['example'] ?? null)->toBe([
+        'type' => 'about:blank',
+        'title' => 'Unprocessable Content',
+        'status' => 422,
+        'detail' => 'string',
+    ]);
+});
+
+it('still shows a sometimes-rendered member the schema requires of every response', function (): void {
+    // The schema is the stronger claim in this direction: it says every response carries `title`, so an
+    // example without it would fail against the very schema beside it. The fill applies as it would to any
+    // member no argument accounted for.
+    $draft = HandlerResponseBuilder::build(
+        handlerAnalysis(
+            new ClassT('App\\Data\\ProblemDocument'),
+            500,
+            suppliedMembers(
+                ['type' => 'about:blank', 'title' => null, 'status' => 500, 'detail' => 'Something went wrong.'],
+                conditional: ['title'],
+            ),
+        ),
+        problemDocumentContext(),
+        Contribution::integration('inferred-handler'),
+    );
+
+    expect($draft?->freeze()->toArray()['content']['application/problem+json']['example'] ?? null)->toBe([
+        'type' => 'about:blank',
+        'title' => 'string',
+        'status' => 500,
+        'detail' => 'Something went wrong.',
     ]);
 });
 

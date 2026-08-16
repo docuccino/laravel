@@ -37,8 +37,9 @@ use Docuccino\Laravel\Support\FrameworkClasses;
  * When the body is an object the engine watched being constructed, the fourth type arg names the arguments
  * it was built with, and those decide the example's membership rather than the schema's `required` list: an
  * argument passed at this call site is in THIS response even where the schema calls it optional, and one
- * that wasn't passed is absent even where the schema calls it required. Only the schema is ever consulted
- * for what such a member should look like.
+ * that wasn't passed is absent even where the schema calls it required. An argument that renders the key
+ * only sometimes settles nothing and hands the question back to the schema
+ * ({@see suppliedMembers()}). Only the schema is ever consulted for what such a member should look like.
  *
  * Null means no `JsonResponse` was recovered: either a `return null`/void arm ({@see isDelegation()} —
  * the renderer handing the type back to the framework, not a fold failure) or a body too dynamic to
@@ -389,6 +390,10 @@ final class HandlerResponseBuilder
      * {@see LiteralT}, or the {@see UnknownT} meaning "supplied here, value not statically knowable". An
      * absent name means the argument wasn't passed at that call site.
      *
+     * An OPTIONAL field is absent from this map too: it means the argument renders the key on some runs and
+     * leaves it out on others, which is not the guarantee this map exists to state. Such a member falls back
+     * to the schema — described there, and illustrated only if the schema says every response carries it.
+     *
      * Keyed by CONSTRUCTOR ARGUMENT name. A Data class whose properties are remapped on the way out simply
      * matches nothing here, and the example falls back to the schema's required members.
      *
@@ -402,6 +407,9 @@ final class HandlerResponseBuilder
 
         $members = [];
         foreach ($membersArg->fields as $field) {
+            if ($field->optional) {
+                continue;
+            }
             $members[(string) $field->key] = $field->type;
         }
 
