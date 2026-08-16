@@ -82,30 +82,31 @@ it('documents routes on different limits with ONE shared 429 shape', function ()
 
     $error429s = array_keys(array_filter(
         $document['components']['schemas'] ?? [],
-        static fn (string $name): bool => str_starts_with($name, 'Error429'),
+        static fn (string $name): bool => str_starts_with($name, 'TooManyRequests'),
         ARRAY_FILTER_USE_KEY,
     ));
-    // One shape, and it keeps the plain name: nothing contests it, so no route sees a discriminator.
-    expect($error429s)->toBe(['Error429']);
+    // One shape, and it keeps the name the integration declared for it: nothing contests it, so no
+    // route sees a discriminator.
+    expect($error429s)->toBe(['TooManyRequests']);
 
     // Every throttled 429 is identical — headers included — so the whole response hoists as well, and
     // the one component points at the one shape.
-    $shared = $document['components']['responses']['Error429'] ?? [];
+    $shared = $document['components']['responses']['TooManyRequests'] ?? [];
 
     expect(array_keys(array_filter(
         $document['components']['responses'] ?? [],
-        static fn (string $name): bool => str_starts_with($name, 'Error429'),
+        static fn (string $name): bool => str_starts_with($name, 'TooManyRequests'),
         ARRAY_FILTER_USE_KEY,
-    )))->toBe(['Error429'])
+    )))->toBe(['TooManyRequests'])
         ->and($shared)->toHaveKey('description')
         ->and($shared['headers'] ?? [])->toHaveKey('X-RateLimit-Limit')
         ->and($shared['content']['application/json']['schema'] ?? null)
-        ->toBe(['$ref' => '#/components/schemas/Error429']);
+        ->toBe(['$ref' => '#/components/schemas/TooManyRequests']);
 
     $paths = ['throttled-sixty', 'throttled-oneish', 'throttled-oneish-too', 'throttled-guests', 'throttled-named'];
     foreach ($paths as $path) {
         expect($document['paths']['/api/'.$path]['get']['responses']['429']['$ref'] ?? null)
-            ->toBe('#/components/responses/Error429');
+            ->toBe('#/components/responses/TooManyRequests');
     }
 });
 

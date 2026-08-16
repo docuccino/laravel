@@ -365,6 +365,7 @@
                   "producer": "integration:query-builder",
                   "layer": "integration",
                   "fields": [
+                    "component",
                     "description"
                   ],
                   "source": {
@@ -373,7 +374,10 @@
                     "symbol": "query-builder:strict-mode"
                   }
                 }
-              ]
+              ],
+              "facts": {
+                "component": "BadRequest"
+              }
             },
             "description": "Bad Request",
             "content": {
@@ -463,7 +467,7 @@
     "document": {
       "id": "doc:qb-list",
       "configHash": "989677afe6cf5b4cd34523c66ef1113434bc523a73b2152559c1aff96278b88d",
-      "contentHash": "a40c6d2e7a6145c5c2e3bc9769cd8782b2801ce99d6f8088f6223ac2fc9a42b8"
+      "contentHash": "04983f6ae530477f5866a3c7738092b8c60665f789c691e389cd2c2f1df177d5"
     },
     "generator": {
       "name": "docuccino/laravel",

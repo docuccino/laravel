@@ -35,7 +35,7 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/Error404"
+            "$ref": "#/components/responses/NotFound"
           }
         }
       }
@@ -137,7 +137,7 @@
             }
           },
           "422": {
-            "$ref": "#/components/responses/Error422"
+            "$ref": "#/components/responses/UnprocessableEntity"
           }
         }
       }
@@ -333,7 +333,7 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/Error404"
+            "$ref": "#/components/responses/NotFound"
           }
         }
       }
@@ -904,7 +904,7 @@
             }
           },
           "422": {
-            "$ref": "#/components/responses/Error422"
+            "$ref": "#/components/responses/UnprocessableEntity"
           }
         }
       }
@@ -1209,38 +1209,6 @@
           "email"
         ]
       },
-      "Error404": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "message"
-        ]
-      },
-      "Error422": {
-        "type": "object",
-        "properties": {
-          "errors": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          },
-          "message": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "message",
-          "errors"
-        ]
-      },
       "FormData": {
         "type": "object",
         "properties": {
@@ -1271,6 +1239,17 @@
         },
         "required": [
           "id"
+        ]
+      },
+      "NotFound": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
         ]
       },
       "StoreWidgetRequest": {
@@ -1304,6 +1283,27 @@
           "name",
           "quantity",
           "role"
+        ]
+      },
+      "UnprocessableEntity": {
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "errors"
         ]
       },
       "Widget": {
@@ -1383,22 +1383,22 @@
       }
     },
     "responses": {
-      "Error404": {
+      "NotFound": {
         "description": "Not Found",
         "content": {
           "application/json": {
             "schema": {
-              "$ref": "#/components/schemas/Error404"
+              "$ref": "#/components/schemas/NotFound"
             }
           }
         }
       },
-      "Error422": {
+      "UnprocessableEntity": {
         "description": "Unprocessable Entity",
         "content": {
           "application/json": {
             "schema": {
-              "$ref": "#/components/schemas/Error422"
+              "$ref": "#/components/schemas/UnprocessableEntity"
             }
           }
         }

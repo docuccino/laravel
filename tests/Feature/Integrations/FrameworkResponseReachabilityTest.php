@@ -85,12 +85,12 @@ it('keeps a really-recovered RedirectResponse out of components and documents it
     expect(array_map(static fn ($p): string => $p->name, $metadata->properties))
         ->toContain('original', 'headers');
 
-    [$responses, $components] = documentForReturn($returnType, [$fqcn => $metadata]);
+    [$responses, $document] = documentForReturn($returnType, [$fqcn => $metadata]);
 
     expect(array_keys($responses))->toBe(['3XX'])
         ->and($responses['3XX'])->not->toHaveKey('content')
         ->and($responses['3XX']['headers'])->toHaveKey('Location')
-        ->and(typeSchemas($components))->toBe([]);
+        ->and(typeSchemas($document))->toBe([]);
 })->group('fixture');
 
 it('keeps a really-recovered bare JsonResponse out of components and says the body is unrecovered', function (): void {
@@ -105,13 +105,13 @@ it('keeps a really-recovered bare JsonResponse out of components and says the bo
     $returnType = $analysis->returns[0]->type ?? null;
     $fqcn = 'Illuminate\\Http\\JsonResponse';
 
-    [$responses, $components, $diagnostics] = documentForReturn(
+    [$responses, $document, $diagnostics] = documentForReturn(
         $returnType,
         [$fqcn => ClassMetadata::fromArray(FixtureRunner::classMetadata($fqcn))],
     );
 
     expect($responses['200']['content']['application/json']['schema'])->toBe([])
-        ->and(typeSchemas($components))->toBe([])
+        ->and(typeSchemas($document))->toBe([])
         ->and(array_map(static fn ($d): string => $d->code, $diagnostics))
         ->toContain('inferred-response.payload-unrecoverable');
 })->group('fixture');

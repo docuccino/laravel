@@ -85,6 +85,18 @@ final class FrameworkExceptionTable
     }
 
     /**
+     * The component name an error body for this status is published under — the reason phrase as one
+     * word, so what a client catches is called `NotFound` rather than `Error404`. Null for a status
+     * with no phrase of its own: `Error` names nothing, and every unlisted status would claim it.
+     */
+    public static function componentName(string $status): ?string
+    {
+        $phrase = self::REASON_PHRASES[$status] ?? null;
+
+        return $phrase === null ? null : str_replace(' ', '', $phrase);
+    }
+
+    /**
      * The `[status, phrase]` pairs, for the dataset test over every entry. A list of pairs rather than a
      * map because PHP coerces the numeric-string keys back to int.
      *

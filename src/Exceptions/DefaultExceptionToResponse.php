@@ -46,6 +46,9 @@ final class DefaultExceptionToResponse implements ExceptionToResponse
         $contribution = Contribution::forProducer('fallback', $context->actionSource());
 
         $draft->setDescription(FrameworkExceptionTable::reason((string) $status), $contribution);
+        // Generic body, but not a generic error: the status still says which one, so the shared
+        // component is named after it. A status with no reason phrase of its own declares nothing.
+        $draft->claimComponentName(FrameworkExceptionTable::componentName((string) $status), $contribution);
         $draft->content('application/json')->set('type', 'object', $contribution);
         $draft->content('application/json')->set('properties', ['message' => ['type' => 'string']], $contribution);
 

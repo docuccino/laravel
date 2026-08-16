@@ -45,9 +45,9 @@ function responseObjectMetadata(string $fqcn): ClassMetadata
 }
 
 it('never hoists a framework response class as a component', function (string $fqcn): void {
-    [, $components] = documentForReturn(new ClassT($fqcn), [$fqcn => responseObjectMetadata($fqcn)]);
+    [, $document] = documentForReturn(new ClassT($fqcn), [$fqcn => responseObjectMetadata($fqcn)]);
 
-    expect(typeSchemas($components))->toBe([]);
+    expect(typeSchemas($document))->toBe([]);
 })->with(FrameworkClasses::RESPONSE_CLASSES);
 
 it('recognises every listed framework response class', function (string $fqcn): void {
@@ -60,12 +60,12 @@ it('recognises an app response subclass the list does not name', function (): vo
     expect(FrameworkClasses::RESPONSE_CLASSES)->not->toContain(CustomJsonResponse::class)
         ->and(FrameworkClasses::isResponse(CustomJsonResponse::class))->toBeTrue();
 
-    [, $components] = documentForReturn(
+    [, $document] = documentForReturn(
         new ClassT(CustomJsonResponse::class),
         [CustomJsonResponse::class => responseObjectMetadata(CustomJsonResponse::class)],
     );
 
-    expect(typeSchemas($components))->toBe([]);
+    expect(typeSchemas($document))->toBe([]);
 });
 
 it('leaves a class that is not a framework response to hoist normally', function (): void {
@@ -74,13 +74,30 @@ it('leaves a class that is not a framework response to hoist normally', function
     $fqcn = 'Workbench\\App\\Data\\ReceiptData';
     expect(FrameworkClasses::isResponse($fqcn))->toBeFalse();
 
-    [$responses, $components] = documentForReturn(new ClassT($fqcn), [
+    [$responses, $document] = documentForReturn(new ClassT($fqcn), [
         $fqcn => new ClassMetadata($fqcn, [new PropertyMetadata('total', new ScalarT(ScalarT::INT))]),
     ]);
 
     expect($responses['200']['content']['application/json']['schema']['$ref'] ?? null)
         ->toBe('#/components/schemas/ReceiptData')
-        ->and($components['ReceiptData']['properties'] ?? null)->toBe(['total' => ['type' => 'integer']]);
+        ->and($document['components']['schemas']['ReceiptData']['properties'] ?? null)->toBe(['total' => ['type' => 'integer']]);
+});
+
+it('keeps a hoisted class the framework happens to share a name with in view', function (): void {
+    // About the assertions above rather than the guard: `typeSchemas()` hides the shared error shapes so
+    // that `toBe([])` means "nothing hoisted", and an application class called `NotFound` must not be
+    // one of them. Hidden by name it would be, and every `toBe([])` in this file would then pass over a
+    // component that really was hoisted.
+    $fqcn = 'Workbench\\App\\Data\\NotFound';
+
+    [, $document] = documentForReturn(new ClassT($fqcn), [
+        $fqcn => new ClassMetadata($fqcn, [new PropertyMetadata('reference', new ScalarT(ScalarT::STRING))]),
+    ]);
+
+    // The registry got there first, so the class keeps the plain name and the framework's 404 shape
+    // climbs past it — and only the climbed one is filtered, because only the 404s reach it.
+    expect(array_keys(typeSchemas($document)))->toBe(['NotFound'])
+        ->and(array_keys($document['components']['schemas']))->toHaveCount(2);
 });
 
 it('refuses a framework response wherever it turns up, not just at the top level', function (): void {
@@ -116,7 +133,7 @@ it('documents a redirect as a 3xx with a Location header and no body', function 
     // Laravel's RedirectResponse defaults to 302 but takes any 3xx, and nothing at the return site
     // states which — so the OAS range key is what the code proves. The Location header is not a guess:
     // every redirect response sets it.
-    [$responses, $components] = documentForReturn(
+    [$responses, $document] = documentForReturn(
         new ClassT(FrameworkClasses::REDIRECT_RESPONSE),
         [FrameworkClasses::REDIRECT_RESPONSE => responseObjectMetadata(FrameworkClasses::REDIRECT_RESPONSE)],
     );
@@ -130,7 +147,7 @@ it('documents a redirect as a 3xx with a Location header and no body', function 
             ],
         ])
         ->and($responses['3XX']['description'])->toBe('Redirect')
-        ->and(typeSchemas($components))->toBe([]);
+        ->and(typeSchemas($document))->toBe([]);
 });
 
 it('raises the pin-the-status advice as a diagnostic, never in the published description', function (): void {
@@ -181,13 +198,13 @@ it('does not diagnose a redirect, which loses nothing', function (): void {
 it('gives a bare JsonResponse an open JSON body and says so out loud', function (): void {
     // The class proves the media type and nothing else. An open `{}` under application/json is true;
     // an absent content entry would read as "no body", which the class contradicts.
-    [$responses, $components, $diagnostics] = documentForReturn(
+    [$responses, $document, $diagnostics] = documentForReturn(
         new ClassT(FrameworkClasses::JSON_RESPONSE),
         [FrameworkClasses::JSON_RESPONSE => responseObjectMetadata(FrameworkClasses::JSON_RESPONSE)],
     );
 
     expect($responses['200']['content']['application/json']['schema'])->toBe([])
-        ->and(typeSchemas($components))->toBe([]);
+        ->and(typeSchemas($document))->toBe([]);
 
     $raised = array_values(array_filter(
         $diagnostics,
@@ -205,13 +222,13 @@ it('documents only the status for a framework response with no provable media ty
     // anywhere — so claiming `application/json` would be a confident wrong answer.
     $fqcn = 'Symfony\\Component\\HttpFoundation\\BinaryFileResponse';
 
-    [$responses, $components, $diagnostics] = documentForReturn(
+    [$responses, $document, $diagnostics] = documentForReturn(
         new ClassT($fqcn),
         [$fqcn => responseObjectMetadata($fqcn)],
     );
 
     expect($responses['200'])->not->toHaveKey('content')
-        ->and(typeSchemas($components))->toBe([])
+        ->and(typeSchemas($document))->toBe([])
         ->and(array_map(static fn ($d): string => $d->code, $diagnostics))
         ->toContain('inferred-response.payload-unrecoverable');
 });
@@ -224,7 +241,7 @@ it('still documents the payload of a JsonResponse whose generic was recovered', 
         new ArrayShapeField('name', new ScalarT(ScalarT::STRING)),
     ]);
 
-    [$responses, $components] = documentForReturn(new ClassT(FrameworkClasses::JSON_RESPONSE, [
+    [$responses, $document] = documentForReturn(new ClassT(FrameworkClasses::JSON_RESPONSE, [
         $payload,
         new LiteralT(201),
     ]));
@@ -238,7 +255,7 @@ it('still documents the payload of a JsonResponse whose generic was recovered', 
             'properties' => ['id' => ['type' => 'integer'], 'name' => ['type' => 'string']],
             'required' => ['id', 'name'],
         ])
-        ->and(typeSchemas($components))->toBe([]);
+        ->and(typeSchemas($document))->toBe([]);
 });
 
 it('recognises the redirect family and nothing else', function (string $fqcn, bool $expected): void {

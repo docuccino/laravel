@@ -14,6 +14,7 @@ use Docuccino\Core\Inference\ThrowConfidence;
 use Docuccino\Core\Inference\ThrowDisposition;
 use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Patch\Contribution;
+use Docuccino\Laravel\Integrations\Support\FrameworkExceptionTable;
 use Illuminate\Cache\RateLimiter;
 
 /**
@@ -63,6 +64,9 @@ final class RateLimitResponsesExtension implements OperationExtension
 
         $contribution = Contribution::integration('rate-limit', $context->actionSource());
         $response = $operation->response('429');
+        // Every throttled route documents the same 429, headers and all, so the component it hoists into
+        // can be named after the error rather than after the number.
+        $response->claimComponentName(FrameworkExceptionTable::componentName('429'), $contribution);
 
         $built = $this->response->build();
 

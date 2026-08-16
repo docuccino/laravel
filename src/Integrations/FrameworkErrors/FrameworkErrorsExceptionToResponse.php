@@ -73,6 +73,9 @@ final class FrameworkErrorsExceptionToResponse implements ExceptionToResponse
         $contribution = Contribution::integration('framework-errors');
         $draft = new ResponseDraft($entry['status']);
         $draft->setDescription($entry['description'], $contribution);
+        // This tier speaks for one kind of error per status, so it can name the shared component after
+        // the error rather than after the number.
+        $draft->claimComponentName(FrameworkExceptionTable::componentName($entry['status']), $contribution);
 
         foreach ($entry['shape'] as $keyword => $value) {
             $draft->content('application/json')->set($keyword, $value, $contribution);

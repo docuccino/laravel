@@ -131,6 +131,7 @@
                   "producer": "integration:framework-errors",
                   "layer": "integration",
                   "fields": [
+                    "component",
                     "description"
                   ],
                   "source": {
@@ -139,9 +140,12 @@
                     "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
                   }
                 }
-              ]
+              ],
+              "facts": {
+                "component": "NotFound"
+              }
             },
-            "$ref": "#/components/responses/Error404"
+            "$ref": "#/components/responses/NotFound"
           }
         }
       }
@@ -433,6 +437,7 @@
                   "producer": "integration:implicit-response",
                   "layer": "integration",
                   "fields": [
+                    "component",
                     "description"
                   ],
                   "source": {
@@ -441,9 +446,12 @@
                     "symbol": "implicit:validated-request"
                   }
                 }
-              ]
+              ],
+              "facts": {
+                "component": "UnprocessableEntity"
+              }
             },
-            "$ref": "#/components/responses/Error422"
+            "$ref": "#/components/responses/UnprocessableEntity"
           }
         }
       }
@@ -1005,6 +1013,7 @@
                   "producer": "integration:framework-errors",
                   "layer": "integration",
                   "fields": [
+                    "component",
                     "description"
                   ],
                   "source": {
@@ -1013,9 +1022,12 @@
                     "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
                   }
                 }
-              ]
+              ],
+              "facts": {
+                "component": "NotFound"
+              }
             },
-            "$ref": "#/components/responses/Error404"
+            "$ref": "#/components/responses/NotFound"
           }
         }
       }
@@ -1099,6 +1111,7 @@
                   "producer": "integration:implicit-response",
                   "layer": "integration",
                   "fields": [
+                    "component",
                     "description"
                   ],
                   "source": {
@@ -1107,7 +1120,10 @@
                     "symbol": "implicit:auth-middleware"
                   }
                 }
-              ]
+              ],
+              "facts": {
+                "component": "Unauthorized"
+              }
             },
             "description": "Unauthorized",
             "content": {
@@ -1152,6 +1168,7 @@
                   "producer": "integration:implicit-response",
                   "layer": "integration",
                   "fields": [
+                    "component",
                     "description"
                   ],
                   "source": {
@@ -1160,7 +1177,10 @@
                     "symbol": "implicit:can-middleware"
                   }
                 }
-              ]
+              ],
+              "facts": {
+                "component": "Forbidden"
+              }
             },
             "description": "Forbidden",
             "content": {
@@ -2227,6 +2247,7 @@
                   "producer": "integration:rate-limit",
                   "layer": "integration",
                   "fields": [
+                    "component",
                     "description",
                     "headers"
                   ],
@@ -2236,7 +2257,10 @@
                     "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
                   }
                 }
-              ]
+              ],
+              "facts": {
+                "component": "TooManyRequests"
+              }
             },
             "description": "Too Many Requests — the rate limit for this endpoint has been exceeded.",
             "headers": {
@@ -2524,6 +2548,7 @@
                   "producer": "integration:implicit-response",
                   "layer": "integration",
                   "fields": [
+                    "component",
                     "description"
                   ],
                   "source": {
@@ -2532,9 +2557,12 @@
                     "symbol": "implicit:validated-request"
                   }
                 }
-              ]
+              ],
+              "facts": {
+                "component": "UnprocessableEntity"
+              }
             },
-            "$ref": "#/components/responses/Error422"
+            "$ref": "#/components/responses/UnprocessableEntity"
           }
         }
       }
@@ -2813,6 +2841,7 @@
                   "producer": "integration:query-builder",
                   "layer": "integration",
                   "fields": [
+                    "component",
                     "description"
                   ],
                   "source": {
@@ -2821,7 +2850,10 @@
                     "symbol": "query-builder:strict-mode"
                   }
                 }
-              ]
+              ],
+              "facts": {
+                "component": "BadRequest"
+              }
             },
             "description": "Bad Request",
             "content": {
@@ -3192,44 +3224,6 @@
           "email"
         ]
       },
-      "Error404": {
-        "x-docuccino": {
-          "id": "sch:v1:b5f2vpxbxyjqvu27"
-        },
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "message"
-        ]
-      },
-      "Error422": {
-        "x-docuccino": {
-          "id": "sch:v1:ez2xsveykvmdgo67"
-        },
-        "type": "object",
-        "properties": {
-          "errors": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          },
-          "message": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "message",
-          "errors"
-        ]
-      },
       "FormData": {
         "x-docuccino": {
           "id": "sch:v1:6iocn62c7ru5zutw"
@@ -3268,6 +3262,20 @@
           "id"
         ]
       },
+      "NotFound": {
+        "x-docuccino": {
+          "id": "sch:v1:bvvuacym2wsq7ebk"
+        },
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
       "StoreWidgetRequest": {
         "x-docuccino": {
           "id": "sch:v1:zh4wul5w3rfncvua"
@@ -3302,6 +3310,30 @@
           "name",
           "quantity",
           "role"
+        ]
+      },
+      "UnprocessableEntity": {
+        "x-docuccino": {
+          "id": "sch:v1:f3tcwvg2vhs255gy"
+        },
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "errors"
         ]
       },
       "Widget": {
@@ -3390,22 +3422,22 @@
       }
     },
     "responses": {
-      "Error404": {
+      "NotFound": {
         "description": "Not Found",
         "content": {
           "application/json": {
             "schema": {
-              "$ref": "#/components/schemas/Error404"
+              "$ref": "#/components/schemas/NotFound"
             }
           }
         }
       },
-      "Error422": {
+      "UnprocessableEntity": {
         "description": "Unprocessable Entity",
         "content": {
           "application/json": {
             "schema": {
-              "$ref": "#/components/schemas/Error422"
+              "$ref": "#/components/schemas/UnprocessableEntity"
             }
           }
         }
@@ -3416,7 +3448,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "4f13fa46108392d824b2b8ea43e4cfd7cb8a3c2ede2f597d03cf4c76f3bd0952",
-      "contentHash": "5cb8509392ef0027a07d5bd1a89070917defa5b142c679b0f2a171096899e724"
+      "contentHash": "faf9e94e891e03f8a510e36a4f594c09fb65b2f5769439b2b6a6cd78ce4cd202"
     },
     "generator": {
       "name": "docuccino/laravel",

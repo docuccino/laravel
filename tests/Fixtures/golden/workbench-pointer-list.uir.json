@@ -2156,6 +2156,7 @@
                   "producer": "integration:rate-limit",
                   "layer": "integration",
                   "fields": [
+                    "component",
                     "description",
                     "headers"
                   ],
@@ -2165,7 +2166,10 @@
                     "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
                   }
                 }
-              ]
+              ],
+              "facts": {
+                "component": "TooManyRequests"
+              }
             },
             "description": "Too Many Requests — the rate limit for this endpoint has been exceeded.",
             "headers": {
@@ -3393,7 +3397,7 @@
     "document": {
       "id": "doc:pointer-list",
       "configHash": "8232eca8c6de2c57a33bbce8b03c3e08e85f5ee9723c30729d2c9422552337ff",
-      "contentHash": "d942e0dd0d594f894a9691b47e47696439145b771d140ef0e79d2a61f13526c4"
+      "contentHash": "9d818b02593f1f7c9293983939c3fa4c194d05d0614daec32cd092260ffdc0b7"
     },
     "generator": {
       "name": "docuccino/laravel",
