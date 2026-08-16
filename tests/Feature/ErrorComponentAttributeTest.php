@@ -319,17 +319,17 @@ it('refuses a declared name no component key could carry and tells the class tha
         ->and(diagnosticsCoded($result->diagnostics, 'components.name-invalid'))->toBeEmpty();
 });
 
-it('escapes a refused name before quoting it in a diagnostic', function (): void {
-    // Nothing validated the string an attribute carries and a diagnostic is read on a terminal, so a
-    // control character in the name has to arrive as text rather than as a cursor movement.
+it('quotes a refused name exactly as the attribute wrote it', function (): void {
+    // Nothing validated the string an attribute carries, and the diagnostic reporting it goes to a JSON
+    // report and to the emitted document as well as to a terminal. It states what it read; the console
+    // escapes at the write (`RendersDiagnostics`), which is the only reader that needs it to.
     $result = declaringBuild([
         'first' => [EscapedNameException::class, 409],
         'second' => [EscapedNameException::class, 409],
     ]);
     $rejected = diagnosticsCoded($result->diagnostics, 'attribute.error-component-invalid');
 
-    expect($rejected[0]->message)->toContain('Not\x1B[31mFound')
-        ->and($rejected[0]->message)->not->toContain("\x1B");
+    expect($rejected[0]->message)->toContain("Not\x1B[31mFound");
 });
 
 it('does not let a name it refused contest one it accepted', function (): void {

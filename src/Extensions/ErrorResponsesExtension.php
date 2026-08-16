@@ -156,26 +156,12 @@ final class ErrorResponsesExtension implements OperationExtension
             message: sprintf(
                 '%s declares #[ErrorComponent("%s")], which is not a name an OpenAPI component key can carry, so the attribute names nothing and the response keeps the name it would have had.',
                 $declaration->declaredBy,
-                self::printable($declaration->name),
+                $declaration->name,
             ),
             source: $this->declarationSource($context, $declaration),
             routeSignature: $context->route->signature(),
             help: 'A component key is letters, digits, ".", "_" and "-" only. A reason phrase as one word — "NotFound", "TooManyRequests" — is what reads best as a generated client\'s type.',
         ));
-    }
-
-    /**
-     * The declared name as a diagnostic may quote it. Nothing validated the string an attribute carries,
-     * and a diagnostic is read on a terminal, so a control character in it would move the cursor rather
-     * than be read. Everything else passes through — the author has to recognise what they wrote.
-     */
-    private static function printable(string $value): string
-    {
-        return (string) preg_replace_callback(
-            '/[\x00-\x1F\x7F]/',
-            static fn (array $match): string => sprintf('\x%02X', ord($match[0])),
-            $value,
-        );
     }
 
     /**
