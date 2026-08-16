@@ -2,14 +2,20 @@
 
 declare(strict_types=1);
 
+use Docuccino\Core\Draft\OperationDraft;
 use Docuccino\Core\Extensions\BuiltIn\DefaultTypeMappers;
+use Docuccino\Core\Extensions\Context\AttributeSet;
+use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\RepresentationPolicy;
+use Docuccino\Core\Extensions\Context\RouteContext;
+use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Extensions\Schema\ComponentRegistry;
 use Docuccino\Core\Extensions\Schema\SchemaConverter;
 use Docuccino\Core\Extensions\Validation\DefaultValidationRulesToSchema;
 use Docuccino\Core\Extensions\Validation\RuleSet;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 use Docuccino\Core\Extensions\Validation\ValidationSchema;
+use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Inference\ClassMetadata;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\DType\ListT;
@@ -20,12 +26,17 @@ use Docuccino\Core\Inference\NullTypeEngine;
 use Docuccino\Core\Inference\PropertyMetadata;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Laravel\Integrations\SpatieData\DataClassReflector;
+use Docuccino\Laravel\Integrations\SpatieData\DataRequestExtension;
 use Docuccino\Laravel\Integrations\SpatieData\DataValidationRules;
 use Docuccino\Laravel\Integrations\Validation\RuleOrdering;
 use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
 use Docuccino\Laravel\Integrations\Validation\ValidationIntegration;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\AddressData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\BaseApiData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ImmutableNodeData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\InheritedMergeRulesData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\MergedRulesController;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\MergedRulesData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ValidatedData;
 
 /**
@@ -176,6 +187,46 @@ it('still lets a rules() override prohibit a field property inference documented
     );
 
     expect(array_keys($rules->fields))->toBe(['name']);
+});
+
+it('appends rather than replaces under #[MergeValidationRules]', function (string $fqcn): void {
+    // Spatie's resolver `merge`s the override into what it inferred when the class carries the attribute,
+    // instead of `add`ing over it. Documenting the replacement would drop the `#[Max(255)]` the API still
+    // enforces — a body the docs call valid that the API rejects. PHP does not inherit class attributes,
+    // but spatie's attribute collection walks the parent chain, so a base class carrying it merges for
+    // every subclass too.
+    $metadata = new ClassMetadata($fqcn, [new PropertyMetadata('name', ScalarT::string())]);
+    $override = new RuleSet(['name' => [ValidationRule::of('min', ['3'])]]);
+
+    $rules = (new DataValidationRules)->build($fqcn, $metadata, new NullTypeEngine, $override);
+
+    expect(array_map(static fn (ValidationRule $rule): string => $rule->name, $rules->fields['name']))
+        ->toBe(['required', 'string', 'max', 'min']);
+})->with([
+    'on the class itself' => [MergedRulesData::class],
+    'on a base class' => [InheritedMergeRulesData::class],
+]);
+
+it('keys the fragment on the base class that answered the attribute', function (): void {
+    // The merge decision is read off a file this class does not name, so an edit to the base — dropping
+    // `#[MergeValidationRules]`, say — has to invalidate the fragment. A warm build reporting the
+    // replacement the cold build no longer reports is the same wrong answer, served silently.
+    $metadata = new ClassMetadata(InheritedMergeRulesData::class, [new PropertyMetadata('name', ScalarT::string())]);
+    $context = new RouteContext(
+        route: new RouteDescriptor(['POST'], 'api/merged-rules'),
+        actionRef: new ActionRef('', MergedRulesController::class, 'store'),
+        attributes: new AttributeSet,
+        engine: new StubTypeEngine(classes: [InheritedMergeRulesData::class => $metadata]),
+        document: new DocumentConfig('default', []),
+        typeMappers: DefaultTypeMappers::all(),
+        ruleTransformers: ValidationIntegration::transformers(),
+    );
+
+    (new DataRequestExtension)->handle(new OperationDraft, $context);
+
+    expect($context->dependencyFiles())
+        ->toContain((string) (new ReflectionClass(BaseApiData::class))->getFileName())
+        ->toContain((string) (new ReflectionClass(InheritedMergeRulesData::class))->getFileName());
 });
 
 /**

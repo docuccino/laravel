@@ -10,12 +10,12 @@ use Docuccino\Core\Draft\OperationDraft;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
+use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Docuccino\Core\Extensions\Validation\RecoveredRequest;
 use Docuccino\Core\Inference\ClassRef;
 use Docuccino\Laravel\Integrations\FormRequest\RulesFromClass;
 use Docuccino\Laravel\Integrations\Validation\RuleOrdering;
 use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
-use ReflectionClass;
 use ReflectionMethod;
 use ReflectionNamedType;
 use Throwable;
@@ -48,10 +48,8 @@ final class DataRequestExtension implements OperationExtension
             return;
         }
 
-        [$fqcn, $file] = $data;
-        if ($file !== null) {
-            $context->recordDependencyFiles([$file]);
-        }
+        [$fqcn, $files] = $data;
+        $context->recordDependencyFiles($files);
 
         $this->reportUnrecognisedMappers($fqcn, $context);
 
@@ -79,9 +77,12 @@ final class DataRequestExtension implements OperationExtension
     }
 
     /**
-     * The first Data-typed action parameter as `[fqcn, file]`, or null when the action takes none.
+     * The first Data-typed action parameter as `[fqcn, declaration files]`, or null when the action takes
+     * none. The whole hierarchy's files, not just the class's own: `#[MergeValidationRules]` and the
+     * property attributes below it are inheritance-answered, so an edit to a base class changes this
+     * request body ({@see DeclarationFiles}).
      *
-     * @return array{0: string, 1: ?string}|null
+     * @return array{0: string, 1: list<string>}|null
      */
     private function dataParameter(RouteContext $context): ?array
     {
@@ -104,7 +105,7 @@ final class DataRequestExtension implements OperationExtension
 
             $name = $type->getName();
             if (DataClassReflector::isData($name)) {
-                return [$name, $this->classFile($name)];
+                return [$name, DeclarationFiles::of($name)];
             }
         }
 
@@ -121,16 +122,5 @@ final class DataRequestExtension implements OperationExtension
                 routeSignature: $context->route->signature(),
             ));
         }
-    }
-
-    private function classFile(string $fqcn): ?string
-    {
-        if (! class_exists($fqcn)) {
-            return null;
-        }
-
-        $file = (new ReflectionClass($fqcn))->getFileName();
-
-        return $file === false ? null : $file;
     }
 }

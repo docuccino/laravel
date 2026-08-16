@@ -97,6 +97,8 @@ final class DataClassReflector
 
     private const FROM_ROUTE_PARAMETER = 'Spatie\\LaravelData\\Attributes\\FromRouteParameter';
 
+    private const MERGE_VALIDATION_RULES = 'Spatie\\LaravelData\\Attributes\\MergeValidationRules';
+
     private const WITH_CAST = 'Spatie\\LaravelData\\Attributes\\WithCast';
 
     private const DATETIME_CAST = 'Spatie\\LaravelData\\Casts\\DateTimeInterfaceCast';
@@ -491,6 +493,27 @@ final class DataClassReflector
         }
 
         return $reflection->getAttributes(self::VALIDATION_NS.'Prohibited') !== [];
+    }
+
+    /**
+     * Whether the class or an ancestor carries `#[MergeValidationRules]`, which flips spatie's `rules()`
+     * override from REPLACING the inferred rules at a key to appending to them. PHP does not inherit class
+     * attributes, but spatie's own attribute collection merges the whole parent chain, so a base class
+     * carrying it makes every subclass merge.
+     */
+    public function mergesValidationRules(string $fqcn): bool
+    {
+        if (! class_exists($fqcn)) {
+            return false;
+        }
+
+        for ($class = new ReflectionClass($fqcn); $class !== false; $class = $class->getParentClass()) {
+            if ($class->getAttributes(self::MERGE_VALIDATION_RULES) !== []) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

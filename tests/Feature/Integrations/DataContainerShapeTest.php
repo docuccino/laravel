@@ -8,6 +8,8 @@ use Docuccino\Core\Extensions\Context\AttributeSet;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
+use Docuccino\Core\Extensions\Validation\RuleSet;
+use Docuccino\Core\Extensions\Validation\ValidationRule;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Inference\ClassMetadata;
 use Docuccino\Core\Inference\DType\ArrayShapeField;
@@ -45,7 +47,7 @@ use Docuccino\Laravel\Tests\Fixtures\SpatieData\ContainerShapeData;
  *
  * @return array<string, mixed>
  */
-function containerProperty(string $name, DType $type, bool $withConverter = true): array
+function containerProperty(string $name, DType $type, bool $withConverter = true, ?RuleSet $override = null): array
 {
     $metadata = new ClassMetadata(ContainerShapeData::class, [new PropertyMetadata($name, $type)]);
     $context = schemaConverter();
@@ -54,11 +56,27 @@ function containerProperty(string $name, DType $type, bool $withConverter = true
         ContainerShapeData::class,
         $metadata,
         new NullTypeEngine,
-        null,
+        $override,
         $withConverter ? $context : null,
     );
 
     return validationSchema($ruleSet, $context)['properties'][$name];
+}
+
+/**
+ * A `rules()` override, as the RuleSet the extension hands the builder.
+ *
+ * @param  array<string, list<string>>  $fields  rule NAMES per field key
+ */
+function containerOverride(array $fields): RuleSet
+{
+    return new RuleSet(array_map(
+        static fn (array $names): array => array_map(
+            static fn (string $name): ValidationRule => ValidationRule::of($name),
+            $names,
+        ),
+        $fields,
+    ));
 }
 
 it('documents every recovered container shape', function (string $property, DType $type, array $expected): void {
@@ -180,6 +198,66 @@ it('carries the spatie markers and nullability the property states', function ()
     $nullable = containerProperty('settings', UnionT::of([new MapT(ScalarT::string(), ScalarT::int()), new NullT]));
     expect($nullable)->toBe(['type' => ['object', 'null'], 'additionalProperties' => ['type' => 'integer']]);
 });
+
+it('keeps a recovered map an object when a rules() override says only `array`', function (array $names, array $expected): void {
+    // `array` is the rule vocabulary's ONE word for every array shape, so an override stating it says
+    // nothing the recovered `array<string, mixed>` doesn't already say — and emitting `{"type": "array"}`
+    // for it is not vague but WRONG: the JSON object the API accepts fails that schema. The value schema
+    // rides on the field's own rule list (a list's `key.*` child rides on a key of its own and survives
+    // the replacement already), so it is re-attached rather than lost with the rest of the inferred set.
+    expect(containerProperty('settings', new MapT(ScalarT::string(), new UnknownT('mixed')), override: containerOverride(['settings' => $names])))
+        ->toBe($expected);
+})->with([
+    "['array']" => [['array'], ['type' => 'object', 'additionalProperties' => []]],
+    "['sometimes', 'array']" => [['sometimes', 'array'], ['type' => 'object', 'additionalProperties' => []]],
+    "['required', 'array']" => [['required', 'array'], ['type' => 'object', 'additionalProperties' => []]],
+    // The two forms an override is actually written in: a presence word beside the type word says nothing
+    // about the shape, so the recovered values survive both.
+    "['nullable', 'array']" => [['nullable', 'array'], ['type' => ['object', 'null'], 'additionalProperties' => []]],
+    "['present', 'array']" => [['present', 'array'], ['type' => 'object', 'additionalProperties' => []]],
+]);
+
+it('lets an override that states a shape of its own replace the recovered map outright', function (array $fields, array $expected): void {
+    expect(containerProperty('settings', new MapT(ScalarT::string(), ScalarT::int()), override: containerOverride($fields)))
+        ->toBe($expected);
+})->with([
+    // A named child says which keys the object has, which is strictly more than "open values" — the
+    // recovered map has nothing left to add.
+    'named child' => [
+        ['settings' => ['array'], 'settings.mode' => ['required', 'string']],
+        ['type' => 'object', 'properties' => ['mode' => ['type' => 'string']], 'required' => ['mode']],
+    ],
+    // A `.*` child says the override means a JSON ARRAY; re-attaching object-ness would contradict it.
+    'wildcard child' => [
+        ['settings' => ['array'], 'settings.*' => ['string']],
+        ['type' => 'array', 'items' => ['type' => 'string']],
+    ],
+    // An override naming another type has replaced the property's shape, not restated it.
+    'another type' => [['settings' => ['string']], ['type' => 'string']],
+    // Every other word the shape check composes: each one beside `array` NARROWS it — `list` to a JSON
+    // array, `file`/`image` to an upload — so re-attaching open object values would contradict the
+    // override rather than complete it.
+    'array + list' => [['settings' => ['array', 'list']], ['type' => 'array']],
+    'array + file' => [['settings' => ['array', 'file']], ['type' => 'string', 'format' => 'binary']],
+    'array + image' => [['settings' => ['array', 'image']], ['type' => 'string', 'format' => 'binary', 'description' => 'An image file.']],
+    // No type word at all: the override dropped the type the way it drops one for a scalar property too.
+    'no type rule' => [['settings' => ['sometimes']], []],
+]);
+
+it('leaves a recovered list and shape alone under the same override', function (string $property, DType $type, array $expected): void {
+    // The other half of the asymmetry: these state their structure on child KEYS, which an override
+    // replacing the field's own key never touched in the first place.
+    $override = new RuleSet([$property => [ValidationRule::of('sometimes'), ValidationRule::of('array')]]);
+
+    expect(containerProperty($property, $type, override: $override))->toBe($expected);
+})->with([
+    'list<string>' => ['tags', new ListT(ScalarT::string()), ['type' => 'array', 'items' => ['type' => 'string']]],
+    'array{width: int}' => ['box', new ArrayShapeT([new ArrayShapeField('width', ScalarT::int())]), [
+        'type' => 'object',
+        'properties' => ['width' => ['type' => 'integer']],
+        'required' => ['width'],
+    ]],
+]);
 
 it('degrades a map to the bare array rule when no converter is available', function (): void {
     // The value schema is the type→schema chain's answer, so without one the map falls back to the only

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Docuccino\Core\Emit\UirEmitter;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Process;
 
 /**
@@ -52,6 +53,30 @@ it('reports no changes when diffing a document against itself', function (): voi
         ->assertSuccessful();
 
     @unlink($old);
+});
+
+it('reports no changes against the artifact docuccino:export writes by default', function (): void {
+    // Every other case here writes UIR, which is the one thing the advertised workflow doesn't: `export`
+    // defaults to OpenAPI with ids kept. "No API changes." alone would not prove the flat ids were read —
+    // structural pairing says the same thing about a document diffed against itself — so this asserts the
+    // pairing MODE and that every kind of node found its counterpart.
+    bindStubEngine();
+
+    $path = sys_get_temp_dir().'/docuccino-export-'.uniqid().'.json';
+
+    $this->artisan('docuccino:export', ['document' => 'default', '--out' => $path])->assertSuccessful();
+
+    $exit = Artisan::call('docuccino:diff', ['old' => $path, '--format' => 'json']);
+
+    /** @var array<string, mixed> $result */
+    $result = json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($exit)->toBe(0)
+        ->and($result['pairing'])->toBe('identity')
+        ->and($result['disjointIdentities'])->toBe([])
+        ->and($result['counts']['total'])->toBe(0);
+
+    @unlink($path);
 });
 
 it('detects a removed operation as breaking', function (): void {
@@ -183,6 +208,21 @@ it('fails on a malformed old artifact', function (): void {
 
     @unlink($old);
 });
+
+it('fails on an artifact that is valid JSON but not a document', function (string $json): void {
+    // Each of these parses, so the JSON guard lets it through — and hydrating a non-array is a TypeError,
+    // i.e. a stack trace of absolute paths in a CI log instead of the command's own error.
+    bindStubEngine();
+
+    $old = sys_get_temp_dir().'/docuccino-scalar-'.uniqid().'.json';
+    file_put_contents($old, $json);
+
+    $this->artisan('docuccino:diff', ['old' => $old])
+        ->expectsOutputToContain('not an object')
+        ->assertFailed();
+
+    @unlink($old);
+})->with(['null', '5', '"x"', 'true']);
 
 it('fails when git show cannot read the ref', function (): void {
     bindStubEngine();

@@ -46,8 +46,9 @@ use Docuccino\Laravel\Integrations\Validation\Transformers\AdditionalPropertiesR
  * `additional_properties` rule ({@see AdditionalPropertiesRuleTransformer}).
  *
  * A static `rules()` override wins per field: spatie's `DataValidationRulesResolver` `add`s it at the
- * field key, REPLACING the inferred set rather than merging. {@see DataRequestExtension} recovers it
- * via {@see RulesFromClass} and passes it to {@see build()}.
+ * field key, REPLACING the inferred set rather than merging — unless the class carries
+ * `#[MergeValidationRules]`, which makes the same resolver append instead. {@see DataRequestExtension}
+ * recovers the override via {@see RulesFromClass} and passes it to {@see build()}.
  */
 final class DataValidationRules
 {
@@ -119,17 +120,68 @@ final class DataValidationRules
     public function build(string $fqcn, ClassMetadata $metadata, TypeEngine $engine, ?RuleSet $overrides = null, ?SchemaContext $schema = null, ?ValidationRulesToSchema $validation = null): RuleSet
     {
         $this->begin($engine, $schema, $validation);
-        $fields = $this->fieldsFor($fqcn, $metadata, '', [$fqcn]);
+        $inferred = $this->fieldsFor($fqcn, $metadata, '', [$fqcn]);
+        if ($overrides === null) {
+            return new RuleSet($inferred);
+        }
 
         // Overwrite, not merge: the override replaces the inferred set at its key, and may name fields
-        // no property inferred at all.
-        if ($overrides !== null) {
-            foreach ($overrides->fields as $field => $rules) {
-                $fields[$field] = $rules;
-            }
+        // no property inferred at all. `#[MergeValidationRules]` is the class-level opt-out spatie's own
+        // resolver reads, and appends instead.
+        $merging = $this->reflector->mergesValidationRules($fqcn);
+        $fields = $inferred;
+        // An override adds keys and replaces values, never removes one, so the sibling keys the carrier
+        // consults are the same before the loop as after it.
+        $siblings = [...array_keys($inferred), ...array_keys($overrides->fields)];
+
+        foreach ($overrides->fields as $field => $rules) {
+            $previous = $inferred[$field] ?? [];
+            $fields[$field] = $merging
+                ? [...$previous, ...$rules]
+                : self::withMapCarrier($rules, $previous, $field, $siblings);
         }
 
         return new RuleSet($fields);
+    }
+
+    /**
+     * A replaced field's rules, with the recovered map's `additional_properties` carrier put back when the
+     * override only restated `array` — one word for every array shape, per the class docblock, so it says
+     * strictly less than the recovered `array<string, V>` did. Left alone when the override states the
+     * shape itself: another type word, a named child (whose keys say more than open values do), or a `.*`
+     * child (which says JSON array outright).
+     *
+     * @param  list<ValidationRule>  $rules  the override's rules, now at the key
+     * @param  list<ValidationRule>  $inferred  what property inference had put there
+     * @param  list<string>  $siblings  every field key in the merged set
+     * @return list<ValidationRule>
+     */
+    private static function withMapCarrier(array $rules, array $inferred, string $field, array $siblings): array
+    {
+        $carrier = null;
+        foreach ($inferred as $rule) {
+            if ($rule->name === 'additional_properties') {
+                $carrier = $rule;
+            }
+        }
+
+        // `array` has to be the ONLY type the override states: `list` narrows it to a JSON array, and
+        // anything else has replaced the shape outright. An `additional_properties` of its own needs no
+        // second.
+        $named = array_map(static fn (ValidationRule $rule): string => $rule->name, $rules);
+        $stated = array_values(array_intersect([...self::TYPE_RULES, ...self::FILE_RULES, 'list'], $named));
+        if ($carrier === null || $stated !== ['array']) {
+            return $rules;
+        }
+
+        $prefix = $field.'.';
+        foreach ($siblings as $other) {
+            if ($other !== $field && str_starts_with($other, $prefix)) {
+                return $rules;
+            }
+        }
+
+        return [...$rules, $carrier];
     }
 
     /** Resets the per-build state every entry point above starts from. */

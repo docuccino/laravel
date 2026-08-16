@@ -14,6 +14,8 @@ use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Inference\PhpStan\Tests\Support\FixtureRunner;
 use Docuccino\Laravel\Integrations\SpatieData\DataSchema;
 use Docuccino\Laravel\Integrations\SpatieData\DataValidationRules;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\ActionPreviewData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\MergedRulesData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\MfaChallengeData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\SaveAnswersData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\SnapshotData;
@@ -261,6 +263,42 @@ it('resolves a dotted rule key to an object rather than an array with properties
             ],
         ],
     ]);
+})->group('fixture');
+
+it('keeps a recovered container through a rules() override that only restates `array`', function (string $property, array $expected): void {
+    // The real-source half of the same story: `array` is the ONE word the rule vocabulary has for every
+    // array shape, so an override stating it restates what the constructor `@param` already recovered
+    // rather than replacing it — and `{"type": "array"}` for a JSON object is wrong, not merely vague.
+    // `metadata` proves it survives a size-only custom rule sitting alongside; `touched_fields` is the
+    // half that already worked, its item field riding on a key of its own.
+    $metadata = realMetadataAs('App\\Data\\ActionPreviewData', ActionPreviewData::class);
+    $override = tracedOverride('app/Data/ActionPreviewData.php', 'App\\Data\\ActionPreviewData');
+    $schema = realRequestSchema(ActionPreviewData::class, $metadata, $override);
+
+    expect($schema['properties'][$property])->toBe($expected);
+})->with([
+    'array<string, mixed>' => ['config', ['type' => 'object', 'additionalProperties' => []]],
+    // No `nullable` in the override, so the API really does refuse an explicit null here — the property
+    // being `?array` describes the hydrated value, not what the rules admit.
+    'array<string, mixed>|null' => ['metadata', [
+        'type' => 'object',
+        'additionalProperties' => [],
+        'maxLength' => 65536,
+        'description' => 'At most 64 KiB once encoded.',
+    ]],
+    'list<string>' => ['touched_fields', ['type' => 'array', 'items' => ['type' => 'string']]],
+])->group('fixture');
+
+it('appends a rules() override to property inference under #[MergeValidationRules]', function (): void {
+    // Spatie's resolver `merge`s instead of `add`ing when the class carries the attribute, so the
+    // property's own `#[Max(255)]` keeps applying alongside the override's `min:3` — documenting the
+    // replacement here would drop a constraint the API still enforces.
+    $metadata = realMetadataAs('App\\Data\\MergedRulesData', MergedRulesData::class);
+    $override = tracedOverride('app/Data/MergedRulesData.php', 'App\\Data\\MergedRulesData');
+    $schema = realRequestSchema(MergedRulesData::class, $metadata, $override);
+
+    expect($schema['properties']['name'])->toBe(['type' => 'string', 'maxLength' => 255, 'minLength' => 3])
+        ->and($schema['required'])->toBe(['name']);
 })->group('fixture');
 
 it('documents the recovered metadata map when no rules() override replaces it', function (): void {

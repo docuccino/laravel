@@ -113,7 +113,6 @@ final class DiffCommand extends Command
         }
 
         try {
-            /** @var array<string, mixed> $decoded */
             $decoded = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
         } catch (JsonException $exception) {
             $this->error(sprintf('Could not parse the old artifact as JSON: %s', $exception->getMessage()));
@@ -121,6 +120,15 @@ final class DiffCommand extends Command
             return null;
         }
 
+        // Valid JSON that isn't a document — `null`, a number, a string. Without this the hydrate call
+        // raises a TypeError, which prints a stack trace of absolute paths into a CI log.
+        if (! is_array($decoded)) {
+            $this->error('Could not read the old artifact: its JSON is not an object.');
+
+            return null;
+        }
+
+        /** @var array<string, mixed> $decoded */
         return UirDocument::fromArray($decoded);
     }
 
