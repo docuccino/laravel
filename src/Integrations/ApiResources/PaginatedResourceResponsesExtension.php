@@ -36,7 +36,7 @@ final class PaginatedResourceResponsesExtension implements OperationExtension
             return;
         }
 
-        $visitor = new PaginationTerminalVisitor($this->terminals($context));
+        $visitor = new PaginationTerminalVisitor(PaginationTerminalVisitor::terminalsFor($context));
         $context->trace($visitor);
 
         if (! $visitor->paginates || $visitor->kind === null) {
@@ -50,28 +50,5 @@ final class PaginatedResourceResponsesExtension implements OperationExtension
             $visitor->kind,
             Contribution::integration('api-resources', $context->actionSource()),
         );
-    }
-
-    /**
-     * The shared terminal table plus any custom Query-Builder terminals from
-     * `integrations.query_builder.pagination_terminals` — a collection paginated through a custom
-     * terminal like `paginateList` gets the same envelope, so it stays consistent with its QB parameters.
-     *
-     * @return array<string, string>
-     */
-    private function terminals(RouteContext $context): array
-    {
-        $terminals = PaginationTerminalVisitor::PAGINATOR_TERMINALS;
-
-        $custom = $context->document->integration('query_builder')['pagination_terminals'] ?? null;
-        if (is_array($custom)) {
-            foreach ($custom as $terminal) {
-                if (is_string($terminal)) {
-                    $terminals[$terminal] ??= 'length';
-                }
-            }
-        }
-
-        return $terminals;
     }
 }

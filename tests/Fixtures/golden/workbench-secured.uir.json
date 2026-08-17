@@ -1913,6 +1913,55 @@
         "tags": [
           "Integrations"
         ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:m6qwfepij3e6nxtp",
+              "provenance": [
+                {
+                  "producer": "integration:api-resources",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/IntegrationsController.php",
+                    "line": 44,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::listPaginatedArticles"
+                  }
+                }
+              ]
+            },
+            "name": "page",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:api-resources",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/IntegrationsController.php",
+                      "line": 44,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::listPaginatedArticles"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          }
+        ],
         "responses": {
           "200": {
             "x-docuccino": {
@@ -2635,53 +2684,6 @@
           },
           {
             "x-docuccino": {
-              "id": "par:v1:6mesocag6mncmcuj",
-              "provenance": [
-                {
-                  "producer": "integration:query-builder",
-                  "layer": "integration",
-                  "fields": [
-                    "description",
-                    "required"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/WidgetQueryController.php",
-                    "line": 24,
-                    "symbol": "Workbench\\App\\Http\\Controllers\\WidgetQueryController::index"
-                  }
-                }
-              ]
-            },
-            "name": "per_page",
-            "in": "query",
-            "description": "Items per page.",
-            "required": false,
-            "schema": {
-              "x-docuccino": {
-                "provenance": [
-                  {
-                    "producer": "integration:query-builder",
-                    "layer": "integration",
-                    "fields": [
-                      "default",
-                      "minimum",
-                      "type"
-                    ],
-                    "source": {
-                      "file": "workbench/app/Http/Controllers/WidgetQueryController.php",
-                      "line": 24,
-                      "symbol": "Workbench\\App\\Http\\Controllers\\WidgetQueryController::index"
-                    }
-                  }
-                ]
-              },
-              "type": "integer",
-              "default": 20,
-              "minimum": 1
-            }
-          },
-          {
-            "x-docuccino": {
               "id": "par:v1:6ux3hmansochoslr",
               "provenance": [
                 {
@@ -3382,7 +3384,7 @@
     "document": {
       "id": "doc:secured",
       "configHash": "57ba7bb66e96ac2c85a7a7218431b5dddfadcdc1962622c14afa13cb8ebe7654",
-      "contentHash": "72fad4c905640fc476b2df16a09c7cb4fa966f5eacbeb8c135012dba85066b25"
+      "contentHash": "63403940128f35d4e8765e82cc311f3c1b696403b86431d77e486751d9c86d88"
     },
     "generator": {
       "name": "docuccino/laravel",

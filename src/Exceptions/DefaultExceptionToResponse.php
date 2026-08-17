@@ -48,7 +48,7 @@ final class DefaultExceptionToResponse implements ExceptionToResponse
         $draft->setDescription(FrameworkExceptionTable::reason((string) $status), $contribution);
         // Generic body, but not a generic error: the status still says which one, so the shared
         // component is named after it. A status with no reason phrase of its own declares nothing.
-        $draft->claimComponentName(FrameworkExceptionTable::componentName((string) $status), $contribution);
+        $draft->claimComponentName(FrameworkExceptionTable::componentName((string) $status), $contribution, isStatusDefault: true);
         $draft->content('application/json')->set('type', 'object', $contribution);
         $draft->content('application/json')->set('properties', ['message' => ['type' => 'string']], $contribution);
 

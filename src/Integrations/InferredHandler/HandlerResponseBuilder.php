@@ -69,6 +69,15 @@ final class HandlerResponseBuilder
             $draft = new ResponseDraft($status);
             $draft->setDescription(FrameworkExceptionTable::reason($status), $contribution);
 
+            // The name the render path declared for THIS body. Claimed here, as a producer's own name, so
+            // the ladder settles it without a rung of its own: a name on the exception class replaces the
+            // status default and nothing a producer named itself
+            // ({@see \Docuccino\Laravel\Exceptions\DeclaredErrorComponent::mayReplace()}), so the method
+            // anchor outranks the class anchor by saying more, and a mapper ordered ahead of this tier
+            // still never gets here. A name and a body always come off one arm, so two throws meeting at
+            // one status cannot publish one arm's name over another's body.
+            $draft->claimComponentName($return->component?->name, $contribution);
+
             if (! $draft->isBodyless() && $payload !== null && ! $payload instanceof VoidT && ! $payload instanceof NeverT && ! $payload instanceof UnknownT) {
                 $mediaType = self::contentType($type->typeArgs[2] ?? null);
                 $payload = self::resolveStatusMarkers($payload, (int) $status);

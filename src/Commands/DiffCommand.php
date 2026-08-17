@@ -15,14 +15,22 @@ use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Support\Hydrate;
 use Docuccino\Laravel\Pipeline\DocumentBuilder;
 use Docuccino\Laravel\Support\Paths;
+use Docuccino\Laravel\Support\TerminalText;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Process;
 use JsonException;
+use Symfony\Component\Console\Output\OutputInterface;
 
 /**
  * Semantically diffs a committed artifact against the freshly-generated document. The diff runs over
  * stable `x-docuccino.id`s ({@see DocumentDiffer}), so a path-param rename is no change while a URI
  * change is remove + add.
+ *
+ * Nothing printed here was written by this command: it comes off an artifact nobody re-read first, off an
+ * argument, or off git's stderr. What core already rendered arrives `PlainText`-clean and owes only
+ * the markup half ({@see TerminalText::markupOnly()}); everything this command interpolates itself owes
+ * both ({@see TerminalText::of()}). `--format=json` is the exception: nothing there is read by a terminal,
+ * so it goes out raw and `json_encode`'s own escaping is the whole of its safety.
  *
  * `old` is a path to a committed UIR (preferred — it carries identities) or OpenAPI artifact, read from
  * the working tree unless `--against=<git-ref>` reads it via `git show <ref>:<old>`, in which case the
@@ -71,7 +79,7 @@ final class DiffCommand extends Command
         try {
             $changeset = $this->differ->diff($old, $new);
         } catch (IncomparableDocumentsException $exception) {
-            $this->error($exception->getMessage());
+            $this->error(TerminalText::markupOnly($exception->getMessage()));
 
             return self::FAILURE;
         }
@@ -89,7 +97,7 @@ final class DiffCommand extends Command
         $key = is_string($document) && $document !== '' ? $document : 'default';
 
         if (! $builder->hasDocument($key)) {
-            $this->error(sprintf('Unknown document "%s".', $key));
+            $this->error(sprintf('Unknown document "%s".', TerminalText::of($key)));
 
             return null;
         }
@@ -115,7 +123,7 @@ final class DiffCommand extends Command
         try {
             $decoded = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
         } catch (JsonException $exception) {
-            $this->error(sprintf('Could not parse the old artifact as JSON: %s', $exception->getMessage()));
+            $this->error(sprintf('Could not parse the old artifact as JSON: %s', TerminalText::of($exception->getMessage())));
 
             return null;
         }
@@ -138,7 +146,7 @@ final class DiffCommand extends Command
         $contents = @file_get_contents($absolute);
 
         if ($contents === false) {
-            $this->error(sprintf('Old artifact not found: %s', $absolute));
+            $this->error(sprintf('Old artifact not found: %s', TerminalText::of($absolute)));
 
             return null;
         }
@@ -160,7 +168,14 @@ final class DiffCommand extends Command
         $result = Process::run(['git', 'show', $ref.':'.$path]);
 
         if (! $result->successful()) {
-            $this->error(sprintf('git show %s:%s failed: %s', $ref, $path, trim($result->errorOutput())));
+            // git's own stderr, plus a ref and a path that in CI come from a workflow variable rather than
+            // from someone watching the terminal they steer.
+            $this->error(sprintf(
+                'git show %s:%s failed: %s',
+                TerminalText::of($ref),
+                TerminalText::of($path),
+                TerminalText::of(trim($result->errorOutput())),
+            ));
 
             return null;
         }
@@ -188,22 +203,25 @@ final class DiffCommand extends Command
                 $payload['policy'] = $verdict->toArray();
             }
 
-            $this->line((string) json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+            // Raw, because this half is machine-readable: `line()` writes at OUTPUT_NORMAL, where the
+            // formatter reads `<…>` in an artifact-derived name as markup and drops it — still valid JSON,
+            // and no longer the data a CI gate is deciding on.
+            $this->output->writeln((string) json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), OutputInterface::OUTPUT_RAW);
 
             return;
         }
 
-        $this->output->write($this->renderer->render($changeset));
+        $this->output->write(TerminalText::markupOnly($this->renderer->render($changeset)));
 
         if ($verdict === null) {
             return;
         }
 
         if ($verdict->satisfied) {
-            $this->info(sprintf('Versioning policy "%s" satisfied.', $verdict->policy));
+            $this->info(TerminalText::markupOnly(sprintf('Versioning policy "%s" satisfied.', $verdict->policy)));
         } else {
             $suffix = $verdict->requiredVersion !== null ? sprintf(' (require ≥ %s)', $verdict->requiredVersion) : '';
-            $this->error(sprintf('Versioning policy "%s" violated: %s%s', $verdict->policy, $verdict->message, $suffix));
+            $this->error(TerminalText::markupOnly(sprintf('Versioning policy "%s" violated: %s%s', $verdict->policy, $verdict->message, $suffix)));
         }
     }
 }

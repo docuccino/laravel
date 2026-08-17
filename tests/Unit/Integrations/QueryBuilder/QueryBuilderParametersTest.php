@@ -151,21 +151,41 @@ it('groups sparse fields into a single deepObject fields param under the deepObj
         ->and(array_keys($specs[0]->schema['properties']))->toBe(['articles', 'author']);
 });
 
-it('adds page/per_page for length + simple pagination and cursor/per_page for cursor', function (string $kind, ?int $perPage, array $expectedNames, int $expectedPerPageDefault): void {
-    $facts = factsWith(function (QueryBuilderFacts $f) use ($kind, $perPage): void {
+it('adds the selector the terminal reads, under the name that terminal was given', function (string $kind, string $terminal, array $args, array $expectedNames): void {
+    $facts = factsWith(function (QueryBuilderFacts $f) use ($kind, $terminal, $args): void {
         $f->paginates = true;
         $f->paginationKind = $kind;
-        $f->perPage = $perPage;
+        $f->paginationTerminal = $terminal;
+        $f->paginationArgs = $args;
     });
 
-    $byName = specsByName((new QueryBuilderParameters)->build($facts, bracketedPolicy()));
-
-    expect(array_keys($byName))->toBe($expectedNames);
-    expect($byName['per_page']->schema)->toBe(['type' => 'integer', 'default' => $expectedPerPageDefault, 'minimum' => 1]);
+    expect(array_keys(specsByName((new QueryBuilderParameters)->build($facts, bracketedPolicy()))))->toBe($expectedNames);
 })->with([
-    'length with recovered per-page' => ['length', 25, ['page', 'per_page'], 25],
-    'simple falling back to default per-page' => ['simple', null, ['page', 'per_page'], 15],
-    'cursor' => ['cursor', 50, ['cursor', 'per_page'], 50],
+    'length' => ['length', 'paginate', [0 => 25], ['page']],
+    'simple' => ['simple', 'simplePaginate', [], ['page']],
+    'cursor' => ['cursor', 'cursorPaginate', [0 => 50], ['cursor']],
+    'a custom terminal, which forwards to paginate($perPage)' => ['length', 'paginateList', [0 => 15], ['page']],
+    // The page key the call site renamed — the same rule the resource-collection producer follows, so
+    // the two cannot name different keys for one chain.
+    'a renamed page' => ['length', 'paginate', [0 => 25, 1 => null, 2 => 'p'], ['p']],
+    'a renamed cursor' => ['cursor', 'cursorPaginate', ['cursorName' => 'after'], ['after']],
+    // Renamed to something that would not fold: no key at all beats a guessed one.
+    'a name that would not fold' => ['length', 'paginate', [0 => 25, 1 => null, 2 => null], []],
+]);
+
+it('never claims a page-size key, which the terminal takes from the call site and not from the request', function (array $args): void {
+    $facts = factsWith(function (QueryBuilderFacts $f) use ($args): void {
+        $f->paginates = true;
+        $f->paginationKind = 'length';
+        $f->paginationTerminal = 'paginate';
+        $f->paginationArgs = $args;
+    });
+
+    expect(specsByName((new QueryBuilderParameters)->build($facts, bracketedPolicy())))->not->toHaveKey('per_page');
+})->with([
+    'a bare call' => [[]],
+    'a literal size' => [[0 => 25]],
+    'a size that would not fold' => [[0 => null]],
 ]);
 
 it('contributes nothing when no facts were recovered', function (): void {

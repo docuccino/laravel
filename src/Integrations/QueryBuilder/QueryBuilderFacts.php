@@ -8,7 +8,7 @@ namespace Docuccino\Laravel\Integrations\QueryBuilder;
  * The semantic facts a {@see QueryBuilderTraceVisitor} recovers from an action's Query-Builder
  * chain (design §Representation policies — facts stay stable in the UIR regardless of how a policy
  * later expresses them): the allow-lists (filters/sorts/includes/fields), the documented default
- * sort, whether the chain reaches a paginating terminal (and with what per-page/kind), and any
+ * sort, whether the chain reaches a paginating terminal (and which one, with what arguments), and any
  * expressions that could not be constant-folded (surfaced as diagnostics, never silently dropped).
  *
  * A mutable accumulator: the visitor writes into it as it walks and the parameters extension reads
@@ -40,10 +40,20 @@ final class QueryBuilderFacts
 
     public bool $paginates = false;
 
-    public ?int $perPage = null;
-
     /** length | simple | cursor — the outermost terminal's paginator kind. */
     public ?string $paginationKind = null;
+
+    /** The outermost terminal's method name — a Laravel terminal or a configured custom one. */
+    public ?string $paginationTerminal = null;
+
+    /**
+     * The outermost terminal call's folded arguments, in the shape `PaginatorPageParameter::forTerminal()`
+     * reads: positional under their index, named under their parameter name, null where an argument was
+     * written but would not fold.
+     *
+     * @var array<array-key, string|int|float|bool|null>
+     */
+    public array $paginationArgs = [];
 
     /** @var list<string> human descriptions of expressions the trace could not resolve */
     public array $unresolved = [];

@@ -33,28 +33,6 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 const MODEL_NOT_FOUND = ModelNotFoundException::class;
 
 /**
- * Register a render callback on the booted handler and return the CallableRef symbol the mapper will
- * analyse it under (so the stub engine can be scripted for it).
- */
-function registerRenderCallback(Closure $callback, string $exceptionType): string
-{
-    /** @var object $handler */
-    $handler = app(ExceptionHandler::class);
-    $handler->renderable($callback);
-
-    $function = new ReflectionFunction($callback);
-
-    return (new CallableRef(
-        (string) $function->getFileName(),
-        null,
-        null,
-        $function->getStartLine(),
-        $function->getParameters()[0]->getName(),
-        $exceptionType,
-    ))->symbol();
-}
-
-/**
  * Register an invokable renderer (Laravel wraps it via `Closure::fromCallable()`) and return the
  * method-based CallableRef symbol the mapper will analyse it under — the mapper routes a method-backed
  * callback to method analysis rather than the by-line closure path.

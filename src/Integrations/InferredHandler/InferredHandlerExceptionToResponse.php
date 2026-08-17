@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\InferredHandler;
 
+use Docuccino\Core\Diagnostics\Diagnostic;
+use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Draft\ResponseDraft;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\ExceptionToResponse;
@@ -11,7 +13,9 @@ use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Extensions\Schema\ComponentRegistry;
 use Docuccino\Core\Extensions\Schema\DeclarationFiles;
+use Docuccino\Core\Inference\ActionAnalysis;
 use Docuccino\Core\Inference\CallableRef;
+use Docuccino\Core\Inference\ComponentDeclaration;
 use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Patch\Contribution;
 use ReflectionMethod;
@@ -24,9 +28,11 @@ use Throwable;
  * with the parameter narrowed to the thrown type so a catch-all `fn (Throwable $e)` resolves the one
  * reachable branch; then the exception's own `render()`; then a `Responsable`'s `toResponse()`.
  *
- * The recovered `JsonResponse<payload, status>` becomes the documented response. A body too dynamic to
- * fold defers with an info diagnostic so the next tier (preset, framework defaults) fills in. Ordered
- * FIRST so ground truth beats any preset. Handler files join the route's fragment-cache deps.
+ * The recovered `JsonResponse<payload, status>` becomes the documented response, under the name the
+ * render path declared with `#[ErrorComponent]` where one did. A body too dynamic to fold defers with an
+ * info diagnostic so the next tier (preset, framework defaults) fills in. Ordered FIRST so ground truth
+ * beats any preset — a mapper that must beat it says so with an order of its own. Handler files join the
+ * route's fragment-cache deps.
  */
 #[ExtensionOrder(priority: Priorities::FIRST)]
 final class InferredHandlerExceptionToResponse implements ExceptionToResponse
@@ -69,6 +75,7 @@ final class InferredHandlerExceptionToResponse implements ExceptionToResponse
         // Cache soundness (design §10): editing the handler, or any helper its response is built through,
         // must invalidate this route's fragment.
         $context->recordDependencyFiles($analysis->dependencyFiles);
+        $this->reportIllegalNames($analysis, $context, $components);
 
         $response = HandlerResponseBuilder::build(
             $analysis,
@@ -87,6 +94,49 @@ final class InferredHandlerExceptionToResponse implements ExceptionToResponse
         }
 
         return null;
+    }
+
+    /**
+     * A render method that declared a name no component key could carry. `claimComponentName()` drops
+     * such a name at the write and says nothing, which leaves the author of the attribute with a line of
+     * code that does nothing and no reason why — and this tier, unlike the draft, is handed the channel
+     * to say it. Raised per throw rather than remembered per name: a tier instance outlives a build, and
+     * a warm build that reported less than a cold one is a silent degradation, which repeating a line is
+     * not.
+     *
+     * Within one analysis it IS one report per mistake, keyed by the mistake and sorted, the way the class
+     * anchor keys its own: a renderer with three `return`s under one bad attribute is one typo, and saying
+     * it three times says nothing more.
+     */
+    private function reportIllegalNames(ActionAnalysis $analysis, RouteContext $context, ComponentRegistry $components): void
+    {
+        /** @var array<string, ComponentDeclaration> $illegal */
+        $illegal = [];
+        foreach ($analysis->returns as $return) {
+            $declaration = $return->component;
+            if ($declaration === null || $components->isLegalName($declaration->name)) {
+                continue;
+            }
+
+            $illegal[$declaration->symbol."\0".$declaration->name] = $declaration;
+        }
+
+        ksort($illegal);
+
+        foreach ($illegal as $declaration) {
+            $components->addDiagnostic(new Diagnostic(
+                severity: Severity::Warning,
+                code: 'attribute.error-component-invalid',
+                message: sprintf(
+                    '%s declares #[ErrorComponent("%s")], which is not a name an OpenAPI component key can carry, so the attribute names nothing and the response keeps the name it would have had.',
+                    $declaration->symbol,
+                    $declaration->name,
+                ),
+                source: $context->sourceAt($declaration->location, $declaration->symbol),
+                routeSignature: $context->route->signature(),
+                help: 'A component key is letters, digits, ".", "_" and "-" only. A reason phrase as one word — "NotFound", "TooManyRequests" — is what reads best as a generated client\'s type.',
+            ));
+        }
     }
 
     private function candidate(string $fqcn): ?CallableRef

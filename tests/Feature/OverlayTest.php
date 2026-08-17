@@ -48,6 +48,28 @@ it('degrades an unsupported overlay version to a warning', function (): void {
         ->and($result->document->toArray())->toHaveKey('paths');
 });
 
+it('cannot reach a shared error response component, because transformers make those after it runs', function (): void {
+    // Overlays run one line ahead of document transformers, and the shared error components are a
+    // transformer's output — so an overlay aimed at one matches nothing and says so. The errors guide
+    // sends authors wanting to edit these to a DocumentTransformer for exactly this reason.
+    file_put_contents($this->overlayDir.'/shared.yaml', <<<'YAML'
+        overlay: 1.0.0
+        actions:
+          - target: $.components.responses.NotFound
+            update:
+              description: Overlaid
+        YAML);
+    config()->set('docuccino.documents.default.overlays', [$this->overlayDir.'/*.yaml']);
+
+    $result = app(DocumentBuilder::class)->build('default', WorkbenchEngine::make());
+    $document = $result->document->toArray();
+
+    expect(diagnosticsCoded($result->diagnostics, 'overlay.target-missing'))->toHaveCount(1)
+        // The component is in the finished document — it just arrived after the overlay had run.
+        ->and($document['components']['responses'])->toHaveKey('NotFound')
+        ->and($document['components']['responses']['NotFound']['description'] ?? null)->not->toBe('Overlaid');
+});
+
 it('applies a valid overlay without warning', function (): void {
     file_put_contents($this->overlayDir.'/title.yaml', <<<'YAML'
         overlay: 1.0.0

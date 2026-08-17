@@ -26,6 +26,7 @@ final class ApiResourcesIntegration
 
         $extensions = [
             JsonResourceSchema::class,
+            PaginatedResourceParametersExtension::class,
             PaginatedResourceResponsesExtension::class,
             CreatedResourceResponsesExtension::class,
             // The JSON:API media-type matcher (a gated PayloadMediaTypeResolver): only fires for a

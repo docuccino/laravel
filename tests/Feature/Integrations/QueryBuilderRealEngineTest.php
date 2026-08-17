@@ -52,8 +52,9 @@ function factsFromRealHarvest(): QueryBuilderFacts
     $facts->sorts = array_map(qbEntryFromRendered(...), $harvest['sorts']);
     $facts->defaultSorts = array_map(static fn (string $d): string => trim($d, "'"), $harvest['default']);
     $facts->paginates = (bool) $harvest['paginates'];
-    $facts->perPage = $harvest['perPage'];
     $facts->paginationKind = 'length';
+    $facts->paginationTerminal = $harvest['outermost'];
+    $facts->paginationArgs = [$harvest['perPage']];
 
     return $facts;
 }
@@ -80,12 +81,14 @@ it('turns the real-engine harvest into bracketed query parameters', function ():
         $byName[$spec->name] = $spec;
     }
 
+    // The custom terminal takes no page-name argument of its own, so the default key stands — and the
+    // 25 the engine folded off `paginateList(25)` names no parameter, because nothing reads it.
     expect(array_keys($byName))->toEqualCanonicalizing([
-        'filter[name]', 'filter[status]', 'filter[email]', 'sort', 'page', 'per_page',
+        'filter[name]', 'filter[status]', 'filter[email]', 'sort', 'page',
     ]);
     expect($byName['filter[status]']->description)->toBe('Exact-match filter')
         ->and($byName['sort']->schema['default'])->toBe('name')
-        ->and($byName['per_page']->schema['default'])->toBe(25);
+        ->and($byName['page']->schema)->toBe(['type' => 'integer', 'default' => 1, 'minimum' => 1]);
 })->group('fixture');
 
 it('turns the real-engine harvest into a deepObject filter param under the deepObject policy', function (): void {

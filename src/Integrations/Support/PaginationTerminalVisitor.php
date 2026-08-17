@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\Support;
 
+use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\TraceVisitor;
 use Docuccino\Core\Inference\TypeScope;
@@ -11,9 +12,10 @@ use Docuccino\Laravel\Integrations\Eloquent\EloquentModelReflector;
 use PhpParser\Node;
 
 /**
- * The shared paginating-terminal detector, used by the Query-Builder, json-api-paginate and response-body
- * consumers. Finds a configured terminal on any query-builder receiver at any chain depth, or the
- * magic-static `Model::paginate(...)` form, and records the OUTERMOST one's kind.
+ * The shared paginating-terminal detector, used by every consumer that documents a Laravel-paginated
+ * endpoint — the Query-Builder and json-api-paginate parameters, the page key, the response body. Finds
+ * a configured terminal on any query-builder receiver at any chain depth, or the magic-static
+ * `Model::paginate(...)` form, and records the OUTERMOST one's terminal, kind and folded arguments.
  *
  * Why it has to be a call-graph fact: a resource collection's static return type is
  * `AnonymousResourceCollection<T>` whether or not it was paginated, so nothing in the type tells you
@@ -51,11 +53,16 @@ final class PaginationTerminalVisitor implements TraceVisitor
     /** The outermost terminal's paginator kind: length | simple | cursor. */
     public ?string $kind = null;
 
+    /** The outermost terminal's method name — one of {@see PAGINATOR_TERMINALS}, or a custom one. */
+    public ?string $terminal = null;
+
     /**
-     * The outermost call's positional arguments, each folded to an int or null — e.g.
-     * `jsonPaginate($maxResults, $defaultSize)`. For consumers recovering a per-call-site size override.
+     * The outermost call's folded arguments — a positional one under its 0-based index, a named one
+     * under its parameter name, each a scalar or null where it was written but did not fold. Consumers
+     * read whichever position or name their own terminal's signature gives the argument they want, so
+     * `array_key_exists` is what separates "absent" from "written and unresolvable".
      *
-     * @var list<?int>
+     * @var array<array-key, string|int|float|bool|null>
      */
     public array $outermostArgs = [];
 
@@ -63,6 +70,46 @@ final class PaginationTerminalVisitor implements TraceVisitor
      * @param  array<string, string>  $terminals  terminal method name → paginator kind
      */
     public function __construct(private readonly array $terminals) {}
+
+    /**
+     * Laravel's terminals plus any custom Query-Builder terminals from
+     * `integrations.query_builder.pagination_terminals` — a collection paginated through a custom
+     * terminal like `paginateList` is treated as length-aware, so its envelope and its page parameter
+     * stay consistent with the Query-Builder parameters for the same chain.
+     *
+     * @return array<string, string>
+     */
+    public static function terminalsFor(RouteContext $context): array
+    {
+        $terminals = self::PAGINATOR_TERMINALS;
+
+        $custom = $context->document->integration('query_builder')['pagination_terminals'] ?? null;
+        if (is_array($custom)) {
+            foreach ($custom as $terminal) {
+                if (is_string($terminal)) {
+                    $terminals[$terminal] ??= 'length';
+                }
+            }
+        }
+
+        return $terminals;
+    }
+
+    /** The folded argument at $key — a 0-based position or a parameter name — when it folded to an int. */
+    public function intArg(string|int $key): ?int
+    {
+        $value = $this->outermostArgs[$key] ?? null;
+
+        return is_int($value) ? $value : null;
+    }
+
+    /** The same, when it folded to a non-empty string. */
+    public function stringArg(string|int $key): ?string
+    {
+        $value = $this->outermostArgs[$key] ?? null;
+
+        return is_string($value) && $value !== '' ? $value : null;
+    }
 
     public function enterNode(Node $node, TypeScope $scope): bool
     {
@@ -96,12 +143,13 @@ final class PaginationTerminalVisitor implements TraceVisitor
         }
 
         $this->paginates = true;
+        $this->terminal = $terminal;
         $this->kind = $this->terminals[$terminal];
 
         $args = [];
-        foreach ($call->getArgs() as $arg) {
+        foreach ($call->getArgs() as $index => $arg) {
             $value = $scope->constantValueOf($arg->value);
-            $args[] = $value !== null && $value->isScalar() && is_int($value->scalar) ? $value->scalar : null;
+            $args[$arg->name?->toString() ?? $index] = $value !== null && $value->isScalar() ? $value->scalar : null;
         }
         $this->outermostArgs = $args;
     }

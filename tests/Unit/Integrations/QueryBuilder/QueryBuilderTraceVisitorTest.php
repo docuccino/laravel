@@ -132,17 +132,29 @@ it('recovers allowedFields as type.field paths', function (): void {
         ->toBe(['articles.title', 'articles.body', 'author.name']);
 });
 
-it('detects the paginating terminal kind and outermost per-page', function (string $chain, string $kind, ?int $perPage): void {
+it('detects the paginating terminal kind and folds the outermost call\'s arguments', function (string $chain, string $kind, string $terminal, array $args): void {
     $facts = traceQbSnippet($chain)->facts;
 
     expect($facts->paginates)->toBeTrue()
         ->and($facts->paginationKind)->toBe($kind)
-        ->and($facts->perPage)->toBe($perPage);
+        ->and($facts->paginationTerminal)->toBe($terminal)
+        ->and($facts->paginationArgs)->toBe($args);
 })->with([
-    'length-aware with per-page' => ['QueryBuilder::for(User::class)->paginate(25)', 'length', 25],
-    'simple' => ['QueryBuilder::for(User::class)->simplePaginate()', 'simple', null],
-    'cursor' => ['QueryBuilder::for(User::class)->cursorPaginate(50)', 'cursor', 50],
-    'custom terminal (length)' => ['QueryBuilder::for(User::class)->paginateList(15)', 'length', 15],
+    'length-aware with per-page' => ['QueryBuilder::for(User::class)->paginate(25)', 'length', 'paginate', [0 => 25]],
+    'simple' => ['QueryBuilder::for(User::class)->simplePaginate()', 'simple', 'simplePaginate', []],
+    'cursor' => ['QueryBuilder::for(User::class)->cursorPaginate(50)', 'cursor', 'cursorPaginate', [0 => 50]],
+    'custom terminal (length)' => ['QueryBuilder::for(User::class)->paginateList(15)', 'length', 'paginateList', [0 => 15]],
+    // The page-name argument, which decides the key the endpoint really reads.
+    'a renamed page key, positionally' => [
+        "QueryBuilder::for(User::class)->paginate(25, ['*'], 'p')", 'length', 'paginate', [0 => 25, 1 => null, 2 => 'p'],
+    ],
+    'a renamed cursor key, by name' => [
+        "QueryBuilder::for(User::class)->cursorPaginate(cursorName: 'after')", 'cursor', 'cursorPaginate', ['cursorName' => 'after'],
+    ],
+    // Written but unfoldable: recorded as null, so the parameter builder can tell it from absent.
+    'an unfoldable page name' => [
+        'QueryBuilder::for(User::class)->paginate(25, [\'*\'], $pageName)', 'length', 'paginate', [0 => 25, 1 => null, 2 => null],
+    ],
 ]);
 
 it('records a diagnostic-bound unresolved entry for a non-constant filter, never silently dropping it', function (): void {

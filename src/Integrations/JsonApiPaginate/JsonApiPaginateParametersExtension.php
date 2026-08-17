@@ -46,8 +46,8 @@ final class JsonApiPaginateParametersExtension implements OperationExtension
 
         $facts = new JsonApiPaginateFacts;
         $facts->paginates = true;
-        $facts->maxResultsOverride = $visitor->outermostArgs[0] ?? null;
-        $facts->defaultSizeOverride = $visitor->outermostArgs[1] ?? null;
+        $facts->maxResultsOverride = $visitor->intArg(0) ?? $visitor->intArg('maxResults');
+        $facts->defaultSizeOverride = $visitor->intArg(1) ?? $visitor->intArg('defaultSize');
 
         $contribution = Contribution::integration('json-api-paginate', $context->actionSource());
 

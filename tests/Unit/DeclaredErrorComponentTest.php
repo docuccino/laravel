@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Docuccino\Laravel\Exceptions\DeclaredErrorComponent;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\ApiException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\InheritedApiException;
+use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\MistypedNameException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\OverridingApiException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\ThingMissingException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\UndeclaredException;
@@ -43,12 +44,19 @@ it('answers nothing for a class that cannot be loaded', function (): void {
     expect(DeclaredErrorComponent::on('Acme\\Nope\\NeverLoaded'))->toBeNull();
 });
 
-it('replaces the status default and nothing a producer named itself', function (?string $claim, string $status, bool $expected): void {
-    expect(DeclaredErrorComponent::mayReplace($claim, $status))->toBe($expected);
+it('answers nothing for a class whose attribute cannot be constructed', function (): void {
+    // `#[ErrorComponent(5)]` is a typo in application source, and instantiating it throws a `TypeError`
+    // naming the file it was written in — a message the build would print into the emitted document.
+    expect(DeclaredErrorComponent::on(MistypedNameException::class))->toBeNull();
+});
+
+it('replaces the status default and nothing a producer named itself', function (?string $claim, bool $isStatusDefault, bool $expected): void {
+    // The fact comes from the WRITE, not from the value: a producer that named a body "NotFound" for a 404
+    // named it, and re-deriving the question from the string would read that as nobody having named it.
+    expect(DeclaredErrorComponent::mayReplace($claim, $isStatusDefault))->toBe($expected);
 })->with([
-    'nothing claimed yet' => [null, '409', true],
-    'the status default' => ['Conflict', '409', true],
-    'a name a producer chose' => ['InvoiceMissing', '409', false],
-    'a status with no default, claimed anyway' => ['Whatever', '410', false],
-    'a status with no default, unclaimed' => [null, '410', true],
+    'nothing claimed yet' => [null, false, true],
+    'the status default' => ['Conflict', true, true],
+    'a name a producer chose' => ['InvoiceMissing', false, false],
+    'a chosen name that spells the status default' => ['NotFound', false, false],
 ]);

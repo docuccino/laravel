@@ -26,8 +26,10 @@ use Docuccino\Laravel\Exceptions\DeclaredErrorComponent;
  * resolved {@see ExceptionToResponse} chain (first supports() wins) and merges in via
  * {@see ResponseDraftApplier}. Skipped when `error_responses => 'none'`.
  *
- * Also the one place `#[ErrorComponent]` is read, so the name an application declares reaches the
- * response through the same `claimComponentName()` every producer uses ({@see applyDeclarations()}).
+ * Also the one place `#[ErrorComponent]` on an EXCEPTION CLASS is read, so the name an application
+ * declares reaches the response through the same `claimComponentName()` every producer uses
+ * ({@see applyDeclarations()}). The same attribute on a RENDER METHOD is read where the call path is
+ * visible, which is the engine, and claimed by the tier that built the body from it.
  */
 final class ErrorResponsesExtension implements OperationExtension
 {
@@ -102,9 +104,10 @@ final class ErrorResponsesExtension implements OperationExtension
     }
 
     /**
-     * Publish each declared name on the response its exception produced. Two exceptions declaring
-     * DIFFERENT names for one status describe one response that can only carry one name, so neither
-     * takes it ({@see reportContest()}).
+     * Publish each declared name on the response its exception produced, where the response is one a
+     * class-level declaration may still name at all. Two exceptions declaring DIFFERENT names for one
+     * such status describe one response that can only carry one name, so neither takes it
+     * ({@see reportContest()}).
      *
      * @param  array<string, array<string, DeclaredErrorComponent>>  $declared  status → declared name → its declaration
      */
@@ -112,6 +115,19 @@ final class ErrorResponsesExtension implements OperationExtension
     {
         foreach ($declared as $key => $declarations) {
             $status = (string) $key;
+            $response = $operation->response($status);
+
+            // A response that is a reference states no body of its own, so it is not this operation's to
+            // name — the component it points at was named where it was defined. What a declaration may
+            // take from a body it CAN name: {@see DeclaredErrorComponent::mayReplace()}. Asked before the
+            // contest, because a response a producer already named — a mapper, or a render method that
+            // named the body it built — was never one these declarations could win, so there is nothing
+            // for the author to reconcile and nothing to report.
+            if ($response->resolvedField('$ref') !== null
+                || ! DeclaredErrorComponent::mayReplace($response->componentClaim(), $response->componentClaimIsStatusDefault())
+            ) {
+                continue;
+            }
 
             if (count($declarations) > 1) {
                 $this->reportContest($context, $status, $declarations);
@@ -121,14 +137,7 @@ final class ErrorResponsesExtension implements OperationExtension
 
             // Exactly one, since a status only appears here once something declared for it.
             foreach ($declarations as $declaration) {
-                $response = $operation->response($status);
-
-                // A response that is a reference states no body of its own, so it is not this operation's
-                // to name — the component it points at was named where it was defined. What a declaration
-                // may take from a body it CAN name: {@see DeclaredErrorComponent::mayReplace()}.
-                if ($response->resolvedField('$ref') === null && DeclaredErrorComponent::mayReplace($response->componentClaim(), $status)) {
-                    $response->claimComponentName($declaration->name, Contribution::attribute($this->declarationSource($context, $declaration)));
-                }
+                $response->claimComponentName($declaration->name, Contribution::attribute($this->declarationSource($context, $declaration)));
             }
         }
     }

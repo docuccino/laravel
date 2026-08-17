@@ -671,6 +671,19 @@
         "tags": [
           "Integrations"
         ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -947,17 +960,6 @@
             "schema": {
               "type": "integer",
               "default": 1,
-              "minimum": 1
-            }
-          },
-          {
-            "name": "per_page",
-            "in": "query",
-            "description": "Items per page.",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "default": 20,
               "minimum": 1
             }
           },

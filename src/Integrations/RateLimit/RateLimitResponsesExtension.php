@@ -66,7 +66,7 @@ final class RateLimitResponsesExtension implements OperationExtension
         $response = $operation->response('429');
         // Every throttled route documents the same 429, headers and all, so the component it hoists into
         // can be named after the error rather than after the number.
-        $response->claimComponentName(FrameworkExceptionTable::componentName('429'), $contribution);
+        $response->claimComponentName(FrameworkExceptionTable::componentName('429'), $contribution, isStatusDefault: true);
 
         $built = $this->response->build();
 

@@ -273,7 +273,7 @@ it('recovers merge()/mergeWhen() as MergeValue<array{…}> and splices the keys 
         ->and($object['required'])->toBe(['id', 'name', 'email']);
 })->group('fixture');
 
-it('recovers the resource-collection paginating terminal + kind through the real engine', function (string $method, string $kind): void {
+it('recovers the resource-collection paginating terminal + kind through the real engine', function (string $method, string $kind, string $terminal): void {
     // The static return type is AnonymousResourceCollection<UserResource> for every mode; only the
     // call-graph terminal distinguishes them, so the real PaginationTerminalVisitor has to find the
     // paginate/simplePaginate/cursorPaginate call on the Eloquent builder receiver.
@@ -284,12 +284,28 @@ it('recovers the resource-collection paginating terminal + kind through the real
     );
 
     expect($trace['paginates'])->toBeTrue()
-        ->and($trace['kind'])->toBe($kind);
+        ->and($trace['kind'])->toBe($kind)
+        ->and($trace['terminal'])->toBe($terminal)
+        // Nothing renamed the key, so the framework default stands.
+        ->and($trace['pageName'])->toBeNull();
 })->with([
-    'paginate → length' => ['lengthAware', 'length'],
-    'simplePaginate → simple' => ['simple', 'simple'],
-    'cursorPaginate → cursor' => ['cursor', 'cursor'],
+    'paginate → length' => ['lengthAware', 'length', 'paginate'],
+    'simplePaginate → simple' => ['simple', 'simple', 'simplePaginate'],
+    'cursorPaginate → cursor' => ['cursor', 'cursor', 'cursorPaginate'],
 ])->group('fixture');
+
+it('recovers a page key the call site renamed through the real engine', function (): void {
+    // `paginate(15, ['*'], 'p')` — the fold has to reach the third argument past a `['*']` columns
+    // array, or the document names a key this endpoint does not read.
+    $trace = FixtureRunner::tracePaginationTerminal(
+        'app/Http/Controllers/UserPageController.php',
+        'App\\Http\\Controllers\\UserPageController',
+        'renamedKey',
+    );
+
+    expect($trace['kind'])->toBe('length')
+        ->and($trace['pageName'])->toBe('p');
+})->group('fixture');
 
 it('recognises a resource wrapping Model::create() as a 201 through the real engine', function (string $method, bool $created): void {
     // store() returns new UserResource(User::create(...)) → wasRecentlyCreated → 201; show() wraps an

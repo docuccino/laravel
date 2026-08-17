@@ -62,22 +62,24 @@ it('recovers the allow-lists a constructor-configured builder holds, and stops d
         "\$this->allowedFilters([AllowedFilter::exact('status')])->allowedSorts(['score'])->defaultSort('score')",
     );
 
-    expect(array_keys($byName))->toContain('filter[status]', 'sort', 'page', 'per_page');
+    expect(array_keys($byName))->toContain('filter[status]', 'sort', 'page');
 
     // The whole point: the allow-lists are no longer lost, so the honest "nothing recovered" info goes.
     $codes = array_map(static fn ($d): string => $d->code, $context->components->diagnostics());
     expect($codes)->not->toContain('query-builder.no-allowlists-recovered');
 });
 
-it('keeps the outermost call site\'s per-page, whatever a seeded root reaches', function (): void {
-    // The constructor script deliberately reaches a paginating terminal of its own: if the seeded roots
-    // were walked before the action, per_page would come back 15. Trace order is a determinism contract.
+it('keeps the outermost call site\'s terminal, whatever a seeded root reaches', function (): void {
+    // The constructor script deliberately reaches a paginating terminal of its own, renaming the key: if
+    // the seeded roots were walked before the action, the document would publish the constructor's
+    // `inner` instead of the action's `page`. Trace order is a determinism contract.
     [$byName] = injectedBuilderRun(
         '$query->paginateList(25)',
-        "\$this->allowedFilters([AllowedFilter::exact('status')])->paginate(15)",
+        "\$this->allowedFilters([AllowedFilter::exact('status')])->paginate(15, ['*'], 'inner')",
     );
 
-    expect($byName['per_page']['schema']['default'])->toBe(25);
+    expect(array_keys($byName))->toContain('page')
+        ->and(array_keys($byName))->not->toContain('inner');
 });
 
 it('records a seeded root\'s files as route dependencies, so a warm fragment cannot go stale', function (): void {
@@ -106,7 +108,7 @@ it('refuses a builder subclass an installed package ships, seeding no vendor roo
     );
 
     $codes = array_map(static fn ($d): string => $d->code, $context->components->diagnostics());
-    expect(array_keys($byName))->toBe(['page', 'per_page'])
+    expect(array_keys($byName))->toBe(['page'])
         ->and($codes)->toContain('query-builder.no-allowlists-recovered')
         // Nothing about the refused root reaches the cache key either.
         ->and($context->dependencyFiles())->not->toContain($query);
@@ -130,6 +132,6 @@ it('still diagnoses silence when the injected builder configures nothing the tra
     [$byName, $context] = injectedBuilderRun('$query->paginateList(25)', '$this->getEloquentBuilder()');
 
     $codes = array_map(static fn ($d): string => $d->code, $context->components->diagnostics());
-    expect(array_keys($byName))->toBe(['page', 'per_page'])
+    expect(array_keys($byName))->toBe(['page'])
         ->and($codes)->toContain('query-builder.no-allowlists-recovered');
 });

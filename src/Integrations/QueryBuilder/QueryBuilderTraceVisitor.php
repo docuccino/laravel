@@ -797,21 +797,21 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
     private function recordTerminal(Node\Expr\MethodCall $node, string $name, TypeScope $scope): void
     {
         // The engine walks the entry method fully before descending, so the first terminal recorded is
-        // the outermost one — per-page comes from the shallowest call site.
+        // the outermost one — the shallowest call site is the one whose arguments reach the request.
         if ($this->facts->paginates) {
             return;
         }
 
         $this->facts->paginates = true;
         $this->facts->paginationKind = $this->terminals[$name];
+        $this->facts->paginationTerminal = $name;
 
-        $args = $node->getArgs();
-        if (isset($args[0])) {
-            $value = $scope->constantValueOf($args[0]->value);
-            if ($value !== null && $value->isScalar() && is_int($value->scalar)) {
-                $this->facts->perPage = $value->scalar;
-            }
+        $args = [];
+        foreach ($node->getArgs() as $index => $arg) {
+            $value = $scope->constantValueOf($arg->value);
+            $args[$arg->name?->toString() ?? $index] = $value !== null && $value->isScalar() ? $value->scalar : null;
         }
+        $this->facts->paginationArgs = $args;
     }
 
     private function receiverIsBuilder(Node\Expr $receiver, TypeScope $scope): bool

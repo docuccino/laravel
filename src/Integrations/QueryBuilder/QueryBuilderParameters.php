@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\QueryBuilder;
 
 use Docuccino\Core\Extensions\Context\RepresentationPolicy;
+use Docuccino\Laravel\Integrations\Support\PaginatorPageParameter;
 use Docuccino\Laravel\Integrations\Support\QueryParameterSpec;
 
 /**
@@ -17,8 +18,6 @@ use Docuccino\Laravel\Integrations\Support\QueryParameterSpec;
  */
 final class QueryBuilderParameters
 {
-    private const DEFAULT_PER_PAGE = 15;
-
     private const WHERE_IN_NOTE = 'Accepts a comma-separated list of values (matched as `whereIn`).';
 
     private const NULLABLE_NOTE = 'Accepts `null` to filter for absent values.';
@@ -325,23 +324,11 @@ final class QueryBuilderParameters
             return [];
         }
 
-        $perPage = new QueryParameterSpec(
-            'per_page',
-            ['type' => 'integer', 'default' => $facts->perPage ?? self::DEFAULT_PER_PAGE, 'minimum' => 1],
-            'Items per page.',
-        );
+        // The page selector is minted once for the whole adapter, so this and the resource-collection
+        // producer cannot drift apart — including on a key the call site renamed.
+        $page = PaginatorPageParameter::forTerminal($facts->paginationTerminal, $facts->paginationKind, $facts->paginationArgs);
 
-        if ($facts->paginationKind === 'cursor') {
-            return [
-                new QueryParameterSpec('cursor', ['type' => 'string'], 'Opaque cursor for the next/previous page.'),
-                $perPage,
-            ];
-        }
-
-        return [
-            new QueryParameterSpec('page', ['type' => 'integer', 'default' => 1, 'minimum' => 1], 'Page number.'),
-            $perPage,
-        ];
+        return $page === null ? [] : [$page];
     }
 
     private static function filterKindDescription(string $kind): string

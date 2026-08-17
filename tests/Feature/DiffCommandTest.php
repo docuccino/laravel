@@ -234,6 +234,96 @@ it('fails when git show cannot read the ref', function (): void {
         ->assertFailed();
 });
 
+it('neutralises Symfony markup in a change path without disturbing a legitimate one', function (): void {
+    // Both names come off the old artifact, which nobody re-read before diffing. Core already made every
+    // value it renders plain, so what is still interpreted here is Symfony's own markup: `<fg=red>` would
+    // recolour the rest of the operator's report, and a schema named after a generic must survive intact.
+    bindStubEngine();
+
+    $old = writeArtifact(function (array $uir): array {
+        $components = is_array($uir['components'] ?? null) ? $uir['components'] : [];
+        $schemas = is_array($components['schemas'] ?? null) ? $components['schemas'] : [];
+        $schemas['Gone<fg=red>'] = ['type' => 'object'];
+        $schemas['Paged_array<int, string>'] = ['type' => 'object'];
+        $components['schemas'] = $schemas;
+        $uir['components'] = $components;
+
+        return $uir;
+    });
+
+    Artisan::call('docuccino:diff', ['old' => $old]);
+    $output = Artisan::output();
+
+    expect($output)->toContain('components.schemas.Gone<fg=red>')
+        ->and($output)->toContain('components.schemas.Paged_array<int, string>');
+
+    @unlink($old);
+});
+
+it('hands --format=json to the machine reading it byte for byte', function (): void {
+    // The terminal report is formatter input; this half is not. Written at OUTPUT_NORMAL the formatter reads
+    // `<error>` in an artifact-derived name as markup and drops it — the payload still parses, and a CI gate
+    // decides on a name the artifact never carried.
+    bindStubEngine();
+
+    $name = 'Gone<error>DANGER</error>';
+
+    $old = writeArtifact(function (array $uir) use ($name): array {
+        $components = is_array($uir['components'] ?? null) ? $uir['components'] : [];
+        $schemas = is_array($components['schemas'] ?? null) ? $components['schemas'] : [];
+        $schemas[$name] = ['type' => 'object'];
+        $components['schemas'] = $schemas;
+        $uir['components'] = $components;
+
+        return $uir;
+    });
+
+    Artisan::call('docuccino:diff', ['old' => $old, '--format' => 'json']);
+
+    /** @var array{changes: list<array{path: string}>} $decoded */
+    $decoded = json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR);
+    $paths = array_column($decoded['changes'], 'path');
+
+    expect($paths)->toContain('components.schemas.'.$name);
+
+    @unlink($old);
+});
+
+it('neutralises Symfony markup in a version string the policy reports back', function (): void {
+    bindStubEngine();
+    config()->set('docuccino.documents.default.versioning', 'semver');
+
+    $old = writeArtifact(function (array $uir): array {
+        $info = is_array($uir['info'] ?? null) ? $uir['info'] : [];
+        $info['version'] = '1.0.0<fg=red>';
+        $uir['info'] = $info;
+
+        return $uir;
+    });
+
+    Artisan::call('docuccino:diff', ['old' => $old, '--enforce' => true]);
+
+    expect(Artisan::output())->toContain('1.0.0<fg=red>');
+
+    @unlink($old);
+});
+
+it('makes what git said, and the ref it was asked for, safe to print', function (): void {
+    // Core renders nothing on this path: the ref comes from a workflow variable and the rest is a
+    // subprocess's stderr, so both halves are still owed here rather than upstream.
+    bindStubEngine();
+
+    Process::fake(['*git*show*' => Process::result(errorOutput: "fatal: bad revision\x1B[2K\rup to date", exitCode: 128)]);
+
+    Artisan::call('docuccino:diff', ['old' => 'docs/openapi.json', '--against' => "HEAD\x1B[31m<fg=red>"]);
+    $output = Artisan::output();
+
+    expect($output)->not->toContain("\x1B")
+        ->and($output)->not->toContain("\r")
+        ->and($output)->toContain('HEAD\x1B[31m<fg=red>')
+        ->and($output)->toContain('fatal: bad revision\x1B[2K\x0Dup to date');
+});
+
 it('rejects a git ref that starts with a dash', function (): void {
     bindStubEngine();
 

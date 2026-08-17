@@ -20,6 +20,7 @@ use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\EscapedNameException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\HttpConflictException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\InheritedApiException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\MalformedNameException;
+use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\MistypedNameException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\OtherThingMissingException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\OverridingApiException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\ThingMissingException;
@@ -317,6 +318,31 @@ it('refuses a declared name no component key could carry and tells the class tha
         // Nothing else reports it: core's hoist keeps `components.name-invalid` for a document that
         // already states an illegal name, which only an overlay can now do.
         ->and(diagnosticsCoded($result->diagnostics, 'components.name-invalid'))->toBeEmpty();
+});
+
+it('documents a route whose exception mistyped the attribute, and prints no path into the document', function (): void {
+    // `#[ErrorComponent(5)]` is a one-character typo, and constructing the attribute to find out throws a
+    // `TypeError` whose message names the absolute path of the file it was written on. Reading the
+    // arguments instead keeps the route buildable: the class simply named nothing, which is what a
+    // malformed argument says. A build that let the throw out would collapse the route to a skeleton and
+    // put this machine's paths into the emitted document.
+    $result = declaringBuild([
+        'first' => [MistypedNameException::class, 409],
+        'second' => [MistypedNameException::class, 409],
+    ]);
+    $document = $result->document->toArray();
+
+    $failed = array_values(array_filter(
+        diagnosticsCoded($result->diagnostics, 'route.build-failed'),
+        static fn ($diagnostic): bool => str_contains((string) $diagnostic->routeSignature, 'zz-declared'),
+    ));
+
+    expect($failed)->toBeEmpty()
+        ->and($document['components']['schemas'])->toHaveKey('Conflict')
+        // No route collapsed, so nothing carried a `TypeError`'s message — and with it this machine's
+        // paths — into the document's diagnostics.
+        ->and(json_encode($document))->not->toContain(dirname(__DIR__, 4))
+        ->and($document['paths']['/api/zz-declared-first']['get']['responses'])->toHaveKey('409');
 });
 
 it('quotes a refused name exactly as the attribute wrote it', function (): void {

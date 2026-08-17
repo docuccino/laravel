@@ -16,7 +16,7 @@ use Workbench\App\Support\ListQueryBuilder;
  * ({@see ListQueryBuilder}) is filtered/sorted and paginated through a CUSTOM
  * terminal (`paginateList`, declared in `integrations.query_builder.pagination_terminals`) and returns
  * a resource collection. The golden pins the whole shape end-to-end: the recovered filter/sort params,
- * the custom terminal's page/per_page params, the strict-mode 400, AND the previously-missing QB 200 —
+ * the custom terminal's page param, the strict-mode 400, AND the previously-missing QB 200 —
  * the `{data, links, meta}` collection envelope the custom terminal triggers (arch PIN 3 / D3).
  *
  * Registered ad-hoc (not in the default route set) so no other committed golden churns.
@@ -55,5 +55,9 @@ it('emits the flagship QB list document byte-identical to its committed golden',
         ->and($op['responses']['200']['content']['application/json']['schema']['properties'] ?? [])->toHaveKeys(['data', 'links', 'meta'])
         ->and($paramNames)->toContain('filter[name]')
         ->and($paramNames)->toContain('page')
-        ->and($paramNames)->toContain('per_page');
+        // `paginateList(20)` fixes the size at the call site, so no page-size key is claimed beside it.
+        ->and($paramNames)->not->toContain('per_page')
+        // Both producers see this custom terminal — the QB parameters and the resource-collection page
+        // key — and the operation still carries exactly one `page`.
+        ->and(array_count_values($paramNames)['page'])->toBe(1);
 });

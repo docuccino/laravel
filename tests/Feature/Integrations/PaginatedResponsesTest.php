@@ -25,15 +25,29 @@ it('wraps a paginated resource collection in the length-aware envelope', functio
         ->and($schema['properties']['meta']['properties'])->toHaveKeys(['current_page', 'last_page', 'total']);
 });
 
+it('documents how to ask for the next page of a paginated resource collection', function (): void {
+    $document = generateDocument()->document->toArray();
+
+    // The endpoint whose body says "page 3 of 12" also says how to ask for page 4 — and claims nothing
+    // about a size the framework never reads off the request.
+    $paginated = paramsByName($document['paths']['/api/paginated-articles']['get']);
+    expect(array_keys($paginated))->toBe(['page'])
+        ->and($paginated['page']['schema']['type'])->toBe('integer');
+
+    // An unpaginated collection of the same resource stays parameterless.
+    expect($document['paths']['/api/article-resources']['get'])->not->toHaveKey('parameters');
+});
+
 it('documents the jsonPaginate response envelope alongside its page params', function (): void {
     $op = generateDocument()->document->toArray()['paths']['/api/json-paginated-articles']['get'];
 
     $schema = $op['responses']['200']['content']['application/json']['schema'];
     expect($schema['required'])->toBe(['data', 'links', 'meta']);
 
+    // The package's own vocabulary, and nothing beside it: `jsonPaginate` is not one of the terminals
+    // the resource-collection page key is minted for, so no bare `page` joins these.
     $params = paramsByName($op);
-    expect($params)->toHaveKey('page[number]')
-        ->and($params)->toHaveKey('page[size]');
+    expect(array_keys($params))->toBe(['page[number]', 'page[size]']);
 });
 
 it('still data-wraps a paginated collection when resource wrapping is disabled', function (): void {
