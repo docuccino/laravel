@@ -7,6 +7,16 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.5.1
+
+### Bug fixes
+
+- document a page-size key only where the key's value IS the size ([#75](https://github.com/docuccino/docuccino/pull/75))
+- report the handler deferrals a warm build had been coming back without ([#71](https://github.com/docuccino/docuccino/pull/71))
+- let a diagnostic name the closure it means without naming the machine ([#69](https://github.com/docuccino/docuccino/pull/69))
+- let the tier that cannot read an error body stand aside for one that can ([#65](https://github.com/docuccino/docuccino/pull/65))
+- document the page-size key a list endpoint really reads ([#63](https://github.com/docuccino/docuccino/pull/63))
+
 ## v0.5.0
 
 ### Breaking changes
