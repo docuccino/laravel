@@ -7,6 +7,24 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.5.0
+
+### Breaking changes
+
+- name only the paging keys an endpoint really reads ([#58](https://github.com/docuccino/docuccino/pull/58))
+  - a Spatie Query Builder list endpoint no longer documents a `per_page` query parameter, and documents its page key under the name the paginating call site gave it. An application that really reads a page-size key, or one whose helper renames the page key out of sight, declares it with `#[QueryParameter]`.
+
+### Features
+
+- tell a consumer how to ask for the next page, not just which one they are on ([#52](https://github.com/docuccino/docuccino/pull/52))
+- let the render method that built an error body name it ([#54](https://github.com/docuccino/docuccino/pull/54))
+- let an exception name the error component it publishes under ([#45](https://github.com/docuccino/docuccino/pull/45))
+
+### Bug fixes
+
+- let a thrown message name a file without naming the machine ([#60](https://github.com/docuccino/docuccino/pull/60))
+- escape a diagnostic where it is printed, not where it is written ([#48](https://github.com/docuccino/docuccino/pull/48))
+
 ## v0.4.0
 
 ### Bug fixes
