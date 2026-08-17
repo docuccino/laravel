@@ -21,15 +21,17 @@ use RuntimeException;
  */
 final class ThrowingTypeEngine implements TypeEngine
 {
+    /** @param  ?string  $message  what it throws, for a test that cares about the words and not just the fact */
     public function __construct(
         private readonly TypeEngine $delegate,
         private readonly string $throwingSymbol,
+        private readonly ?string $message = null,
     ) {}
 
     public function analyzeAction(ActionRef $action): ActionAnalysis
     {
         if ($action->symbol() === $this->throwingSymbol) {
-            throw new RuntimeException('engine blew up analysing '.$this->throwingSymbol);
+            throw new RuntimeException($this->message ?? 'engine blew up analysing '.$this->throwingSymbol);
         }
 
         return $this->delegate->analyzeAction($action);

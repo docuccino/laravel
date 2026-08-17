@@ -12,6 +12,8 @@ use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Overlay\InvalidOverlayException;
 use Docuccino\Core\Overlay\OverlayDocument;
 use Docuccino\Core\Pipeline\GenerationResult;
+use Docuccino\Core\Provenance\MessagePaths;
+use Docuccino\Core\Provenance\RootRelativeSourcePathResolver;
 use Docuccino\Core\Support\Hydrate;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
 use Docuccino\Laravel\Engine\EnginePackage;
@@ -164,6 +166,10 @@ final class DocumentBuilder
     {
         $overlays = [];
         $diagnostics = [];
+        // The glob is absolute and the YAML parser names the file it choked on, so both halves of the
+        // warning are machine paths until they go through the resolver.
+        $paths = new RootRelativeSourcePathResolver($this->basePath);
+        $messages = new MessagePaths($paths);
 
         foreach ($config->overlays as $pattern) {
             $files = glob(Paths::absolute($pattern, $this->basePath)) ?: [];
@@ -182,7 +188,11 @@ final class DocumentBuilder
                     $diagnostics[] = new Diagnostic(
                         severity: Severity::Warning,
                         code: 'overlay.invalid',
-                        message: sprintf('Skipped overlay %s: %s', $file, $exception->getMessage()),
+                        message: sprintf(
+                            'Skipped overlay %s: %s',
+                            $paths->relative($file),
+                            $messages->relative($exception->getMessage()),
+                        ),
                     );
                 }
             }

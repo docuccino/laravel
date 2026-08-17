@@ -25,6 +25,8 @@ use Docuccino\Core\Pipeline\FragmentCache;
 use Docuccino\Core\Pipeline\GenerationResult;
 use Docuccino\Core\Pipeline\OperationFragment;
 use Docuccino\Core\Pipeline\OperationPipeline;
+use Docuccino\Core\Provenance\MessagePaths;
+use Docuccino\Core\Provenance\RootRelativeSourcePathResolver;
 use Docuccino\Core\Validation\Validator;
 use Docuccino\Laravel\Registry\ConfigDiagnostics;
 use Docuccino\Laravel\Registry\DefaultExtensions;
@@ -58,6 +60,9 @@ final class DocumentGenerator
         ?FragmentCache $cache = null,
         private readonly IdentityGenerator $identity = new IdentityGenerator,
         private readonly BuildFingerprint $fingerprint = new BuildFingerprint,
+        // Foreign text reaches a diagnostic here, and a diagnostic reaches the document. Without a
+        // project root the ladder still runs, so the fallback degrades rather than publishing a path.
+        private readonly MessagePaths $messagePaths = new MessagePaths(new RootRelativeSourcePathResolver('')),
     ) {
         $this->cache = $cache ?? FragmentCache::disabled();
     }
@@ -500,7 +505,9 @@ final class DocumentGenerator
         $bag->add(new Diagnostic(
             severity: Severity::Error,
             code: 'route.build-failed',
-            message: sprintf('Failed to document %s: %s', $signature, $reason),
+            // The reason is usually a thrown message, which is where a machine path gets in; the
+            // signature is ours, so it is composed around the scrubbed half, never through it.
+            message: sprintf('Failed to document %s: %s', $signature, $this->messagePaths->relative($reason)),
             routeSignature: $signature,
             help: $document->onRouteError === 'omit' ? 'Route omitted from the document.' : 'A skeleton operation was emitted in its place.',
         ));
@@ -530,6 +537,10 @@ final class DocumentGenerator
      * The route's analysis diagnostics, tagged with its signature. They ride on the fragment rather
      * than going straight to the document bag, so a warm cache hit replays them.
      *
+     * This is also where the analyser's own words cross into ours, and a failed analysis reports what
+     * the underlying tool threw — so the paths in it are relativised before the message goes anywhere,
+     * which keeps them out of the cached fragment as well as out of the document.
+     *
      * @return list<Diagnostic>
      */
     private function analysisDiagnostics(RouteContext $context, string $signature): array
@@ -539,7 +550,7 @@ final class DocumentGenerator
             $diagnostics[] = new Diagnostic(
                 severity: $diagnostic->severity,
                 code: $diagnostic->code,
-                message: $diagnostic->message,
+                message: $this->messagePaths->relative($diagnostic->message),
                 source: $diagnostic->source,
                 routeSignature: $diagnostic->routeSignature ?? $signature,
                 help: $diagnostic->help,
