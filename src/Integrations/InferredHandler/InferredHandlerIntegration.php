@@ -21,6 +21,10 @@ final class InferredHandlerIntegration
             InferredHandlerExceptionToResponse::class,
             RenderCallbackDigestContributor::class,
             RenderCallbackSkipTransformer::class,
+            // The log is registered as an extension in its own right, not just injected: it is the
+            // RouteNoteCollector the pipeline drains each route's deferral notes into, and only a resolved
+            // extension reaches that chain.
+            HandlerDeferralLog::class,
             HandlerDeferralSummaryTransformer::class,
         ];
     }

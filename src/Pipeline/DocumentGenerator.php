@@ -78,6 +78,15 @@ final class DocumentGenerator
         array $overlays = [],
     ): GenerationResult {
         $resolved = $this->registry->resolve($this->container, DefaultExtensions::all($document), $configExtensions);
+
+        // Before anything reads them: a note collector's aggregate belongs to ONE document, and a
+        // container-scoped one outlives a build, so exporting several documents in one process would
+        // otherwise report the first document's findings against the second. Emptying them here also
+        // keeps them out of the cache signature below, which digests every resolved instance's own state.
+        foreach ($resolved->routeNoteCollectors as $collector) {
+            $collector->forget();
+        }
+
         $documentId = $this->identity->documentId($document->key);
         $components = new ComponentRegistry;
         $bag = new DiagnosticCollector;
@@ -114,6 +123,7 @@ final class DocumentGenerator
                 if ($fragment !== null) {
                     $fragments[] = $fragment;
                     $bag->addAll($fragment->diagnostics);
+                    $this->collectNotes($fragment, $resolved);
                 }
             }
         }
@@ -159,6 +169,30 @@ final class DocumentGenerator
             routeSignature: $signature,
             help: 'Document what a client gets for an unknown path as a 404 response on the operations that can produce one, rather than as an operation of its own.',
         );
+    }
+
+    /**
+     * Hand one fragment's notes to the collectors that own their channels (design §10) — the ONE path
+     * into a document-level aggregate, taken for a fragment the pipeline just built and for one that came
+     * back warm alike. That is what makes the summary a document transformer publishes identical either
+     * way: nothing writes to a collector while a route builds, so a warm hit is not a missing write.
+     *
+     * Called in route order, and each fragment's notes are already sorted, so the aggregate a collector
+     * ends up with is a function of the route set and not of anything's encounter order. Notes for a
+     * channel nothing collects are simply dropped — an integration disabled since the fragment was cached
+     * contributes nothing, which is what disabling it means.
+     */
+    private function collectNotes(OperationFragment $fragment, ResolvedExtensions $resolved): void
+    {
+        if ($fragment->notes === []) {
+            return;
+        }
+
+        foreach ($resolved->routeNoteCollectors as $collector) {
+            foreach ($fragment->notes[$collector->channel()] ?? [] as $key => $values) {
+                $collector->collect($key, $values);
+            }
+        }
     }
 
     /**
@@ -278,7 +312,8 @@ final class DocumentGenerator
             // restores components without re-registering anything — still replays it.
             $diagnostics = [...$diagnostics, ...$components->takeDiagnosticsSince($snapshot)];
 
-            $fragment = new OperationFragment($path, $method, $frozen, $signature, $diagnostics, $referencedSchemas, $referencedSchemaIds, $referencedResponses, $context->actionRef->class, $referencedSchemaBases, $referencedSecuritySchemes, $referencedResponseBases, $referencedSchemeBases);
+            // …and so does what it found for the whole document to report, for the same reason.
+            $fragment = new OperationFragment($path, $method, $frozen, $signature, $diagnostics, $referencedSchemas, $referencedSchemaIds, $referencedResponses, $context->actionRef->class, $referencedSchemaBases, $referencedSecuritySchemes, $referencedResponseBases, $referencedSchemeBases, $context->notes()->all());
             // Trace-derived dependency files widen the key, so a deep chain invalidates when any file
             // it walked changes (design §10 seam).
             $this->cache->put($cacheKey, $fragment, $context->dependencyFiles());

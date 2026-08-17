@@ -69,6 +69,10 @@ final class QueryBuilderParametersExtension implements OperationExtension
         $context->trace($visitor);
         $this->traceInjectedBuilders($visitor, $context);
 
+        // The page-size clamp's own file (and its parents/traits) — the trace reports what it descended
+        // into, but the recovery also reflects, and a fact is keyed on where it was WRITTEN.
+        $context->recordDependencyFiles($visitor->dependencyFiles());
+
         $facts = $visitor->facts;
         if ($facts->isEmpty()) {
             $this->reportUnresolved($facts, $context);

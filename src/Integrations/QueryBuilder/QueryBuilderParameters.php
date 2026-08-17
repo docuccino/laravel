@@ -328,7 +328,11 @@ final class QueryBuilderParameters
         // producer cannot drift apart — including on a key the call site renamed.
         $page = PaginatorPageParameter::forTerminal($facts->paginationTerminal, $facts->paginationKind, $facts->paginationArgs);
 
-        return $page === null ? [] : [$page];
+        // A size key only where the trace proved the endpoint reads one; a chain sized at the call site
+        // contributes nothing beside its page key.
+        $size = $facts->pageSize === null ? null : PaginatorPageParameter::size($facts->pageSize);
+
+        return array_values(array_filter([$page, $size]));
     }
 
     private static function filterKindDescription(string $kind): string

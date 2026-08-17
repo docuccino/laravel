@@ -405,3 +405,102 @@ it('reports render-callback-skipped (never silently) for an unanalysable render 
 
     expect($codes)->toContain('inferred-handler.render-callback-skipped');
 });
+
+it('joins the shared error body when the handler’s response came back with nothing in it', function (): void {
+    // The shape a real renderer reaches whenever the analysis loses the body: `$r = Problem::make(…);
+    // …; return $r;` used to hand the adapter a bare `JsonResponse` with no type args at all. Answering
+    // that with a description and no `content` publishes "this error returns nothing" — a claim, and a
+    // false one — and, being an answer, stops the chain before a tier that CAN state a body is asked.
+    $symbol = registerRenderCallback(
+        static fn (ModelNotFoundException $e) => response()->json(['dynamic' => true], 404),
+        MODEL_NOT_FOUND,
+    );
+
+    $engine = WorkbenchEngine::make([
+        $symbol => new ActionAnalysis(returns: [new ReturnSite(
+            new ClassT('Illuminate\\Http\\JsonResponse'),
+            new SourceLocation(''),
+        )]),
+    ]);
+    app()->instance(TypeEngine::class, $engine);
+
+    $result = generateDocument();
+    $document = $result->document->toArray();
+    $response = $document['paths']['/api/forms/{form}']['get']['responses']['404'];
+
+    // The 404 the two form routes share now REFERENCES the shared component rather than sitting inline
+    // with a description and nothing else — the same body every other 404 in the document publishes.
+    expect($response['$ref'] ?? null)->toBe('#/components/responses/NotFound');
+
+    $schema = errorSchemaOf($document, '404', 'application/json');
+    expect($schema['properties'] ?? null)->toBe(['message' => ['type' => 'string']])
+        ->and($schema['required'] ?? null)->toBe(['message']);
+
+    // Deferring is not going quiet: the author is told which callback lost the shape.
+    $codes = array_map(static fn ($d): string => $d->code, $result->diagnostics);
+    expect($codes)->toContain('inferred-handler.too-dynamic');
+});
+
+/**
+ * The whole decline rule, arm by arm. The tier answers when it has something the tiers behind it do not
+ * — the body, a status it folded itself, or a status HTTP forbids a body on — and declines when it has
+ * nothing, since a bodyless error response is a false claim and an answer that ends the chain.
+ *
+ * `$typeArgs` is what the engine recovered; `$status` is where the response lands and `$producer` which
+ * tier owns it. The 404 is the hint the thrown `ModelNotFoundException` arrives with.
+ */
+it('answers only with what the tiers behind it do not have', function (array $typeArgs, string $status, string $producer, bool $body): void {
+    $symbol = registerRenderCallback(
+        static fn (ModelNotFoundException $e) => response()->json(['dynamic' => true], 404),
+        MODEL_NOT_FOUND,
+    );
+
+    $engine = WorkbenchEngine::make([
+        $symbol => new ActionAnalysis(returns: [new ReturnSite(
+            new ClassT('Illuminate\\Http\\JsonResponse', $typeArgs),
+            new SourceLocation(''),
+        )]),
+    ]);
+    app()->instance(TypeEngine::class, $engine);
+
+    $document = generateDocument()->document->toArray();
+    $responses = $document['paths']['/api/forms/{form}']['get']['responses'];
+
+    expect($responses)->toHaveKey($status);
+
+    $producers = array_map(static fn (array $r): string => $r['producer'], $responses[$status]['x-docuccino']['provenance'] ?? []);
+    expect($producers)->toContain($producer)
+        ->and(isset(resolveResponse($document, $responses[$status])['content']))->toBe($body);
+})->with([
+    // Nothing recovered at all — the refiner declined, so there is no shape and no status of its own.
+    'a bare JsonResponse' => [[], '404', 'integration:framework-errors', true],
+    // A payload that did not fold, and a status borrowed from the throw: still nothing the fallback lacks.
+    'an unfolded payload under the hint' => [
+        [new UnknownT('payload not folded'), new UnknownT('status not folded')],
+        '404',
+        'integration:framework-errors',
+        true,
+    ],
+    // A status the render path folded is a fact no later tier has — they classify the exception type
+    // without reading the renderer — so the response keeps it and says only what it knows.
+    'an unfolded payload under a folded status' => [
+        [new UnknownT('payload not folded'), new LiteralT(409)],
+        '409',
+        'integration:inferred-handler',
+        false,
+    ],
+    // A status HTTP forbids a body on: no content is the truth there, not a loss.
+    'an unfolded payload under a bodyless status' => [
+        [new UnknownT('payload not folded'), new LiteralT(204)],
+        '204',
+        'integration:inferred-handler',
+        false,
+    ],
+    // A body it can state, which is the tier doing its job.
+    'a folded payload' => [
+        [new ArrayShapeT([new ArrayShapeField('gone', ScalarT::string())]), new LiteralT(410)],
+        '410',
+        'integration:inferred-handler',
+        true,
+    ],
+]);

@@ -31,8 +31,12 @@ use Docuccino\Laravel\Support\FrameworkClasses;
  * Required members that didn't fold are filled with type-derived placeholders (and the real status) so the
  * example is a valid instance of the schema beside it — see {@see example()} for why that fill is confined
  * to examples and nothing else. A status that didn't fold falls back to the one the body itself states, and
- * only then to the exception's own status hint ({@see foldStatus()}); a payload that didn't fold
- * ({@see UnknownT}) drops the body schema but keeps the status and media type.
+ * only then to the exception's own status hint ({@see foldStatus()}).
+ *
+ * A payload that didn't fold ({@see UnknownT}, or no shape recovered at all) has no body to document, and
+ * an error response with no `content` states that the error returns nothing — so the tier answers only
+ * when it has something the chain's later tiers do not: the body, a status it folded itself, or a status
+ * HTTP forbids a body on. Otherwise it declines and they fill in ({@see build()}).
  *
  * When the body is an object the engine watched being constructed, the fourth type arg names the arguments
  * it was built with, and those decide the example's membership rather than the schema's `required` list: an
@@ -41,9 +45,10 @@ use Docuccino\Laravel\Support\FrameworkClasses;
  * only sometimes settles nothing and hands the question back to the schema
  * ({@see suppliedMembers()}). Only the schema is ever consulted for what such a member should look like.
  *
- * Null means no `JsonResponse` was recovered: either a `return null`/void arm ({@see isDelegation()} —
- * the renderer handing the type back to the framework, not a fold failure) or a body too dynamic to
- * fold. Reason phrases come from {@see FrameworkExceptionTable} so this tier can't drift from the others.
+ * Null means this tier has no answer: no `JsonResponse` was recovered — either a `return null`/void arm
+ * ({@see isDelegation()} — the renderer handing the type back to the framework, not a fold failure) or a
+ * body too dynamic to fold — or one was recovered that says nothing worth publishing. Reason phrases come
+ * from {@see FrameworkExceptionTable} so this tier can't drift from the others.
  */
 final class HandlerResponseBuilder
 {
@@ -64,9 +69,25 @@ final class HandlerResponseBuilder
 
             $payload = $type->typeArgs[0] ?? null;
             $members = self::suppliedMembers($type->typeArgs[3] ?? null);
+            $statusArg = $type->typeArgs[1] ?? null;
 
-            $status = self::foldStatus($type->typeArgs[1] ?? null, $payload, $members, $statusHint);
+            $status = self::foldStatus($statusArg, $payload, $members, $statusHint);
             $draft = new ResponseDraft($status);
+
+            // Nothing recovered: no body, and a status the throw already carried. Answering anyway would
+            // publish an error response with no `content` — which says the error returns NOTHING, a claim
+            // and not a silence — and, being an answer, would stop the chain before a tier that can state a
+            // body is asked ({@see ExceptionToResponse}: null defers). So the tier declines, exactly as its
+            // own contract says it does for a body too dynamic to fold, and the deferral log turns it into
+            // one `inferred-handler.too-dynamic` diagnostic naming the callback.
+            //
+            // A status HTTP forbids a body on is no failure — there, no content is the truth. Neither is a
+            // status this tier FOLDED itself: that is a fact no later tier has (they classify the exception
+            // type without reading the renderer), so the response keeps it and states only what it knows.
+            if (! self::statesBody($payload) && ! $draft->isBodyless() && ! self::statesStatus($statusArg, $payload, $members)) {
+                return null;
+            }
+
             $draft->setDescription(FrameworkExceptionTable::reason($status), $contribution);
 
             // The name the render path declared for THIS body. Claimed here, as a producer's own name, so
@@ -78,7 +99,7 @@ final class HandlerResponseBuilder
             // one status cannot publish one arm's name over another's body.
             $draft->claimComponentName($return->component?->name, $contribution);
 
-            if (! $draft->isBodyless() && $payload !== null && ! $payload instanceof VoidT && ! $payload instanceof NeverT && ! $payload instanceof UnknownT) {
+            if (! $draft->isBodyless() && self::statesBody($payload)) {
                 $mediaType = self::contentType($type->typeArgs[2] ?? null);
                 $payload = self::resolveStatusMarkers($payload, (int) $status);
                 $schema = $context->converter()->toSchema($payload)->schema;
@@ -114,6 +135,34 @@ final class HandlerResponseBuilder
         }
 
         return true;
+    }
+
+    /**
+     * Whether the recovered payload says what the body IS. `null` is the refiner declining outright (the
+     * shape never came back), {@see UnknownT} is it saying the body did not fold; a void/never payload is a
+     * fold that reached no value. None of the four is something to document.
+     *
+     * @phpstan-assert-if-true !null $payload
+     */
+    private static function statesBody(?DType $payload): bool
+    {
+        return $payload !== null
+            && ! $payload instanceof VoidT
+            && ! $payload instanceof NeverT
+            && ! $payload instanceof UnknownT;
+    }
+
+    /**
+     * Whether the recovered response states a status of its OWN — one the render path folded, either as the
+     * response's status or in the body beside it ({@see foldStatus()} reads them in that order) — rather
+     * than borrowing the hint the throw arrived with, which every later tier has too.
+     *
+     * @param  array<string, DType>  $members
+     */
+    private static function statesStatus(mixed $statusArg, ?DType $payload, array $members): bool
+    {
+        return ($statusArg instanceof LiteralT && is_int($statusArg->value))
+            || self::statedStatus($payload, $members) !== null;
     }
 
     /**

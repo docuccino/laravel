@@ -35,11 +35,14 @@ final class StubTraceScope implements FoldsCallReturns, TypeScope
      * @param  array<string, array{0: ?ConstValue, 1: ?Node\Expr}>  $foldedReturns  method name → the fold's answer
      * @param  string  $file  the file this snippet stands for — two scripted walks over DIFFERENT code must
      *                        not claim the same one, or its call sites collide
+     * @param  array<string, DType>  $variableTypes  variable name → its type, for a snippet where not every
+     *                                               receiver is the chain's (a `$request` beside a builder)
      */
     public function __construct(
         private readonly DType $receiverType,
         private readonly array $foldedReturns = [],
         private readonly string $file = 'test.php',
+        private readonly array $variableTypes = [],
     ) {}
 
     public function deferReturnFold(Node\Expr $call, callable $onFolded): bool
@@ -71,6 +74,10 @@ final class StubTraceScope implements FoldsCallReturns, TypeScope
 
     public function typeOf(Node\Expr $expr): DType
     {
+        if ($expr instanceof Node\Expr\Variable && is_string($expr->name)) {
+            return $this->variableTypes[$expr->name] ?? $this->receiverType;
+        }
+
         return $this->receiverType;
     }
 

@@ -30,6 +30,9 @@ use Docuccino\Laravel\Integrations\SpatieData\DataValidationRules;
 use Docuccino\Laravel\Integrations\TimacdonaldJsonApi\TimacdonaldJsonApiResourceSchema;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\MultiShapeResource;
 use Docuccino\Laravel\Tests\Fixtures\TimacdonaldJsonApi\TimacdonaldArticleResource;
+use PhpParser\Node;
+use PhpParser\NodeFinder;
+use PhpParser\ParserFactory;
 
 /**
  * Real-engine (out-of-process) coverage for the inference-dependent half of the integrations: the
@@ -293,6 +296,34 @@ it('recovers the resource-collection paginating terminal + kind through the real
     'simplePaginate → simple' => ['simple', 'simple', 'simplePaginate'],
     'cursorPaginate → cursor' => ['cursor', 'cursor', 'cursorPaginate'],
 ])->group('fixture');
+
+it('recovers a resource collection page-size key from the request through the real engine', function (): void {
+    // No Query Builder in this call graph at all: the SHARED terminal detector has to follow
+    // `paginate($perPage)`'s argument back through the local variable and into `ListPageSize::clamp()`,
+    // so a resource collection and a QB chain of the same shape name the same key.
+    $trace = FixtureRunner::tracePaginationTerminal(
+        'app/Http/Controllers/RequestPagedCollectionController.php',
+        'App\\Http\\Controllers\\RequestPagedCollectionController',
+        'index',
+    );
+
+    expect($trace['paginates'])->toBeTrue()
+        ->and($trace['terminal'])->toBe('paginate')
+        ->and($trace['pageSizeKey'])->toBe('per_page')
+        ->and($trace['pageSizeDefault'])->toBeNull();
+})->group('fixture');
+
+it('claims no page-size key for a terminal whose size is a call-site literal, on the real engine', function (string $method): void {
+    // The negative path on the shared detector: `paginate(15)` reads nothing off the request.
+    $trace = FixtureRunner::tracePaginationTerminal(
+        'app/Http/Controllers/UserPageController.php',
+        'App\\Http\\Controllers\\UserPageController',
+        $method,
+    );
+
+    expect($trace['paginates'])->toBeTrue()
+        ->and($trace['pageSizeKey'])->toBeNull();
+})->with(['lengthAware', 'simple', 'cursor'])->group('fixture');
 
 it('recovers a page key the call site renamed through the real engine', function (): void {
     // `paginate(15, ['*'], 'p')` — the fold has to reach the third argument past a `['*']` columns
@@ -644,3 +675,74 @@ it('resolves a $with relation\'s related model through the real engine', functio
         ->and($type->typeArgs[0] ?? null)->toBeInstanceOf(ClassT::class)
         ->and($type->typeArgs[0]->fqcn)->toBe('App\\Models\\User');
 })->group('fixture');
+
+/**
+ * The page-size key the shared detector recovers for one action of the evidence controller, on the real
+ * engine: every case below differs only in what the helper's returned value is built from.
+ */
+function realPageSizeKey(string $method): array
+{
+    $trace = FixtureRunner::tracePaginationTerminal(
+        'app/Http/Controllers/PageSizeEvidenceController.php',
+        'App\\Http\\Controllers\\PageSizeEvidenceController',
+        $method,
+    );
+
+    expect($trace['paginates'])->toBeTrue();
+
+    return [$trace['pageSizeKey'], $trace['pageSizeDefault']];
+}
+
+it('recovers a page-size key from a clamp the helper class imports from a trait', function (): void {
+    // PHP reports a trait-imported method as the using class's own, and reflection reports the trait's
+    // file — so this recovers only if the read's file and its line come from the same source.
+    expect(realPageSizeKey('clampedByTrait'))->toBe(['per_page', 15]);
+})->group('fixture');
+
+it('claims no page-size key for the endpoint whose size is fixed, whatever lines the trait occupies', function (): void {
+    // `summarySize()` returns 20. The trait's `per_page` read sits at a line INSIDE that method's span (the
+    // assertion below is what keeps that true), so a line number compared without its file would publish
+    // `per_page` for an endpoint that pages twenty at a time no matter what the client asks.
+    expect(realPageSizeKey('fixedSummary'))->toBe([null, null]);
+})->group('fixture');
+
+it('has the trait read and the fixed-size method at overlapping lines, which is what the case above needs', function (): void {
+    // The fixture's own premise, asserted rather than assumed: if an edit pulls these apart, the test above
+    // stops proving anything and this one says so.
+    $parser = (new ParserFactory)->createForNewestSupportedVersion();
+    $finder = new NodeFinder;
+
+    $traitAst = $parser->parse((string) file_get_contents(FixtureRunner::path('app/Support/Concerns/ClampsPageSize.php'))) ?? [];
+    $read = $finder->findFirst(
+        $traitAst,
+        static fn (Node $node): bool => $node instanceof Node\Expr\MethodCall
+            && $node->name instanceof Node\Identifier
+            && $node->name->toString() === 'integer',
+    );
+
+    $classAst = $parser->parse((string) file_get_contents(FixtureRunner::path('app/Support/TeamPageSize.php'))) ?? [];
+    $fixed = $finder->findFirst(
+        $classAst,
+        static fn (Node $node): bool => $node instanceof Node\Stmt\ClassMethod
+            && $node->name->toString() === 'summarySize',
+    );
+
+    expect($read)->toBeInstanceOf(Node::class)
+        ->and($fixed)->toBeInstanceOf(Node::class)
+        ->and($read->getStartLine())->toBeGreaterThanOrEqual($fixed->getStartLine())
+        ->and($read->getStartLine())->toBeLessThanOrEqual($fixed->getEndLine());
+})->group('fixture');
+
+it('recovers a page-size key named in a local inside the helper, under whatever key it reads', function (): void {
+    // `limit`, not `per_page`: the recovery is evidence-driven, and nothing in it matches a name.
+    expect(realPageSizeKey('limited'))->toBe(['limit', 15]);
+})->group('fixture');
+
+it('claims no page-size key for a request key the helper reads to decide something else', function (string $method): void {
+    // Both helpers read the request and both answer with a literal of their own. A guard that only counted
+    // the keys in the callee's lines would publish a mode selector and a sort key as page sizes.
+    expect(realPageSizeKey($method))->toBe([null, null]);
+})->with([
+    'a match subject' => ['byPreset'],
+    'an if condition' => ['recentFirst'],
+])->group('fixture');

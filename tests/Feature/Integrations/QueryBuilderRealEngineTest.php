@@ -8,6 +8,7 @@ use Docuccino\Laravel\Integrations\QueryBuilder\QbEntry;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderFacts;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParameters;
 use Docuccino\Laravel\Integrations\Support\QueryParameterSpec;
+use Docuccino\Laravel\Integrations\Support\RequestPageSizeKey;
 
 /**
  * The Query Builder integration end-to-end on the real engine. The fixture builds its allow-lists
@@ -71,6 +72,73 @@ it('recovers the allow-lists + pagination through a two-deep helper on the real 
         ->and($harvest['default'])->toBe(["'name'"])
         ->and($harvest['paginates'])->toBeTrue()
         ->and($harvest['perPage'])->toBe(25);
+})->group('fixture');
+
+/**
+ * The enriched harvest for one action — the mode that drives the real {@see QueryBuilderTraceVisitor}, so
+ * the page-size recovery under test is the product's own and not test glue.
+ *
+ * @return array<string, mixed>
+ */
+function realQbEnrich(string $relPath, string $class, string $method): array
+{
+    return FixtureRunner::traceQbEnrich($relPath, $class, $method);
+}
+
+it('follows the request into a callee to recover the page-size key nothing at the call site names', function (): void {
+    // action(Request) → paginateRequested($request) → ListPageSize::clamp($request, …) → integer('per_page').
+    // Three frames, no literal size anywhere; only the clamp helper's body names the key.
+    $harvest = realQbEnrich(
+        'app/Http/Controllers/RequestPagedListController.php',
+        'App\\Http\\Controllers\\RequestPagedListController',
+        'index',
+    );
+
+    expect($harvest['paginates'])->toBeTrue()
+        ->and($harvest['pageSizeKey'])->toBe('per_page')
+        // The read's default is the helper's own `$default` parameter, not a literal, so nothing honest
+        // pins a default here — the key is recovered, the value domain stays open.
+        ->and($harvest['pageSizeDefault'])->toBeNull()
+        // Cache soundness: the fact was WRITTEN in ListPageSize.php, so that file has to be a dependency.
+        ->and($harvest['visitedBasenames'])->toContain('ListPageSize.php');
+})->group('fixture');
+
+it('emits the recovered page-size key beside the page key', function (): void {
+    $harvest = realQbEnrich(
+        'app/Http/Controllers/RequestPagedListController.php',
+        'App\\Http\\Controllers\\RequestPagedListController',
+        'index',
+    );
+
+    $facts = new QueryBuilderFacts;
+    $facts->paginates = true;
+    $facts->paginationKind = 'length';
+    $facts->paginationTerminal = $harvest['paginationTerminal'];
+    $facts->pageSize = is_string($harvest['pageSizeKey'])
+        ? new RequestPageSizeKey($harvest['pageSizeKey'], $harvest['pageSizeDefault'])
+        : null;
+
+    $byName = [];
+    foreach ((new QueryBuilderParameters)->build($facts, new RepresentationPolicy) as $spec) {
+        $byName[$spec->name] = $spec;
+    }
+
+    expect(array_keys($byName))->toEqualCanonicalizing(['page', 'per_page'])
+        ->and($byName['per_page']->schema)->toBe(['type' => 'integer'])
+        ->and($byName['per_page']->description)->toBe('Number of items per page.');
+})->group('fixture');
+
+it('claims no page-size key when the terminal takes its size from the call site', function (): void {
+    // The negative path, and the guard on v0.5.0's fix: `paginateList(25)` reads no request key, so the
+    // helper one hop down must contribute nothing at all.
+    $harvest = realQbEnrich(
+        'app/Http/Controllers/UserListController.php',
+        'App\\Http\\Controllers\\UserListController',
+        'listUsers',
+    );
+
+    expect($harvest['paginates'])->toBeTrue()
+        ->and($harvest['pageSizeKey'])->toBeNull();
 })->group('fixture');
 
 it('turns the real-engine harvest into bracketed query parameters', function (): void {

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Docuccino\Core\Document\Operation;
 use Docuccino\Core\Emit\UirEmitter;
 use Docuccino\Core\Inference\ActionAnalysis;
 use Docuccino\Core\Inference\ClassMetadata;
@@ -15,6 +16,7 @@ use Docuccino\Core\Inference\ReturnSite;
 use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Pipeline\FragmentCache;
+use Docuccino\Core\Pipeline\OperationFragment;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
 use Docuccino\Laravel\Facades\Docuccino;
@@ -435,6 +437,50 @@ it('keys fragments per route so distinct routes never collide', function (): voi
 
     expect($forms)->not->toBe($widgets)
         ->and($forms)->not->toBe($formsOtherExt);
+});
+
+it('round-trips a fragment through the store, notes and all', function (): void {
+    $dir = fragmentCacheDir('fragments');
+    $cache = new FragmentCache(true, $dir, 't', 's', 'v');
+
+    $fragment = new OperationFragment(
+        path: '/api/forms',
+        method: 'get',
+        operation: Operation::fromArray([]),
+        routeSignature: 'GET /api/forms',
+        notes: ['deferral' => ['App\\Renderer::__invoke' => ['NotFound']]],
+    );
+    $cache->put('k', $fragment, []);
+
+    expect($cache->get('k')?->notes)->toBe($fragment->notes);
+});
+
+it('misses an entry written in an older fragment format rather than reading it as “nothing to replay”', function (): void {
+    // A fragment gains members over time — its notes did. An entry written before one existed has no way
+    // to say "this route had none" as against "this format could not carry them", so it must not be read
+    // at all: a miss costs one rebuild, while a warm build quietly reporting less than a cold one is the
+    // degradation the whole equality rule exists to prevent.
+    $dir = fragmentCacheDir('fragments');
+    $cache = new FragmentCache(true, $dir, 't', 's', 'v');
+
+    $fragment = new OperationFragment('/api/forms', 'get', Operation::fromArray([]), 'GET /api/forms');
+    $cache->put('legacy', $fragment, []);
+
+    $file = $dir.'/legacy.json';
+    /** @var array<string, mixed> $entry */
+    $entry = json_decode((string) file_get_contents($file), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($cache->get('legacy'))->not->toBeNull()
+        ->and($entry['format'])->toBe(FragmentCache::FORMAT);
+
+    // An entry from before the stamp existed, and one from a format this build doesn't read.
+    $unstamped = $entry;
+    unset($unstamped['format']);
+    file_put_contents($file, json_encode($unstamped, JSON_THROW_ON_ERROR));
+    expect($cache->get('legacy'))->toBeNull();
+
+    file_put_contents($file, json_encode([...$entry, 'format' => FragmentCache::FORMAT - 1], JSON_THROW_ON_ERROR));
+    expect($cache->get('legacy'))->toBeNull();
 });
 
 it('invalidates the query-builder fragment when an enum-cast filter file changes (feature 1 dependency)', function (): void {

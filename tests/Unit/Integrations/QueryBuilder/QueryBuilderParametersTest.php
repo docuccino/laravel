@@ -8,6 +8,7 @@ use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderConfig;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderFacts;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParameters;
 use Docuccino\Laravel\Integrations\Support\QueryParameterSpec;
+use Docuccino\Laravel\Integrations\Support\RequestPageSizeKey;
 
 /** The enum column schema an exact filter is enriched with (backing values + case descriptions). */
 function enumColumnSchema(): array
@@ -187,6 +188,40 @@ it('never claims a page-size key, which the terminal takes from the call site an
     'a literal size' => [[0 => 25]],
     'a size that would not fold' => [[0 => null]],
 ]);
+
+it('adds the page-size key the trace proved the endpoint reads, beside the page key', function (?int $default, array $expectedSchema): void {
+    $facts = factsWith(function (QueryBuilderFacts $f) use ($default): void {
+        $f->paginates = true;
+        $f->paginationKind = 'length';
+        $f->paginationTerminal = 'paginate';
+        $f->paginationArgs = [0 => null];
+        $f->pageSize = new RequestPageSizeKey('per_page', $default);
+    });
+
+    $byName = specsByName((new QueryBuilderParameters)->build($facts, bracketedPolicy()));
+
+    expect(array_keys($byName))->toBe(['page', 'per_page'])
+        ->and($byName['per_page']->schema)->toBe($expectedSchema)
+        ->and($byName['per_page']->description)->toBe('Number of items per page.');
+})->with([
+    // Only a fallback the read itself was written with is publishable as a default.
+    'a recovered literal fallback' => [15, ['type' => 'integer', 'default' => 15]],
+    'a fallback that belongs to a caller' => [null, ['type' => 'integer']],
+]);
+
+it('names the app\'s own page-size key, never the one Laravel happens to spell', function (): void {
+    // Nothing in the recovery matches on `per_page`: the size argument is the evidence, so an app whose
+    // key is `limit` documents `limit`.
+    $facts = factsWith(function (QueryBuilderFacts $f): void {
+        $f->paginates = true;
+        $f->paginationKind = 'length';
+        $f->paginationTerminal = 'paginate';
+        $f->pageSize = new RequestPageSizeKey('limit');
+    });
+
+    expect(array_keys(specsByName((new QueryBuilderParameters)->build($facts, bracketedPolicy()))))
+        ->toBe(['page', 'limit']);
+});
 
 it('contributes nothing when no facts were recovered', function (): void {
     expect((new QueryBuilderParameters)->build(new QueryBuilderFacts, bracketedPolicy()))->toBe([]);

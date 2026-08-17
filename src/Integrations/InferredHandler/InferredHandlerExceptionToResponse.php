@@ -42,10 +42,7 @@ final class InferredHandlerExceptionToResponse implements ExceptionToResponse
     /** @var array<string, CallableRef|null> memoised candidate per exception FQCN */
     private array $candidates = [];
 
-    public function __construct(
-        private readonly HandlerReflector $reflector,
-        private readonly HandlerDeferralLog $deferrals,
-    ) {}
+    public function __construct(private readonly HandlerReflector $reflector) {}
 
     public function supports(ThrownException $exception, RouteContext $context): bool
     {
@@ -88,9 +85,11 @@ final class InferredHandlerExceptionToResponse implements ExceptionToResponse
         }
 
         // Nothing recovered. A framework delegation (`return null`/void arm) is expected, so defer
-        // quietly; a real fold failure is recorded per callback for one summary diagnostic at build.
+        // quietly; a real fold failure is noted per callback for one summary diagnostic at build. The note
+        // goes on the ROUTE and not into the log the summary reads: it has to ride this route's fragment,
+        // or a warm build comes back without the summary a cold one publishes ({@see HandlerDeferralLog}).
         if (! HandlerResponseBuilder::isDelegation($analysis)) {
-            $this->deferrals->record($callable->target(), $exception->exceptionFqcn);
+            $context->notes()->record(HandlerDeferralLog::CHANNEL, $callable->target(), $exception->exceptionFqcn);
         }
 
         return null;

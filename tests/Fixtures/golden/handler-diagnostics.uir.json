@@ -1,0 +1,62 @@
+{
+  "$schema": "https://spec.docuccino.app/uir/1.0/schema.json",
+  "uir": "1.0.0",
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-deferring": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:o3dturfd4sfzbdbt",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/InferredHandler/DeferralCarrierController.php",
+                "line": 17,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\InferredHandler\\DeferralCarrierController::index"
+              }
+            }
+          ]
+        },
+        "tags": [
+          "DeferralCarrier"
+        ]
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "4f13fa46108392d824b2b8ea43e4cfd7cb8a3c2ede2f597d03cf4c76f3bd0952",
+      "contentHash": "72ad244bde51e642624787122ca83007c4d9e16ba75c1a2b8913213f4622c5f1"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.1.0",
+      "specVersion": "1.0.0"
+    },
+    "diagnostics": [
+      {
+        "severity": "info",
+        "code": "inferred-handler.render-callback-skipped",
+        "message": "The render callback closure@tests/Fixtures/InferredHandler/PortableCallbackLabels.php:22 could not be analysed and was skipped; its error responses fall through to the next tier.",
+        "help": "Register the renderer as an invokable object, an [$object, 'method'] pair, or a closure typed to the exception it handles so Docuccino can read its response shape."
+      },
+      {
+        "severity": "info",
+        "code": "inferred-handler.too-dynamic",
+        "message": "The exception handler tests/Fixtures/InferredHandler/PortableCallbackLabels.php::closure@31 could not fold a JSON response for 1 exception type(s): RuntimeException; those responses defer to the next error tier.",
+        "help": "Return a JSON response with a constant status (or a helper that does) from the handler, or document these responses with an attribute, so Docuccino can recover their shape."
+      }
+    ]
+  }
+}

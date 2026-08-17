@@ -69,7 +69,29 @@ final class PaginationTerminalVisitor implements TraceVisitor
     /**
      * @param  array<string, string>  $terminals  terminal method name → paginator kind
      */
-    public function __construct(private readonly array $terminals) {}
+    public function __construct(
+        private readonly array $terminals,
+        private readonly RequestPageSizeReader $pageSize = new RequestPageSizeReader,
+    ) {}
+
+    /**
+     * The page-size key this chain was proven to read off the request, or null where its size comes from
+     * the call site or the model. See {@see RequestPageSizeReader}.
+     */
+    public function pageSize(): ?RequestPageSizeKey
+    {
+        return $this->pageSize->recovered();
+    }
+
+    /**
+     * Files the page-size recovery consulted by reflection, beyond the ones the trace itself reports.
+     *
+     * @return list<string>
+     */
+    public function dependencyFiles(): array
+    {
+        return $this->pageSize->dependencyFiles();
+    }
 
     /**
      * Laravel's terminals plus any custom Query-Builder terminals from
@@ -113,21 +135,21 @@ final class PaginationTerminalVisitor implements TraceVisitor
 
     public function enterNode(Node $node, TypeScope $scope): bool
     {
-        if ($node instanceof Node\Expr\MethodCall
-            && $node->name instanceof Node\Identifier
-            && isset($this->terminals[$node->name->toString()])
-            && $this->receiverIsBuilder($node->var, $scope)
-        ) {
-            $this->record($node->name->toString(), $node, $scope);
-        }
+        $this->pageSize->observe($node, $scope);
 
-        // `Model::paginate(...)` — the terminal is the builder's method, reached magically off the model.
-        if ($node instanceof Node\Expr\StaticCall
+        $called = ($node instanceof Node\Expr\MethodCall || $node instanceof Node\Expr\StaticCall)
             && $node->name instanceof Node\Identifier
-            && isset($this->terminals[$node->name->toString()])
-            && $this->classIsModel($node->class, $scope)
+                ? $node->name->toString()
+                : null;
+
+        if ($called !== null && isset($this->terminals[$called])
+            && ($node instanceof Node\Expr\MethodCall
+                // `Model::paginate(...)` — the terminal is the builder's method, reached magically off the model.
+                ? $this->receiverIsBuilder($node->var, $scope)
+                : $this->classIsModel($node->class, $scope))
         ) {
-            $this->record($node->name->toString(), $node, $scope);
+            $this->pageSize->terminal($node, $called, $scope);
+            $this->record($called, $node, $scope);
         }
 
         // Descend into any app-code call so a terminal built inside a helper is reached; the engine

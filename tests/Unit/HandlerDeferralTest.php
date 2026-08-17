@@ -13,12 +13,14 @@ use Docuccino\Laravel\Integrations\InferredHandler\HandlerDeferralSummaryTransfo
  * Deferral dedupe (design §6): the tier used to emit one `too-dynamic` diagnostic per (route × thrown
  * type) — 656 near-identical lines when run against a large production Laravel app. Now each defer is collected per CALLBACK and the
  * transformer emits one summary naming the count + first few exception types.
+ *
+ * The log is fed by the pipeline draining each route's notes, so `collect()` is called once per route that
+ * deferred — repeats across routes are the normal case, not an edge one.
  */
 it('collects deferrals per callback, deduping repeated exception types', function (): void {
     $log = new HandlerDeferralLog;
-    $log->record('App\\Exceptions\\Renderer::__invoke', 'A');
-    $log->record('App\\Exceptions\\Renderer::__invoke', 'B');
-    $log->record('App\\Exceptions\\Renderer::__invoke', 'A'); // repeat — deduped
+    $log->collect('App\\Exceptions\\Renderer::__invoke', ['A', 'B']);
+    $log->collect('App\\Exceptions\\Renderer::__invoke', ['A']); // a second route through it — deduped
 
     $summaries = $log->summaries();
 
@@ -27,11 +29,34 @@ it('collects deferrals per callback, deduping repeated exception types', functio
         ->and($summaries[0]['exceptions'])->toBe(['A', 'B']);
 });
 
+it('names the exception types in sorted order, not in the order the routes were met', function (): void {
+    // Two apps differing only in which route sorts first must publish the same line: the summary is a
+    // function of what could not be folded, never of the order it was met.
+    $forward = new HandlerDeferralLog;
+    $forward->collect('App\\Renderer::__invoke', ['Zeta']);
+    $forward->collect('App\\Renderer::__invoke', ['Alpha']);
+
+    $backward = new HandlerDeferralLog;
+    $backward->collect('App\\Renderer::__invoke', ['Alpha']);
+    $backward->collect('App\\Renderer::__invoke', ['Zeta']);
+
+    expect($forward->summaries())->toBe($backward->summaries())
+        ->and($forward->summaries()[0]['exceptions'])->toBe(['Alpha', 'Zeta']);
+});
+
+it('empties the aggregate on forget, so one document never reports another’s deferrals', function (): void {
+    // The pipeline forgets before a document's first route; a container-scoped log outlives a build, so
+    // without this an export of several documents would repeat the first one's findings under every key.
+    $log = new HandlerDeferralLog;
+    $log->collect('App\\Renderer::__invoke', ['A']);
+    $log->forget();
+
+    expect($log->summaries())->toBe([]);
+});
+
 it('emits one summary diagnostic per callback with count + first few exception types', function (): void {
     $log = new HandlerDeferralLog;
-    foreach (['E1', 'E2', 'E3', 'E4', 'E5'] as $exception) {
-        $log->record('App\\Renderer::__invoke', $exception);
-    }
+    $log->collect('App\\Renderer::__invoke', ['E1', 'E2', 'E3', 'E4', 'E5']);
 
     $collector = new DiagnosticCollector;
     $context = new DocumentContext(new DocumentConfig(key: 'd', info: ['title' => 'T', 'version' => '1']), 'doc:d', $collector);
@@ -48,8 +73,8 @@ it('emits one summary diagnostic per callback with count + first few exception t
 
 it('emits one diagnostic per distinct callback, in sorted order', function (): void {
     $log = new HandlerDeferralLog;
-    $log->record('B\\Renderer::__invoke', 'X');
-    $log->record('A\\Renderer::render', 'Y');
+    $log->collect('B\\Renderer::__invoke', ['X']);
+    $log->collect('A\\Renderer::render', ['Y']);
 
     $collector = new DiagnosticCollector;
     $context = new DocumentContext(new DocumentConfig(key: 'd', info: ['title' => 'T', 'version' => '1']), 'doc:d', $collector);
@@ -67,4 +92,9 @@ it('produces no diagnostics when nothing deferred', function (): void {
     (new HandlerDeferralSummaryTransformer(new HandlerDeferralLog))->transform(new UirDocumentDraft([]), $context);
 
     expect($collector->all())->toBe([]);
+});
+
+it('names the channel the tier records its notes on', function (): void {
+    // The channel is how the pipeline routes a fragment's notes here; a mismatch is a silently empty log.
+    expect((new HandlerDeferralLog)->channel())->toBe(HandlerDeferralLog::CHANNEL);
 });

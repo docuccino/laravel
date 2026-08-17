@@ -1,0 +1,348 @@
+{
+  "$schema": "https://spec.docuccino.app/uir/1.0/schema.json",
+  "uir": "1.0.0",
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/note-archives/{form}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:bja57pfgyabrynk3",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FormController.php",
+                "line": 32,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            }
+          ]
+        },
+        "summary": "Show a form.",
+        "tags": [
+          "Forms"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:ttyoqfjqtepeboxm",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/FormController.php",
+                    "line": 32,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
+                  }
+                }
+              ]
+            },
+            "name": "form",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FormController.php",
+                      "line": 32,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:p2cxqxf4snebbygi",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/FormData"
+                }
+              }
+            }
+          },
+          "404": {
+            "x-docuccino": {
+              "id": "res:v1:oalmgud3stpmjjrk",
+              "provenance": [
+                {
+                  "producer": "integration:framework-errors",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/FormController.php",
+                    "line": 32,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "NotFound"
+              }
+            },
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/note-forms/{form}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:5dzatmcx62ehdptm",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FormController.php",
+                "line": 32,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            }
+          ]
+        },
+        "summary": "Show a form.",
+        "tags": [
+          "Forms"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:qkakqqpe3bgevran",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/FormController.php",
+                    "line": 32,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
+                  }
+                }
+              ]
+            },
+            "name": "form",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FormController.php",
+                      "line": 32,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:pexkrkaofiyned75",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/FormData"
+                }
+              }
+            }
+          },
+          "404": {
+            "x-docuccino": {
+              "id": "res:v1:xwgq676o6qh7v2xs",
+              "provenance": [
+                {
+                  "producer": "integration:framework-errors",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/FormController.php",
+                    "line": 32,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "NotFound"
+              }
+            },
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "FormData": {
+        "x-docuccino": {
+          "id": "sch:v1:6iocn62c7ru5zutw"
+        },
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "publishedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ]
+      },
+      "NotFound": {
+        "x-docuccino": {
+          "id": "sch:v1:bvvuacym2wsq7ebk"
+        },
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      }
+    },
+    "responses": {
+      "NotFound": {
+        "description": "Not Found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/NotFound"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "4f13fa46108392d824b2b8ea43e4cfd7cb8a3c2ede2f597d03cf4c76f3bd0952",
+      "contentHash": "0d3c9c47c5dff0fc3532ddb0d0aa994542153f955fb675ce290159d456f7150a"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.1.0",
+      "specVersion": "1.0.0"
+    }
+  }
+}

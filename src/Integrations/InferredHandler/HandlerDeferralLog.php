@@ -4,32 +4,62 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\InferredHandler;
 
+use Docuccino\Core\Extensions\Context\RouteNotes;
+use Docuccino\Core\Extensions\Contracts\RouteNoteCollector;
+
 /**
- * Per-build collector of inferred-handler deferrals (design §6), keyed by callback rather than by
+ * Per-document collector of inferred-handler deferrals (design §6), keyed by callback rather than by
  * (route × exception) — the latter produces hundreds of near-identical diagnostics on a large app.
- * {@see HandlerDeferralSummaryTransformer} then emits one summary per callback. Container-`scoped`, so the
- * tier and the transformer share an instance within a build and it resets between builds.
+ * {@see HandlerDeferralSummaryTransformer} then emits one summary per callback.
+ *
+ * The tier never calls {@see collect()}: it records the deferral on the route's {@see RouteNotes}, the
+ * pipeline drains those into here, and a route that came back from the fragment cache drains exactly the
+ * same note — which is why a warm build reports what a cold one reports. Container-`scoped`, so the tier
+ * and the transformer share an instance, and the pipeline empties it per document.
  *
  * Framework delegation (a `return null`/void arm) is not recorded: it's expected, not a fold failure, and
  * the next tier handles those exception types.
  */
-final class HandlerDeferralLog
+final class HandlerDeferralLog implements RouteNoteCollector
 {
+    /** The {@see RouteNotes} channel the tier writes its deferrals to. */
+    public const CHANNEL = 'inferred-handler.deferral';
+
     /** @var array<string, list<string>> callback target ⇒ deduped exception FQCNs it could not fold */
     private array $entries = [];
 
-    public function record(string $callback, string $exceptionFqcn): void
+    public function channel(): string
     {
-        $exceptions = $this->entries[$callback] ?? [];
-        if (! in_array($exceptionFqcn, $exceptions, true)) {
-            $exceptions[] = $exceptionFqcn;
-        }
-        $this->entries[$callback] = $exceptions;
+        return self::CHANNEL;
+    }
+
+    public function forget(): void
+    {
+        $this->entries = [];
     }
 
     /**
-     * One entry per deferring callback, exceptions in first-seen order. Callbacks are sorted so the
-     * diagnostics come out deterministically.
+     * The one way in — a route's notes, drained by the pipeline. Repeats across routes are expected: one
+     * render callback answers for every route that throws through it.
+     *
+     * @param  list<string>  $values
+     */
+    public function collect(string $key, array $values): void
+    {
+        $exceptions = $this->entries[$key] ?? [];
+        foreach ($values as $value) {
+            if (! in_array($value, $exceptions, true)) {
+                $exceptions[] = $value;
+            }
+        }
+
+        $this->entries[$key] = $exceptions;
+    }
+
+    /**
+     * One entry per deferring callback. Callbacks are sorted, and so are the exceptions under each, so
+     * what the summary says is a function of which types could not be folded and never of the order the
+     * routes that threw them were met.
      *
      * @return list<array{callback: string, exceptions: list<string>}>
      */
@@ -39,7 +69,12 @@ final class HandlerDeferralLog
         sort($callbacks);
 
         return array_map(
-            fn (string $callback): array => ['callback' => $callback, 'exceptions' => $this->entries[$callback]],
+            function (string $callback): array {
+                $exceptions = $this->entries[$callback];
+                sort($exceptions);
+
+                return ['callback' => $callback, 'exceptions' => $exceptions];
+            },
             $callbacks,
         );
     }

@@ -23,6 +23,7 @@ use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Inference\ThrowConfidence;
 use Docuccino\Core\Inference\ThrowDisposition;
 use Docuccino\Core\Inference\ThrownException;
+use Docuccino\Core\Inference\TraceVisitor;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
 
@@ -42,9 +43,18 @@ final class WorkbenchEngine
      *                                                        dependencyFiles for cache-invalidation tests
      * @param  array<string, ActionAnalysis>  $analysisOverrides  action analyses merged over the
      *                                                            defaults (keyed by ActionRef::symbol())
+     * @param  array<string, callable(TraceVisitor): void>  $traceOverrides  scripted traces merged over the
+     *                                                                       defaults (keyed by
+     *                                                                       ActionRef::symbol()), for a
+     *                                                                       document whose routes one test
+     *                                                                       registers ad-hoc
      */
-    public static function make(array $callables = [], array $classOverrides = [], array $analysisOverrides = []): StubTypeEngine
-    {
+    public static function make(
+        array $callables = [],
+        array $classOverrides = [],
+        array $analysisOverrides = [],
+        array $traceOverrides = [],
+    ): StubTypeEngine {
         $location = new SourceLocation('');
 
         $formData = new ClassMetadata('Workbench\\App\\Data\\FormData', [
@@ -109,6 +119,7 @@ final class WorkbenchEngine
                     'new \\'.self::ARTICLE_RESOURCE.'(\\'.self::WIDGET_MODEL.'::create([]))',
                     'Illuminate\\Database\\Eloquent\\Builder',
                 ),
+                ...$traceOverrides,
             ],
             analyses: [
                 'Workbench\\App\\Http\\Requests\\StoreWidgetRequest::rules' => new ActionAnalysis(

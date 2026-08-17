@@ -14,6 +14,7 @@ use Docuccino\Core\Extensions\Contracts\ResponseAnalysisTarget;
 use Docuccino\Core\Extensions\Contracts\ResponseStatusResolver;
 use Docuccino\Core\Extensions\Contracts\RouteBindingFieldSchemaResolver;
 use Docuccino\Core\Extensions\Contracts\RouteBindingSchemaResolver;
+use Docuccino\Core\Extensions\Contracts\RouteNoteCollector;
 use Docuccino\Core\Extensions\Contracts\RouteResolver;
 use Docuccino\Core\Extensions\Contracts\RuleTransformer;
 use Docuccino\Core\Extensions\Contracts\TypeToSchema;
@@ -74,6 +75,7 @@ final class ExtensionRegistry
             routeBindingSchemaResolvers: $sorter->sort($this->partition($instances, RouteBindingSchemaResolver::class)),
             routeBindingFieldSchemaResolvers: $sorter->sort($this->partition($instances, RouteBindingFieldSchemaResolver::class)),
             environmentDigestContributors: $sorter->sort($this->partition($instances, EnvironmentDigestContributor::class)),
+            routeNoteCollectors: $sorter->sort($this->partition($instances, RouteNoteCollector::class)),
         );
     }
 

@@ -1,0 +1,1069 @@
+{
+  "$schema": "https://spec.docuccino.app/uir/1.0/schema.json",
+  "uir": "1.0.0",
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "Paged List API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/paged/clamped": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:ijez2is2ymunfhk6",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/PagedListController.php",
+                "line": 26,
+                "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::clamped"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            }
+          ]
+        },
+        "summary": "The shared clamp: the read is the value the helper answers with, under a key of the app's choosing.",
+        "tags": [
+          "PagedList"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:uqiuvsrvcmf3odcf",
+              "provenance": [
+                {
+                  "producer": "integration:api-resources",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/PagedListController.php",
+                    "line": 26,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::clamped"
+                  }
+                }
+              ]
+            },
+            "name": "page",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:api-resources",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/PagedListController.php",
+                      "line": 26,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::clamped"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:brhbwmtyf6gmzsgn",
+              "provenance": [
+                {
+                  "producer": "integration:api-resources",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/PagedListController.php",
+                    "line": 26,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::clamped"
+                  }
+                }
+              ]
+            },
+            "name": "per_page",
+            "in": "query",
+            "description": "Number of items per page.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:api-resources",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/PagedListController.php",
+                      "line": 26,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::clamped"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:5hdvapaefklm56b4",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:api-resources",
+                        "layer": "integration",
+                        "fields": [
+                          "items",
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/PagedListController.php",
+                          "line": 26,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::clamped"
+                        },
+                        "overrode": [
+                          {
+                            "field": "type",
+                            "value": "object",
+                            "producer": "inference"
+                          },
+                          {
+                            "field": "properties",
+                            "value": {
+                              "data": {
+                                "items": {
+                                  "$ref": "#/components/schemas/ArticleResource"
+                                },
+                                "type": "array"
+                              }
+                            },
+                            "producer": "inference"
+                          },
+                          {
+                            "field": "required",
+                            "value": [
+                              "data"
+                            ],
+                            "producer": "inference"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ArticleResource"
+                      }
+                    },
+                    "links": {
+                      "type": "object",
+                      "properties": {
+                        "first": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "last": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "next": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "prev": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "current_page": {
+                          "type": "integer"
+                        },
+                        "from": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "last_page": {
+                          "type": "integer"
+                        },
+                        "path": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "per_page": {
+                          "type": "integer"
+                        },
+                        "to": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "total": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "links",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/paged/lazy": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:qecgjedeyyrgyyyj",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/PagedListController.php",
+                "line": 56,
+                "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::lazy"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            }
+          ]
+        },
+        "summary": "A key read inside a closure the helper never calls, so the size it answers with never touches it.",
+        "tags": [
+          "PagedList"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:ug5hkxqbmttbonox",
+              "provenance": [
+                {
+                  "producer": "integration:api-resources",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/PagedListController.php",
+                    "line": 56,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::lazy"
+                  }
+                }
+              ]
+            },
+            "name": "page",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:api-resources",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/PagedListController.php",
+                      "line": 56,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::lazy"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:wm5og6xyzrrh7lmm",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:api-resources",
+                        "layer": "integration",
+                        "fields": [
+                          "items",
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/PagedListController.php",
+                          "line": 56,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::lazy"
+                        },
+                        "overrode": [
+                          {
+                            "field": "type",
+                            "value": "object",
+                            "producer": "inference"
+                          },
+                          {
+                            "field": "properties",
+                            "value": {
+                              "data": {
+                                "items": {
+                                  "$ref": "#/components/schemas/ArticleResource"
+                                },
+                                "type": "array"
+                              }
+                            },
+                            "producer": "inference"
+                          },
+                          {
+                            "field": "required",
+                            "value": [
+                              "data"
+                            ],
+                            "producer": "inference"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ArticleResource"
+                      }
+                    },
+                    "links": {
+                      "type": "object",
+                      "properties": {
+                        "first": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "last": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "next": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "prev": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "current_page": {
+                          "type": "integer"
+                        },
+                        "from": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "last_page": {
+                          "type": "integer"
+                        },
+                        "path": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "per_page": {
+                          "type": "integer"
+                        },
+                        "to": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "total": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "links",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/paged/limited": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:qx7sv73nxiundj3h",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/PagedListController.php",
+                "line": 36,
+                "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::limited"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            }
+          ]
+        },
+        "summary": "The same clamp with the read named in a local first, and its literal fallback.",
+        "tags": [
+          "PagedList"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:o2arfo7o53cs762o",
+              "provenance": [
+                {
+                  "producer": "integration:api-resources",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/PagedListController.php",
+                    "line": 36,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::limited"
+                  }
+                }
+              ]
+            },
+            "name": "limit",
+            "in": "query",
+            "description": "Number of items per page.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:api-resources",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/PagedListController.php",
+                      "line": 36,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::limited"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 15
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:npujspyw4vhansc5",
+              "provenance": [
+                {
+                  "producer": "integration:api-resources",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/PagedListController.php",
+                    "line": 36,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::limited"
+                  }
+                }
+              ]
+            },
+            "name": "page",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:api-resources",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/PagedListController.php",
+                      "line": 36,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::limited"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:p6v5jp2gxyynvtwp",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:api-resources",
+                        "layer": "integration",
+                        "fields": [
+                          "items",
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/PagedListController.php",
+                          "line": 36,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::limited"
+                        },
+                        "overrode": [
+                          {
+                            "field": "type",
+                            "value": "object",
+                            "producer": "inference"
+                          },
+                          {
+                            "field": "properties",
+                            "value": {
+                              "data": {
+                                "items": {
+                                  "$ref": "#/components/schemas/ArticleResource"
+                                },
+                                "type": "array"
+                              }
+                            },
+                            "producer": "inference"
+                          },
+                          {
+                            "field": "required",
+                            "value": [
+                              "data"
+                            ],
+                            "producer": "inference"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ArticleResource"
+                      }
+                    },
+                    "links": {
+                      "type": "object",
+                      "properties": {
+                        "first": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "last": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "next": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "prev": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "current_page": {
+                          "type": "integer"
+                        },
+                        "from": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "last_page": {
+                          "type": "integer"
+                        },
+                        "path": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "per_page": {
+                          "type": "integer"
+                        },
+                        "to": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "total": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "links",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/paged/preset": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:s72uh2gcxqm7o3qs",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/PagedListController.php",
+                "line": 46,
+                "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::preset"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            }
+          ]
+        },
+        "summary": "A preset selector: the key picks which fixed size is used, and is not itself a size.",
+        "tags": [
+          "PagedList"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:idhlfy3j77cf7qa6",
+              "provenance": [
+                {
+                  "producer": "integration:api-resources",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/PagedListController.php",
+                    "line": 46,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::preset"
+                  }
+                }
+              ]
+            },
+            "name": "page",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:api-resources",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/PagedListController.php",
+                      "line": 46,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::preset"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:xj3b3iob5pqkf32x",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:api-resources",
+                        "layer": "integration",
+                        "fields": [
+                          "items",
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/PagedListController.php",
+                          "line": 46,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::preset"
+                        },
+                        "overrode": [
+                          {
+                            "field": "type",
+                            "value": "object",
+                            "producer": "inference"
+                          },
+                          {
+                            "field": "properties",
+                            "value": {
+                              "data": {
+                                "items": {
+                                  "$ref": "#/components/schemas/ArticleResource"
+                                },
+                                "type": "array"
+                              }
+                            },
+                            "producer": "inference"
+                          },
+                          {
+                            "field": "required",
+                            "value": [
+                              "data"
+                            ],
+                            "producer": "inference"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ArticleResource"
+                      }
+                    },
+                    "links": {
+                      "type": "object",
+                      "properties": {
+                        "first": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "last": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "next": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "prev": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "current_page": {
+                          "type": "integer"
+                        },
+                        "from": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "last_page": {
+                          "type": "integer"
+                        },
+                        "path": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "per_page": {
+                          "type": "integer"
+                        },
+                        "to": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "total": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "links",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ArticleResource": {
+        "x-docuccino": {
+          "id": "sch:v1:enlevzeqn7cjoivp"
+        },
+        "type": "object",
+        "properties": {
+          "author": {
+            "$ref": "#/components/schemas/AuthorResource"
+          },
+          "excerpt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ]
+      },
+      "AuthorResource": {
+        "x-docuccino": {
+          "id": "sch:v1:hbaqt4d6pcrt4sii"
+        },
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "email"
+        ]
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:page-size",
+      "configHash": "04dcca4099d6425f2d732e589788ebc299cc418a310847733c5dd0b243c58a34",
+      "contentHash": "6a7835201db5eda00060e62d868b51f950c2ab7fd42e0c967bee0e8d9b74434f"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.1.0",
+      "specVersion": "1.0.0"
+    }
+  }
+}

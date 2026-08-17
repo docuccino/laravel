@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Docuccino\Laravel\Integrations\Support\PaginatorPageParameter;
+use Docuccino\Laravel\Integrations\Support\RequestPageSizeKey;
 
 /**
  * The one place a Laravel page selector is minted, pinned per kind — including the kind it has never
@@ -58,4 +59,23 @@ it('reads the name argument of every terminal that takes one, positionally or by
 
 it('keeps the default key when no terminal was recorded at all', function (): void {
     expect(PaginatorPageParameter::forTerminal(null, 'length', [])?->name)->toBe('page');
+});
+
+it('mints a page-size selector stating the type and, only where proven, the default', function (?int $default, array $schema): void {
+    // No `minimum`/`maximum`: an app clamps an out-of-range size far more often than it rejects one, and a
+    // bound recovered from a clamp would call a value invalid that is merely adjusted.
+    $spec = PaginatorPageParameter::size(new RequestPageSizeKey('per_page', $default));
+
+    expect($spec->name)->toBe('per_page')
+        ->and($spec->schema)->toBe($schema)
+        ->and($spec->description)->toBe('Number of items per page.')
+        // A page size is never required — omitting it is what asks for the endpoint's own default.
+        ->and($spec->style)->toBeNull();
+})->with([
+    'a proven default' => [15, ['type' => 'integer', 'default' => 15]],
+    'no honest default' => [null, ['type' => 'integer']],
+]);
+
+it('mints the size selector under whatever key the app reads, not a spelling of its own', function (): void {
+    expect(PaginatorPageParameter::size(new RequestPageSizeKey('limit'))->name)->toBe('limit');
 });

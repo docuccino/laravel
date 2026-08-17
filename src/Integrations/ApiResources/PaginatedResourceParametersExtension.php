@@ -48,15 +48,26 @@ final class PaginatedResourceParametersExtension implements OperationExtension
             return;
         }
 
+        $contribution = Contribution::integration('api-resources', $context->actionSource());
+
         $spec = PaginatorPageParameter::forTerminal($visitor->terminal, $visitor->kind, $visitor->outermostArgs);
-        if ($spec === null || $this->alreadyStated($operation, $spec, $visitor->kind)) {
-            return;
+        if ($spec !== null && ! $this->alreadyStated($operation, $spec, $visitor->kind)) {
+            $spec->applyTo($operation->parameter('query', $spec->name), $contribution);
         }
 
-        $spec->applyTo(
-            $operation->parameter('query', $spec->name),
-            Contribution::integration('api-resources', $context->actionSource()),
-        );
+        // The size key rides the same trace, and only where it was proven — a chain sized at its call site
+        // states nothing here, exactly as the Query-Builder producer states nothing.
+        $size = $visitor->pageSize();
+        if ($size !== null && ! $operation->hasParameter('query', $size->key)) {
+            PaginatorPageParameter::size($size)->applyTo(
+                $operation->parameter('query', $size->key),
+                $contribution,
+            );
+        }
+
+        // Last, because a size key's own file is only known once the recovery has run — the reader resolves
+        // before it answers, so this cannot come back to depending on the order of these two calls.
+        $context->recordDependencyFiles($visitor->dependencyFiles());
     }
 
     /**

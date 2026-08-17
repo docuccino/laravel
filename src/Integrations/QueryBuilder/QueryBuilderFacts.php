@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\QueryBuilder;
 
+use Docuccino\Laravel\Integrations\Support\RequestPageSizeKey;
+use Docuccino\Laravel\Integrations\Support\RequestPageSizeReader;
+
 /**
  * The semantic facts a {@see QueryBuilderTraceVisitor} recovers from an action's Query-Builder
  * chain (design §Representation policies — facts stay stable in the UIR regardless of how a policy
@@ -54,6 +57,12 @@ final class QueryBuilderFacts
      * @var array<array-key, string|int|float|bool|null>
      */
     public array $paginationArgs = [];
+
+    /**
+     * The page-size key the trace followed the paginator's size argument back to a request read for, or
+     * null where the size came from the call site or the model — see {@see RequestPageSizeReader}.
+     */
+    public ?RequestPageSizeKey $pageSize = null;
 
     /** @var list<string> human descriptions of expressions the trace could not resolve */
     public array $unresolved = [];

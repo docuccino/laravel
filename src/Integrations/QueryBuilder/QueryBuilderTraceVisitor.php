@@ -16,6 +16,7 @@ use Docuccino\Core\Inference\TypeScope;
 use Docuccino\Core\Provenance\SourcePathResolver;
 use Docuccino\Laravel\Integrations\Eloquent\EloquentModelReflector;
 use Docuccino\Laravel\Integrations\Support\PaginationTerminalVisitor;
+use Docuccino\Laravel\Integrations\Support\RequestPageSizeReader;
 use PhpParser\Comment;
 use PhpParser\Node;
 
@@ -127,6 +128,7 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
         array $customTerminals = [],
         private readonly WhereColumnAnalyzer $whereColumns = new WhereColumnAnalyzer,
         private readonly ?SourcePathResolver $paths = null,
+        private readonly RequestPageSizeReader $pageSize = new RequestPageSizeReader,
     ) {
         $terminals = PaginationTerminalVisitor::PAGINATOR_TERMINALS;
         foreach ($customTerminals as $terminal) {
@@ -137,6 +139,8 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
 
     public function enterNode(Node $node, TypeScope $scope): bool
     {
+        $this->pageSize->observe($node, $scope);
+
         if ($node instanceof Node\Expr\MethodCall && $node->name instanceof Node\Identifier) {
             $this->visitMethodCall($node, $node->name->toString(), $scope);
         }
@@ -152,9 +156,23 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
             }
         }
 
+        // Resolved after every node, not once at the end: a size key written inside a helper only shows up
+        // once the engine has descended into it, which is after the call site was walked.
+        $this->facts->pageSize = $this->pageSize->recovered();
+
         // Descend into any app-code call so allow-lists built inside a helper are reached; the engine
         // declines vendor / magic / over-budget descent on its own.
         return $node instanceof Node\Expr\MethodCall || $node instanceof Node\Expr\StaticCall;
+    }
+
+    /**
+     * Files the page-size recovery consulted by reflection, which the trace's own file set does not cover.
+     *
+     * @return list<string>
+     */
+    public function dependencyFiles(): array
+    {
+        return $this->pageSize->dependencyFiles();
     }
 
     /**
@@ -190,6 +208,9 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
         }
 
         if (isset($this->terminals[$name])) {
+            // Every terminal at every depth, unlike the facts below: a custom terminal hides the vendor
+            // one it forwards to, and the page size is an argument of the vendor one.
+            $this->pageSize->terminal($node, $name, $scope);
             $this->recordTerminal($node, $name, $scope);
         }
     }
