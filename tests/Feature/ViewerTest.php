@@ -10,6 +10,7 @@ use Docuccino\Laravel\Pipeline\DocumentGenerator;
 use Docuccino\Laravel\Runtime\DocumentCache;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 
 /**
  * The runtime viewer endpoints: Gate-guarded HTML plus `.json`, and a locally bundled Scalar asset — no
@@ -142,6 +143,70 @@ it('serves an empty body for source=artifact when the artifact is missing', func
     Gate::before(static fn ($user = null): bool => true);
 
     expect($this->get('/docs/api.json')->assertOk()->getContent())->toBe('');
+});
+
+it('picks the best servable target whatever order the list is written in', function (array $targets): void {
+    config()->set('docuccino.documents.default.viewer.gate', 'viewApiDocs');
+    config()->set('docuccino.documents.default.viewer.source', 'artifact');
+    Gate::before(static fn ($user = null): bool => true);
+
+    $dir = sys_get_temp_dir().'/docuccino-viewer-'.uniqid('', true);
+    @mkdir($dir, 0777, true);
+
+    // Each target gets a body naming itself, so the served bytes say which one was chosen.
+    $configured = [];
+    foreach ($targets as $format) {
+        $path = $dir.'/'.$format.'.json';
+        file_put_contents($path, sprintf('{"openapi":"served-%s"}', $format));
+        $configured[] = ['format' => $format, 'path' => $path];
+    }
+    config()->set('docuccino.documents.default.export', ['targets' => $configured]);
+
+    // 3.2 is the most faithful thing the viewer can serve, so it wins regardless of list order.
+    expect($this->get('/docs/api.json')->assertOk()->getContent())->toContain('served-openapi-3.2');
+})->with([
+    '3.2 first' => [['openapi-3.2', 'openapi-3.1', 'uir']],
+    '3.2 last' => [['uir', 'openapi-3.1', 'openapi-3.2']],
+    '3.2 in the middle' => [['openapi-3.1', 'openapi-3.2', 'uir']],
+]);
+
+it('skips a YAML target rather than serving YAML as application/json', function (): void {
+    config()->set('docuccino.documents.default.viewer.gate', 'viewApiDocs');
+    config()->set('docuccino.documents.default.viewer.source', 'artifact');
+    Gate::before(static fn ($user = null): bool => true);
+
+    $dir = sys_get_temp_dir().'/docuccino-viewer-yaml-'.uniqid('', true);
+    @mkdir($dir, 0777, true);
+    file_put_contents($dir.'/openapi.yaml', "openapi: 3.2.0\n");
+    file_put_contents($dir.'/api.uir.json', '{"uir":"1.0.0","openapi":"3.2.0","info":{"title":"T","version":"1"},"paths":{}}');
+
+    config()->set('docuccino.documents.default.export', ['targets' => [
+        ['format' => 'openapi-3.2', 'path' => $dir.'/openapi.yaml'],
+        ['format' => 'uir', 'path' => $dir.'/api.uir.json'],
+    ]]);
+
+    // The 3.2 target ranks higher but is YAML, which the browser cannot read under this content type.
+    $body = $this->get('/docs/api.json')->assertOk()->assertHeader('Content-Type', 'application/json')->getContent();
+
+    expect($body)->not->toContain('openapi: 3.2.0')
+        ->and($body)->toContain('"openapi"');
+});
+
+it('generates rather than serving bytes the viewer cannot read', function (): void {
+    config()->set('docuccino.documents.default.viewer.gate', 'viewApiDocs');
+    config()->set('docuccino.documents.default.viewer.source', 'artifact');
+    Gate::before(static fn ($user = null): bool => true);
+
+    // Every target is YAML, so nothing here is servable — generating beats an unreadable body.
+    config()->set('docuccino.documents.default.export', ['targets' => [
+        ['format' => 'openapi-3.2', 'path' => sys_get_temp_dir().'/nope-'.uniqid().'.yaml'],
+    ]]);
+
+    Log::shouldReceive('warning')->once()->withArgs(
+        static fn (string $message): bool => str_contains($message, 'no export target holds JSON'),
+    );
+
+    expect($this->get('/docs/api.json')->assertOk()->getContent())->toContain('/api/forms');
 });
 
 it('serves source=cache when warm, and falls back to generate when cold', function (): void {

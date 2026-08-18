@@ -162,6 +162,12 @@ return [
             // Where `docuccino:export` writes, and what the viewer's `artifact` source reads back.
             'export' => [
                 'path' => 'docs/openapi.json',
+                // A list of targets REPLACES `path`: one build, one artifact per entry. One target per
+                // format, and the extension picks the serialisation (.yaml/.yml emit YAML).
+                // 'targets' => [
+                //     ['format' => 'openapi-3.2', 'path' => 'docs/openapi.json'],
+                //     ['format' => 'openapi-3.1', 'path' => 'docs/openapi-3.1.yaml'],
+                // ],
             ],
 
             'viewer' => [

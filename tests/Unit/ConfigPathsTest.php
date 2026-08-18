@@ -18,6 +18,9 @@ use Docuccino\Laravel\Support\Paths;
  * layout into a committed artifact. Every in-app path is stored base-path-relative, so the hash follows
  * what a path means rather than how it was spelled. A path genuinely outside the app is kept verbatim and
  * reported as machine-dependent.
+ *
+ * `export.path` is relativised alongside the rest, but is a DESTINATION: it says where an artifact is
+ * written, never what it holds, so it sits outside `hash()` and an out-of-tree one reports nothing.
  */
 
 /**
@@ -64,8 +67,20 @@ function documentFrom(array $raw, string $basePath = '/checkout/one'): DocumentC
     return (new DocumentConfigFactory($basePath, app()))->make('default', $raw, 'skeleton');
 }
 
-/** Every path-like config key, with a representative in-app relative value. */
+/** Path-like keys that SHAPE the document, so they are digested by `hash()`. */
 dataset('pathKeys', [
+    'content.dir' => ['content.dir', 'resources/docs/api'],
+    'info.description.file' => ['info.description.file', 'resources/docs/description.md'],
+    'overlays[0]' => ['overlays.0', 'resources/docs/overlays/*.yaml'],
+]);
+
+/** Path-like keys naming a DESTINATION: relativised, but outside `hash()` and never machine-dependent. */
+dataset('destinationKeys', [
+    'export.path' => ['export.path', 'docs/openapi.json'],
+]);
+
+/** Every path-like key, for the behaviour both kinds share. */
+dataset('allPathKeys', [
     'content.dir' => ['content.dir', 'resources/docs/api'],
     'export.path' => ['export.path', 'docs/openapi.json'],
     'info.description.file' => ['info.description.file', 'resources/docs/description.md'],
@@ -76,7 +91,7 @@ it('leaves a relative path untouched', function (string $key, string $relative):
     $document = documentFrom(rawWithPath($key, $relative));
 
     expect(readPath($document->raw, $key))->toBe($relative);
-})->with('pathKeys');
+})->with('allPathKeys');
 
 it('relativises an absolute path inside the base path, hashing identically to the relative form', function (string $key, string $relative): void {
     $base = '/checkout/one';
@@ -123,6 +138,30 @@ it('hashes identically across two checkouts of the same app at different paths',
 
     expect($one->hash())->toBe($two->hash());
 })->with('pathKeys');
+
+it('relativises a destination path but never reports it as machine-dependent', function (string $key, string $relative): void {
+    // A destination says where bytes are WRITTEN. Nothing about the document depends on it, so pointing
+    // it out of tree makes no output machine-dependent and there is nothing to report.
+    $base = '/checkout/one';
+
+    expect(readPath(documentFrom(rawWithPath($key, $base.'/'.$relative), $base)->raw, $key))->toBe($relative);
+
+    foreach ([$relative, $base.'/'.$relative, '/opt/shared/'.$relative] as $configured) {
+        expect(ConfigDiagnostics::for(documentFrom(rawWithPath($key, $configured), $base)))->toBe([]);
+    }
+})->with('destinationKeys');
+
+it('hashes the same however a destination is spelled, and wherever it points', function (string $key, string $relative): void {
+    // The whole point of taking `export` out of the hash: changing where an artifact lands must not
+    // re-fingerprint the document, because that would rewrite committed bytes and cold-bust every
+    // cached fragment over a filename.
+    $base = '/checkout/one';
+    $baseline = documentFrom([], $base)->hash();
+
+    foreach ([$relative, $base.'/'.$relative, '/opt/shared/'.$relative, 'somewhere/else.json'] as $configured) {
+        expect(documentFrom(rawWithPath($key, $configured), $base)->hash())->toBe($baseline);
+    }
+})->with('destinationKeys');
 
 it('relativises every path-like key at once, leaving the rest of the bag alone', function (): void {
     $base = '/checkout/one';

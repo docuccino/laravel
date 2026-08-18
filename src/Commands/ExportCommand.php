@@ -4,24 +4,29 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Commands;
 
+use Docuccino\Core\Diagnostics\Diagnostic;
+use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Document\UirDocument;
 use Docuccino\Core\Emit\EmitOptions;
-use Docuccino\Core\Emit\EmitReport;
-use Docuccino\Core\Emit\EmitResult;
-use Docuccino\Core\Emit\OpenApi30DownlevelEmitter;
-use Docuccino\Core\Emit\OpenApi31DownlevelEmitter;
-use Docuccino\Core\Emit\OpenApi32Emitter;
+use Docuccino\Core\Emit\Formats;
 use Docuccino\Core\Emit\ProvenanceLevel;
-use Docuccino\Core\Emit\UirEmitter;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
+use Docuccino\Core\Extensions\Context\ExportTarget;
 use Docuccino\Core\Inference\TypeEngine;
+use Docuccino\Laravel\Config\ExportDiagnostics;
 use Docuccino\Laravel\Pipeline\DocumentBuilder;
 use Docuccino\Laravel\Support\Paths;
 use Illuminate\Console\Command;
 
 /**
- * Builds a document (or every document) and writes its UIR / OpenAPI artifact. Diagnostics print
- * grouped by route; the exit code honours `--fail-on`.
+ * Builds a document (or every document) and writes each of its configured export targets. Diagnostics
+ * print grouped by route; the exit code honours `--fail-on`.
+ *
+ * One build, many artifacts: analysis is the expensive half, so emitting three formats costs one
+ * analysis and three emits rather than three runs of everything.
+ *
+ * `--format`/`--out` REPLACE the configured target list for the run rather than filtering it — asking
+ * for a 3.0 file must produce one whether or not a 3.0 target happens to be configured.
  */
 final class ExportCommand extends Command
 {
@@ -30,13 +35,10 @@ final class ExportCommand extends Command
     use IteratesDocuments;
     use RendersDiagnostics;
 
-    /** Accepted --format values. */
-    private const FORMATS = ['uir', 'openapi-3.2', 'openapi-3.1', 'openapi-3.0'];
-
     protected $signature = 'docuccino:export
         {document? : The configured document key (defaults to every document)}
-        {--format= : uir | openapi-3.2 | openapi-3.1 | openapi-3.0 (defaults to openapi-3.2)}
-        {--out= : Output path (defaults to the document export path)}
+        {--format= : uir | openapi-3.2 | openapi-3.1 | openapi-3.0 — writes this one format instead of the configured targets}
+        {--out= : Output path (defaults to the matching target, else the document export path)}
         {--fail-on=none : none | warning | error — the severity that makes the command exit non-zero}
         {--provenance=winners : none | winners | full — UIR provenance detail}
         {--drop-ids : Omit the flat x-docuccino-id member OpenAPI output carries by default (the artifact then diffs by method + path)}
@@ -51,75 +53,179 @@ final class ExportCommand extends Command
             return self::FAILURE;
         }
 
-        // A typo errors out rather than falling back to OpenAPI 3.2 and shipping the wrong artifact.
-        $format = $this->option('format');
-        if (is_string($format) && $format !== '' && ! in_array($format, self::FORMATS, true)) {
-            $this->error(sprintf('Unknown --format "%s"; expected one of: %s.', $format, implode(', ', self::FORMATS)));
-
-            return self::FAILURE;
-        }
-
-        // One --out path can't hold several documents — later ones would clobber earlier ones.
-        $out = $this->option('out');
-        if (is_string($out) && $out !== '' && ! is_string($this->argument('document')) && count($builder->documentKeys()) > 1) {
-            $this->error('--out cannot be used when exporting multiple documents; pass a document argument or configure per-document export.path.');
-
+        if (! $this->validateOptions($builder) || ! $this->validateTargets($builder)) {
             return self::FAILURE;
         }
 
         return $this->forEachDocument($builder, function (string $key) use ($builder, $engine): int {
             $result = $builder->build($key, $engine);
 
-            $this->write($builder->config($key), $result->document);
+            $written = $this->writeTargets($builder->config($key), $result->document);
             $this->renderDiagnostics($key, $result->diagnostics);
 
-            return $this->failsOn($result) ? self::FAILURE : self::SUCCESS;
+            return $written && ! $this->failsOn($result) ? self::SUCCESS : self::FAILURE;
         });
     }
 
-    private function write(DocumentConfig $config, UirDocument $document): void
+    /** CLI-input problems: the user's own typing, so plain messages rather than diagnostic codes. */
+    private function validateOptions(DocumentBuilder $builder): bool
     {
-        $format = is_string($this->option('format')) && $this->option('format') !== ''
-            ? $this->option('format')
-            : 'openapi-3.2';
-        $yaml = (bool) $this->option('yaml');
+        // A typo errors out rather than falling back to OpenAPI 3.2 and shipping the wrong artifact.
+        $format = $this->stringOption('format');
+        if ($format !== null && ! Formats::supports($format)) {
+            $this->error(sprintf('Unknown --format "%s"; expected one of: %s.', $format, implode(', ', Formats::ids())));
 
-        $options = (new EmitOptions)
-            ->withYaml($yaml)
-            ->withProvenance($this->provenanceLevel())
-            ->withKeepIds(! $this->option('drop-ids'));
-
-        $result = match ($format) {
-            'uir' => new EmitResult((new UirEmitter)->emit($document, $options), new EmitReport),
-            'openapi-3.1' => (new OpenApi31DownlevelEmitter)->emitWithReport($document, $options),
-            'openapi-3.0' => (new OpenApi30DownlevelEmitter)->emitWithReport($document, $options),
-            default => new EmitResult((new OpenApi32Emitter)->emit($document, $options), new EmitReport),
-        };
-
-        $path = $this->outputPath($config);
-        $directory = dirname($path);
-        if (! is_dir($directory)) {
-            @mkdir($directory, 0755, true);
+            return false;
         }
 
-        file_put_contents($path, $result->output);
-        $this->info(sprintf('Wrote %s (%s).', $path, $format));
+        if ($format !== null && $this->option('yaml') === true && ! Formats::serialisesYaml($format)) {
+            $this->error(sprintf('--yaml cannot be used with --format=%s, which has no YAML serialisation.', $format));
 
-        // A downlevel drops or approximates things; say so rather than shipping a quieter contract.
-        $this->renderDiagnostics($format, $result->report->diagnostics);
+            return false;
+        }
+
+        // One --out path can't hold several documents — later ones would clobber earlier ones.
+        if ($this->stringOption('out') !== null && ! is_string($this->argument('document')) && count($builder->documentKeys()) > 1) {
+            $this->error('--out cannot be used when exporting multiple documents; pass a document argument or configure per-document export.path.');
+
+            return false;
+        }
+
+        return true;
     }
 
-    private function outputPath(DocumentConfig $config): string
+    /**
+     * Config problems, checked across EVERY document before the first build: a broken target list means
+     * nothing sensible can be written, and finding that out after a full analysis wastes the expensive
+     * half of the run.
+     */
+    private function validateTargets(DocumentBuilder $builder): bool
     {
-        $out = $this->option('out');
-        $path = is_string($out) && $out !== '' ? $out : $config->exportPath();
+        $only = $this->argument('document');
+        $fatal = false;
+        /** @var array<string, string> $claimed */
+        $claimed = [];
 
-        return Paths::absolute($path, base_path());
+        foreach ($builder->documentKeys() as $key) {
+            if (is_string($only) && $key !== $only) {
+                continue;
+            }
+
+            $config = $builder->config($key);
+            $diagnostics = ExportDiagnostics::for($config);
+
+            foreach ($this->targets($config) as $target) {
+                $absolute = Paths::absolute($target->path, base_path());
+                $owner = $claimed[$absolute] ?? null;
+
+                if ($owner !== null && $owner !== $key) {
+                    $diagnostics[] = new Diagnostic(
+                        severity: Severity::Error,
+                        code: 'config.export-path-collision',
+                        message: sprintf("documents.%s writes '%s', which document '%s' already writes — one of them would clobber the other.", $key, $target->path, $owner),
+                    );
+                }
+
+                $claimed[$absolute] = $owner ?? $key;
+            }
+
+            if ($diagnostics !== []) {
+                $this->renderDiagnostics($key, $diagnostics);
+                $fatal = $fatal || ExportDiagnostics::fatal($diagnostics);
+            }
+        }
+
+        return ! $fatal;
+    }
+
+    /**
+     * The run's targets: the CLI override when one is given, else what the document configured.
+     *
+     * The override's path is looked up BY FORMAT rather than by position, so which file
+     * `--format=openapi-3.1` lands in never depends on how the target list happens to be ordered.
+     *
+     * @return list<ExportTarget>
+     */
+    private function targets(DocumentConfig $config): array
+    {
+        $format = $this->stringOption('format');
+        if ($format === null) {
+            return $config->exportTargets();
+        }
+
+        $out = $this->stringOption('out');
+        if ($out !== null) {
+            return [new ExportTarget($format, $out)];
+        }
+
+        foreach ($config->exportTargets() as $target) {
+            if ($target->format === $format) {
+                return [$target];
+            }
+        }
+
+        return [new ExportTarget($format, $config->exportPath())];
+    }
+
+    /** Writes every target for one document, one at a time. False when any write failed. */
+    private function writeTargets(DocumentConfig $config, UirDocument $document): bool
+    {
+        $ok = true;
+
+        foreach ($this->targets($config) as $target) {
+            $ok = $this->write($target, $document) && $ok;
+        }
+
+        return $ok;
+    }
+
+    private function write(ExportTarget $target, UirDocument $document): bool
+    {
+        $result = Formats::emit($target->format, $document, $this->emitOptions($target));
+
+        $path = Paths::absolute($this->stringOption('out') ?? $target->path, base_path());
+        $directory = dirname($path);
+        if (! is_dir($directory) && ! @mkdir($directory, 0755, true) && ! is_dir($directory)) {
+            $this->error(sprintf('Could not create %s.', $directory));
+
+            return false;
+        }
+
+        if (@file_put_contents($path, $result->output) === false) {
+            $this->error(sprintf('Could not write %s.', $path));
+
+            return false;
+        }
+
+        $this->info(sprintf('Wrote %s (%s).', $path, $target->format));
+
+        // A downlevel drops or approximates things; say so rather than shipping a quieter contract.
+        $this->renderDiagnostics($target->format, $result->report->diagnostics);
+
+        return true;
+    }
+
+    private function emitOptions(ExportTarget $target): EmitOptions
+    {
+        // `--yaml` is the single-target override's say; a configured target states it in its own path.
+        $yaml = $this->option('yaml') === true || $target->yaml();
+
+        return (new EmitOptions)
+            ->withYaml($yaml && Formats::serialisesYaml($target->format))
+            ->withProvenance($this->provenanceLevel())
+            ->withKeepIds($this->option('drop-ids') !== true);
     }
 
     private function provenanceLevel(): ProvenanceLevel
     {
-        return ProvenanceLevel::tryFrom(is_string($this->option('provenance')) ? $this->option('provenance') : '')
-            ?? ProvenanceLevel::Winners;
+        return ProvenanceLevel::tryFrom($this->stringOption('provenance') ?? '') ?? ProvenanceLevel::Winners;
+    }
+
+    /** An option the user actually set, as a non-empty string. */
+    private function stringOption(string $name): ?string
+    {
+        $value = $this->option($name);
+
+        return is_string($value) && $value !== '' ? $value : null;
     }
 }

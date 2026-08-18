@@ -44,7 +44,7 @@ final class DocsController
 
         $source = $config->viewer['source'] ?? 'generate';
         $json = match ($source) {
-            'artifact' => $this->fromArtifact($config),
+            'artifact' => $this->fromArtifact($config, $engine),
             'cache' => $cache->get($document) ?? $this->coldCacheFallback($document, $engine),
             default => $this->generate($document, $engine),
         };
@@ -110,9 +110,22 @@ final class DocsController
         abort_unless($allowed, 403);
     }
 
-    private function fromArtifact(DocumentConfig $config): string
+    private function fromArtifact(DocumentConfig $config, TypeEngine $engine): string
     {
-        $absolute = Paths::absolute($config->exportPath(), base_path());
+        $target = ViewerArtifact::of($config);
+        if ($target === null) {
+            // Every configured target is something the viewer cannot serve (a Postman collection, a
+            // YAML file). Generating beats serving bytes the browser will choke on, and the warning
+            // makes the mismatch visible instead of leaving an empty page to diagnose.
+            Log::warning(sprintf(
+                'Docuccino viewer "%s" is configured with source=artifact but no export target holds JSON it can serve; generating on the fly.',
+                $config->key,
+            ));
+
+            return $this->generate($config->key, $engine);
+        }
+
+        $absolute = Paths::absolute($target->path, base_path());
         $contents = @file_get_contents($absolute);
         if ($contents === false) {
             return '';

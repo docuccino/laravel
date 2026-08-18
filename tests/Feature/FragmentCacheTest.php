@@ -118,6 +118,23 @@ it('invalidates fragments when the document config changes', function (): void {
     expect($engine->analyzeCount)->toBeGreaterThan(0);
 });
 
+it('keeps fragments warm when only the export destination changes', function (): void {
+    fragmentCacheDir('fragments');
+    $engine = new CountingTypeEngine(WorkbenchEngine::make());
+    app()->instance(TypeEngine::class, $engine);
+
+    $cold = (new UirEmitter)->emit(generateDocument()->document);
+    $engine->analyzeCount = 0;
+
+    // `export` says where artifacts land, never what they hold. Re-pointing it must not re-fingerprint
+    // the document: a filename should not cost a full re-analysis, nor move a single emitted byte.
+    config()->set('docuccino.documents.default.export.path', 'build/somewhere-else.json');
+    $warm = (new UirEmitter)->emit(generateDocument()->document);
+
+    expect($warm)->toBe($cold)
+        ->and($engine->analyzeCount)->toBe(0);
+});
+
 it('invalidates a fragment when one of its dependency files changes', function (): void {
     fragmentCacheDir('fragments');
 
