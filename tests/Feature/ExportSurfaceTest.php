@@ -59,6 +59,17 @@ it('omits provenance from UIR with --provenance=none, and includes it by default
     expect(exportTo(['--format' => 'uir']))->toContain('"provenance"');
 });
 
+it('errors on an unknown --provenance instead of coercing it to winners', function (): void {
+    // Coercing would ship an artifact carrying provenance the caller asked to leave out.
+    $this->artisan('docuccino:export', ['--provenance' => 'nome', '--out' => sys_get_temp_dir().'/x.json'])
+        ->expectsOutputToContain('Unknown --provenance "nome"; expected one of: none, winners, full.')
+        ->assertFailed();
+});
+
+it('accepts every provenance level', function (string $level): void {
+    expect(exportTo(['--format' => 'uir', '--provenance' => $level]))->toContain('"uir"');
+})->with(['none', 'winners', 'full']);
+
 it('keeps node identities by default, and drops them with --drop-ids', function (): void {
     // The nested `x-docuccino` never survives OAS emission — it holds provenance (file, line, symbol),
     // which has no business in a published spec. The flat id is the half worth keeping: an opaque hash of

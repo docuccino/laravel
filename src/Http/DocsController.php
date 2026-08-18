@@ -128,6 +128,17 @@ final class DocsController
         $absolute = Paths::absolute($target->path, base_path());
         $contents = @file_get_contents($absolute);
         if ($contents === false) {
+            // Unlike the branch above, this one does NOT generate: a target that could be served but
+            // isn't there yet is the one case `artifact` exists to make impossible — the source is
+            // chosen so no request ever re-analyses, and an unshipped file must not turn a viewer hit
+            // into a build on a production box. So the body stays empty and the log carries the whole
+            // diagnosis, since "the docs page is empty" is otherwise undiagnosable.
+            Log::warning(sprintf(
+                'Docuccino viewer "%s" is configured with source=artifact but "%s" could not be read; serving an empty body. Run `docuccino:export` and ship the file with your release.',
+                $config->key,
+                $absolute,
+            ));
+
             return '';
         }
 

@@ -64,3 +64,51 @@ it('escapes a code as readily as a message, since an extension states both', fun
     expect(Console::render([Console::diagnostic('fine', code: "sneaky\u{202E}edoc")]))
         ->toContain('sneaky\u{202E}edoc');
 });
+
+it('prints help under the message it belongs to', function (): void {
+    // The command a reader has to run only helps them where they are reading, which is here.
+    $output = Console::render([Console::diagnostic(
+        'The inference engine is not installed.',
+        help: 'Install it where you generate: composer require --dev docuccino/inference-phpstan.',
+    )]);
+
+    expect($output)->toContain("    [warning] demo.code: The inference engine is not installed.\n"
+        ."      Install it where you generate: composer require --dev docuccino/inference-phpstan.\n");
+});
+
+it('prints nothing extra for a diagnostic that states no help', function (): void {
+    $output = Console::render([Console::diagnostic('fine', 'GET api/orders')]);
+
+    expect($output)->toBe("\nDiagnostics for default:\n  GET api/orders\n    [warning] demo.code: fine\n");
+});
+
+it('indents every line of a multi-line help, and keeps the blank line between paragraphs', function (): void {
+    $output = Console::render([Console::diagnostic('fine', help: "First do this.\n\nThen do that.")]);
+
+    expect($output)->toContain("    [warning] demo.code: fine\n      First do this.\n\n      Then do that.\n");
+});
+
+it('reads a lone carriage return as a line break rather than an escape', function (): void {
+    // Windows and classic-Mac line endings are layout too; anything else in help still gets escaped.
+    expect(Console::render([Console::diagnostic('fine', help: "one\r\ntwo\rthree")]))
+        ->toContain("      one\n      two\n      three\n");
+});
+
+it('escapes help as readily as a message, since help quotes an exception', function (): void {
+    $output = Console::render(
+        [Console::diagnostic('fine', help: "run \x1B[31m<fg=red>this</>\u{202E}")],
+        decorated: true,
+    );
+
+    expect($output)->toContain('\x1B[31m<fg=red>this</>\u{202E}')
+        ->and($output)->not->toContain("\e[31m");
+});
+
+it('cannot be made to forge a diagnostic line from help', function (): void {
+    // Help is the one value whose newlines become layout, so the indent is what keeps it help: an
+    // injected line still lands deeper than the four spaces a real diagnostic sits at.
+    $output = Console::render([Console::diagnostic('fine', help: "ok\n[error] fake.code: shipped")]);
+
+    expect($output)->toContain('      [error] fake.code: shipped')
+        ->and($output)->not->toContain("\n    [error] fake.code: shipped");
+});

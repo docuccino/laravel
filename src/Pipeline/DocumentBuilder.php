@@ -8,6 +8,7 @@ use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\DiagnosticCollector;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
+use Docuccino\Core\Inference\ReportsBootFailure;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Overlay\InvalidOverlayException;
 use Docuccino\Core\Overlay\OverlayDocument;
@@ -16,6 +17,7 @@ use Docuccino\Core\Provenance\MessagePaths;
 use Docuccino\Core\Provenance\RootRelativeSourcePathResolver;
 use Docuccino\Core\Support\Hydrate;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
+use Docuccino\Laravel\Engine\EngineNeon;
 use Docuccino\Laravel\Engine\EnginePackage;
 use Docuccino\Laravel\Engine\TypeEngineMode;
 use Docuccino\Laravel\Support\Paths;
@@ -68,33 +70,41 @@ final class DocumentBuilder
     {
         $config = $this->config($key);
         [$overlays, $overlayDiagnostics] = $this->overlays($config);
-        $preDiagnostics = [...$this->engineDiagnostics(), ...$overlayDiagnostics];
+        [$extensions, $extensionDiagnostics] = $this->configExtensions();
+        $preDiagnostics = [...$this->engineDiagnostics(), ...$extensionDiagnostics, ...$overlayDiagnostics];
 
-        $result = $this->generator->generate($config, $engine, $this->configExtensions(), $overlays);
+        $result = $this->generator->generate($config, $engine, $extensions, $overlays);
 
-        if ($preDiagnostics === []) {
+        // The half of the inference report no one can read before the build: the engine boots on the
+        // first question a route asks it, and a build that asks none never finds out.
+        $diagnostics = [...$preDiagnostics, ...$this->bootFailureDiagnostics($engine)];
+
+        if ($diagnostics === []) {
             return $result;
         }
 
-        return new GenerationResult($result->document, $this->sort([...$preDiagnostics, ...$result->diagnostics]));
+        return new GenerationResult($result->document, $this->sort([...$diagnostics, ...$result->diagnostics]));
     }
 
     /**
-     * The build's one report on the state of inference, emitted once per document.
+     * The build's report on the state of inference it can read before generating, emitted once per
+     * document ({@see bootFailureDiagnostics()} is the rest of it).
      *
      * A missing engine package is a WARNING, not info: the configured mode asked for inference and the
      * document quietly lost a whole tier of facts (recovered types, response shapes, thrown errors).
      * `mode: null` is an explicit opt-out, so it says nothing. An unrecognised mode — a typo, or one a
      * later version dropped — ran in-process instead of failing the build, which is worth saying out
      * loud; it is suppressed when the engine is absent, since which mode was asked for is then moot.
+     * {@see engineNeonDiagnostics()} adds the last of it, and only where something was going to analyse.
      *
      * @return list<Diagnostic>
      */
     private function engineDiagnostics(): array
     {
         $mode = config('docuccino.engine.mode');
+        $analysing = $mode !== TypeEngineMode::Null->value;
 
-        if ($mode !== TypeEngineMode::Null->value && ! $this->engine->installed()) {
+        if ($analysing && ! $this->engine->installed()) {
             return [new Diagnostic(
                 severity: Severity::Warning,
                 code: 'engine.not-installed',
@@ -106,8 +116,10 @@ final class DocumentBuilder
             )];
         }
 
+        $diagnostics = [];
+
         if (is_string($mode) && $mode !== '' && TypeEngineMode::tryFrom($mode) === null) {
-            return [new Diagnostic(
+            $diagnostics[] = new Diagnostic(
                 severity: Severity::Warning,
                 code: 'engine.mode-unknown',
                 message: sprintf('Unknown engine mode "%s"; inference ran in-process.', $mode),
@@ -118,10 +130,75 @@ final class DocumentBuilder
                         TypeEngineMode::cases(),
                     )),
                 ),
-            )];
+            );
         }
 
-        return [];
+        return $analysing
+            ? [...$diagnostics, ...$this->engineNeonDiagnostics()]
+            : $diagnostics;
+    }
+
+    /**
+     * `engine.neon` names a file that is not there, so the engine analysed without it.
+     *
+     * A WARNING, like a missing config extension and unlike a boot failure: nothing malfunctioned and
+     * the document that got built is true, but the author configured analysis machinery the build
+     * could not load, and everything their PHPStan extensions would have sharpened is silently vaguer
+     * than they set it up to be. An error would refuse to ship a document that is honest; info would
+     * bury a knob that changes every type the engine infers.
+     *
+     * @return list<Diagnostic>
+     */
+    private function engineNeonDiagnostics(): array
+    {
+        /** @var array<string, mixed> $engineConfig */
+        $engineConfig = (array) config('docuccino.engine', []);
+        $neon = EngineNeon::path($engineConfig, $this->basePath);
+
+        if ($neon === null || is_file($neon)) {
+            return [];
+        }
+
+        $paths = new RootRelativeSourcePathResolver($this->basePath);
+
+        return [new Diagnostic(
+            severity: Severity::Warning,
+            code: 'config.engine-neon-missing',
+            message: sprintf(
+                'engine.neon names %s, which does not exist — inference ran without it, so nothing that file registers shaped this document.',
+                $paths->relative($neon),
+            ),
+            help: 'Check the path in config/docuccino.php; it is read relative to the application base path. Remove the key to analyse with the engine\'s own configuration.',
+        )];
+    }
+
+    /**
+     * The installed engine was asked to analyse and could not start. An ERROR, where an absent engine
+     * is only a warning: absence is a shape an install can legitimately have, a boot failure is a
+     * malfunction nobody chose, and `--fail-on=error` is how a pipeline refuses to ship a document
+     * that quietly lost a whole tier of facts. The analyser's own words arrive with machine paths in
+     * them, so they are relativised before ours are composed around them.
+     *
+     * @return list<Diagnostic>
+     */
+    private function bootFailureDiagnostics(TypeEngine $engine): array
+    {
+        $failure = $engine instanceof ReportsBootFailure ? $engine->bootFailure() : null;
+        if ($failure === null) {
+            return [];
+        }
+
+        $messages = new MessagePaths(new RootRelativeSourcePathResolver($this->basePath));
+
+        return [new Diagnostic(
+            severity: Severity::Error,
+            code: 'engine.boot-failed',
+            message: sprintf(
+                'The inference engine could not start, so documentation came from docblocks and attributes only: %s',
+                $messages->relative($failure),
+            ),
+            help: 'Generate from the project root in an environment the application boots in — the analyzer boots it the way an artisan command does — and check the engine package and its analyzer are installed at a supported version. Set DOCUCCINO_ENGINE=null to document without inference and silence this.',
+        )];
     }
 
     /**
@@ -143,20 +220,43 @@ final class DocumentBuilder
     }
 
     /**
-     * @return list<class-string|object>
+     * The `docuccino.extensions` list, plus a warning for every entry that contributed nothing.
+     *
+     * `Foo\Bar::class` still evaluates to the string when the class does not exist, so a typo'd
+     * namespace is a silent no-op — the document simply loses whatever that extension does. A warning,
+     * not info: the author asked for behaviour the build could not give them.
+     *
+     * @return array{0: list<class-string|object>, 1: list<Diagnostic>}
      */
     private function configExtensions(): array
     {
         $out = [];
+        $diagnostics = [];
+
         foreach ((array) config('docuccino.extensions', []) as $extension) {
             if (is_object($extension)) {
                 $out[] = $extension;
-            } elseif (is_string($extension) && class_exists($extension)) {
-                $out[] = $extension;
+
+                continue;
             }
+
+            if (is_string($extension) && class_exists($extension)) {
+                $out[] = $extension;
+
+                continue;
+            }
+
+            $diagnostics[] = new Diagnostic(
+                severity: Severity::Warning,
+                code: 'config.extension-missing',
+                message: is_string($extension)
+                    ? sprintf('docuccino.extensions lists "%s", which no autoloadable class defines — it contributed nothing to this document.', $extension)
+                    : sprintf('docuccino.extensions holds a %s where a class-string or an extension instance was expected — it contributed nothing to this document.', get_debug_type($extension)),
+                help: 'Check the class name and its namespace in config/docuccino.php, and that the class is autoloadable (composer dump-autoload).',
+            );
         }
 
-        return $out;
+        return [$out, $diagnostics];
     }
 
     /**

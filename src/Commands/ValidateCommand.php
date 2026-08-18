@@ -31,7 +31,7 @@ final class ValidateCommand extends Command
 
     public function handle(DocumentBuilder $builder, TypeEngine $engine): int
     {
-        if ($this->abortIfDisabled()) {
+        if ($this->abortIfDisabled() || ! $this->validateFailOn()) {
             return self::FAILURE;
         }
 

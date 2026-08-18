@@ -136,11 +136,18 @@ it('serves source=artifact, re-emitting a UIR artifact as OpenAPI', function ():
     @unlink($artifact);
 });
 
-it('serves an empty body for source=artifact when the artifact is missing', function (): void {
+it('warns rather than building when the artifact is missing', function (): void {
     config()->set('docuccino.documents.default.viewer.gate', 'viewApiDocs');
     config()->set('docuccino.documents.default.viewer.source', 'artifact');
-    config()->set('docuccino.documents.default.export.path', sys_get_temp_dir().'/does-not-exist-'.uniqid().'.json');
+    $missing = sys_get_temp_dir().'/does-not-exist-'.uniqid().'.json';
+    config()->set('docuccino.documents.default.export.path', $missing);
     Gate::before(static fn ($user = null): bool => true);
+
+    // `artifact` is chosen so no request ever re-analyses, so the empty body stands — but the log now
+    // names the file and the command that writes it, which is what "the docs page is empty" needed.
+    Log::shouldReceive('warning')->once()->withArgs(
+        static fn (string $message): bool => str_contains($message, $missing) && str_contains($message, 'docuccino:export'),
+    );
 
     expect($this->get('/docs/api.json')->assertOk()->getContent())->toBe('');
 });

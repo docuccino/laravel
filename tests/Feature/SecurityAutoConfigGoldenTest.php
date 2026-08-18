@@ -48,13 +48,7 @@ function securedGolden(string $key, string $file): void
     $config = app(DocumentConfigFactory::class)->make($key, $raw, 'skeleton');
     $document = app(DocumentGenerator::class)->generate($config, app(TypeEngine::class))->document->toArray();
 
-    $emitted = (new UirEmitter)->emit(UirDocument::fromArray($document));
-    $path = dirname(__DIR__).'/Fixtures/golden/'.$file;
-    if (getenv('DOCUCCINO_UPDATE_GOLDEN') === '1') {
-        file_put_contents($path, $emitted);
-    }
-
-    expect($emitted)->toBe(file_get_contents($path));
+    assertGolden($file, (new UirEmitter)->emit(UirDocument::fromArray($document)));
 }
 
 it('emits the public (token-only) document byte-identical to its golden', function (): void {

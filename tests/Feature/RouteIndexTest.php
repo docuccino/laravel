@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
+use Docuccino\Core\Extensions\ResolvedExtensions;
 use Docuccino\Core\Extensions\Schema\ComponentRegistry;
 use Docuccino\Core\Inference\NullTypeEngine;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
@@ -56,9 +57,7 @@ it('locates the route for the host the descriptor names when the index missed', 
         new RouteDescriptor(['GET', 'HEAD'], '/api/zz-locate', domain: $domain),
         $document,
         new NullTypeEngine,
-        [],
-        [],
-        [],
+        new ResolvedExtensions,
         new ComponentRegistry,
     );
 

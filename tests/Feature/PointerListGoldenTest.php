@@ -26,12 +26,8 @@ it('emits a pointer-list problem-details document byte-identical to its committe
     $config = app(DocumentConfigFactory::class)->make('pointer-list', $raw, 'skeleton');
     $emitted = (new UirEmitter)->emit(app(DocumentGenerator::class)->generate($config, app(TypeEngine::class))->document);
 
-    $path = dirname(__DIR__).'/Fixtures/golden/workbench-pointer-list.uir.json';
-    if (getenv('DOCUCCINO_UPDATE_GOLDEN') === '1') {
-        file_put_contents($path, $emitted);
-    }
+    assertGolden('workbench-pointer-list.uir.json', $emitted);
 
-    expect($emitted)->toBe(file_get_contents($path))
-        // The pointer-list 422 shape is present: an `errors` array of {detail, pointer} objects.
-        ->and($emitted)->toContain('pointer');
+    // The pointer-list 422 shape is present: an `errors` array of {detail, pointer} objects.
+    expect($emitted)->toContain('pointer');
 });

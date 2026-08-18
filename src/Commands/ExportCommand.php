@@ -37,7 +37,7 @@ final class ExportCommand extends Command
 
     protected $signature = 'docuccino:export
         {document? : The configured document key (defaults to every document)}
-        {--format= : uir | openapi-3.2 | openapi-3.1 | openapi-3.0 — writes this one format instead of the configured targets}
+        {--format= : uir | openapi-3.2 | openapi-3.1 | openapi-3.0 | postman — writes this one format instead of the configured targets}
         {--out= : Output path (defaults to the matching target, else the document export path)}
         {--fail-on=none : none | warning | error — the severity that makes the command exit non-zero}
         {--provenance=winners : none | winners | full — UIR provenance detail}
@@ -67,9 +67,17 @@ final class ExportCommand extends Command
         });
     }
 
-    /** CLI-input problems: the user's own typing, so plain messages rather than diagnostic codes. */
+    /**
+     * CLI-input problems: the user's own typing, so plain messages rather than diagnostic codes.
+     * Every one of them errors out rather than coercing — an option that quietly means something else
+     * than what was typed ships the wrong artifact, or none of the gate that was asked for.
+     */
     private function validateOptions(DocumentBuilder $builder): bool
     {
+        if (! $this->validateFailOn()) {
+            return false;
+        }
+
         // A typo errors out rather than falling back to OpenAPI 3.2 and shipping the wrong artifact.
         $format = $this->stringOption('format');
         if ($format !== null && ! Formats::supports($format)) {
@@ -84,11 +92,58 @@ final class ExportCommand extends Command
             return false;
         }
 
-        // One --out path can't hold several documents — later ones would clobber earlier ones.
-        if ($this->stringOption('out') !== null && ! is_string($this->argument('document')) && count($builder->documentKeys()) > 1) {
+        $provenance = $this->stringOption('provenance');
+        if ($provenance !== null && ProvenanceLevel::tryFrom($provenance) === null) {
+            $this->error(sprintf(
+                'Unknown --provenance "%s"; expected one of: %s.',
+                $provenance,
+                implode(', ', array_map(static fn (ProvenanceLevel $level): string => $level->value, ProvenanceLevel::cases())),
+            ));
+
+            return false;
+        }
+
+        return $this->validateOut($builder);
+    }
+
+    /** The two ways one `--out` path would have to hold several artifacts at once. */
+    private function validateOut(DocumentBuilder $builder): bool
+    {
+        if ($this->stringOption('out') === null) {
+            return true;
+        }
+
+        $only = $this->argument('document');
+
+        // Several documents — later ones would clobber earlier ones.
+        if (! is_string($only) && count($builder->documentKeys()) > 1) {
             $this->error('--out cannot be used when exporting multiple documents; pass a document argument or configure per-document export.path.');
 
             return false;
+        }
+
+        // Several formats: without --format the run writes EVERY configured target, so each emit would
+        // land on the same path and only the last format would survive it.
+        if ($this->stringOption('format') !== null) {
+            return true;
+        }
+
+        foreach ($builder->documentKeys() as $key) {
+            if (is_string($only) && $key !== $only) {
+                continue;
+            }
+
+            $targets = $builder->config($key)->exportTargets();
+            if (count($targets) > 1) {
+                $this->error(sprintf(
+                    '--out needs --format: documents.%s configures %d export targets (%s), and one path cannot hold them all — only the last format written would survive. Pass --format to pick one, or drop --out to write each target to its configured path.',
+                    $key,
+                    count($targets),
+                    implode(', ', array_map(static fn (ExportTarget $target): string => $target->format, $targets)),
+                ));
+
+                return false;
+            }
         }
 
         return true;
@@ -218,6 +273,7 @@ final class ExportCommand extends Command
 
     private function provenanceLevel(): ProvenanceLevel
     {
+        // Validated up front, so the fallback is only ever the unset flag's default.
         return ProvenanceLevel::tryFrom($this->stringOption('provenance') ?? '') ?? ProvenanceLevel::Winners;
     }
 

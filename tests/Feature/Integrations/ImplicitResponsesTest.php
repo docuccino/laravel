@@ -9,6 +9,7 @@ use Docuccino\Core\Extensions\Context\AttributeSet;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
+use Docuccino\Core\Extensions\ResolvedExtensions;
 use Docuccino\Core\Inference\ActionAnalysis;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Inference\DType\LiteralT;
@@ -59,7 +60,9 @@ function implicitContext(
         attributes: new AttributeSet($attributes),
         engine: $engine ?? new NullTypeEngine,
         document: new DocumentConfig('default', [], authMiddleware: 'auth*', errorResponses: $errorResponses),
-        exceptionMappers: implicitResponseMappers($errorResponses),
+        extensions: new ResolvedExtensions(
+            exceptionToResponse: implicitResponseMappers($errorResponses),
+        ),
         routeBindings: $routeBindings,
         formRequestClass: $formRequestClass,
     );

@@ -9,6 +9,7 @@ use Docuccino\Core\Extensions\Context\AttributeSet;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
+use Docuccino\Core\Extensions\ResolvedExtensions;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Inference\NullTypeEngine;
 use Docuccino\Core\Patch\Contribution;
@@ -28,7 +29,9 @@ function runBodyParameters(array $attributes, ?callable $seedInferred = null): a
         attributes: new AttributeSet($attributes),
         engine: new NullTypeEngine,
         document: new DocumentConfig('default', []),
-        typeMappers: DefaultTypeMappers::all(),
+        extensions: new ResolvedExtensions(
+            typeToSchema: DefaultTypeMappers::all(),
+        ),
     );
 
     $operation = new OperationDraft;

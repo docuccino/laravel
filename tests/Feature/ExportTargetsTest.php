@@ -217,6 +217,46 @@ it('fails without claiming success when a target cannot be written', function ()
         ->assertFailed();
 });
 
+it('refuses --out without --format when the document configures several targets', function (): void {
+    $dir = targetsDir();
+    configureTargets([
+        ['format' => 'openapi-3.2', 'path' => $dir.'/openapi.json'],
+        ['format' => 'openapi-3.1', 'path' => $dir.'/openapi-3.1.json'],
+        ['format' => 'uir', 'path' => $dir.'/api.uir.json'],
+    ]);
+
+    // All three serialisations would land on the one path, and only the last would survive.
+    $this->artisan('docuccino:export', ['--out' => $dir.'/everything.json'])
+        ->expectsOutputToContain('--out needs --format')
+        ->assertFailed();
+
+    expect(glob($dir.'/*'))->toBe([]);
+});
+
+it('takes --out with --format against a multi-target document', function (): void {
+    $dir = targetsDir();
+    configureTargets([
+        ['format' => 'openapi-3.2', 'path' => $dir.'/openapi.json'],
+        ['format' => 'uir', 'path' => $dir.'/api.uir.json'],
+    ]);
+
+    // Naming the format says which of the three artifacts --out is for, so the run is unambiguous.
+    $this->artisan('docuccino:export', ['--format' => 'uir', '--out' => $dir.'/picked.json'])->assertSuccessful();
+
+    expect(file_get_contents($dir.'/picked.json'))->toContain('"uir":')
+        ->and(glob($dir.'/*'))->toBe([$dir.'/picked.json']);
+});
+
+it('takes --out alone when the document configures one target', function (): void {
+    $dir = targetsDir();
+    configureTargets([['format' => 'openapi-3.1', 'path' => $dir.'/openapi-3.1.json']]);
+
+    // One target, one file: the override has nothing to clobber, so it still works with no --format.
+    $this->artisan('docuccino:export', ['--out' => $dir.'/elsewhere.json'])->assertSuccessful();
+
+    expect(file_get_contents($dir.'/elsewhere.json'))->toContain('"openapi": "3.1.1"');
+});
+
 it('rejects --yaml for a format with no YAML serialisation', function (): void {
     $this->artisan('docuccino:export', ['--format' => 'uir', '--yaml' => true, '--out' => targetsDir().'/x.json'])
         ->expectsOutputToContain('--yaml cannot be used with --format=uir')

@@ -39,10 +39,5 @@ it('emits a secured document byte-identical to its committed golden', function (
     $config = app(DocumentConfigFactory::class)->make('secured', $raw, 'skeleton');
     $emitted = (new UirEmitter)->emit(app(DocumentGenerator::class)->generate($config, app(TypeEngine::class))->document);
 
-    $path = dirname(__DIR__).'/Fixtures/golden/workbench-secured.uir.json';
-    if (getenv('DOCUCCINO_UPDATE_GOLDEN') === '1') {
-        file_put_contents($path, $emitted);
-    }
-
-    expect($emitted)->toBe(file_get_contents($path));
+    assertGolden('workbench-secured.uir.json', $emitted);
 });

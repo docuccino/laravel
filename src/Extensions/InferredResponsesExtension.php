@@ -174,7 +174,7 @@ final class InferredResponsesExtension implements OperationExtension
                     $fqcn,
                 ),
                 routeSignature: $context->route->signature(),
-                help: 'Build the payload where the analyser can see it (return response()->json($payload) from the action itself rather than handing back a collaborator\'s response), or declare the body with #[Response(type: YourPayload::class)].',
+                help: 'Build the payload where the analyzer can see it (return response()->json($payload) from the action itself rather than handing back a collaborator\'s response), or declare the body with #[Response(type: YourPayload::class)].',
             ));
         }
     }

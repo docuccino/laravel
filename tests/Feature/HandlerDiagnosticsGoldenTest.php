@@ -46,15 +46,11 @@ it('emits the callback diagnostics byte-identical to their committed golden', fu
 
     $emitted = (new UirEmitter)->emit(UirDocument::fromArray($document));
 
-    $path = dirname(__DIR__).'/Fixtures/golden/handler-diagnostics.uir.json';
-    if (getenv('DOCUCCINO_UPDATE_GOLDEN') === '1') {
-        file_put_contents($path, $emitted);
-    }
+    assertGolden('handler-diagnostics.uir.json', $emitted);
 
-    expect($emitted)->toBe(file_get_contents($path))
-        // What the golden is for, said out loud: neither the app's base path nor the checkout above it
-        // may appear anywhere in those bytes, and both labels still name a file and a line.
-        ->and($emitted)->not->toContain(base_path())
+    // What the golden is for, said out loud: neither the app's base path nor the checkout above it
+    // may appear anywhere in those bytes, and both labels still name a file and a line.
+    expect($emitted)->not->toContain(base_path())
         ->and($emitted)->not->toContain(dirname(__DIR__, 4))
         ->and($emitted)->toContain('tests/Fixtures/InferredHandler/PortableCallbackLabels.php');
 });

@@ -65,11 +65,5 @@ it('emits the Wave-D auth document byte-identical to its golden', function (): v
     $config = app(DocumentConfigFactory::class)->make('wave-d-auth', $raw, 'skeleton');
     $document = app(DocumentGenerator::class)->generate($config, app(TypeEngine::class))->document->toArray();
 
-    $emitted = (new UirEmitter)->emit(UirDocument::fromArray($document));
-    $path = dirname(__DIR__).'/Fixtures/golden/workbench-auth.uir.json';
-    if (getenv('DOCUCCINO_UPDATE_GOLDEN') === '1') {
-        file_put_contents($path, $emitted);
-    }
-
-    expect($emitted)->toBe(file_get_contents($path));
+    assertGolden('workbench-auth.uir.json', (new UirEmitter)->emit(UirDocument::fromArray($document)));
 });

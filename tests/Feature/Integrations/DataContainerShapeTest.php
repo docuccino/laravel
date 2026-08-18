@@ -8,6 +8,7 @@ use Docuccino\Core\Extensions\Context\AttributeSet;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
+use Docuccino\Core\Extensions\ResolvedExtensions;
 use Docuccino\Core\Extensions\Validation\RuleSet;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 use Docuccino\Core\Inference\ActionRef;
@@ -279,8 +280,10 @@ it('reaches the request body through the extension itself', function (): void {
         attributes: new AttributeSet,
         engine: new StubTypeEngine(classes: [ContainerShapeData::class => $metadata]),
         document: new DocumentConfig('default', []),
-        typeMappers: DefaultTypeMappers::all(),
-        ruleTransformers: ValidationIntegration::transformers(),
+        extensions: new ResolvedExtensions(
+            typeToSchema: DefaultTypeMappers::all(),
+            ruleTransformers: ValidationIntegration::transformers(),
+        ),
     );
 
     (new DataRequestExtension)->handle($operation = new OperationDraft, $context);

@@ -9,6 +9,7 @@ use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\RepresentationPolicy;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
+use Docuccino\Core\Extensions\ResolvedExtensions;
 use Docuccino\Core\Extensions\Schema\ComponentRegistry;
 use Docuccino\Core\Extensions\Schema\SchemaConverter;
 use Docuccino\Core\Extensions\Validation\DefaultValidationRulesToSchema;
@@ -218,8 +219,10 @@ it('keys the fragment on the base class that answered the attribute', function (
         attributes: new AttributeSet,
         engine: new StubTypeEngine(classes: [InheritedMergeRulesData::class => $metadata]),
         document: new DocumentConfig('default', []),
-        typeMappers: DefaultTypeMappers::all(),
-        ruleTransformers: ValidationIntegration::transformers(),
+        extensions: new ResolvedExtensions(
+            typeToSchema: DefaultTypeMappers::all(),
+            ruleTransformers: ValidationIntegration::transformers(),
+        ),
     );
 
     (new DataRequestExtension)->handle(new OperationDraft, $context);

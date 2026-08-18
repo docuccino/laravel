@@ -17,6 +17,9 @@ arch('built-in integrations consume only the public extension surface')
         // Schema + Validation are allow-listed per class, not per namespace: both contain an @internal
         // class (Schema\SchemaConverter, Validation\FieldNode) the frozen extension-author surface must
         // not silently expose. Adding a class here widens the public surface — never add an @internal one.
+        // This scan sees IMPORTS, so it cannot see an internal type reached through a public method's
+        // return value (`$context->converter()->…` imports nothing); core's boundary test guards that
+        // half — it is why the converter is handed out as Contracts\TypeSchemaConverter.
         'Docuccino\Core\Extensions\Schema\ComponentHoist',
         'Docuccino\Core\Extensions\Schema\ComponentRegistry',
         // Same exemption as EnumReflection beside it, and for the same reason: the one answer to "which
@@ -83,7 +86,7 @@ arch('built-in integrations never reach into core internals or adapter wiring')
         'Docuccino\Core\Emit',
         'Docuccino\Core\Canonical',
         'Docuccino\Core\Overlay',
-        'Docuccino\Core\Validation',
+        'Docuccino\Core\SpecValidation',
         'Docuccino\Core\Pipeline',
         'Docuccino\Laravel\Pipeline',
         'Docuccino\Laravel\Registry',

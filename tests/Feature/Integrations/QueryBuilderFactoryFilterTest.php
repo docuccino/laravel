@@ -9,6 +9,7 @@ use Docuccino\Core\Extensions\Context\AttributeSet;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
+use Docuccino\Core\Extensions\ResolvedExtensions;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParametersExtension;
@@ -36,7 +37,9 @@ function runFactoryFilters(string $chain): array
         document: new DocumentConfig('default', []),
         // EnumSchema (backing values + x-enumDescriptions) is an adapter mapper the production pipeline
         // registers ahead of the core case-names mapper — mirrored here so enums type as they do in prod.
-        typeMappers: [new EnumSchema, ...DefaultTypeMappers::all()],
+        extensions: new ResolvedExtensions(
+            typeToSchema: [new EnumSchema, ...DefaultTypeMappers::all()],
+        ),
     );
 
     (new QueryBuilderParametersExtension)->handle($operation = new OperationDraft, $context);

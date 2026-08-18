@@ -16,3 +16,55 @@ arch('the adapter never imports the inference engine')
 it('imports no analysis toolchain at all', function (): void {
     expect(importsMatching('laravel', '/^(PHPStan|Larastan)\\\\/'))->toBe([]);
 });
+
+/**
+ * The scan above is the only reader of that rule, so it owes the same grammar PHP has: a line-oriented
+ * `^use …` regex sees imports and nothing else, and an analyser named in an expression, an attribute, a
+ * type position or a group import would fatal exactly the same production app while reading green. The
+ * other half is that a name in a STRING is NOT a reference — it is the sanctioned probe for an optional
+ * package (`EnginePackage::BUILDER`) — and neither is one in a comment.
+ */
+it('sees an analyser named anywhere in code, and only in code', function (): void {
+    $directory = sys_get_temp_dir().'/docuccino-reference-scan-'.bin2hex(random_bytes(8));
+    mkdir($directory.'/Nested', 0755, true);
+    file_put_contents($directory.'/Nested/Sneaky.php', <<<'PHP'
+        <?php
+
+        namespace Docuccino\Laravel\Nested;
+
+        use Illuminate\Routing\Route;
+        use Larastan\Grouped\{Alpha, Beta\Gamma as Renamed};
+
+        final class Sneaky
+        {
+            public const string PROBE = 'PHPStan\Analyser\Scope';
+
+            public function __construct(private readonly \PHPStan\Reflection\ReflectionProvider $provider) {}
+
+            #[\Larastan\Marker]
+            public function run(Route $route): string
+            {
+                // \PHPStan\Node\Commented is not a reference.
+                return \PHPStan\Type\ObjectType::class;
+            }
+        }
+        PHP);
+
+    try {
+        expect(referencesIn($directory, '/^(PHPStan|Larastan)\\\\/'))->toBe([
+            'Nested/Sneaky.php: Larastan\Grouped\Alpha',
+            'Nested/Sneaky.php: Larastan\Grouped\Beta\Gamma',
+            'Nested/Sneaky.php: Larastan\Marker',
+            'Nested/Sneaky.php: PHPStan\Reflection\ReflectionProvider',
+            'Nested/Sneaky.php: PHPStan\Type\ObjectType',
+        ]);
+
+        // The file's own namespace is not something it imports, and a plain import still counts.
+        expect(referencesIn($directory, '/^(Docuccino|Illuminate)\\\\/'))
+            ->toBe(['Nested/Sneaky.php: Illuminate\Routing\Route']);
+    } finally {
+        unlink($directory.'/Nested/Sneaky.php');
+        rmdir($directory.'/Nested');
+        rmdir($directory);
+    }
+});

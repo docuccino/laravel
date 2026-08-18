@@ -63,12 +63,7 @@ it('produces the admin document byte-identical to its committed golden', functio
 
     $emitted = (new UirEmitter)->emit(UirDocument::fromArray($admin));
 
-    $path = dirname(__DIR__).'/Fixtures/golden/workbench-admin.uir.json';
-    if (getenv('DOCUCCINO_UPDATE_GOLDEN') === '1') {
-        file_put_contents($path, $emitted);
-    }
-
-    expect($emitted)->toBe(file_get_contents($path));
+    assertGolden('workbench-admin.uir.json', $emitted);
 });
 
 it('exports every document by default (export-all)', function (): void {

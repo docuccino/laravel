@@ -39,12 +39,7 @@ it('emits the flagship QB list document byte-identical to its committed golden',
     $config = app(DocumentConfigFactory::class)->make('qb-list', $raw, 'skeleton');
     $emitted = (new UirEmitter)->emit(app(DocumentGenerator::class)->generate($config, app(TypeEngine::class))->document);
 
-    $path = dirname(__DIR__).'/Fixtures/golden/workbench-qb-list.uir.json';
-    if (getenv('DOCUCCINO_UPDATE_GOLDEN') === '1') {
-        file_put_contents($path, $emitted);
-    }
-
-    expect($emitted)->toBe(file_get_contents($path));
+    assertGolden('workbench-qb-list.uir.json', $emitted);
 
     // Spot-checks over the emitted bytes: the QB 200 envelope + the custom-terminal page params land.
     $document = json_decode($emitted, true, flags: JSON_THROW_ON_ERROR);

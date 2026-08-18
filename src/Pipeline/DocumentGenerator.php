@@ -17,6 +17,7 @@ use Docuccino\Core\Extensions\ResolvedExtensions;
 use Docuccino\Core\Extensions\Schema\ComponentNames;
 use Docuccino\Core\Extensions\Schema\ComponentRegistry;
 use Docuccino\Core\Identity\IdentityGenerator;
+use Docuccino\Core\Inference\ReportsBootFailure;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Overlay\OverlayDocument;
 use Docuccino\Core\Patch\Contribution;
@@ -27,7 +28,7 @@ use Docuccino\Core\Pipeline\OperationFragment;
 use Docuccino\Core\Pipeline\OperationPipeline;
 use Docuccino\Core\Provenance\MessagePaths;
 use Docuccino\Core\Provenance\RootRelativeSourcePathResolver;
-use Docuccino\Core\Validation\Validator;
+use Docuccino\Core\SpecValidation\Validator;
 use Docuccino\Laravel\Registry\ConfigDiagnostics;
 use Docuccino\Laravel\Registry\DefaultExtensions;
 use Docuccino\Laravel\Registry\ExtensionRegistry;
@@ -282,16 +283,9 @@ final class DocumentGenerator
                 $descriptor,
                 $document,
                 $engine,
-                $resolved->typeToSchema,
-                $resolved->exceptionToResponse,
-                $resolved->ruleTransformers,
+                $resolved,
                 $components,
                 $method,
-                $resolved->responseAnalysisTargets,
-                $resolved->responseStatusResolvers,
-                $resolved->payloadMediaTypeResolvers,
-                $resolved->routeBindingSchemaResolvers,
-                $resolved->routeBindingFieldSchemaResolvers,
             );
 
             if ($context === null) {
@@ -316,7 +310,9 @@ final class DocumentGenerator
             $fragment = new OperationFragment($path, $method, $frozen, $signature, $diagnostics, $referencedSchemas, $referencedSchemaIds, $referencedResponses, $context->actionRef->class, $referencedSchemaBases, $referencedSecuritySchemes, $referencedResponseBases, $referencedSchemeBases, $context->notes()->all());
             // Trace-derived dependency files widen the key, so a deep chain invalidates when any file
             // it walked changes (design §10 seam).
-            $this->cache->put($cacheKey, $fragment, $context->dependencyFiles());
+            if (! self::degraded($engine)) {
+                $this->cache->put($cacheKey, $fragment, $context->dependencyFiles());
+            }
 
             return $fragment;
         } catch (Throwable $exception) {
@@ -324,6 +320,23 @@ final class DocumentGenerator
 
             return $this->onFailure($descriptor, $document, $documentId, $path, $method, $exception->getMessage(), $bag);
         }
+    }
+
+    /**
+     * Whether the engine answering this build turned out to be a stand-in for one that could not
+     * boot — in which case its fragments must not be stored.
+     *
+     * {@see BuildFingerprint} names the engine before the first route, and a boot fails on the first
+     * question a route asks, so a stored fragment would file a docblock-only answer under the real
+     * analyser's key: fix the environment, change no file, and the next build serves the degradation
+     * back warm. Not storing beats re-keying the degradation because a fragment records what the
+     * engine ANSWERED, and what the analysed code says never depended on whether the analyser could
+     * run today. Fragments written earlier in this build consumed no answer — nothing had woken the
+     * engine yet — so they stay valid, and only what would have been degraded goes unstored.
+     */
+    private static function degraded(TypeEngine $engine): bool
+    {
+        return $engine instanceof ReportsBootFailure && $engine->bootFailure() !== null;
     }
 
     /**

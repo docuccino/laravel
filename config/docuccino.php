@@ -250,6 +250,10 @@ return [
         // modular `Modules\…` root included — is already loaded so helpers there resolve; widen this
         // only to broaden that descent. Vendor code is never analysed.
         'project_paths' => ['app'],
+        // Your own PHPStan config file, included by the one the engine writes, so the extensions and
+        // stubs you already maintain shape your documentation too. Relative to the base path; a file
+        // that isn't there warns and inference runs without it.
+        // 'neon' => 'phpstan.neon',
     ],
 
     /*

@@ -36,6 +36,35 @@ it('does not build its engine until something asks it a question', function (): 
     expect($built)->toBe(1);
 });
 
+it('reports a boot failure only once the engine it wraps has actually tried', function (): void {
+    $built = 0;
+    $engine = new LazyTypeEngine(function () use (&$built): TypeEngine {
+        $built++;
+
+        return new NullTypeEngine('the app would not boot');
+    }, EnginePackage::BUILDER);
+
+    // Asking is not a question for the engine: a boot that has not happened cannot have failed.
+    expect($engine->bootFailure())->toBeNull()
+        ->and($built)->toBe(0);
+
+    $engine->classMetadata(new ClassRef('App\\Data'));
+
+    expect($engine->bootFailure())->toBe('the app would not boot')
+        ->and($built)->toBe(1);
+});
+
+it('reports nothing for an engine that booted, or one that cannot fail', function (): void {
+    $stub = new LazyTypeEngine(static fn (): TypeEngine => new StubTypeEngine, StubTypeEngine::class);
+    $stub->classMetadata(new ClassRef('App\\Data'));
+
+    $null = new LazyTypeEngine(static fn (): TypeEngine => new NullTypeEngine, NullTypeEngine::class);
+    $null->classMetadata(new ClassRef('App\\Data'));
+
+    expect($stub->bootFailure())->toBeNull()
+        ->and($null->bootFailure())->toBeNull();
+});
+
 it('builds its engine once and forwards every method to it', function (): void {
     $built = 0;
     $engine = new LazyTypeEngine(function () use (&$built): TypeEngine {

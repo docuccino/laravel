@@ -6,6 +6,7 @@ namespace Docuccino\Laravel\Pipeline;
 
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Support\Json;
+use Docuccino\Laravel\Engine\EngineNeon;
 use Docuccino\Laravel\Engine\EnginePackage;
 use Docuccino\Laravel\Engine\LazyTypeEngine;
 
@@ -19,6 +20,12 @@ use Docuccino\Laravel\Engine\LazyTypeEngine;
  *
  * `engine.memory_limit` is the one key deliberately left out: it is a process ceiling that cannot
  * change a documented byte, and `--memory-limit` would otherwise cost a full rebuild each way.
+ * `engine.neon` goes in twice over — the path with the rest of the bag, and the file's CONTENT — since
+ * an extension it registers can change any type the engine infers without the path ever moving.
+ *
+ * This names the engine that WILL answer, which a build discovers to be wrong only if that engine
+ * fails to boot — later than any key can be computed. {@see DocumentGenerator::degraded()} owns what
+ * happens then.
  *
  * @internal
  */
@@ -46,6 +53,7 @@ final readonly class BuildFingerprint
             $engine instanceof LazyTypeEngine ? $engine->identity() : $engine::class,
             $this->engine->installed() ? 'installed' : 'absent',
             Json::stable($config),
+            EngineNeon::digest($this->engineConfig, $this->basePath),
             $this->lockDigest(),
         ]));
     }

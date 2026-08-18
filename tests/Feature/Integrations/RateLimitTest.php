@@ -10,6 +10,7 @@ use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Extensions\Contracts\ExceptionToResponse;
+use Docuccino\Core\Extensions\ResolvedExtensions;
 use Docuccino\Core\Extensions\Schema\ComponentRegistry;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Inference\NullTypeEngine;
@@ -204,7 +205,9 @@ function rateLimited429(string $errorResponses, array $mappers): array
         attributes: new AttributeSet,
         engine: new NullTypeEngine,
         document: new DocumentConfig('default', [], errorResponses: $errorResponses),
-        exceptionMappers: $mappers,
+        extensions: new ResolvedExtensions(
+            exceptionToResponse: $mappers,
+        ),
         components: $components,
     );
 

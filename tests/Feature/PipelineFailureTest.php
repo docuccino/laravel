@@ -37,6 +37,26 @@ it('honours the --fail-on matrix against the broken route', function (string $fa
     'error exits non-zero' => ['error', true],
 ]);
 
+it('rejects an unknown --fail-on rather than quietly never failing', function (string $command): void {
+    app()->instance(TypeEngine::class, WorkbenchEngine::make());
+
+    // The broken route makes the run fail under `warning` and `error`; a typo that coerced to "none"
+    // would exit 0 here and take the CI gate down with it.
+    $this->artisan($command, ['--fail-on' => 'eror'])
+        ->expectsOutputToContain('Unknown --fail-on "eror"; expected one of: none, warning, error.')
+        ->assertFailed();
+})->with(['docuccino:export', 'docuccino:validate']);
+
+it('treats a valueless --fail-on as the default', function (): void {
+    app()->instance(TypeEngine::class, WorkbenchEngine::make());
+    $out = sys_get_temp_dir().'/docuccino-failon-'.uniqid().'.json';
+
+    // `--fail-on` with nothing after it is not a typo, so it stays what leaving it off means.
+    $this->artisan('docuccino:export', ['--out' => $out, '--fail-on' => null])->assertSuccessful();
+
+    @unlink($out);
+});
+
 it('fails validation when a transformer corrupts the document into a schema violation', function (): void {
     app()->instance(TypeEngine::class, WorkbenchEngine::make());
 

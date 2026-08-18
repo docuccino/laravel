@@ -8,6 +8,7 @@ use Docuccino\Core\Extensions\Context\AttributeSet;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
+use Docuccino\Core\Extensions\ResolvedExtensions;
 use Docuccino\Core\Extensions\Validation\RuleSet;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Inference\ClassMetadata;
@@ -39,8 +40,10 @@ function customRuleContext(string $symbol, string $snippet): RouteContext
         attributes: new AttributeSet,
         engine: new StubTypeEngine(traces: [$symbol => RulesTraceScript::forPhp($snippet)]),
         document: new DocumentConfig('default', []),
-        typeMappers: DefaultTypeMappers::all(),
-        ruleTransformers: ValidationIntegration::transformers(),
+        extensions: new ResolvedExtensions(
+            typeToSchema: DefaultTypeMappers::all(),
+            ruleTransformers: ValidationIntegration::transformers(),
+        ),
     );
 }
 

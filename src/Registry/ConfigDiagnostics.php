@@ -7,6 +7,7 @@ namespace Docuccino\Laravel\Registry;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
+use Docuccino\Core\Support\Hydrate;
 use Docuccino\Laravel\Config\ConfigPaths;
 
 /**
@@ -15,6 +16,8 @@ use Docuccino\Laravel\Config\ConfigPaths;
  *
  * - An `enabled` switch on an always-on producer. Those have no {@see IntegrationToggles} entry, so the
  *   switch does nothing (problem_details is driven by the `error_responses` preset instead).
+ * - An `integrations.<key>` bag naming neither a toggle nor an always-on producer — a typo, so the
+ *   whole bag under it is read by nobody.
  * - An unknown `tags.default_strategy`, which {@see DocumentConfig::tagDefaultStrategy()} coerces to
  *   `controller`.
  * - A `tags.definitions` `parent` that {@see DocumentConfig::tagDefinitions()} dropped, because it
@@ -50,6 +53,21 @@ final class ConfigDiagnostics
                     ),
                 );
             }
+        }
+
+        foreach (self::unknownIntegrations($document) as $key) {
+            // Info, like its neighbours here: nothing is wrong with the document that got built, and
+            // this also fires on every viewer request and cache warm, where a louder severity would be
+            // noise. The switch it names is still the one thing that would change the output.
+            $diagnostics[] = new Diagnostic(
+                severity: Severity::Info,
+                code: 'config.unknown-integration',
+                message: sprintf(
+                    'integrations.%s names no integration — nothing reads that bag, so its settings do nothing.',
+                    $key,
+                ),
+                help: self::integrationHelp($key),
+            );
         }
 
         $strategy = $document->tags['default_strategy'] ?? null;
@@ -99,5 +117,66 @@ final class ConfigDiagnostics
         }
 
         return $diagnostics;
+    }
+
+    /**
+     * The `integrations.*` keys nothing reads, in config order.
+     *
+     * @return list<string>
+     */
+    private static function unknownIntegrations(DocumentConfig $document): array
+    {
+        $known = self::knownIntegrations();
+        $unknown = [];
+
+        foreach (array_keys(Hydrate::map($document->raw['integrations'] ?? null)) as $key) {
+            if (! in_array((string) $key, $known, true)) {
+                $unknown[] = (string) $key;
+            }
+        }
+
+        return $unknown;
+    }
+
+    /**
+     * Every key an `integrations` bag can carry: the toggle table plus the always-on producers.
+     *
+     * @return list<string>
+     */
+    private static function knownIntegrations(): array
+    {
+        return [...array_keys(IntegrationToggles::descriptors()), ...self::ALWAYS_ON];
+    }
+
+    /** A near miss is almost always a typo, so name the one key they meant rather than all sixteen. */
+    private static function integrationHelp(string $key): string
+    {
+        $nearest = self::nearest($key);
+
+        return $nearest !== null
+            ? sprintf('Did you mean integrations.%s?', $nearest)
+            : sprintf('Valid keys are: %s.', implode(', ', self::knownIntegrations()));
+    }
+
+    /** The closest known key within a few edits, or null when the name is nothing like any of them. */
+    private static function nearest(string $key): ?string
+    {
+        // levenshtein() is byte-wise and cheap; a key long enough to make that a bad idea is not a typo.
+        if (strlen($key) > 64) {
+            return null;
+        }
+
+        $best = null;
+        $distance = 4;
+
+        foreach (self::knownIntegrations() as $known) {
+            $candidate = levenshtein(strtolower($key), $known);
+            if ($candidate < $distance) {
+                $best = $known;
+                $distance = $candidate;
+            }
+        }
+
+        return $best;
     }
 }

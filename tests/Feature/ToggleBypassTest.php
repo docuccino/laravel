@@ -99,10 +99,12 @@ function contextWithChains(
         attributes: new AttributeSet,
         engine: new NullTypeEngine,
         document: new DocumentConfig('default', []),
-        responseAnalysisTargets: $responseAnalysisTargets,
-        responseStatusResolvers: $responseStatusResolvers,
-        payloadMediaTypeResolvers: $payloadMediaTypeResolvers,
-        routeBindingSchemaResolvers: $routeBindingSchemaResolvers,
+        extensions: new ResolvedExtensions(
+            responseAnalysisTargets: $responseAnalysisTargets,
+            responseStatusResolvers: $responseStatusResolvers,
+            payloadMediaTypeResolvers: $payloadMediaTypeResolvers,
+            routeBindingSchemaResolvers: $routeBindingSchemaResolvers,
+        ),
     );
 }
 

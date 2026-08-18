@@ -71,7 +71,12 @@ use Throwable;
  */
 final class DocuccinoServiceProvider extends PackageServiceProvider
 {
-    public const string VERSION = '0.1.0';
+    /**
+     * The released version of this package, published as `x-docuccino.generator.version` and keyed
+     * into the fragment cache's tool version. Written by the release workflow, never by hand — see
+     * RELEASING.md; the golden comparison normalises this one member, so a bump regenerates nothing.
+     */
+    public const string VERSION = '0.5.1';
 
     public function configurePackage(Package $package): void
     {
@@ -316,7 +321,8 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
 
     /**
      * The installed source reference of this package (a commit hash for a dev/path checkout), for the
-     * fragment cache's tool version ONLY — never for the generator version, whose bytes are locked.
+     * fragment cache's tool version ONLY — never for the generator version, which names a release and
+     * would otherwise publish a commit hash to whoever reads the document.
      * The app's `composer.lock` already keys the cache, so a released upgrade invalidates fragments;
      * a checkout of Docuccino's own source does not appear there at all, and that is the maintainer's
      * dev loop. Empty when Composer's runtime API can't answer, which is back to keying on the version

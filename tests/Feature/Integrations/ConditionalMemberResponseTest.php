@@ -7,6 +7,7 @@ use Docuccino\Core\Extensions\Context\AttributeSet;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
+use Docuccino\Core\Extensions\ResolvedExtensions;
 use Docuccino\Core\Inference\ActionAnalysis;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Inference\ClassMetadata;
@@ -71,7 +72,9 @@ function conditionalMemberBody(string $method): array
         attributes: new AttributeSet,
         engine: $engine,
         document: new DocumentConfig('default', []),
-        typeMappers: [new DataSchema, ...DefaultTypeMappers::all()],
+        extensions: new ResolvedExtensions(
+            typeToSchema: [new DataSchema, ...DefaultTypeMappers::all()],
+        ),
     );
 
     $draft = HandlerResponseBuilder::build(

@@ -12,8 +12,8 @@ namespace Docuccino\Laravel\Integrations\RateLimit;
  * The headers say what they MEAN, never what this route's limit happens to be. A documented number
  * duplicates what the app's own prose says, goes stale the moment somebody edits the middleware, and
  * makes a rate-limit tweak rewrite bytes — firing the semantic diff — across operations whose contract
- * did not change. It also splits an otherwise-identical 429 into `Error429`, `Error429_2`, … one per
- * distinct limit. The live response headers are authoritative, and a client learns the real numbers from
+ * did not change. It also splits an otherwise-identical 429 into a component per distinct limit, instead
+ * of the one `TooManyRequests` every throttled route shares. The live response headers are authoritative, and a client learns the real numbers from
  * its first call. An app that genuinely wants a number in its published spec can state one in an overlay.
  *
  * The `{message}` body is only the fallback: the extension prefers whatever the error-response chain

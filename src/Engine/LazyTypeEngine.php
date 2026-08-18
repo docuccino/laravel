@@ -10,6 +10,7 @@ use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Inference\CallableRef;
 use Docuccino\Core\Inference\ClassMetadata;
 use Docuccino\Core\Inference\ClassRef;
+use Docuccino\Core\Inference\ReportsBootFailure;
 use Docuccino\Core\Inference\TraceReport;
 use Docuccino\Core\Inference\TraceVisitor;
 use Docuccino\Core\Inference\TypeEngine;
@@ -26,7 +27,7 @@ use Docuccino\Core\Inference\TypeEngine;
  *
  * @internal
  */
-final class LazyTypeEngine implements TypeEngine
+final class LazyTypeEngine implements ReportsBootFailure, TypeEngine
 {
     private ?TypeEngine $engine = null;
 
@@ -43,6 +44,15 @@ final class LazyTypeEngine implements TypeEngine
     public function identity(): string
     {
         return $this->identity;
+    }
+
+    /**
+     * What the built engine reports — null while nothing has asked a question, since a boot that has
+     * not happened cannot have failed. Asking is never itself a reason to build one.
+     */
+    public function bootFailure(): ?string
+    {
+        return $this->engine instanceof ReportsBootFailure ? $this->engine->bootFailure() : null;
     }
 
     public function analyzeAction(ActionRef $action): ActionAnalysis

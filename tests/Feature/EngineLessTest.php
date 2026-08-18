@@ -26,7 +26,9 @@ it('documents from docblocks and attributes with no engine installed, and warns 
     $warnings = diagnosticsCoded($result->diagnostics, 'engine.not-installed');
     expect($warnings)->toHaveCount(1)
         ->and($warnings[0]->severity->value)->toBe('warning')
-        ->and($warnings[0]->help)->toContain('composer require --dev docuccino/inference-phpstan');
+        ->and($warnings[0]->help)->toContain('composer require --dev docuccino/inference-phpstan')
+        // An engine that was never there did not fail to boot: that is a different report entirely.
+        ->and(diagnosticsCoded($result->diagnostics, 'engine.boot-failed'))->toBe([]);
 
     // The attribute + docblock tiers are untouched: WidgetController::store carries its summary in a
     // docblock, its query parameter and its 201 body (through the core type grammar) in attributes.

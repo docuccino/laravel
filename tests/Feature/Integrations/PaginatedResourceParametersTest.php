@@ -11,6 +11,7 @@ use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
+use Docuccino\Core\Extensions\ResolvedExtensions;
 use Docuccino\Core\Inference\ActionAnalysis;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Inference\DType\ClassT;
@@ -62,7 +63,9 @@ function runPaginatedResourceParameters(
         attributes: new AttributeSet($attributes),
         engine: $engine,
         document: new DocumentConfig('default', [], raw: ['integrations' => $integrations]),
-        typeMappers: DefaultTypeMappers::all(),
+        extensions: new ResolvedExtensions(
+            typeToSchema: DefaultTypeMappers::all(),
+        ),
     );
 
     $operation = new OperationDraft;

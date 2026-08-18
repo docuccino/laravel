@@ -82,6 +82,32 @@ it('changes with an output-shaping engine option', function (string $key, mixed 
     'project_paths' => ['project_paths', ['app', 'modules']],
 ]);
 
+it('follows what the user neon SAYS, not just where it points', function (): void {
+    // An extension registered in that file can change any type the engine infers, and editing it
+    // moves no analysed file and no config value — so the path alone would serve stale fragments.
+    $engine = new NullTypeEngine;
+    $root = sys_get_temp_dir().'/docuccino-neon-key-'.uniqid('', true);
+    mkdir($root, 0o755, true);
+    $config = ['mode' => 'in-process', 'neon' => 'phpstan.neon'];
+
+    $unconfigured = buildFingerprint(['mode' => 'in-process'], basePath: $root)->digest($engine);
+    // Configured but not yet written: the key already moved, because the path is in the config bag.
+    $configured = buildFingerprint($config, basePath: $root)->digest($engine);
+
+    file_put_contents($root.'/phpstan.neon', "services:\n");
+    $written = buildFingerprint($config, basePath: $root)->digest($engine);
+
+    file_put_contents($root.'/phpstan.neon', "services:\n    - App\\Docs\\OrderTotalExtension\n");
+    $edited = buildFingerprint($config, basePath: $root)->digest($engine);
+
+    expect($unconfigured)->not->toBe($configured)
+        ->and($configured)->not->toBe($written)
+        ->and($written)->not->toBe($edited);
+
+    @unlink($root.'/phpstan.neon');
+    @rmdir($root);
+});
+
 it('ignores the memory limit, which cannot change a documented byte', function (): void {
     $engine = new NullTypeEngine;
 

@@ -73,12 +73,7 @@ it('emits the page-size document byte-identical to its committed golden', functi
     $config = app(DocumentConfigFactory::class)->make('page-size', $raw, 'skeleton');
     $emitted = (new UirEmitter)->emit(app(DocumentGenerator::class)->generate($config, app(TypeEngine::class))->document);
 
-    $path = dirname(__DIR__).'/Fixtures/golden/workbench-page-size.uir.json';
-    if (getenv('DOCUCCINO_UPDATE_GOLDEN') === '1') {
-        file_put_contents($path, $emitted);
-    }
-
-    expect($emitted)->toBe(file_get_contents($path));
+    assertGolden('workbench-page-size.uir.json', $emitted);
 
     // Spot-checks over the emitted bytes, so a reader of this test sees what the golden locks.
     $document = json_decode($emitted, true, flags: JSON_THROW_ON_ERROR);

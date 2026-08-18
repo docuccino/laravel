@@ -39,13 +39,14 @@ final class DiagnosticConsole extends Command
     }
 
     /** A warning carrying whatever a test needs to see printed. */
-    public static function diagnostic(string $message, ?string $routeSignature = null, string $code = 'demo.code'): Diagnostic
+    public static function diagnostic(string $message, ?string $routeSignature = null, string $code = 'demo.code', ?string $help = null): Diagnostic
     {
         return new Diagnostic(
             severity: Severity::Warning,
             code: $code,
             message: $message,
             routeSignature: $routeSignature,
+            help: $help,
         );
     }
 }
