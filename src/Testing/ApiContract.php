@@ -9,6 +9,7 @@ use Docuccino\Core\Contract\ContractIndex;
 use Docuccino\Core\Contract\ContractMessages;
 use Docuccino\Core\Contract\Coverage\CoverageReport;
 use Docuccino\Core\Contract\Exchange;
+use Docuccino\Laravel\Support\ArtifactLocator;
 use Docuccino\Laravel\Testing\Contracts\ContractObserver;
 use Illuminate\Container\Container;
 use Illuminate\Http\Request;
@@ -19,7 +20,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * The suite-wide entry point for contract testing: which artifact the assertions read, who observes
- * each exchange, and what the run covered.
+ * each exchange, and what this process covered.
  *
  * Nothing here is wired into the service provider, and nothing in the provider's boot path reaches it.
  * A production install never loads this class, its `illuminate/testing` and PHPUnit imports, or the
@@ -80,6 +81,20 @@ final class ApiContract
         self::observe($recorder);
 
         return $recorder;
+    }
+
+    /**
+     * Log which operations this process exercises, for `docuccino:coverage` to merge and gate after the
+     * run.
+     *
+     * One line in a test bootstrap, and it reads the same under one process, twenty workers or four
+     * shards on four machines: every process writes a file of its own, and the whole-suite question is
+     * answered afterwards by something that can see the whole suite. Pass a directory to override
+     * `coverage.log`.
+     */
+    public static function recordCoverage(?string $directory = null): CoverageRecorder
+    {
+        return self::coverage()->logTo($directory);
     }
 
     /** The assertions as an object, for a test that cannot use the trait. */

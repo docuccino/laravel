@@ -10,17 +10,17 @@ use Docuccino\Core\Examples\SharedRecordingLedger;
  * Whether this process is one worker of a parallel test run, and which run that is.
  *
  * Paratest — which is what `pest --parallel` runs — splits the suite across worker processes and sets
- * `PARATEST` in each of them. Two things here care, and they care in opposite directions.
- *
- * COVERAGE cannot be answered here at all. A worker sees the operations ITS share of the suite
- * exercised and no others, and no worker can know when the others have finished, so a verdict taken
- * from inside one is a guess wearing a number. Merging per-worker files does not fix that — it fixes
- * the data, not the timing — so the coverage assertions refuse rather than name operations the suite
- * exercised perfectly well.
+ * `PARATEST` in each of them. Two things here care, and they need different amounts of it.
  *
  * RECORDING is per-operation, and a worker writing one needs nothing from any other worker except that
- * they take turns. It merges under a lock instead of refusing ({@see SharedRecordingLedger}),
- * which needs {@see runKey()}: the one thing every worker of a run agrees on and no two runs share.
+ * they take turns over the one file that holds the answer. So it merges under a lock
+ * ({@see SharedRecordingLedger}), which needs {@see runKey()}: the one thing every worker of a run
+ * agrees on and no two runs share. Where the platform cannot say, recording refuses.
+ *
+ * COVERAGE asks for nothing but {@see worker()}, and asks for that as a courtesy. Each process writes a
+ * file the merge unions afterwards, and the file's name only has to be unique — which the coverage log
+ * guarantees on its own, token or no token. So nothing here gates it: a runner that sets no token, and
+ * a runner nobody has heard of, both work by construction rather than by being recognised.
  */
 final class ParallelRun
 {
@@ -32,7 +32,11 @@ final class ParallelRun
         return getenv(self::MARKER) !== false;
     }
 
-    /** Which worker this is, for a message that tells the reader what they are looking at. */
+    /**
+     * Which worker this is, where the runner says — paratest's tokens, and null anywhere else, which is
+     * the ordinary single-process answer rather than a failure. It names a coverage log file, so the
+     * directory reads as workers rather than as hashes.
+     */
     public static function worker(): ?string
     {
         foreach (['UNIQUE_TEST_TOKEN', 'TEST_TOKEN'] as $variable) {

@@ -110,6 +110,10 @@ return [
             // publishes no recorded examples.
             // 'examples' => ['recordings' => 'docs/recordings'],
 
+            // Where the contract-coverage recorder writes what your test suite exercised, and where
+            // `docuccino:coverage` reads it back. Absent means storage/docuccino/coverage.
+            // 'coverage' => ['log' => 'storage/docuccino/coverage'],
+
             // Overlay 1.0 documents applied to the finished build (globs, relative to the base path).
             'overlays' => [
                 // 'resources/docs/overlays/*.yaml',

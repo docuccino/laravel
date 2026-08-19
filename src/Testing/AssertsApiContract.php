@@ -14,6 +14,7 @@ use Docuccino\Core\Document\UirDocument;
 use Docuccino\Core\Emit\Formats;
 use Docuccino\Core\Extensions\Context\ExportTarget;
 use Docuccino\Core\Support\PlainText;
+use Docuccino\Laravel\Support\ArtifactLocator;
 use Illuminate\Testing\TestResponse;
 use JsonException;
 use PHPUnit\Framework\Assert;
@@ -171,39 +172,6 @@ trait AssertsApiContract
 
         // A document with no target would otherwise pass having compared nothing.
         Assert::assertThat($targets, Assert::logicalNot(Assert::isEmpty()));
-    }
-
-    /** Every documented operation was exercised by this run. */
-    public function assertEveryOperationExercised(): void
-    {
-        $this->assertContractCoverage(100.0);
-    }
-
-    /**
-     * At least $minimum percent of documented operations were exercised.
-     *
-     * Set it to what you measure today and ratchet it up, the way a line-coverage floor works: a floor
-     * you cannot meet is one people delete. Put the assertion in a test of its own, last — it can only
-     * see what has run by the time it runs.
-     */
-    public function assertContractCoverage(float $minimum): void
-    {
-        if (ParallelRun::active()) {
-            $worker = ParallelRun::worker();
-
-            Assert::fail(sprintf(
-                "Contract coverage cannot be measured from inside a parallel test run%s.\n".
-                "Each worker exercises its own share of the suite and none of them can know when the\n".
-                "others have finished, so any answer taken here would name operations the suite covered\n".
-                "perfectly well. Run the coverage check in a single-process job (drop --parallel), or\n".
-                'read ApiContract::report() after the run instead.',
-                $worker === null ? '' : ' (worker '.$worker.')',
-            ));
-        }
-
-        $report = ApiContract::report();
-
-        Assert::assertTrue($report->meets($minimum), $report->render($minimum));
     }
 
     /**

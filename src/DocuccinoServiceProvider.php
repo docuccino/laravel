@@ -22,6 +22,7 @@ use Docuccino\Core\Provenance\RootRelativeSourcePathResolver;
 use Docuccino\Core\Provenance\SourcePathResolver;
 use Docuccino\Laravel\Commands\CacheCommand;
 use Docuccino\Laravel\Commands\ClearCommand;
+use Docuccino\Laravel\Commands\CoverageCommand;
 use Docuccino\Laravel\Commands\DiffCommand;
 use Docuccino\Laravel\Commands\ExplainCommand;
 use Docuccino\Laravel\Commands\ExportCommand;
@@ -111,6 +112,7 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
                 ClearCommand::class,
                 WatchCommand::class,
                 ExplainCommand::class,
+                CoverageCommand::class,
             ]);
     }
 
