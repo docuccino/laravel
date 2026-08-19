@@ -7,6 +7,35 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.6.0
+
+### Features
+
+- make contract coverage a post-run command ([#124](https://github.com/docuccino/docuccino/pull/124))
+- walk a new install to its first document ([#120](https://github.com/docuccino/docuccino/pull/120))
+- point a diagnostic at the page that documents it ([#119](https://github.com/docuccino/docuccino/pull/119))
+- read the provenance trail back with docuccino:explain ([#116](https://github.com/docuccino/docuccino/pull/116))
+- accept the diagnostic codes you have already read ([#114](https://github.com/docuccino/docuccino/pull/114))
+- record your test suite's responses as documented examples ([#109](https://github.com/docuccino/docuccino/pull/109))
+- assert your test suite against the generated contract ([#107](https://github.com/docuccino/docuccino/pull/107))
+- rebuild and refresh the viewer as your code changes ([#106](https://github.com/docuccino/docuccino/pull/106))
+- resolve the viewer through its contract and ship a Redoc driver ([#105](https://github.com/docuccino/docuccino/pull/105))
+- let --fail-on gate on the info and hint rungs ([#103](https://github.com/docuccino/docuccino/pull/103))
+- hint how a mock server should fake a property ([#102](https://github.com/docuccino/docuccino/pull/102))
+- document the webhooks an API delivers ([#101](https://github.com/docuccino/docuccino/pull/101))
+- document binary, file, streamed and SSE responses ([#99](https://github.com/docuccino/docuccino/pull/99))
+- let projects extend the engine's PHPStan configuration ([#90](https://github.com/docuccino/docuccino/pull/90))
+- write every configured export target in one run ([#80](https://github.com/docuccino/docuccino/pull/80))
+
+### Bug fixes
+
+- widen a rule's values for every entry that names none ([#125](https://github.com/docuccino/docuccino/pull/125))
+- say why a driver's own response never live-reloads ([#115](https://github.com/docuccino/docuccino/pull/115))
+- document a rendered view as text/html instead of reflecting it ([#98](https://github.com/docuccino/docuccino/pull/98))
+- reject unknown option values and diagnose misconfigured keys ([#88](https://github.com/docuccino/docuccino/pull/88))
+- publish the real generator version ([#87](https://github.com/docuccino/docuccino/pull/87))
+- print diagnostic help text in command output ([#86](https://github.com/docuccino/docuccino/pull/86))
+
 ## v0.5.1
 
 ### Bug fixes

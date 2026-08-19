@@ -96,7 +96,7 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
      * into the fragment cache's tool version. Written by the release workflow, never by hand — see
      * RELEASING.md; the golden comparison normalises this one member, so a bump regenerates nothing.
      */
-    public const string VERSION = '0.5.1';
+    public const string VERSION = '0.6.0';
 
     public function configurePackage(Package $package): void
     {
