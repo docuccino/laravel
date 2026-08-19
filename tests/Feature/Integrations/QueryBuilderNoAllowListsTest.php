@@ -10,7 +10,7 @@ use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParametersExtension;
-use Docuccino\Laravel\Tests\Support\QbTraceScript;
+use Docuccino\Laravel\Tests\Support\TraceScript;
 
 /**
  * The silence kill: when a paginating QB terminal is reached but NO allow-list entry is recovered
@@ -21,7 +21,7 @@ use Docuccino\Laravel\Tests\Support\QbTraceScript;
 function noAllowListDiagnostics(string $chain): array
 {
     $engine = new StubTypeEngine(traces: [
-        'App\\Widgets::index' => QbTraceScript::forChain($chain),
+        'App\\Widgets::index' => TraceScript::forChain($chain),
     ]);
 
     $context = new RouteContext(

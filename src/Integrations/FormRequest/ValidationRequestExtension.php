@@ -85,6 +85,16 @@ final class ValidationRequestExtension implements OperationExtension
             ));
         }
 
+        foreach ($visitor->widenedFields() as $field) {
+            $context->components->addDiagnostic(new Diagnostic(
+                severity: Severity::Info,
+                code: 'validation.rule-values-unread',
+                message: sprintf('Inline validation field "%s" states values this build cannot read, so that constraint is left off the request schema; the rest of its rules are documented.', $field),
+                help: 'The values are spread in from an expression (`Rule::in(...$choices)`) or passed under a name, and a partial list would make a client reject a value the API accepts. Write them where the rule is, or state them in an overlay.',
+                routeSignature: $context->route->signature(),
+            ));
+        }
+
         return $inline->isEmpty() ? [null, null] : [$inline, null];
     }
 }

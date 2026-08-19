@@ -89,33 +89,33 @@ final class WorkbenchEngine
             traces: [
                 // Scripts the Query Builder trace so the golden exercises the QB integration
                 // deterministically — the stub engine has no real trace.
-                'Workbench\\App\\Http\\Controllers\\WidgetQueryController::index' => QbTraceScript::forChain(
+                'Workbench\\App\\Http\\Controllers\\WidgetQueryController::index' => TraceScript::forChain(
                     "QueryBuilder::for(\\Workbench\\App\\Models\\Form::class)->allowedFilters(['name', AllowedFilter::exact('status')])->allowedSorts(['name', 'created_at'])->defaultSort('name')->paginate(20)",
                 ),
                 // The flagship QB-list endpoint: a QB subclass paginated through a custom terminal
                 // (`paginateList`, declared as one in config). It runs over both the QB params visitor
                 // (filters/sorts + the custom terminal's page params) and the resource-envelope visitor
                 // (paginator kind → {data,links,meta}).
-                'Workbench\\App\\Http\\Controllers\\QbListController::index' => QbTraceScript::forChain(
+                'Workbench\\App\\Http\\Controllers\\QbListController::index' => TraceScript::forChain(
                     "ListQueryBuilder::for(\\Workbench\\App\\Models\\Form::class)->allowedFilters(['name'])->allowedSorts(['name'])->paginateList(20)",
                     'Workbench\\App\\Support\\ListQueryBuilder',
                 ),
                 // A paginated resource collection: the chain reaches paginate() on a plain Eloquent
                 // builder, typed as such so the Query-Builder visitor (which needs a Spatie QueryBuilder
                 // receiver) ignores it. The resource pagination extension wraps the length envelope.
-                self::CONTROLLER.'listPaginatedArticles' => QbTraceScript::forChain(
+                self::CONTROLLER.'listPaginatedArticles' => TraceScript::forChain(
                     '$q->paginate(15)',
                     'Illuminate\\Database\\Eloquent\\Builder',
                 ),
                 // A jsonPaginate() collection: json-api-paginate documents its page[...] params, and on
                 // the response side the paginator envelope for the configured mode.
-                self::CONTROLLER.'listJsonPaginatedArticles' => QbTraceScript::forChain(
+                self::CONTROLLER.'listJsonPaginatedArticles' => TraceScript::forChain(
                     '$q->jsonPaginate()',
                     'Illuminate\\Database\\Eloquent\\Builder',
                 ),
                 // A resource wrapping Model::create() → the created-resource visitor sees the New_ over
                 // a create() static call (it reads AST names, so FQCNs are used here) and re-homes 200→201.
-                self::CONTROLLER.'storeCreatedArticle' => QbTraceScript::forChain(
+                self::CONTROLLER.'storeCreatedArticle' => TraceScript::forChain(
                     'new \\'.self::ARTICLE_RESOURCE.'(\\'.self::WIDGET_MODEL.'::create([]))',
                     'Illuminate\\Database\\Eloquent\\Builder',
                 ),
@@ -227,6 +227,11 @@ final class WorkbenchEngine
             ],
             classes: [
                 'Workbench\\App\\Data\\FormData' => $formData,
+                // The webhook payload class, as the engine recovers it from promoted properties.
+                'Workbench\\App\\Webhooks\\FormSubmitted' => new ClassMetadata('Workbench\\App\\Webhooks\\FormSubmitted', [
+                    new PropertyMetadata('formId', ScalarT::int()),
+                    new PropertyMetadata('submittedAt', ScalarT::string()),
+                ]),
                 'Workbench\\App\\Data\\WidgetData' => $widgetData,
                 self::ARTICLE_DATA => new ClassMetadata(self::ARTICLE_DATA, [
                     new PropertyMetadata('id', ScalarT::int()),

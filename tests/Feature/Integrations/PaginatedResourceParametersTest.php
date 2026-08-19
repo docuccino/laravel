@@ -24,7 +24,7 @@ use Docuccino\Laravel\Integrations\ApiResources\PaginatedResourceParametersExten
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParametersExtension;
 use Docuccino\Laravel\Registry\DefaultExtensions;
 use Docuccino\Laravel\Registry\ExtensionRegistry;
-use Docuccino\Laravel\Tests\Support\QbTraceScript;
+use Docuccino\Laravel\Tests\Support\TraceScript;
 
 /**
  * The request half of a paginated resource collection, in-process over REAL Laravel paginator chains
@@ -54,7 +54,7 @@ function runPaginatedResourceParameters(
         analyses: ['App\\Articles::index' => new ActionAnalysis(
             returns: [new ReturnSite($returns, new SourceLocation(''))],
         )],
-        traces: ['App\\Articles::index' => QbTraceScript::forChain($chain, $receiver)],
+        traces: ['App\\Articles::index' => TraceScript::forChain($chain, $receiver)],
     );
 
     $context = new RouteContext(

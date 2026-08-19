@@ -60,3 +60,24 @@ it('carries the contents BESIDE the path, not instead of it', function (): void 
         // …while what the document EMITS is the prose alone.
         ->and($config->info['description'])->toBe('Prose.');
 });
+
+it('reads the same prose from a CRLF file as from an LF one', function (): void {
+    // A checkout's line endings are not a code change, so they must not reach the document.
+    $path = base_path('docuccino-fingerprint-crlf.md');
+
+    /** @var array<string, mixed> $raw */
+    $raw = config('docuccino.documents.default');
+    $raw['info'] = ['title' => 'Fingerprint', 'version' => '1.0.0', 'description' => ['file' => $path]];
+
+    file_put_contents($path, "First line.\r\n\r\nSecond line.\r\n");
+    $crlf = app(DocumentConfigFactory::class)->make('default', $raw, 'skeleton');
+
+    file_put_contents($path, "First line.\n\nSecond line.\n");
+    $lf = app(DocumentConfigFactory::class)->make('default', $raw, 'skeleton');
+
+    @unlink($path);
+
+    expect($crlf->info['description'])->toBe("First line.\n\nSecond line.")
+        ->and($crlf->info['description'])->toBe($lf->info['description'])
+        ->and($crlf->hash())->toBe($lf->hash());
+});

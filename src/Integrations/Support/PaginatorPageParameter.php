@@ -73,19 +73,23 @@ final class PaginatorPageParameter
     }
 
     /**
-     * The selector for the terminal a trace actually reached, read off that call's folded arguments —
-     * positional ones under their index, named ones under their parameter name, each null where the
-     * argument was written but would not fold. Null when the call site renamed the key to something
-     * unfoldable: a guessed `page` there names a key the endpoint does not read. Only Laravel's own
-     * terminals take the argument; a custom one forwards to `paginate($perPage)` and keeps the default.
+     * The selector for the terminal a trace actually reached, read off that call's folded arguments
+     * ({@see FoldedArguments}). Null when the call site renamed the key to something unfoldable, and null
+     * again when the call carries a spread and the name argument may be in there: a guessed `page` names a
+     * key the endpoint does not read. Only Laravel's own terminals take the argument; a custom one
+     * forwards to `paginate($perPage)` and keeps the default.
      *
-     * @param  array<array-key, string|int|float|bool|null>  $args
+     * @param  array<array-key, string|int|float|bool|null>|null  $args
      */
-    public static function forTerminal(?string $terminal, ?string $kind, array $args): ?QueryParameterSpec
+    public static function forTerminal(?string $terminal, ?string $kind, ?array $args): ?QueryParameterSpec
     {
         $argument = self::NAME_ARGUMENT[$terminal ?? ''] ?? null;
         if ($argument === null) {
             return self::for($kind);
+        }
+
+        if ($args === null) {
+            return null;
         }
 
         if (! array_key_exists($argument, $args) && ! array_key_exists(self::NAME_POSITION, $args)) {

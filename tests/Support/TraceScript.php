@@ -12,13 +12,16 @@ use PhpParser\NodeVisitorAbstract;
 use PhpParser\ParserFactory;
 
 /**
- * Builds a scripted trace closure (for {@see StubTypeEngine}) that drives a real Query-Builder
- * visitor over a parsed QB chain snippet with a {@see StubTraceScope} — deterministically standing in
- * for the real engine so the workbench golden exercises the Query Builder integration end-to-end.
+ * Builds a scripted trace closure (for {@see StubTypeEngine}) that drives a real {@see TraceVisitor} over
+ * a parsed code snippet with a {@see StubTraceScope} — deterministically standing in for the real engine,
+ * so a trace-driven integration (the Query Builder's chain, a response factory's `download()`) is
+ * exercised end-to-end without PHPStan.
  */
-final class QbTraceScript
+final class TraceScript
 {
     /**
+     * @param  string  $chain  the expression the walk is over, as source
+     * @param  string  $builderFqcn  the type {@see StubTraceScope} answers for every receiver in it
      * @param  string  $file  the file the snippet stands for — one document may script SEVERAL walks (an
      *                        action, then each injected builder's constructor), and two of them claiming
      *                        one file would put two different call sites at the same place

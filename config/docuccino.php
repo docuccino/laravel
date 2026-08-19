@@ -72,11 +72,11 @@ return [
             ],
 
             // 'default' documents the framework's own JSON error shapes, 'problem-details' the
-            // RFC 9457 (application/problem+json) preset, 'none' emits no error responses. A bag also
-            // picks how a 422 models its `errors`:
-            // ['preset' => 'problem-details', 'errors_shape' => 'pointer-list'] — 'map' (field →
-            // messages) is the default, 'pointer-list' a list of {detail, pointer} objects.
+            // RFC 9457 (application/problem+json) preset, 'none' emits no error responses.
             'error_responses' => 'default',
+            // The bag form also picks how a 422 models its `errors`: 'map' (field to messages) is the
+            // default, 'pointer-list' a list of {detail, pointer} objects.
+            // 'error_responses' => ['preset' => 'problem-details', 'errors_shape' => 'pointer-list'],
 
             'tags' => [
                 // How an operation with no #[Group] is tagged: 'controller' (InvoiceController →
@@ -95,10 +95,20 @@ return [
                 // ],
             ],
 
+            // Where #[Webhook] classes live: every annotated class found under here is published as a
+            // webhook. Relative to the base path; absent means the document has none.
+            // 'webhooks' => ['dir' => 'app/Webhooks'],
+
             // A markdown tree compiled into the document as pages and navigation.
             'content' => [
                 'dir' => null, // e.g. 'resources/docs/api'
             ],
+
+            // Response bodies your test suite recorded, published as examples. The build only ever
+            // READS these committed files — nothing is executed and no database is touched; the
+            // recording is written by your suite (ApiContract::record()). Absent means the document
+            // publishes no recorded examples.
+            // 'examples' => ['recordings' => 'docs/recordings'],
 
             // Overlay 1.0 documents applied to the finished build (globs, relative to the base path).
             'overlays' => [
@@ -163,11 +173,15 @@ return [
             'export' => [
                 'path' => 'docs/openapi.json',
                 // A list of targets REPLACES `path`: one build, one artifact per entry. One target per
-                // format, and the extension picks the serialisation (.yaml/.yml emit YAML).
+                // format — openapi-3.2, openapi-3.1, openapi-3.0, uir, postman — and the extension
+                // picks the serialisation (.yaml/.yml emit YAML).
                 // 'targets' => [
                 //     ['format' => 'openapi-3.2', 'path' => 'docs/openapi.json'],
                 //     ['format' => 'openapi-3.1', 'path' => 'docs/openapi-3.1.yaml'],
                 // ],
+                // The member #[Mock] hints are published under in the OpenAPI artifacts. Absent keeps
+                // them out, so an export is pure OpenAPI; the UIR carries them either way.
+                // 'mock_faker_key' => 'x-faker',
             ],
 
             'viewer' => [
@@ -182,7 +196,11 @@ return [
                 // or behind a gate), `artifact` reads export.path, `cache` serves what
                 // `docuccino:cache` warmed — prefer one of those two for an exposed viewer.
                 'source' => 'generate',
-                // 'cdn' => true, // load Scalar from a CDN instead of the asset shipped with the package
+                // Which viewer renders the page. 'scalar' (the default) has a try-it-out console;
+                // 'redoc' is a reference-only three-panel layout. Both ship their script with the
+                // package. Your own driver registers with Docuccino::extend() and is named here.
+                // 'driver' => 'scalar',
+                // 'cdn' => true, // load the driver's script from a CDN instead of the shipped asset
             ],
         ],
     ],
@@ -217,11 +235,53 @@ return [
         'leakage' => [
             'enabled' => true,
             // Property names or JSON pointers to accept, e.g.
-            // ['reset_token', '#/components/schemas/Invoice/properties/status'].
+            // ['reset_token', '#/components/schemas/Invoice/properties/status']. A name silences this
+            // lint only; the response recorder redacts by name regardless and honours a pointer alone.
             'allow' => [],
             // Extra heuristics, merged over the built-in table (built-in tokens keep their label).
             // Key = a token matched anywhere inside a property name, value = the label in the message.
             // 'patterns' => ['sortcode' => 'a bank sort code', 'iban' => 'an IBAN'],
+        ],
+        // Warns on an operation that publishes neither a summary nor a description. Off by default:
+        // on an application that documents nothing it fires once per operation.
+        'descriptions' => [
+            'enabled' => false,
+            // Operation signatures or operationIds to accept, e.g. ['GET /api/ping'].
+            'allow' => [],
+        ],
+        // Warns on an operationId a generated client cannot name a method after — empty, leading with
+        // a digit, or outside letters, digits and . - _ @. Duplicates are a separate diagnostic
+        // (route.duplicate-operation-id). Nothing Docuccino mints can trip it.
+        'operation_ids' => [
+            'enabled' => true,
+            // Operation signatures or operationIds to accept, e.g. ['GET /api/ping'].
+            'allow' => [],
+        ],
+        // Warns on a tag operations carry that tags.definitions never declares. Silent unless the
+        // document declares tags at all — and off besides, because declaring a few nav parents while
+        // the rest derive from controllers is a deliberate shape, not a hole.
+        'tags' => [
+            'enabled' => false,
+            // Tag names to accept, e.g. ['Internal'].
+            'allow' => [],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Diagnostics
+    |--------------------------------------------------------------------------
+    |
+    | Codes you have read and accepted. An accepted diagnostic still prints,
+    | marked `accepted`, and stops counting towards `--fail-on` — so a stricter
+    | gate can go on before the last report is fixed. An error is never
+    | accepted, and an entry nothing reports warns so the list cannot rot.
+    |
+    */
+
+    'diagnostics' => [
+        'accept' => [
+            // 'eloquent.no-columns',
         ],
     ],
 
@@ -267,7 +327,9 @@ return [
     'on_route_error' => 'skeleton',
 
     'cache' => [
-        'enabled' => false, // the per-operation fragment cache: incremental rebuilds
+        // The per-operation fragment cache: incremental rebuilds. `docuccino:watch` turns it on for
+        // the builds it drives by setting DOCUCCINO_FRAGMENT_CACHE, which is why this reads the env.
+        'enabled' => env('DOCUCCINO_FRAGMENT_CACHE', false),
         'store' => null,    // Laravel cache store backing `docuccino:cache` (null = default store)
         // 'path' => null,  // fragment directory (default: storage_path('docuccino/fragments'))
     ],

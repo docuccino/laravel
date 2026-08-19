@@ -11,11 +11,12 @@ use Docuccino\Core\Extensions\Contracts\OperationPhase;
 use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Patch\Contribution;
+use Docuccino\Laravel\Support\HtmlRepresentation;
 
 /**
  * Records the `text/html` success representation of an action that defines `htmlResponse()`. The package's
- * controller decorator returns it for non-JSON clients, so the endpoint serves HTML alongside JSON. The
- * body is a rendered string, not a JSON document, so it gets a `text/html` entry with a `string` schema.
+ * controller decorator returns it for non-JSON clients, so the endpoint serves HTML alongside JSON — said
+ * the one way the adapter says it ({@see HtmlRepresentation}).
  *
  * Runs LATE so the inferred JSON success response already exists; both representations share the same
  * `200`, since the decorator transforms one dispatched value. Purely additive — an action defining both
@@ -41,6 +42,10 @@ final class ActionHtmlResponseExtension implements OperationExtension
 
         $response = $operation->response('200');
         $response->setDescription('OK', $by);
-        $response->content('text/html')->set('type', 'string', $by);
+
+        $content = $response->content(HtmlRepresentation::MEDIA_TYPE);
+        foreach (HtmlRepresentation::SCHEMA as $keyword => $value) {
+            $content->set($keyword, $value, $by);
+        }
     }
 }

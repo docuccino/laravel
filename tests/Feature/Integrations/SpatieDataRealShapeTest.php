@@ -17,6 +17,7 @@ use Docuccino\Laravel\Integrations\SpatieData\DataValidationRules;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ActionPreviewData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\MergedRulesData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\MfaChallengeData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\MockedSnapshotData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\SaveAnswersData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\SnapshotData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\UpdateNodeData;
@@ -308,4 +309,24 @@ it('documents the recovered metadata map when no rules() override replaces it', 
 
     expect(realRequestSchema(UpdateNodeData::class, $metadata)['properties']['metadata'])
         ->toBe(['type' => ['object', 'null'], 'additionalProperties' => []]);
+})->group('fixture');
+
+it('attaches a #[Mock] hint to the real recovered shape, following a #[MapName] to its published key', function (): void {
+    // The types and the prose here are the real engine's; only the hints are the attribute's. A hint
+    // has to sit beside what was recovered rather than replacing any of it — and a renamed property
+    // publishes its hint under the name the wire uses, not the one the PHP declares.
+    [, $component] = realDataComponent('App\Data\SnapshotData', MockedSnapshotData::class, 'App\Data\SnapshotFormData');
+
+    expect($component['properties']['snapshot_schema_version'])->toBe([
+        'type' => 'integer',
+        'description' => 'Snapshot schema version. Bumped if the shape changes; renderers branch on this.',
+        'example' => '1',
+        'x-docuccino' => ['mock' => ['faker' => 'randomDigit', 'seedGroup' => 'snapshot']],
+    ])
+        ->and($component['properties']['profile']['x-docuccino'])->toBe(['mock' => ['faker' => 'safeEmail']])
+        ->and($component['properties'])->not->toHaveKey('candidate')
+        // The class-level form reaches a member exactly as it does on a model or a FormRequest.
+        ->and($component['properties']['permissions']['x-docuccino'])->toBe(['mock' => ['faker' => 'numberBetween:1,9']])
+        // …and everything unnamed is byte-identical to what the untouched twin publishes.
+        ->and($component['properties']['forms'])->not->toHaveKey('x-docuccino');
 })->group('fixture');

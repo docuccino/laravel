@@ -27,11 +27,16 @@ Analysis is a build-time job either way: the inference engine runs wherever you 
 the document, never on a production host. Without the engine, documentation comes from
 docblocks and attributes only — and every export warns that it did.
 
-Publish the config:
+Then set up:
 
 ```bash
-php artisan vendor:publish --tag=docuccino-config
+php artisan docuccino:install
 ```
+
+It publishes `config/docuccino.php` (never replacing one you already have), reports how many of your
+routes the default `api/*` pattern matches and which prefixes they sit under when none do, says
+whether the engine is installed, and offers a first export. `vendor:publish --tag=docuccino-config`
+still publishes the config on its own.
 
 ## Usage
 
@@ -41,14 +46,35 @@ Generate and export the default document:
 php artisan docuccino:export
 ```
 
-Other commands: `docuccino:diff`, `docuccino:validate`, `docuccino:cache`,
-`docuccino:clear`. Register your own extensions from any service provider:
+Other commands: `docuccino:install`, `docuccino:diff`, `docuccino:validate`, `docuccino:cache`,
+`docuccino:clear`, and `docuccino:explain "POST /api/invoices"` — which prints, field by field, which
+precedence layer produced each value of one endpoint and what it overrode. Register your own
+extensions from any service provider:
 
 ```php
 use Docuccino\Laravel\Facades\Docuccino;
 
 Docuccino::extend(MyOperationExtension::class);
 ```
+
+## Contract testing
+
+`Docuccino\Laravel\Testing\AssertsApiContract` holds the requests and responses your test suite
+already produces to the document Docuccino generates, and a failure names the producer and the
+`file:line` the schema came from. It also reports the documented endpoints your suite never
+exercises, validates every published example against its own schema, and gates breaking changes and
+a stale committed artifact.
+
+```php
+$this->getJson('/api/invoices')->assertValidExchange();
+```
+
+`ApiContract::record()` turns the same seam into examples: the responses your suite produced are
+written to committed files, keyed by operation id and with credentials replaced, which the build
+reads. The document build still executes nothing — the execution happened in your tests.
+
+Test-only: nothing registers it, and the service provider never touches it. See
+[contract testing](https://docs.docuccino.app/laravel/guides/contract-testing/).
 
 ## Documentation
 

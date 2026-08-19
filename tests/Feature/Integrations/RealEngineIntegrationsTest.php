@@ -746,3 +746,50 @@ it('claims no page-size key for a request key the helper reads to decide somethi
     'a match subject' => ['byPreset'],
     'an if condition' => ['recentFirst'],
 ])->group('fixture');
+
+it('widens a rule whose values are spread in, rather than publishing the half it can read', function (): void {
+    // `Rule::in('any', ...$this->statuses())` states four legal values and writes one of them at the rule.
+    // A reader that took the written half published `enum: ["any"]`, and a client generated from that
+    // REJECTS every status the endpoint accepts. `->only(Open, ...$this->alsoAllowed())` is the same
+    // truncation one layer in: a half-read narrowing drops a case the API allows.
+    $trace = FixtureRunner::traceRules(
+        'app/Http/Requests/SpreadChoicesRequest.php',
+        'App\\Http\\Requests\\SpreadChoicesRequest',
+        'rules',
+    );
+
+    $names = static fn (string $field): array => array_map(
+        static fn (array $rule): string => $rule['name'],
+        $trace['fields'][$field],
+    );
+
+    // The control: every value is written at the rule, so every value is published.
+    expect($names('visibility'))->toBe(['required', 'in'])
+        ->and($trace['fields']['visibility'][1]['parameters'])->toBe(['public', 'private']);
+
+    // No `in` at all rather than a short one, and an enum that keeps every case the half-read `only()`
+    // would have dropped.
+    expect($names('status'))->toBe(['required'])
+        ->and($names('priority'))->toBe(['nullable', 'enum'])
+        ->and($trace['fields']['priority'][1]['parameters'])->toBe(['open', 'closed', 'draft']);
+
+    // Widened, not unrecoverable: both fields DID recover rules, minus a constraint that was there to
+    // recover — which is the one degradation nothing else reports.
+    expect($trace['widened'])->toBe(['status', 'priority'])
+        ->and($trace['unrecoverable'])->toBe([]);
+})->group('fixture');
+
+it('leaves a soft-delete filter unresolved when its key is not written at the call', function (): void {
+    // Spatie documents `AllowedFilter::trashed()` as filtering on `trashed`, which is true of a call that
+    // passed NO name. This one passes one it reads from config, so the endpoint accepts some other key and
+    // publishing `trashed` names a query parameter it does not have.
+    $trace = FixtureRunner::traceQbEnrich(
+        'app/Http/Controllers/TrashedFilterController.php',
+        'App\\Http\\Controllers\\TrashedFilterController',
+        'index',
+    );
+
+    expect(array_map(static fn (array $filter): string => $filter['name'], $trace['filters']))->toBe(['status'])
+        ->and($trace['unresolved'])->toHaveCount(1)
+        ->and($trace['unresolved'][0])->toContain('TrashedFilterController.php');
+})->group('fixture');

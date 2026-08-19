@@ -217,10 +217,11 @@ it('gives a bare JsonResponse an open JSON body and says so out loud', function 
         ->and($raised[0]->help)->toContain('#[Response(');
 });
 
-it('documents only the status for a framework response with no provable media type', function (): void {
-    // A file download or a stream carries a body, but neither its media type nor its shape is stated
-    // anywhere — so claiming `application/json` would be a confident wrong answer.
-    $fqcn = 'Symfony\\Component\\HttpFoundation\\BinaryFileResponse';
+it('documents only the status for a framework response that proves nothing at all', function (): void {
+    // The base response class carries a body of no stated media type and no stated shape, so claiming
+    // `application/json` would be a confident wrong answer. Its file and streamed siblings DO prove
+    // something, and are documented in BinaryResponseTest instead.
+    $fqcn = FrameworkClasses::RESPONSE_BASE;
 
     [$responses, $document, $diagnostics] = documentForReturn(
         new ClassT($fqcn),

@@ -15,17 +15,21 @@ use Docuccino\Core\Inference\TypeEngine;
 use RuntimeException;
 
 /**
- * A {@see TypeEngine} decorator that throws from analyzeAction for one action symbol and delegates
- * everything else — so a test can prove a single exploding route is isolated to a skeleton while
- * its siblings document normally (design §5 per-route try/catch).
+ * A {@see TypeEngine} decorator that throws for one action symbol — or for one class, which is all a
+ * webhook ever asks it about — and delegates everything else, so a test can prove a single exploding
+ * unit is isolated while its siblings document normally (design §5 per-route try/catch).
  */
 final class ThrowingTypeEngine implements TypeEngine
 {
-    /** @param  ?string  $message  what it throws, for a test that cares about the words and not just the fact */
+    /**
+     * @param  ?string  $message  what it throws, for a test that cares about the words and not just the fact
+     * @param  ?string  $throwingClass  an FQCN whose metadata blows up instead
+     */
     public function __construct(
         private readonly TypeEngine $delegate,
-        private readonly string $throwingSymbol,
+        private readonly string $throwingSymbol = '',
         private readonly ?string $message = null,
+        private readonly ?string $throwingClass = null,
     ) {}
 
     public function analyzeAction(ActionRef $action): ActionAnalysis
@@ -44,6 +48,10 @@ final class ThrowingTypeEngine implements TypeEngine
 
     public function classMetadata(ClassRef $class): ClassMetadata
     {
+        if ($this->throwingClass !== null && $class->fqcn === $this->throwingClass) {
+            throw new RuntimeException($this->message ?? 'engine blew up reflecting '.$this->throwingClass);
+        }
+
         return $this->delegate->classMetadata($class);
     }
 

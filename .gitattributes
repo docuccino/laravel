@@ -3,6 +3,11 @@
 # language stats. Refresh it with scripts/update-scalar.sh (do NOT hand-edit).
 /resources/js/scalar.standalone.js -diff -text linguist-generated linguist-vendored
 
+# Vendored Redoc standalone bundle (~1.1 MB minified), same treatment. Refresh it with
+# scripts/update-redoc.sh (do NOT hand-edit).
+/resources/js/redoc.standalone.js -diff -text linguist-generated linguist-vendored
+/resources/js/redoc.standalone.js.LICENSE.txt linguist-vendored
+
 /tests           export-ignore
 /workbench       export-ignore
 /.github         export-ignore

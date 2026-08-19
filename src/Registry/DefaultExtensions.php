@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Registry;
 
+use Docuccino\Core\Examples\RecordedExampleAudit;
+use Docuccino\Core\Extensions\BuiltIn\AttributeExamplesExtension;
 use Docuccino\Core\Extensions\BuiltIn\AttributeOverridesExtension;
 use Docuccino\Core\Extensions\BuiltIn\DefaultTypeMappers;
 use Docuccino\Core\Extensions\BuiltIn\EnumSchema;
 use Docuccino\Core\Extensions\BuiltIn\SharedErrorResponses;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
+use Docuccino\Core\Lint\MissingDescriptionLint;
+use Docuccino\Core\Lint\OperationIdStyleLint;
 use Docuccino\Core\Lint\SensitiveFieldLint;
+use Docuccino\Core\Lint\UndocumentedTagLint;
 use Docuccino\Laravel\Exceptions\DefaultExceptionToResponse;
 use Docuccino\Laravel\Extensions\AttributeParametersExtension;
 use Docuccino\Laravel\Extensions\AttributeRequestBodyExtension;
@@ -20,8 +25,11 @@ use Docuccino\Laravel\Extensions\FrameworkResponseTypeToSchema;
 use Docuccino\Laravel\Extensions\ImplicitResponsesExtension;
 use Docuccino\Laravel\Extensions\InferredResponsesExtension;
 use Docuccino\Laravel\Extensions\PathParametersExtension;
+use Docuccino\Laravel\Extensions\RecordedExamplesExtension;
 use Docuccino\Laravel\Extensions\RouteServersExtension;
 use Docuccino\Laravel\Extensions\SecurityExtension;
+use Docuccino\Laravel\Extensions\ViewMediaType;
+use Docuccino\Laravel\Extensions\ViewTypeToSchema;
 use Docuccino\Laravel\Integrations\FormRequest\ValidationRequestExtension;
 use Docuccino\Laravel\Integrations\FrameworkErrors\FrameworkErrorsIntegration;
 use Docuccino\Laravel\Integrations\InferredHandler\InferredHandlerIntegration;
@@ -69,7 +77,14 @@ final class DefaultExtensions
             // not one of them is installed.
             AuthConfigDigestContributor::class,
             AttributeOverridesExtension::class,
+            // Reads a committed file of responses a test suite recorded; nothing is executed here.
+            RecordedExamplesExtension::class,
+            // Finalize: every response, parameter and request body a #[Example] could name now exists.
+            AttributeExamplesExtension::class,
             RouteServersExtension::class,
+            // A rendered view answers text/html; the built-in resolver sits in the same gated chain the
+            // integrations' media-type matchers do.
+            ViewMediaType::class,
             // Error-response chain, first supports() wins (design §6): the app's real error shapes,
             // then the Problem Details preset (self-gated on error_responses), then framework defaults,
             // then a generic fallback.
@@ -95,15 +110,24 @@ final class DefaultExtensions
             ...$enabled('sanctum'),
             ...$enabled('passport'),
             ...$enabled('permission'),
-            // Ahead of the core mappers: a framework response object is transport, not a body, so it
-            // must never reach the framework-agnostic class mapper and be reflected into a component.
+            // Ahead of the core mappers: a framework response object and a rendered view are transport,
+            // not bodies, so neither may reach the framework-agnostic class mapper and be reflected into
+            // a component.
             FrameworkResponseTypeToSchema::class,
+            ViewTypeToSchema::class,
             ...DefaultTypeMappers::all(),
-            // Data-leakage lint: warns on sensitive-looking property names. Diagnostics only, never
-            // mutates output.
-            SensitiveFieldLint::class,
             // Collapses an error body repeated across operations into one shared component + $refs.
+            // The only document transformer that moves a byte, so everything reading the finished
+            // document comes after it.
             SharedErrorResponses::class,
+            // The document lints. All diagnostics-only, and all pinned to Priorities::LAST so they read
+            // what will be emitted — this list's order is not what settles that, the attribute is.
+            SensitiveFieldLint::class,
+            MissingDescriptionLint::class,
+            OperationIdStyleLint::class,
+            UndocumentedTagLint::class,
+            // Diagnostics-only too: what is wrong with the committed recordings, said once per document.
+            RecordedExampleAudit::class,
         ];
     }
 }

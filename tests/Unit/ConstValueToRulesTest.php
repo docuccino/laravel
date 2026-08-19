@@ -171,3 +171,67 @@ it('ignores an unknown chained method and keeps the full case list', function ()
 
     expect($rules[0]->parameters)->toBe(['draft', 'published', 'archived']);
 });
+
+it('publishes no choice list at all where a rule spreads values in, and says it widened', function (): void {
+    // The half that is written is the hazard: `enum: ["any"]` makes a generated client REJECT every
+    // status the endpoint accepts. There is no truthful partial answer, so the constraint goes and the
+    // rules written beside it stand.
+    $folder = new ConstValueToRules;
+    $rules = $folder->fold(ConstValue::array([
+        ConstValue::scalar('required'),
+        ConstValue::descriptor('Illuminate\\Validation\\Rule::in', [
+            ConstValue::scalar('any'),
+            ConstValue::spread('unplaceable factory arg'),
+        ]),
+    ]));
+
+    expect(array_map(static fn ($rule): string => $rule->name, $rules))->toBe(['required'])
+        ->and($folder->widened())->toBeTrue();
+});
+
+it('keeps every enum case where a narrowing chain spreads its selection in', function (): void {
+    // A half-read `->only(...)` drops cases the endpoint accepts, which is narrower than the truth. The
+    // full case list is the widening.
+    $folder = new ConstValueToRules;
+    $descriptor = ConstValue::descriptor(
+        'Illuminate\\Validation\\Rule::enum',
+        [ConstValue::scalar(WidgetStatus::class)],
+    )->withChainedCall('only', [ConstValue::scalar('Active'), ConstValue::spread('unplaceable chained-call arg')]);
+
+    $rules = $folder->fold($descriptor);
+
+    expect(array_map(static fn ($rule): array => $rule->parameters, $rules))
+        ->toBe([array_map(static fn (WidgetStatus $case): string => (string) $case->value, WidgetStatus::cases())])
+        ->and($folder->widened())->toBeTrue();
+});
+
+it('publishes no enum where the class itself is spread in', function (): void {
+    $folder = new ConstValueToRules;
+
+    expect($folder->fold(ConstValue::descriptor(
+        'Illuminate\\Validation\\Rule::enum',
+        [ConstValue::spread('unplaceable factory arg')],
+    )))->toBe([])
+        ->and($folder->widened())->toBeTrue();
+});
+
+it('reports a rules list that spread rules in as widened, keeping the ones written beside them', function (): void {
+    $folder = new ConstValueToRules;
+    $rules = $folder->fold(ConstValue::array([
+        ConstValue::scalar('required'),
+        ConstValue::spread('spread array item'),
+    ]));
+
+    expect(array_map(static fn ($rule): string => $rule->name, $rules))->toBe(['required'])
+        ->and($folder->widened())->toBeTrue();
+});
+
+it('reports nothing widened for a fold that lost nothing', function (): void {
+    $folder = new ConstValueToRules;
+    $folder->fold(ConstValue::array([
+        ConstValue::scalar('required'),
+        ConstValue::descriptor('Illuminate\\Validation\\Rule::in', [ConstValue::scalar('a'), ConstValue::scalar('b')]),
+    ]));
+
+    expect($folder->widened())->toBeFalse();
+});

@@ -44,6 +44,7 @@ final class RouteContextBuilder
         ResolvedExtensions $extensions,
         ComponentRegistry $components,
         ?string $method = null,
+        ?string $operationId = null,
     ): ?RouteContext {
         // Reuse the Route + reflection the resolver already produced. On a container miss the index is
         // empty, so fall back to a lookup and fresh reflection.
@@ -80,6 +81,7 @@ final class RouteContextBuilder
             documentedMethod: $method ?? $descriptor->primaryMethod(),
             allowsTrashedBindings: $route->allowsTrashedBindings(),
             formRequestClass: $this->formRequestClass($reflected),
+            operationId: $operationId,
         );
     }
 

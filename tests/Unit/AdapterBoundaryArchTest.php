@@ -68,3 +68,29 @@ it('sees an analyser named anywhere in code, and only in code', function (): voi
         rmdir($directory);
     }
 });
+
+/**
+ * `docuccino/laravel` ships to PRODUCTION — it registers the runtime viewer endpoint — while
+ * `Docuccino\Laravel\Testing` is the contract-testing surface, which names `Illuminate\Testing` and
+ * PHPUnit. Both are dev-only installs in a real application, so nothing on the shipping path may
+ * reach that namespace: a provider that touched it would fatal a `--no-dev` boot.
+ *
+ * The guard is one-directional on purpose. The testing surface freely uses the adapter (it builds
+ * documents through `DocumentBuilder` exactly as the commands do); the adapter must never use it.
+ */
+it('never reaches the test-only surface from code that ships to production', function (): void {
+    $shipping = array_values(array_filter(
+        referencesIn(dirname(__DIR__, 2).'/src', '/^(Docuccino\\\\Laravel\\\\Testing|Illuminate\\\\Testing|PHPUnit)\\\\/'),
+        static fn (string $reference): bool => ! str_starts_with($reference, 'Testing/'),
+    ));
+
+    expect($shipping)->toBe([]);
+});
+
+/** The other half: the guard above is only worth anything if the scan can still see such a reference. */
+it('would see a test-only reference if one appeared', function (): void {
+    $found = referencesIn(dirname(__DIR__, 2).'/src', '/^(Docuccino\\\\Laravel\\\\Testing|Illuminate\\\\Testing|PHPUnit)\\\\/');
+
+    expect($found)->not->toBe([])
+        ->and($found)->each->toStartWith('Testing/');
+});

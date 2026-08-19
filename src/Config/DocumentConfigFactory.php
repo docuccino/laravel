@@ -9,6 +9,7 @@ use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Contracts\TagMapper;
 use Docuccino\Core\Support\ConfinedPath;
 use Docuccino\Core\Support\Hydrate;
+use Docuccino\Core\Support\LineEndings;
 use Docuccino\Laravel\Tags\PrefixTagMapper;
 use Illuminate\Contracts\Container\Container;
 
@@ -113,7 +114,7 @@ final readonly class DocumentConfigFactory
             // out-of-tree file.
             $resolved = ConfinedPath::resolve($this->basePath, $description['file']);
             $contents = $resolved === null ? false : @file_get_contents($resolved);
-            $info['description'] = $contents === false ? '' : rtrim($contents, "\n");
+            $info['description'] = $contents === false ? '' : rtrim(LineEndings::normalize($contents), "\n");
         }
 
         $info['title'] = is_string($info['title'] ?? null) ? $info['title'] : 'API Documentation';

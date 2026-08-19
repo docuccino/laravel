@@ -21,7 +21,8 @@ use PhpParser\Node\Scalar\String_;
  *
  * A field whose value folds to no rules (a closure, an unannotated `new` rule object, `Rule::when(…)`, an
  * unresolvable expression) is recorded as unrecoverable so the caller can diagnose it instead of losing
- * it.
+ * it. A field that folds to SOME of its rules, having widened past values it could not read, is recorded
+ * separately as widened — both are things the caller reports, and they are not the same loss.
  */
 abstract class RulesHarvestingVisitor implements TraceVisitor
 {
@@ -34,6 +35,11 @@ abstract class RulesHarvestingVisitor implements TraceVisitor
      * @var list<string>
      */
     private array $unrecoverable = [];
+
+    /**
+     * @var list<string>
+     */
+    private array $widened = [];
 
     public function __construct(
         private readonly ConstValueToRules $folder = new ConstValueToRules,
@@ -52,6 +58,18 @@ abstract class RulesHarvestingVisitor implements TraceVisitor
     public function unrecoverableFields(): array
     {
         return $this->unrecoverable;
+    }
+
+    /**
+     * Fields that DID recover rules, having lost one the fold could see was there — values spread in from
+     * an expression it cannot read. What they publish is true and says less than the code does, which is
+     * the one degradation nothing else reports.
+     *
+     * @return list<string>
+     */
+    public function widenedFields(): array
+    {
+        return $this->widened;
     }
 
     /**
@@ -77,6 +95,9 @@ abstract class RulesHarvestingVisitor implements TraceVisitor
 
             if ($rules !== []) {
                 $this->fields[$field] = $rules;
+                if ($this->folder->widened() && ! in_array($field, $this->widened, true)) {
+                    $this->widened[] = $field;
+                }
 
                 continue;
             }

@@ -15,6 +15,7 @@ use Docuccino\Core\Inference\TraceVisitor;
 use Docuccino\Core\Inference\TypeScope;
 use Docuccino\Core\Provenance\SourcePathResolver;
 use Docuccino\Laravel\Integrations\Eloquent\EloquentModelReflector;
+use Docuccino\Laravel\Integrations\Support\FoldedArguments;
 use Docuccino\Laravel\Integrations\Support\PaginationTerminalVisitor;
 use Docuccino\Laravel\Integrations\Support\RequestPageSizeReader;
 use PhpParser\Comment;
@@ -680,16 +681,19 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
 
     /**
      * The public filter name from the descriptor's first argument. `AllowedFilter::trashed()` may be
-     * called with no name, in which case Spatie's documented default is `trashed`.
+     * called with no name, in which case Spatie's documented default is `trashed` — true of a call that
+     * passed NO name, and of no other. A name written but unreadable is a filter the endpoint accepts
+     * under some other key, and publishing `trashed` for it names a query parameter that does not exist;
+     * null instead leaves the entry unresolved, which is what the caller diagnoses.
      */
     private function descriptorName(ConstValue $value, string $method): ?string
     {
         $first = $value->args[0] ?? null;
-        if ($first instanceof ConstValue && $first->isScalar() && is_string($first->scalar) && $first->scalar !== '') {
+        if ($first !== null && $first->isScalar() && is_string($first->scalar) && $first->scalar !== '') {
             return $first->scalar;
         }
 
-        return $method === 'trashed' ? 'trashed' : null;
+        return $method === 'trashed' && $first === null ? 'trashed' : null;
     }
 
     /** The internal column name argument, when it's a non-empty string. Position varies by factory. */
@@ -827,12 +831,7 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
         $this->facts->paginationKind = $this->terminals[$name];
         $this->facts->paginationTerminal = $name;
 
-        $args = [];
-        foreach ($node->getArgs() as $index => $arg) {
-            $value = $scope->constantValueOf($arg->value);
-            $args[$arg->name?->toString() ?? $index] = $value !== null && $value->isScalar() ? $value->scalar : null;
-        }
-        $this->facts->paginationArgs = $args;
+        $this->facts->paginationArgs = FoldedArguments::of($node, $scope);
     }
 
     private function receiverIsBuilder(Node\Expr $receiver, TypeScope $scope): bool

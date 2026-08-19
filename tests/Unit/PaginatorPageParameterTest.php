@@ -33,7 +33,7 @@ it('carries the name the call site chose instead of the default', function (?str
     'a renamed cursor' => ['cursor', 'after'],
 ]);
 
-it('reads the name argument of every terminal that takes one, positionally or by name', function (string $terminal, string $kind, array $args, ?string $name): void {
+it('reads the name argument of every terminal that takes one, positionally or by name', function (string $terminal, string $kind, ?array $args, ?string $name): void {
     $spec = PaginatorPageParameter::forTerminal($terminal, $kind, $args);
 
     expect($spec?->name)->toBe($name);
@@ -55,6 +55,12 @@ it('reads the name argument of every terminal that takes one, positionally or by
     'an unfoldable positional name' => ['paginate', 'length', [0 => 20, 1 => null, 2 => null], null],
     'an unfoldable named name' => ['cursorPaginate', 'cursor', ['cursorName' => null], null],
     'a name that folded to the empty string' => ['paginate', 'length', [2 => ''], null],
+    // A spread makes every position unknown rather than absent, and the terminal that takes a name
+    // argument may have been handed one in there — so no key, for the same reason as an unfoldable one.
+    'a spread that may hold the name' => ['paginate', 'length', null, null],
+    'a spread on a cursor terminal' => ['cursorPaginate', 'cursor', null, null],
+    // A custom terminal takes no name argument whatever its own signature holds, so the default stands.
+    'a spread on a custom terminal' => ['paginateList', 'length', null, 'page'],
 ]);
 
 it('keeps the default key when no terminal was recorded at all', function (): void {

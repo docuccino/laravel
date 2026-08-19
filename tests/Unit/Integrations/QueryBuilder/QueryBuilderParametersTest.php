@@ -152,7 +152,7 @@ it('groups sparse fields into a single deepObject fields param under the deepObj
         ->and(array_keys($specs[0]->schema['properties']))->toBe(['articles', 'author']);
 });
 
-it('adds the selector the terminal reads, under the name that terminal was given', function (string $kind, string $terminal, array $args, array $expectedNames): void {
+it('adds the selector the terminal reads, under the name that terminal was given', function (string $kind, string $terminal, ?array $args, array $expectedNames): void {
     $facts = factsWith(function (QueryBuilderFacts $f) use ($kind, $terminal, $args): void {
         $f->paginates = true;
         $f->paginationKind = $kind;
@@ -172,6 +172,8 @@ it('adds the selector the terminal reads, under the name that terminal was given
     'a renamed cursor' => ['cursor', 'cursorPaginate', ['cursorName' => 'after'], ['after']],
     // Renamed to something that would not fold: no key at all beats a guessed one.
     'a name that would not fold' => ['length', 'paginate', [0 => 25, 1 => null, 2 => null], []],
+    // A spread could have renamed the key, so the same rule applies: no key beats a guessed one.
+    'a spread nothing can be indexed off' => ['length', 'paginate', null, []],
 ]);
 
 it('never claims a page-size key, which the terminal takes from the call site and not from the request', function (array $args): void {

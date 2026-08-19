@@ -10,6 +10,7 @@ use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Extensions\Schema\ComponentHoist;
 use Docuccino\Core\Extensions\Schema\DeclarationFiles;
+use Docuccino\Core\Extensions\Schema\MockHints;
 use Docuccino\Core\Extensions\Schema\SchemaResult;
 use Docuccino\Core\Inference\ClassMetadata;
 use Docuccino\Core\Inference\ClassRef;
@@ -110,6 +111,7 @@ final class DataSchema implements TypeToSchema
         return $this->hoist->hoist($context, $fqcn, function () use ($fqcn, $facts, $metadata, $context): array {
             $properties = [];
             $required = [];
+            $keys = [];
             foreach ($metadata->properties as $property) {
                 if (in_array($property->name, $facts['hidden'], true) || $this->reflector->isPropertyHidden($fqcn, $property->name)) {
                     continue;
@@ -129,6 +131,7 @@ final class DataSchema implements TypeToSchema
                 }
 
                 $key = $this->reflector->outputName($fqcn, $property->name);
+                $keys[$property->name] = $key;
                 $properties[$key] = $schema;
 
                 // Required even when nullable — spatie still emits the key carrying `null`, so
@@ -143,7 +146,9 @@ final class DataSchema implements TypeToSchema
                 $object['required'] = $required;
             }
 
-            return $object;
+            // #[MapName] can rename a property on the wire, so a hint follows the property to whatever
+            // key it publishes under.
+            return MockHints::applyTo($context, $object, $fqcn, $keys);
         }, $facts['schemaName'], $facts['schemaId']);
     }
 

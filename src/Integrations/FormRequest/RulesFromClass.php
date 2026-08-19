@@ -24,7 +24,9 @@ use ReflectionClass;
  *
  * A field present in the array but recovered by neither path raises a `validation.rule-unrecoverable` info
  * diagnostic, so a closure or an undocumented custom rule object never vanishes silently — worded for
- * whether the field is omitted outright or kept by another producer minus its constraints.
+ * whether the field is omitted outright or kept by another producer minus its constraints. A field that
+ * recovered SOME of its rules and widened past values it could not read raises
+ * `validation.rule-values-unread` instead: what it publishes is true, and quieter than the code.
  */
 final class RulesFromClass
 {
@@ -91,6 +93,15 @@ final class RulesFromClass
                     ? sprintf('Validation field "%s" on %s has no statically recoverable rules; it is documented from its type alone, without the constraints they state.', $field, $class)
                     : sprintf('Validation field "%s" on %s has no statically recoverable rules; it is omitted from the request schema.', $field, $class),
                 help: 'Its rules are a closure, a custom Rule object with no #[RuleSchema], or a Rule::when()/conditional descriptor. Express the field with recoverable rules (string/array rules, Rule::enum(), Rule::in(), …), or annotate the rule class with #[RuleSchema], so it is documented.',
+            ));
+        }
+
+        foreach ($visitor->widenedFields() as $field) {
+            $context->components->addDiagnostic(new Diagnostic(
+                severity: Severity::Info,
+                code: 'validation.rule-values-unread',
+                message: sprintf('Validation field "%s" on %s states values this build cannot read, so that constraint is left off the request schema; the rest of its rules are documented.', $field, $class),
+                help: 'The values are spread in from an expression (`Rule::in(...$choices)`) or passed under a name, and a partial list would make a client reject a value the API accepts. Write them where the rule is, or state them in an overlay.',
             ));
         }
 

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Extensions;
 
-use Docuccino\Attributes\Example;
 use Docuccino\Attributes\IgnoreResponse;
 use Docuccino\Attributes\Response;
 use Docuccino\Attributes\ResponseHeader;
@@ -20,8 +19,8 @@ use Docuccino\Core\TypeGrammar\TypeStringParser;
 
 /**
  * Applies the response attributes as the attribute layer: `#[Response]` (per status, with a
- * parsed body type), `#[IgnoreResponse]` removals, `#[ResponseHeader]` (grouped and merged per
- * status), and method-level `#[Example]` (attached to the success response body).
+ * parsed body type), `#[IgnoreResponse]` removals, and `#[ResponseHeader]` (grouped and merged per
+ * status). Examples are the core attribute-examples extension's, which runs once every response exists.
  */
 final class AttributeResponsesExtension implements OperationExtension
 {
@@ -70,7 +69,6 @@ final class AttributeResponsesExtension implements OperationExtension
         }
 
         $this->applyResponseHeaders($operation, $context, $imports);
-        $this->applyExamples($operation, $context);
     }
 
     private function reportBodylessBody(RouteContext $context, string $status, string $type): void
@@ -107,19 +105,6 @@ final class AttributeResponsesExtension implements OperationExtension
 
         foreach ($byStatus as $status => $headers) {
             $operation->response((string) $status)->set('headers', $headers, Contribution::attribute($context->actionSource()));
-        }
-    }
-
-    private function applyExamples(OperationDraft $operation, RouteContext $context): void
-    {
-        foreach ($context->attributes->all(Example::class) as $example) {
-            if ($example->value === null) {
-                continue;
-            }
-
-            $operation->response('200')->content('application/json')->set('example', $example->value, Contribution::attribute($context->actionSource()));
-
-            return; // the first concrete example wins for the success body
         }
     }
 }

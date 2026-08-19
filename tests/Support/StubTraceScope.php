@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Tests\Support;
 
+use Docuccino\Core\Inference\ArgumentSlots;
 use Docuccino\Core\Inference\ConstValue;
 use Docuccino\Core\Inference\DType\DType;
 use Docuccino\Core\Inference\FoldsCallReturns;
@@ -19,7 +20,8 @@ use PhpParser\Node;
  * AST directly — array literals per item, literals to scalars, factory static-calls to descriptors, `new`
  * expressions to instance
  * values (mirroring what the real engine hands back, so the visitor's harvest logic is exercised for
- * real). Non-constant sub-expressions (a variable) fold to `unknown`, exercising the degradation path.
+ * real). Non-constant sub-expressions (a variable) fold to `unknown`, exercising the degradation path, and
+ * arguments are placed by the same {@see ArgumentSlots} the engine places them with.
  *
  * It also stands in for the engine's deferred return folds ({@see FoldsCallReturns}): `$foldedReturns` says
  * what a call to a given method name answers with, queued and then drained by {@see drainReturnFolds()} the
@@ -96,7 +98,9 @@ final class StubTraceScope implements FoldsCallReturns, TypeScope
         if ($expr instanceof Node\Expr\Array_) {
             $items = [];
             foreach ($expr->items as $item) {
-                $items[] = $this->fold($item->value) ?? ConstValue::unknown('non-constant array item');
+                $items[] = $item->unpack
+                    ? ConstValue::spread('spread array item')
+                    : $this->fold($item->value) ?? ConstValue::unknown('non-constant array item');
             }
 
             return ConstValue::array($items);
@@ -139,12 +143,8 @@ final class StubTraceScope implements FoldsCallReturns, TypeScope
 
         if ($expr instanceof Node\Expr\StaticCall && $expr->class instanceof Node\Name && $expr->name instanceof Node\Identifier) {
             $factory = $expr->class->toString().'::'.$expr->name->toString();
-            $args = [];
-            foreach ($expr->getArgs() as $arg) {
-                $args[] = $this->fold($arg->value) ?? ConstValue::unknown('non-constant arg');
-            }
 
-            return ConstValue::descriptor($factory, $args);
+            return ConstValue::descriptor($factory, $this->foldArgs($expr->getArgs()));
         }
 
         // A fluent call over a descriptor receiver appends to its chain, as the real engine does, so
@@ -156,26 +156,41 @@ final class StubTraceScope implements FoldsCallReturns, TypeScope
         ) {
             $receiver = $this->fold($expr->var);
             if ($receiver !== null && $receiver->isDescriptor()) {
-                $args = [];
-                foreach ($expr->getArgs() as $arg) {
-                    $args[] = $this->fold($arg->value) ?? ConstValue::unknown('non-constant arg');
-                }
-
-                return $receiver->withChainedCall($expr->name->toString(), $args);
+                return $receiver->withChainedCall($expr->name->toString(), $this->foldArgs($expr->getArgs()));
             }
         }
 
         // `new Iban('GB')` folds to an instance value, as the real engine does — the rules recovery keys
         // on the class to read its `#[RuleSchema]`.
         if ($expr instanceof Node\Expr\New_ && $expr->class instanceof Node\Name) {
-            $args = [];
-            foreach ($expr->getArgs() as $arg) {
-                $args[] = $this->fold($arg->value) ?? ConstValue::unknown('non-constant arg');
-            }
-
-            return ConstValue::instance(ltrim($expr->class->toString(), '\\'), $args);
+            return ConstValue::instance(ltrim($expr->class->toString(), '\\'), $this->foldArgs($expr->getArgs()));
         }
 
         return null;
+    }
+
+    /**
+     * The same placement the real fold uses ({@see ArgumentSlots}): a written-out spread expands into the
+     * positions it takes, and anything holding no position of its own ends the list with a marker. A stub
+     * that placed arguments differently from the engine would prove the readers work on shapes they never
+     * see.
+     *
+     * @param  array<Node\Arg>  $args
+     * @return list<ConstValue>
+     */
+    private function foldArgs(array $args): array
+    {
+        $slots = ArgumentSlots::of($args);
+
+        $folded = [];
+        foreach ($slots->positional() as $expr) {
+            $folded[] = $this->fold($expr) ?? ConstValue::unknown('non-constant arg');
+        }
+
+        if (! $slots->isIndexable()) {
+            $folded[] = ConstValue::spread('unplaceable arg');
+        }
+
+        return $folded;
     }
 }

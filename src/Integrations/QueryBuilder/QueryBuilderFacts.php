@@ -51,12 +51,11 @@ final class QueryBuilderFacts
 
     /**
      * The outermost terminal call's folded arguments, in the shape `PaginatorPageParameter::forTerminal()`
-     * reads: positional under their index, named under their parameter name, null where an argument was
-     * written but would not fold.
+     * reads — `FoldedArguments` states the whole rule, including the spread that makes a list unindexable.
      *
-     * @var array<array-key, string|int|float|bool|null>
+     * @var array<array-key, string|int|float|bool|null>|null
      */
-    public array $paginationArgs = [];
+    public ?array $paginationArgs = [];
 
     /**
      * The page-size key the trace followed the paginator's size argument back to a request read for, or

@@ -501,7 +501,7 @@ it('misses an entry written in an older fragment format rather than reading it a
 });
 
 it('invalidates the query-builder fragment when an enum-cast filter file changes (feature 1 dependency)', function (): void {
-    fragmentCacheDir('fragments');
+    $dir = fragmentCacheDir('fragments');
     $engine = new CountingTypeEngine(WorkbenchEngine::make());
     app()->instance(TypeEngine::class, $engine);
 
@@ -514,17 +514,42 @@ it('invalidates the query-builder fragment when an enum-cast filter file changes
     generateDocument()->document;
     expect($engine->analyzeCount)->toBe(0);
 
-    // Editing the enum's declaring file changes its stored hash → the enum-typed QB fragment rebuilds.
+    // The enum's declaring file is recorded as a dependency of the QB fragment, and a fragment whose
+    // recorded hash no longer matches the file rebuilds.
+    //
+    // The disagreement is staged in the cache rather than by editing the enum on disk: the workbench
+    // is shared by every parallel test process, so a file rewritten here — even restored afterwards —
+    // invalidates whatever another process happens to be hashing at that moment. That made this row
+    // fail a peer's warm-cache assertion at random. Rewriting the stored hash proves the same two
+    // things and touches nothing outside this row's own cache directory.
     $enumFile = (string) (new ReflectionEnum('Workbench\\App\\Enums\\WidgetStatus'))->getFileName();
-    $original = (string) file_get_contents($enumFile);
-    try {
-        file_put_contents($enumFile, $original."\n// fragment-cache dependency probe\n");
-        generateDocument()->document;
+    $rewritten = 0;
 
-        expect($engine->analyzeCount)->toBeGreaterThan(0);
-    } finally {
-        file_put_contents($enumFile, $original);
+    foreach (glob($dir.'/*.json') ?: [] as $entry) {
+        /** @var array{dependencies?: list<array{file?: string, hash?: string}>} $decoded */
+        $decoded = json_decode((string) file_get_contents($entry), true);
+        $changed = false;
+
+        foreach ($decoded['dependencies'] ?? [] as $index => $dependency) {
+            if (($dependency['file'] ?? null) === $enumFile) {
+                $decoded['dependencies'][$index]['hash'] = str_repeat('0', 64);
+                $changed = true;
+            }
+        }
+
+        if ($changed) {
+            file_put_contents($entry, (string) json_encode($decoded));
+            $rewritten++;
+        }
     }
+
+    // Half the claim: the enum file really is on some fragment's dependency list.
+    expect($rewritten)->toBeGreaterThan(0);
+
+    generateDocument()->document;
+
+    // The other half: a dependency that no longer hashes to what was stored rebuilds the fragment.
+    expect($engine->analyzeCount)->toBeGreaterThan(0);
 });
 
 it('invalidates a fragment when an annotated custom rule class is edited', function (): void {

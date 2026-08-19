@@ -20,6 +20,7 @@ use Docuccino\Laravel\Config\DocumentConfigFactory;
 use Docuccino\Laravel\Engine\EngineNeon;
 use Docuccino\Laravel\Engine\EnginePackage;
 use Docuccino\Laravel\Engine\TypeEngineMode;
+use Docuccino\Laravel\Registry\ConfigExtensions;
 use Docuccino\Laravel\Support\Paths;
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
@@ -70,7 +71,7 @@ final class DocumentBuilder
     {
         $config = $this->config($key);
         [$overlays, $overlayDiagnostics] = $this->overlays($config);
-        [$extensions, $extensionDiagnostics] = $this->configExtensions();
+        [$extensions, $extensionDiagnostics] = ConfigExtensions::read();
         $preDiagnostics = [...$this->engineDiagnostics(), ...$extensionDiagnostics, ...$overlayDiagnostics];
 
         $result = $this->generator->generate($config, $engine, $extensions, $overlays);
@@ -217,46 +218,6 @@ final class DocumentBuilder
         $configured = config('docuccino.on_route_error');
 
         return is_string($configured) ? $configured : 'skeleton';
-    }
-
-    /**
-     * The `docuccino.extensions` list, plus a warning for every entry that contributed nothing.
-     *
-     * `Foo\Bar::class` still evaluates to the string when the class does not exist, so a typo'd
-     * namespace is a silent no-op — the document simply loses whatever that extension does. A warning,
-     * not info: the author asked for behaviour the build could not give them.
-     *
-     * @return array{0: list<class-string|object>, 1: list<Diagnostic>}
-     */
-    private function configExtensions(): array
-    {
-        $out = [];
-        $diagnostics = [];
-
-        foreach ((array) config('docuccino.extensions', []) as $extension) {
-            if (is_object($extension)) {
-                $out[] = $extension;
-
-                continue;
-            }
-
-            if (is_string($extension) && class_exists($extension)) {
-                $out[] = $extension;
-
-                continue;
-            }
-
-            $diagnostics[] = new Diagnostic(
-                severity: Severity::Warning,
-                code: 'config.extension-missing',
-                message: is_string($extension)
-                    ? sprintf('docuccino.extensions lists "%s", which no autoloadable class defines — it contributed nothing to this document.', $extension)
-                    : sprintf('docuccino.extensions holds a %s where a class-string or an extension instance was expected — it contributed nothing to this document.', get_debug_type($extension)),
-                help: 'Check the class name and its namespace in config/docuccino.php, and that the class is autoloadable (composer dump-autoload).',
-            );
-        }
-
-        return [$out, $diagnostics];
     }
 
     /**

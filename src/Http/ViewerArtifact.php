@@ -16,6 +16,10 @@ use Docuccino\Core\Extensions\Context\ExportTarget;
  * file the viewer shows. YAML targets are skipped — the spec endpoint serves `application/json`, and
  * a YAML body under that content type is a file the browser cannot read.
  *
+ * Not per driver, despite `viewer.driver`: every driver reads the one `.json` endpoint, so which
+ * artifact holds servable JSON is a property of the formats and the endpoint, not of whatever is
+ * rendering the page around it.
+ *
  * @internal
  */
 final class ViewerArtifact

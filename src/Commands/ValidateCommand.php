@@ -24,7 +24,7 @@ final class ValidateCommand extends Command
 
     protected $signature = 'docuccino:validate
         {document? : The configured document key (defaults to every document)}
-        {--fail-on=none : none | warning | error — extra diagnostic severity that also fails (a schema violation always fails)}
+        {--fail-on=none : none | error | warning | info | hint — quietest extra severity that also fails (a schema violation always fails)}
         {--memory-limit= : Raise the PHP memory limit for inference (e.g. 2G)}';
 
     protected $description = 'Validate the generated document(s) against the bundled UIR schema.';
@@ -35,9 +35,10 @@ final class ValidateCommand extends Command
             return self::FAILURE;
         }
 
-        return $this->forEachDocument($builder, function (string $key) use ($builder, $engine): int {
+        $exit = $this->forEachDocument($builder, function (string $key) use ($builder, $engine): int {
             $result = $builder->build($key, $engine);
-            $schemaErrors = $this->schemaErrors($result->diagnostics);
+            $diagnostics = $this->withAcceptanceNotes($result->diagnostics);
+            $schemaErrors = $this->schemaErrors($diagnostics);
 
             if ($schemaErrors === []) {
                 $this->info(sprintf('%s: valid against UIR %s.', $key, $this->uirVersion($result->document->toArray())));
@@ -45,10 +46,12 @@ final class ValidateCommand extends Command
                 $this->error(sprintf('%s: %d schema violation(s).', $key, count($schemaErrors)));
             }
 
-            $this->renderDiagnostics($key, $result->diagnostics);
+            $this->renderDiagnostics($key, $diagnostics);
 
-            return $schemaErrors !== [] || $this->failsOn($result) ? self::FAILURE : self::SUCCESS;
+            return $schemaErrors !== [] || $this->failsOnAny($diagnostics) ? self::FAILURE : self::SUCCESS;
         });
+
+        return $this->reportStaleAcceptances($exit);
     }
 
     /**

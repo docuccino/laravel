@@ -57,14 +57,13 @@ final class PaginationTerminalVisitor implements TraceVisitor
     public ?string $terminal = null;
 
     /**
-     * The outermost call's folded arguments — a positional one under its 0-based index, a named one
-     * under its parameter name, each a scalar or null where it was written but did not fold. Consumers
-     * read whichever position or name their own terminal's signature gives the argument they want, so
-     * `array_key_exists` is what separates "absent" from "written and unresolvable".
+     * The outermost call's folded arguments, as {@see FoldedArguments} builds them — consumers read
+     * whichever position or name their own terminal's signature gives the argument they want. Null where
+     * the call carries a spread and no position means what it looks like.
      *
-     * @var array<array-key, string|int|float|bool|null>
+     * @var array<array-key, string|int|float|bool|null>|null
      */
-    public array $outermostArgs = [];
+    public ?array $outermostArgs = [];
 
     /**
      * @param  array<string, string>  $terminals  terminal method name → paginator kind
@@ -168,12 +167,7 @@ final class PaginationTerminalVisitor implements TraceVisitor
         $this->terminal = $terminal;
         $this->kind = $this->terminals[$terminal];
 
-        $args = [];
-        foreach ($call->getArgs() as $index => $arg) {
-            $value = $scope->constantValueOf($arg->value);
-            $args[$arg->name?->toString() ?? $index] = $value !== null && $value->isScalar() ? $value->scalar : null;
-        }
-        $this->outermostArgs = $args;
+        $this->outermostArgs = FoldedArguments::of($call, $scope);
     }
 
     private function receiverIsBuilder(Node\Expr $receiver, TypeScope $scope): bool

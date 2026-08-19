@@ -13,7 +13,7 @@ use Docuccino\Core\Extensions\ResolvedExtensions;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParametersExtension;
-use Docuccino\Laravel\Tests\Support\QbTraceScript;
+use Docuccino\Laravel\Tests\Support\TraceScript;
 
 /**
  * A user-land filter factory (a `ListFilters`-style helper returning a Spatie `AllowedFilter`) is typed
@@ -26,7 +26,7 @@ use Docuccino\Laravel\Tests\Support\QbTraceScript;
 function runFactoryFilters(string $chain): array
 {
     $engine = new StubTypeEngine(traces: [
-        'App\\Gadgets::index' => QbTraceScript::forChain($chain),
+        'App\\Gadgets::index' => TraceScript::forChain($chain),
     ]);
 
     $context = new RouteContext(

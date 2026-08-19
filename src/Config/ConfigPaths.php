@@ -41,10 +41,12 @@ final class ConfigPaths
      */
     private const PATH_KEYS = [
         'content.dir' => PathShape::Single,
+        'examples.recordings' => PathShape::Single,
         'export.path' => PathShape::Single,
         'export.targets' => PathShape::TargetList,
         'info.description.file' => PathShape::Single,
         'overlays' => PathShape::PathList,
+        'webhooks.dir' => PathShape::Single,
     ];
 
     /**

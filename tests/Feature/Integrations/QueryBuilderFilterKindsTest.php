@@ -10,7 +10,7 @@ use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParametersExtension;
-use Docuccino\Laravel\Tests\Support\QbTraceScript;
+use Docuccino\Laravel\Tests\Support\TraceScript;
 
 /**
  * End-to-end proof of the QB filter-kind ENRICHMENT (round 2) in-process: a scripted trace over a real
@@ -21,7 +21,7 @@ use Docuccino\Laravel\Tests\Support\QbTraceScript;
 function runFilterKinds(string $chain): array
 {
     $engine = new StubTypeEngine(traces: [
-        'App\\Gadgets::index' => QbTraceScript::forChain($chain),
+        'App\\Gadgets::index' => TraceScript::forChain($chain),
     ]);
 
     $context = new RouteContext(

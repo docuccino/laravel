@@ -6,6 +6,7 @@ namespace Docuccino\Laravel\Integrations\FormRequest;
 
 use Docuccino\Core\Extensions\Schema\EnumReflection;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
+use Docuccino\Core\Inference\ArgumentSlots;
 use Docuccino\Core\Inference\ConstValue;
 use Docuccino\Laravel\Integrations\Support\DependencyFileSet;
 use Docuccino\Laravel\Integrations\Support\RuleParsing;
@@ -25,6 +26,8 @@ final class ConstValueToRules
 {
     private readonly DependencyFileSet $dependencyFiles;
 
+    private bool $widened = false;
+
     public function __construct(
         private readonly CustomRuleReader $customRules = new CustomRuleReader,
     ) {
@@ -36,6 +39,8 @@ final class ConstValueToRules
      */
     public function fold(ConstValue $value): array
     {
+        $this->widened = false;
+
         if ($value->isScalar() && is_string($value->scalar)) {
             return RuleParsing::tokens($value->scalar);
         }
@@ -62,6 +67,10 @@ final class ConstValueToRules
                     }
                 } elseif ($item->isInstance()) {
                     $out = [...$out, ...$this->instance($item)];
+                } elseif ($item->isSpread()) {
+                    // Rules the call site spread in from somewhere unreadable: the ones written beside
+                    // them still hold, so they stand, and the caller is told what went missing.
+                    $this->widened = true;
                 }
             }
 
@@ -80,6 +89,16 @@ final class ConstValueToRules
     public function dependencyFiles(): array
     {
         return $this->dependencyFiles->all();
+    }
+
+    /**
+     * Whether the last {@see fold()} could SEE a constraint it could not read — values spread in from an
+     * expression, an unplaceable argument — and widened the field rather than publishing a partial one.
+     * Its rules are still true; they just say less than the code does, which is a thing to report.
+     */
+    public function widened(): bool
+    {
+        return $this->widened;
     }
 
     /**
@@ -105,11 +124,11 @@ final class ConstValueToRules
         // A choice descriptor whose values didn't fold is worth LESS than nothing: it would win the merge
         // and then contribute no keyword, so it stays unrecovered for the caller to diagnose.
         // `exists`/`unique` legitimately carry no values.
-        $choices = $method === 'in' ? $this->scalarArgs($descriptor) : [];
+        $choices = $method === 'in' ? $this->scalarValues($descriptor->args) : [];
 
         return match (true) {
             $method === 'enum' => $this->enum($descriptor),
-            $method === 'in' => $choices === [] ? null : ValidationRule::of('in', $choices),
+            $method === 'in' => $choices === null || $choices === [] ? null : ValidationRule::of('in', $choices),
             $method === 'exists' => ValidationRule::of('exists'),
             $method === 'unique' => ValidationRule::of('unique'),
             default => null,
@@ -119,6 +138,13 @@ final class ConstValueToRules
     private function enum(ConstValue $descriptor): ?ValidationRule
     {
         $class = $descriptor->args[0] ?? null;
+        if ($class !== null && $class->isSpread()) {
+            // The enum class is somewhere in there and nothing names it, so no case list can be published.
+            $this->widened = true;
+
+            return null;
+        }
+
         $fqcn = $class !== null && $class->isScalar() && is_string($class->scalar) ? ltrim($class->scalar, '\\') : '';
 
         // The backing VALUES go into the rule, so adding a case rewrites it while the request class the
@@ -154,8 +180,10 @@ final class ConstValueToRules
         }
 
         foreach ($chain as $call) {
-            $selected = $this->chainSelectors($call['args']);
-            if ($selected === []) {
+            // Selectors that would not read are the one place narrowing must NOT happen: a half-read
+            // `only([...])` would drop cases the endpoint accepts. The full list stands instead.
+            $selected = $this->scalarValues($call['args']);
+            if ($selected === null || $selected === []) {
                 continue;
             }
 
@@ -170,37 +198,28 @@ final class ConstValueToRules
     }
 
     /**
-     * The case names a chain call selects, whether written as one array arg or spread.
+     * The values an argument list states — a `Rule::in(...)` choice list, an `->only([...])` selection —
+     * whether written as one array argument or as several. Null where a spread or a named argument sits in
+     * the list ({@see ArgumentSlots}): a list read past one of those is a list MISSING values, and a
+     * published enum missing a legal value makes a generated client REJECT what the API accepts. There is
+     * no truthful partial answer, so the caller widens to no constraint and says so.
      *
      * @param  list<ConstValue>  $args
-     * @return list<string>
+     * @return list<string>|null
      */
-    private function chainSelectors(array $args): array
+    private function scalarValues(array $args): ?array
     {
+        // `Rule::in(['a', 'b'])` folds arg 0 to an array; `Rule::in('a', 'b')` to a list of args.
         $source = count($args) === 1 && $args[0]->isArray() ? $args[0]->items : $args;
 
         $out = [];
         foreach ($source as $arg) {
-            if ($arg->isScalar() && is_string($arg->scalar)) {
-                $out[] = $arg->scalar;
+            if ($arg->isSpread()) {
+                $this->widened = true;
+
+                return null;
             }
-        }
 
-        return $out;
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function scalarArgs(ConstValue $descriptor): array
-    {
-        // `Rule::in(['a', 'b'])` folds arg 0 to an array; `Rule::in('a', 'b')` to a list of args.
-        $source = count($descriptor->args) === 1 && $descriptor->args[0]->isArray()
-            ? $descriptor->args[0]->items
-            : $descriptor->args;
-
-        $out = [];
-        foreach ($source as $arg) {
             if ($arg->isScalar() && $arg->scalar !== null) {
                 $out[] = is_bool($arg->scalar) ? ($arg->scalar ? '1' : '0') : (string) $arg->scalar;
             }

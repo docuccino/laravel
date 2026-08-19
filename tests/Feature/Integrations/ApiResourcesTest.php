@@ -23,6 +23,7 @@ use Docuccino\Laravel\Tests\Fixtures\ApiResources\ArticleJsonApiResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ArticleResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\AuthorResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\CommentJsonApiResource;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\PersonaResource;
 
 /**
  * The API Resources integration: a JsonResource's toArray shape becomes a hoisted component with
@@ -43,6 +44,10 @@ function apiResourceEngine(): StubTypeEngine
             new ArrayShapeField('author', UnionT::of([new ClassT(AuthorResource::class), $missing])),
             // when → string|MissingValue|null (optional AND nullable).
             new ArrayShapeField('excerpt', UnionT::of([ScalarT::string(), $missing, new NullT])),
+        ]),
+        PersonaResource::class.'::toArray' => $shape([
+            new ArrayShapeField('handle', ScalarT::string()),
+            new ArrayShapeField('email', ScalarT::string()),
         ]),
         AuthorResource::class.'::toArray' => $shape([
             new ArrayShapeField('name', ScalarT::string()),
@@ -197,4 +202,18 @@ it('detects when a return type involves JSON:API', function (): void {
     expect(ResourceReflector::involvesJsonApi(new ClassT(ArticleJsonApiResource::class)))->toBeTrue()
         ->and(ResourceReflector::involvesJsonApi(new ClassT(ResourceReflector::JSON_API_COLLECTION, [new ClassT(ArticleJsonApiResource::class)])))->toBeTrue()
         ->and(ResourceReflector::involvesJsonApi(new ClassT(ArticleResource::class)))->toBeFalse();
+});
+
+it('names a toArray key with the class-level #[Mock] form, and says so when the key is not there', function (): void {
+    // A resource publishes what `toArray` returns, so its keys have no PHP property to carry an
+    // attribute — the class-level form is the whole of `#[Mock]` here.
+    $components = new ComponentRegistry;
+    resourceConverter($components)->toSchema(new ClassT(PersonaResource::class));
+
+    expect($components->schemas()['PersonaResource']['properties'])->toBe([
+        'handle' => ['type' => 'string', 'x-docuccino' => ['mock' => ['seedGroup' => 'persona']]],
+        'email' => ['type' => 'string', 'x-docuccino' => ['mock' => ['faker' => 'safeEmail']]],
+    ])
+        ->and(array_map(static fn ($d): string => $d->code, $components->diagnostics()))
+        ->toBe(['attribute.mock-unknown-property']);
 });

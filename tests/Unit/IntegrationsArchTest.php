@@ -28,6 +28,10 @@ arch('built-in integrations consume only the public extension surface')
         // integration inlining its own hierarchy walk is precisely what this list exists to prevent.
         'Docuccino\Core\Extensions\Schema\DeclarationFiles',
         'Docuccino\Core\Extensions\Schema\EnumReflection',
+        // The one reader of #[Mock], for the same reason SchemaIdentity is here: every class-hoisting
+        // mapper owes the same answer, and an integration rolling its own would fork the attribute's
+        // meaning per package.
+        'Docuccino\Core\Extensions\Schema\MockHints',
         'Docuccino\Core\Extensions\Schema\SchemaIdentity',
         'Docuccino\Core\Extensions\Schema\SchemaResult',
         'Docuccino\Core\Extensions\Validation\RecoveredRequest',
@@ -76,6 +80,11 @@ arch('built-in integrations consume only the public extension surface')
         // OAuth and cookie values are integrations' — and an extension may not import an integration, so
         // the rule lives under Laravel\Support and is allow-listed here rather than existing twice.
         'Docuccino\Laravel\Support\MachineDependentValue',
+        // And again: the single statement of how HTML is documented — a `text/html` body whose schema is
+        // a plain `string`. A built-in extension says it for a rendered view and this integration says it
+        // for a laravel-actions `htmlResponse()`; an extension may not import an integration, so the one
+        // sentence lives under Laravel\Support rather than being written twice and drifting.
+        'Docuccino\Laravel\Support\HtmlRepresentation',
     ]);
 
 arch('built-in integrations never reach into core internals or adapter wiring')

@@ -6,10 +6,16 @@ namespace Docuccino\Laravel;
 
 use Composer\InstalledVersions;
 use Docuccino\Core\Content\ContentCompiler;
+use Docuccino\Core\Examples\ExampleRedaction;
+use Docuccino\Core\Examples\RecordedExampleAudit;
+use Docuccino\Core\Extensions\BuiltIn\AttributeExamplesExtension;
 use Docuccino\Core\Extensions\BuiltIn\AttributeOverridesExtension;
 use Docuccino\Core\Inference\TypeEngine;
+use Docuccino\Core\Lint\LintRuleOptions;
+use Docuccino\Core\Lint\MissingDescriptionLint;
+use Docuccino\Core\Lint\OperationIdStyleLint;
 use Docuccino\Core\Lint\SensitiveFieldLint;
-use Docuccino\Core\Lint\SensitiveFieldLintOptions;
+use Docuccino\Core\Lint\UndocumentedTagLint;
 use Docuccino\Core\Pipeline\Assembler;
 use Docuccino\Core\Pipeline\FragmentCache;
 use Docuccino\Core\Provenance\RootRelativeSourcePathResolver;
@@ -17,13 +23,19 @@ use Docuccino\Core\Provenance\SourcePathResolver;
 use Docuccino\Laravel\Commands\CacheCommand;
 use Docuccino\Laravel\Commands\ClearCommand;
 use Docuccino\Laravel\Commands\DiffCommand;
+use Docuccino\Laravel\Commands\ExplainCommand;
 use Docuccino\Laravel\Commands\ExportCommand;
+use Docuccino\Laravel\Commands\InstallCommand;
 use Docuccino\Laravel\Commands\MemoryLimitOption;
 use Docuccino\Laravel\Commands\ValidateCommand;
+use Docuccino\Laravel\Commands\WatchCommand;
+use Docuccino\Laravel\Config\ConfigPublisher;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
+use Docuccino\Laravel\Config\LeakageOptions;
 use Docuccino\Laravel\Engine\ConsoleBuild;
 use Docuccino\Laravel\Engine\EnginePackage;
 use Docuccino\Laravel\Engine\TypeEngineFactory;
+use Docuccino\Laravel\Extensions\RecordedExamplesExtension;
 use Docuccino\Laravel\Http\DocsController;
 use Docuccino\Laravel\Integrations\InferredHandler\HandlerDeferralLog;
 use Docuccino\Laravel\Integrations\JsonApiPaginate\JsonApiPaginateConfig;
@@ -47,8 +59,15 @@ use Docuccino\Laravel\Pipeline\FragmentStore;
 use Docuccino\Laravel\Registry\ExtensionRegistry;
 use Docuccino\Laravel\Routing\LaravelRouteResolver;
 use Docuccino\Laravel\Routing\ResolvedRouteIndex;
+use Docuccino\Laravel\Routing\RouteSurvey;
 use Docuccino\Laravel\Routing\VendorRoutePolicy;
 use Docuccino\Laravel\Runtime\DocumentCache;
+use Docuccino\Laravel\Watch\ArtisanBuildRunner;
+use Docuccino\Laravel\Watch\BuildRunner;
+use Docuccino\Laravel\Watch\BuildToken;
+use Docuccino\Laravel\Watch\WatchSet;
+use Docuccino\Laravel\Watch\WatchSignal;
+use Docuccino\Laravel\Webhooks\WebhookCollector;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Foundation\Application;
@@ -84,11 +103,14 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             ->name('docuccino')
             ->hasConfigFile()
             ->hasCommands([
+                InstallCommand::class,
                 ExportCommand::class,
                 ValidateCommand::class,
                 DiffCommand::class,
                 CacheCommand::class,
                 ClearCommand::class,
+                WatchCommand::class,
+                ExplainCommand::class,
             ]);
     }
 
@@ -105,10 +127,18 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
         $this->app->scoped(HandlerDeferralLog::class);
 
         // Vendor-package controller routes are excluded by default (route:list --except-vendor
-        // semantics); this is the boundary.
-        $this->app->when(LaravelRouteResolver::class)
+        // semantics); this is the boundary. The install command's route survey reads the same one, so
+        // what it reports as documentable is what a build would actually document.
+        $this->app->when([LaravelRouteResolver::class, RouteSurvey::class])
             ->needs(VendorRoutePolicy::class)
             ->give(fn (): VendorRoutePolicy => new VendorRoutePolicy($this->app->basePath('vendor')));
+
+        // `docuccino:install` publishes the same file, from the same place, that
+        // `vendor:publish --tag=docuccino-config` does.
+        $this->app->bind(ConfigPublisher::class, fn (Application $app): ConfigPublisher => new ConfigPublisher(
+            source: dirname(__DIR__).'/config/docuccino.php',
+            target: $app->configPath('docuccino.php'),
+        ));
 
         // Provenance `source.file` paths are relative to the app base path (design §4); the resolver
         // falls back to a composer-root walk for files outside it (the workbench).
@@ -122,6 +152,11 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             ->give(fn (): string => $this->app->basePath());
 
         $this->app->when(AttributeOverridesExtension::class)
+            ->needs('$basePath')
+            ->give(fn (): string => $this->app->basePath());
+
+        // #[Example(file: …)] reads a project file, confined to the same base #[Description(file: …)] is.
+        $this->app->when(AttributeExamplesExtension::class)
             ->needs('$basePath')
             ->give(fn (): string => $this->app->basePath());
 
@@ -196,35 +231,64 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             ->needs('$basePath')
             ->give(fn (): string => $this->app->basePath());
 
+        // `docuccino:watch`. The watch set reads the same fragment store a build writes, and the
+        // engine bag is in because `engine.neon` is a file a build reads and nothing else watches.
+        $this->app->bind(WatchSet::class, function (Application $app): WatchSet {
+            /** @var array<string, mixed> $engine */
+            $engine = (array) config('docuccino.engine', []);
+
+            return new WatchSet(
+                $app->make(DocumentBuilder::class),
+                $app->make(FragmentStore::class),
+                $app->basePath(),
+                $engine,
+            );
+        });
+
+        $this->app->when(BuildToken::class)
+            ->needs('$basePath')
+            ->give(fn (): string => $this->app->basePath());
+
+        // Under storage/, so it is already gitignored and already absent from a deployed release —
+        // the reload endpoint exists only where a watch session put one here.
+        $this->app->when(WatchSignal::class)
+            ->needs('$path')
+            ->give(fn (): string => $this->app->storagePath('docuccino/watch'));
+
+        $this->app->bind(
+            BuildRunner::class,
+            fn (Application $app): BuildRunner => new ArtisanBuildRunner($app->basePath('artisan')),
+        );
+
         $this->app->when(ContentCompiler::class)
+            ->needs('$basePath')
+            ->give(fn (): string => $this->app->basePath());
+
+        $this->app->when(WebhookCollector::class)
             ->needs('$basePath')
             ->give(fn (): string => $this->app->basePath());
 
         // The data-leakage lint itself is framework-agnostic core; the adapter just maps
         // docuccino.lint.leakage.* onto its options.
-        $this->app->bind(SensitiveFieldLint::class, static function (): SensitiveFieldLint {
-            /** @var array<string, mixed> $leakage */
-            $leakage = (array) config('docuccino.lint.leakage', []);
-            $allow = is_array($leakage['allow'] ?? null) ? array_values(array_filter($leakage['allow'], 'is_string')) : [];
+        $this->app->bind(SensitiveFieldLint::class, static fn (): SensitiveFieldLint => new SensitiveFieldLint(
+            LeakageOptions::fromConfig(self::leakageConfig()),
+        ));
 
-            $options = new SensitiveFieldLintOptions(
-                enabled: ($leakage['enabled'] ?? true) !== false,
-                allow: $allow,
-            );
+        // Recorded examples read the same heuristics table, minus its off switch: turning a report off
+        // is not a request to publish credentials.
+        $this->app->bind(ExampleRedaction::class, static fn (): ExampleRedaction => new ExampleRedaction(
+            LeakageOptions::fromConfig(self::leakageConfig(), honourSwitch: false),
+        ));
 
-            // Extra token → label heuristics merge over the defaults; existing tokens keep their label.
-            $patterns = [];
-            foreach (is_array($leakage['patterns'] ?? null) ? $leakage['patterns'] : [] as $token => $label) {
-                if (is_string($token) && is_string($label)) {
-                    $patterns[$token] = $label;
-                }
-            }
-            if ($patterns !== []) {
-                $options = $options->withPatterns($patterns);
-            }
+        $this->app->when([RecordedExampleAudit::class, RecordedExamplesExtension::class])
+            ->needs('$basePath')
+            ->give(fn (): string => $this->app->basePath());
 
-            return new SensitiveFieldLint($options);
-        });
+        // The completeness lints share one options shape, so they share one reader; each is core, and
+        // the adapter only maps its docuccino.lint.<key> bag onto it.
+        $this->app->bind(MissingDescriptionLint::class, static fn (): MissingDescriptionLint => new MissingDescriptionLint(self::lintRule('descriptions', false)));
+        $this->app->bind(OperationIdStyleLint::class, static fn (): OperationIdStyleLint => new OperationIdStyleLint(self::lintRule('operation_ids', true)));
+        $this->app->bind(UndocumentedTagLint::class, static fn (): UndocumentedTagLint => new UndocumentedTagLint(self::lintRule('tags', false)));
 
         // json-api-paginate's parameter names and sizes are renamable in its own config; an absent bag
         // falls back to defaults plus an info diagnostic. Its response envelope (pagination mode) and
@@ -352,6 +416,33 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    private static function leakageConfig(): array
+    {
+        /** @var array<string, mixed> $leakage */
+        $leakage = (array) config('docuccino.lint.leakage', []);
+
+        return $leakage;
+    }
+
+    /**
+     * One `docuccino.lint.<key>` bag as rule options. `$default` is the rule's own answer when the key
+     * is absent, so a config file predating the rule keeps whatever shipped with it.
+     */
+    private static function lintRule(string $key, bool $default): LintRuleOptions
+    {
+        /** @var array<string, mixed> $rule */
+        $rule = (array) config('docuccino.lint.'.$key, []);
+        $allow = is_array($rule['allow'] ?? null) ? array_values(array_filter($rule['allow'], 'is_string')) : [];
+
+        return new LintRuleOptions(
+            enabled: ($rule['enabled'] ?? $default) !== false,
+            allow: $allow,
+        );
+    }
+
+    /**
      * Passport's scope catalogue and enabled grants — empty when Passport isn't installed, which is
      * why the `class_exists` guard has to come first.
      */
@@ -389,9 +480,12 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
     }
 
     /**
-     * Registers the runtime viewer routes for each document with a `viewer.route`: the Scalar HTML
-     * page, its `.json` spec, and the bundled Scalar asset. Access control lives in
-     * {@see DocsController} (a `viewer.gate` ability, else local env only).
+     * Registers the runtime viewer routes for each document with a `viewer.route`: the HTML page, its
+     * `.json` spec, the active driver's assets, and the reload channel `docuccino:watch` refreshes an
+     * open page through. Access control lives in {@see DocsController} (a `viewer.gate` ability, else
+     * local env only; reload additionally 404s with no watch session running), which is why the asset
+     * route is one pattern rather than one per driver — the driver is chosen late, from a registry
+     * that is not readable at boot, and the names it serves are its own allow-list.
      */
     public function packageBooted(): void
     {
@@ -423,7 +517,11 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
 
             Route::get($base, [DocsController::class, 'show'])->middleware($middleware)->defaults('document', (string) $key);
             Route::get($base.'.json', [DocsController::class, 'spec'])->middleware($middleware)->defaults('document', (string) $key);
-            Route::get($base.'/assets/scalar.js', [DocsController::class, 'asset'])->middleware($middleware)->defaults('document', (string) $key);
+            Route::get($base.'/assets/{asset}.js', [DocsController::class, 'asset'])
+                ->middleware($middleware)
+                ->where('asset', '[A-Za-z0-9_-]+')
+                ->defaults('document', (string) $key);
+            Route::get($base.'/reload', [DocsController::class, 'reload'])->middleware($middleware)->defaults('document', (string) $key);
         }
     }
 

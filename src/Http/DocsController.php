@@ -12,21 +12,30 @@ use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Laravel\Pipeline\DocumentBuilder;
 use Docuccino\Laravel\Runtime\DocumentCache;
 use Docuccino\Laravel\Support\Paths;
-use Docuccino\Laravel\Viewer\ScalarViewer;
+use Docuccino\Laravel\Viewer\ViewerDrivers;
+use Docuccino\Laravel\Watch\WatchSignal;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 
 /**
- * The runtime viewer endpoints: the Scalar HTML page, the `.json` spec (per `viewer.source`:
- * generate | artifact | cache), and the bundled Scalar asset. All three go through
- * {@see authorize()} — a configured `viewer.gate` ability, otherwise local environment only.
+ * The runtime viewer endpoints: the driver's HTML page, the `.json` spec (per `viewer.source`:
+ * generate | artifact | cache), the driver's bundled asset, and the reload channel a
+ * `docuccino:watch` session refreshes an open page through. Which driver renders is `viewer.driver`
+ * ({@see ViewerDrivers}); every one of them arrives here, and all four endpoints go through
+ * {@see authorize()} first — a configured `viewer.gate` ability, otherwise local environment only.
+ * That ordering is the gate's whole guarantee: no driver and no channel can be reached without
+ * passing it, because nothing but this controller ever calls one. The reload channel additionally
+ * exists only while a watch session has published a signal, so nowhere a watcher isn't running
+ * answers it at all.
  */
 final class DocsController
 {
     public function __construct(
         private readonly DocumentBuilder $builder,
-        private readonly ScalarViewer $viewer,
+        private readonly ViewerDrivers $drivers,
+        private readonly WatchSignal $signal,
     ) {}
 
     public function show(string $document): Response
@@ -34,7 +43,100 @@ final class DocsController
         $config = $this->config($document);
         $this->authorize($config);
 
-        return new Response($this->viewer->render(new ViewerContext($config)), 200, ['Content-Type' => 'text/html']);
+        $viewer = $this->drivers->for($config);
+        $rendered = $viewer->render(new ViewerContext($config));
+
+        if (is_string($rendered)) {
+            return $this->response($config, $this->withReload($rendered, $config));
+        }
+
+        $this->warnUnreloadable($config, $viewer->name(), $rendered);
+
+        return $this->response($config, $rendered);
+    }
+
+    /**
+     * One `text/event-stream` event naming the documentation the last `docuccino:watch` rebuild
+     * produced, and then the connection closes.
+     *
+     * Single-shot on purpose. `php artisan serve` is one process answering one request at a time, so
+     * a held stream would wedge the very server the page is loaded from — and the reconnection
+     * {@see ReloadScript} does costs one request every couple of seconds and blocks nothing.
+     */
+    public function reload(string $document): Response
+    {
+        $this->authorize($this->config($document));
+
+        $token = $this->signal->token();
+        abort_if($token === null, 404);
+
+        return new Response("retry: 2000\nevent: reload\ndata: {$token}\n\n", 200, [
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache, private',
+            // Nginx buffers a proxied response by default, which holds an event until the buffer
+            // fills — for a one-event body, forever.
+            'X-Accel-Buffering' => 'no',
+        ]);
+    }
+
+    /**
+     * Splice the live-reload subscriber into a viewer page, but only while a watch session has
+     * published a signal: everywhere else the page is the static document it has always been, with
+     * nothing polling in the background. Appended when the page has no `</body>` of its own, so a
+     * viewer other than the bundled one still reloads.
+     */
+    private function withReload(string $html, DocumentConfig $config): string
+    {
+        $endpoint = $this->reloadEndpoint($config);
+
+        if ($endpoint === null) {
+            return $html;
+        }
+
+        $script = ReloadScript::html($endpoint);
+        $position = strripos($html, '</body>');
+
+        return $position === false ? $html.$script : substr_replace($html, $script, $position, 0);
+    }
+
+    /**
+     * The channel an open page subscribes to, or null when there is nothing to subscribe to: no watch
+     * session has published a signal, or the document has no viewer route to hang it off. Both the
+     * splice and the warning about a page that misses it read this one answer, so the warning fires
+     * exactly where the subscriber would have gone in.
+     */
+    private function reloadEndpoint(DocumentConfig $config): ?string
+    {
+        $route = $config->viewer['route'] ?? null;
+
+        if ($this->signal->token() === null || ! is_string($route) || $route === '') {
+            return null;
+        }
+
+        return url('/'.trim($route, '/').'/reload');
+    }
+
+    /**
+     * A driver that builds its own response owns the page, live reload included — rewriting a body
+     * this package did not construct could corrupt a response that isn't HTML. Saying nothing is what
+     * costs: the terminal reports rebuild after rebuild while the page never moves. Only worth a word
+     * while a watch session is actually running, and only for a response we could otherwise have
+     * served; anything else is already a driver bug the response path reports.
+     */
+    private function warnUnreloadable(DocumentConfig $config, string $driver, mixed $rendered): void
+    {
+        $endpoint = $this->reloadEndpoint($config);
+
+        if (! $rendered instanceof Response || $endpoint === null) {
+            return;
+        }
+
+        Log::warning(sprintf(
+            'Docuccino viewer "%s" is being watched, but driver "%s" returned its own response rather than HTML, so the live-reload subscriber was not spliced in and the open page will not refresh on a rebuild. Return HTML from the driver to get it, or subscribe your page to "%s" yourself.',
+            $config->key,
+            $driver,
+            $endpoint,
+        ));
     }
 
     public function spec(string $document, TypeEngine $engine, DocumentCache $cache): Response
@@ -71,11 +173,24 @@ final class DocsController
         return $this->generate($document, $engine);
     }
 
-    public function asset(string $document): Response
+    /**
+     * One of the active driver's own assets. The driver publishes the name → file map, so a name that
+     * driver does not publish is a 404 rather than a path this route resolves — switching drivers
+     * closes the previous one's asset with it.
+     */
+    public function asset(Request $request): Response
     {
-        $this->authorize($this->config($document));
+        // Read by NAME, not by signature position: this is the one viewer route with a URI parameter,
+        // and Laravel appends a route's `defaults` after its URI parameters, so positional binding
+        // would hand `$document` the asset name.
+        $config = $this->config($this->routeParameter($request, 'document'));
+        $this->authorize($config);
 
-        $path = dirname(__DIR__, 2).'/resources/js/scalar.standalone.js';
+        $path = $this->drivers->asset($config, $this->routeParameter($request, 'asset'));
+        if ($path === null) {
+            abort(404);
+        }
+
         $contents = @file_get_contents($path);
 
         if ($contents === false) {
@@ -87,9 +202,41 @@ final class DocsController
         return new Response($contents, 200, [
             'Content-Type' => 'application/javascript',
             // The bundle only changes on package upgrade, so cache it immutably and skip re-reading
-            // 3.6 MB on every viewer load.
+            // megabytes on every viewer load.
             'Cache-Control' => 'public, max-age=31536000, immutable',
         ]);
+    }
+
+    /**
+     * A driver renders `mixed` — the contract is framework-agnostic — so this adapter accepts the two
+     * things it can serve: HTML, or a response the driver built itself. Anything else is a driver bug,
+     * and one that would otherwise show up as a blank page with no explanation anywhere.
+     */
+    private function response(DocumentConfig $config, mixed $rendered): Response
+    {
+        if ($rendered instanceof Response) {
+            return $rendered;
+        }
+
+        if (is_string($rendered)) {
+            return new Response($rendered, 200, ['Content-Type' => 'text/html']);
+        }
+
+        Log::warning(sprintf(
+            'Docuccino viewer "%s" rendered a %s; a driver must return HTML or an Illuminate response. Serving an empty page.',
+            $config->key,
+            get_debug_type($rendered),
+        ));
+
+        return new Response('', 200, ['Content-Type' => 'text/html']);
+    }
+
+    /** A route parameter by name, empty when it is absent or not a string. */
+    private function routeParameter(Request $request, string $name): string
+    {
+        $value = $request->route($name);
+
+        return is_string($value) ? $value : '';
     }
 
     private function config(string $document): DocumentConfig

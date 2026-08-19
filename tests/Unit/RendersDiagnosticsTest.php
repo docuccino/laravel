@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Docuccino\Core\Diagnostics\Diagnostic;
+use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Laravel\Tests\Support\DiagnosticConsole as Console;
 
 /**
@@ -76,10 +78,12 @@ it('prints help under the message it belongs to', function (): void {
         ."      Install it where you generate: composer require --dev docuccino/inference-phpstan.\n");
 });
 
-it('prints nothing extra for a diagnostic that states no help', function (): void {
+it('gives a diagnostic that states no help the page that documents it', function (): void {
+    // Where a producer wrote no help, the reference is the help — and `demo.` maps to no section, so
+    // the link lands on the page itself rather than promising an anchor that isn't there.
     $output = Console::render([Console::diagnostic('fine', 'GET api/orders')]);
 
-    expect($output)->toBe("\nDiagnostics for default:\n  GET api/orders\n    [warning] demo.code: fine\n");
+    expect($output)->toBe("\nDiagnostics for default:\n  GET api/orders\n    [warning] demo.code: fine\n      https://docs.docuccino.app/laravel/reference/diagnostics/\n");
 });
 
 it('indents every line of a multi-line help, and keeps the blank line between paragraphs', function (): void {
@@ -111,4 +115,34 @@ it('cannot be made to forge a diagnostic line from help', function (): void {
 
     expect($output)->toContain('      [error] fake.code: shipped')
         ->and($output)->not->toContain("\n    [error] fake.code: shipped");
+});
+
+/*
+ * The other half of what the console owes a reader: `diagnostics.accept` changes an exit code, so
+ * every line it covers has to say so where the line is read.
+ */
+it('marks a diagnostic the accepted list covers, and totals them under the block', function (): void {
+    config()->set('docuccino.diagnostics.accept', ['demo.code']);
+
+    $output = Console::render([Console::diagnostic('fine', 'GET api/orders'), Console::diagnostic('also fine')]);
+
+    expect($output)->toContain('    [warning, accepted] demo.code: fine')
+        ->and($output)->toContain('  Accepted, so --fail-on ignores them: demo.code (2)');
+});
+
+it('marks nothing, and totals nothing, where the list names another code', function (): void {
+    config()->set('docuccino.diagnostics.accept', ['other.code']);
+
+    $output = Console::render([Console::diagnostic('fine', 'GET api/orders')]);
+
+    expect($output)->toBe("\nDiagnostics for default:\n  GET api/orders\n    [warning] demo.code: fine\n      https://docs.docuccino.app/laravel/reference/diagnostics/\n");
+});
+
+it('never marks an error accepted, however the list reads', function (): void {
+    config()->set('docuccino.diagnostics.accept', ['demo.code']);
+
+    $error = new Diagnostic(severity: Severity::Error, code: 'demo.code', message: 'gone');
+
+    expect(Console::render([$error]))->toContain('    [error] demo.code: gone')
+        ->and(Console::render([$error]))->not->toContain('Accepted, so --fail-on ignores them');
 });

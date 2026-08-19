@@ -70,6 +70,7 @@ function documentFrom(array $raw, string $basePath = '/checkout/one'): DocumentC
 /** Path-like keys that SHAPE the document, so they are digested by `hash()`. */
 dataset('pathKeys', [
     'content.dir' => ['content.dir', 'resources/docs/api'],
+    'examples.recordings' => ['examples.recordings', 'docs/recordings'],
     'info.description.file' => ['info.description.file', 'resources/docs/description.md'],
     'overlays[0]' => ['overlays.0', 'resources/docs/overlays/*.yaml'],
 ]);
@@ -82,6 +83,7 @@ dataset('destinationKeys', [
 /** Every path-like key, for the behaviour both kinds share. */
 dataset('allPathKeys', [
     'content.dir' => ['content.dir', 'resources/docs/api'],
+    'examples.recordings' => ['examples.recordings', 'docs/recordings'],
     'export.path' => ['export.path', 'docs/openapi.json'],
     'info.description.file' => ['info.description.file', 'resources/docs/description.md'],
     'overlays[0]' => ['overlays.0', 'resources/docs/overlays/*.yaml'],

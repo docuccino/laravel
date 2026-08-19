@@ -13,6 +13,8 @@ use Docuccino\Core\Emit\ProvenanceLevel;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\ExportTarget;
 use Docuccino\Core\Inference\TypeEngine;
+use Docuccino\Core\Support\AtomicFile;
+use Docuccino\Core\Support\Directory;
 use Docuccino\Laravel\Config\ExportDiagnostics;
 use Docuccino\Laravel\Pipeline\DocumentBuilder;
 use Docuccino\Laravel\Support\Paths;
@@ -34,12 +36,13 @@ final class ExportCommand extends Command
     use GuardsEnabled;
     use IteratesDocuments;
     use RendersDiagnostics;
+    use StringOptions;
 
     protected $signature = 'docuccino:export
         {document? : The configured document key (defaults to every document)}
         {--format= : uir | openapi-3.2 | openapi-3.1 | openapi-3.0 | postman — writes this one format instead of the configured targets}
         {--out= : Output path (defaults to the matching target, else the document export path)}
-        {--fail-on=none : none | warning | error — the severity that makes the command exit non-zero}
+        {--fail-on=none : none | error | warning | info | hint — the quietest severity that still makes the command exit non-zero}
         {--provenance=winners : none | winners | full — UIR provenance detail}
         {--drop-ids : Omit the flat x-docuccino-id member OpenAPI output carries by default (the artifact then diffs by method + path)}
         {--yaml : Emit YAML instead of JSON}
@@ -57,14 +60,17 @@ final class ExportCommand extends Command
             return self::FAILURE;
         }
 
-        return $this->forEachDocument($builder, function (string $key) use ($builder, $engine): int {
+        $exit = $this->forEachDocument($builder, function (string $key) use ($builder, $engine): int {
             $result = $builder->build($key, $engine);
+            $diagnostics = $this->withAcceptanceNotes($result->diagnostics);
 
             $written = $this->writeTargets($builder->config($key), $result->document);
-            $this->renderDiagnostics($key, $result->diagnostics);
+            $this->renderDiagnostics($key, $diagnostics);
 
-            return $written && ! $this->failsOn($result) ? self::SUCCESS : self::FAILURE;
+            return $written && ! $this->failsOnAny($diagnostics) ? self::SUCCESS : self::FAILURE;
         });
+
+        return $this->reportStaleAcceptances($exit);
     }
 
     /**
@@ -228,25 +234,26 @@ final class ExportCommand extends Command
         $ok = true;
 
         foreach ($this->targets($config) as $target) {
-            $ok = $this->write($target, $document) && $ok;
+            $ok = $this->write($target, $document, $config) && $ok;
         }
 
         return $ok;
     }
 
-    private function write(ExportTarget $target, UirDocument $document): bool
+    private function write(ExportTarget $target, UirDocument $document, DocumentConfig $config): bool
     {
-        $result = Formats::emit($target->format, $document, $this->emitOptions($target));
+        $result = Formats::emit($target->format, $document, $this->emitOptions($target, $config));
 
         $path = Paths::absolute($this->stringOption('out') ?? $target->path, base_path());
         $directory = dirname($path);
-        if (! is_dir($directory) && ! @mkdir($directory, 0755, true) && ! is_dir($directory)) {
+        if (! Directory::ensure($directory)) {
             $this->error(sprintf('Could not create %s.', $directory));
 
             return false;
         }
 
-        if (@file_put_contents($path, $result->output) === false) {
+        // Atomic for the reason {@see AtomicFile} gives: `docuccino:watch` re-exports on every save.
+        if (! AtomicFile::write($path, $result->output)) {
             $this->error(sprintf('Could not write %s.', $path));
 
             return false;
@@ -260,7 +267,7 @@ final class ExportCommand extends Command
         return true;
     }
 
-    private function emitOptions(ExportTarget $target): EmitOptions
+    private function emitOptions(ExportTarget $target, DocumentConfig $config): EmitOptions
     {
         // `--yaml` is the single-target override's say; a configured target states it in its own path.
         $yaml = $this->option('yaml') === true || $target->yaml();
@@ -268,20 +275,13 @@ final class ExportCommand extends Command
         return (new EmitOptions)
             ->withYaml($yaml && Formats::serialisesYaml($target->format))
             ->withProvenance($this->provenanceLevel())
-            ->withKeepIds($this->option('drop-ids') !== true);
+            ->withKeepIds($this->option('drop-ids') !== true)
+            ->withMockFakerKey($config->mockFakerKey());
     }
 
     private function provenanceLevel(): ProvenanceLevel
     {
         // Validated up front, so the fallback is only ever the unset flag's default.
         return ProvenanceLevel::tryFrom($this->stringOption('provenance') ?? '') ?? ProvenanceLevel::Winners;
-    }
-
-    /** An option the user actually set, as a non-empty string. */
-    private function stringOption(string $name): ?string
-    {
-        $value = $this->option($name);
-
-        return is_string($value) && $value !== '' ? $value : null;
     }
 }

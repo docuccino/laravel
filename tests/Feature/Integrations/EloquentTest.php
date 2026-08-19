@@ -29,6 +29,7 @@ use Docuccino\Laravel\Tests\Fixtures\Eloquent\Gadget;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Invoice;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Ledger;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Merchant;
+use Docuccino\Laravel\Tests\Fixtures\Eloquent\Persona;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Post;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Vault;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Waybill;
@@ -43,6 +44,10 @@ use Workbench\App\Enums\WidgetStatus;
 function eloquentEngine(): StubTypeEngine
 {
     return new StubTypeEngine(classes: [
+        Persona::class => new ClassMetadata(Persona::class, [
+            new PropertyMetadata('id', ScalarT::int()),
+            new PropertyMetadata('email', ScalarT::string()),
+        ]),
         Widget::class => new ClassMetadata(Widget::class, [
             new PropertyMetadata('id', ScalarT::int()),
             new PropertyMetadata('name', ScalarT::string()),
@@ -339,4 +344,17 @@ it('reflects $with and the serializeDate override in the model facts', function 
     $chronicle = (new EloquentModelReflector)->facts(Chronicle::class);
     expect($chronicle['overridesSerializeDate'])->toBeTrue()
         ->and($chronicle['with'])->toBe([]);
+});
+
+it('names a magic column with the class-level #[Mock] form, and says so when the column is not there', function (): void {
+    // A column is not a PHP property, so nothing on a model can carry a property-level attribute — this
+    // form is the whole of `#[Mock]` for Eloquent, framework-synthesised timestamps included.
+    $registry = modelRegistry(new ClassT(Persona::class));
+    $persona = $registry->schemas()['Persona'];
+
+    expect($persona['properties']['email']['x-docuccino'])->toBe(['mock' => ['faker' => 'safeEmail']])
+        ->and($persona['properties']['created_at']['x-docuccino'])->toBe(['mock' => ['faker' => 'dateTimeThisYear']])
+        ->and($persona['properties']['id'])->not->toHaveKey('x-docuccino')
+        ->and(array_map(static fn ($d): string => $d->code, $registry->diagnostics()))
+        ->toBe(['attribute.mock-unknown-property']);
 });

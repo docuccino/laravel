@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Pipeline\GenerationResult;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
-use Docuccino\Laravel\Tests\Support\QbTraceScript;
+use Docuccino\Laravel\Tests\Support\TraceScript;
 use Illuminate\Routing\Router;
 use Workbench\App\Http\Controllers\FormController;
 
@@ -26,7 +26,7 @@ function jsonPaginateOperation(string $chain): GenerationResult
     $router->get('api/json-paginate', [FormController::class, 'index']);
 
     app()->instance(TypeEngine::class, new StubTypeEngine(
-        traces: [JSON_PAGINATE_ACTION => QbTraceScript::forChain($chain)],
+        traces: [JSON_PAGINATE_ACTION => TraceScript::forChain($chain)],
     ));
 
     return generateDocument();

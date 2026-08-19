@@ -6,57 +6,38 @@ namespace Docuccino\Laravel\Viewer;
 
 use Docuccino\Core\Extensions\Context\ViewerContext;
 use Docuccino\Core\Extensions\Contracts\Viewer;
+use Docuccino\Core\Extensions\Contracts\ViewerAssets;
 
 /**
- * The bundled {@see Viewer}: renders a Scalar API-reference page for a document. The Scalar
- * standalone script is served LOCALLY from the viewer's asset route (no runtime CDN), unless the
- * document opts in with `viewer.cdn => true`. The page points Scalar at the document's `.json`
- * spec endpoint via `data-url`.
+ * The default {@see Viewer} (`viewer.driver => 'scalar'`): a Scalar API-reference page for a
+ * document. The Scalar standalone script is served LOCALLY from the viewer's asset route (no runtime
+ * CDN), unless the document opts in with `viewer.cdn => true`. The page points Scalar at the
+ * document's `.json` spec endpoint via `data-url`.
  */
-final class ScalarViewer implements Viewer
+final class ScalarViewer implements Viewer, ViewerAssets
 {
-    private const CDN_SRC = 'https://cdn.jsdelivr.net/npm/@scalar/api-reference';
+    private const string CDN_SRC = 'https://cdn.jsdelivr.net/npm/@scalar/api-reference';
+
+    public function name(): string
+    {
+        return 'scalar';
+    }
 
     public function render(ViewerContext $context): string
     {
-        $viewer = $context->config->viewer;
+        $page = new ViewerPage($context);
 
-        $base = rtrim($this->route($context), '/');
-        $specUrl = url($base.'.json');
-        $assetSrc = ($viewer['cdn'] ?? false) === true ? self::CDN_SRC : url($base.'/assets/scalar.js');
-
-        $title = htmlspecialchars($this->title($context), ENT_QUOTES);
-        $specAttr = htmlspecialchars($specUrl, ENT_QUOTES);
-        $assetAttr = htmlspecialchars($assetSrc, ENT_QUOTES);
-
-        return <<<HTML
-            <!doctype html>
-            <html lang="en">
-            <head>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <title>{$title}</title>
-            </head>
-            <body>
-                <script id="api-reference" data-url="{$specAttr}"></script>
-                <script src="{$assetAttr}"></script>
-            </body>
-            </html>
-            HTML;
+        return $page->render([
+            sprintf('<script id="api-reference" data-url="%s"></script>', $page->specUrl()),
+            sprintf('<script src="%s"></script>', $page->scriptSrc('scalar', self::CDN_SRC)),
+        ]);
     }
 
-    private function route(ViewerContext $context): string
+    /**
+     * @return array<string, string>
+     */
+    public function assets(): array
     {
-        $viewer = $context->config->viewer;
-        $route = $viewer['route'] ?? null;
-
-        return is_string($route) && $route !== '' ? $route : '/docs/'.$context->config->key;
-    }
-
-    private function title(ViewerContext $context): string
-    {
-        $title = $context->config->info['title'] ?? null;
-
-        return is_string($title) && $title !== '' ? $title : 'API Documentation';
+        return ['scalar' => dirname(__DIR__, 2).'/resources/js/scalar.standalone.js'];
     }
 }

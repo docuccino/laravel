@@ -30,19 +30,24 @@
         "illuminate/console": "^12.0 || ^13.0",
         "illuminate/contracts": "^12.0 || ^13.0",
         "illuminate/database": "^12.0 || ^13.0",
+        "illuminate/process": "^12.0 || ^13.0",
         "illuminate/routing": "^12.0 || ^13.0",
         "illuminate/support": "^12.0 || ^13.0"
     },
     "require-dev": {
         "docuccino/inference-phpstan": "self.version",
+        "illuminate/testing": "^12.0 || ^13.0",
         "orchestra/testbench": "^10.0 || ^11.0",
         "lorisleiva/laravel-actions": "^2.0",
         "pestphp/pest": "^4.0",
+        "phpunit/phpunit": "^11.5 || ^12.0",
         "spatie/laravel-data": "^4.0",
         "spatie/laravel-json-api-paginate": "^2.0",
         "timacdonald/json-api": "^1.0@beta"
     },
     "suggest": {
+        "illuminate/testing": "Required by the contract-testing helpers (Docuccino\\Laravel\\Testing) — every Laravel application already has it through laravel/framework.",
+        "phpunit/phpunit": "Required by the contract-testing helpers (Docuccino\\Laravel\\Testing), which are only ever loaded from a test suite.",
         "docuccino/inference-phpstan": "Required for static type inference — install as a dev dependency: composer require --dev docuccino/inference-phpstan. Without it documentation comes from docblocks and attributes only."
     },
     "autoload": {

@@ -33,19 +33,57 @@ it('honours the --fail-on matrix against the broken route', function (string $fa
     @unlink($out);
 })->with([
     'none exits 0' => ['none', false],
-    'warning exits non-zero (the broken route is an error)' => ['warning', true],
+    'hint exits non-zero (the broken route is an error)' => ['hint', true],
+    'info exits non-zero' => ['info', true],
+    'warning exits non-zero' => ['warning', true],
     'error exits non-zero' => ['error', true],
+]);
+
+/**
+ * The rung `--fail-on` gained, on the only document that can prove it: one route whose loudest
+ * report is the `info` an integration raises when it had to fall back to package defaults. `warning`
+ * cannot see it, which is the whole reason a CI gate on inference certainty needed `info`.
+ */
+it('lets info gate a build whose loudest report is a recovery', function (string $failOn, bool $fails): void {
+    app()->instance(TypeEngine::class, WorkbenchEngine::make());
+    config()->set('docuccino.documents.default.routes.include', ['api/widget-query']);
+    $out = sys_get_temp_dir().'/docuccino-failon-'.uniqid().'.json';
+
+    $command = $this->artisan('docuccino:export', ['--out' => $out, '--fail-on' => $failOn]);
+    $fails ? $command->assertFailed() : $command->assertSuccessful();
+
+    @unlink($out);
+})->with([
+    'none exits 0' => ['none', false],
+    'error does not see an info' => ['error', false],
+    'warning does not see an info' => ['warning', false],
+    'info exits non-zero' => ['info', true],
+    'hint exits non-zero (info is louder)' => ['hint', true],
 ]);
 
 it('rejects an unknown --fail-on rather than quietly never failing', function (string $command): void {
     app()->instance(TypeEngine::class, WorkbenchEngine::make());
 
-    // The broken route makes the run fail under `warning` and `error`; a typo that coerced to "none"
-    // would exit 0 here and take the CI gate down with it.
+    // The broken route makes the run fail under every severity; a typo that coerced to "none" would
+    // exit 0 here and take the CI gate down with it.
     $this->artisan($command, ['--fail-on' => 'eror'])
-        ->expectsOutputToContain('Unknown --fail-on "eror"; expected one of: none, warning, error.')
+        ->expectsOutputToContain('Unknown --fail-on "eror"; expected one of: none, error, warning, info, hint.')
         ->assertFailed();
 })->with(['docuccino:export', 'docuccino:validate']);
+
+it('rejects a severity-shaped value that is not one, on both commands', function (string $command, string $value): void {
+    app()->instance(TypeEngine::class, WorkbenchEngine::make());
+
+    $this->artisan($command, ['--fail-on' => $value])
+        ->expectsOutputToContain(sprintf('Unknown --fail-on "%s"', $value))
+        ->assertFailed();
+})->with(['docuccino:export', 'docuccino:validate'])->with([
+    'the severity spelled with a capital' => ['Error'],
+    'a confidence number, which this option does not take' => ['0.8'],
+    'a diagnostic code, which this option does not take' => ['inferred-response.payload-unrecoverable'],
+    'the empty-ish value a shell can produce' => [' '],
+    'all, which sounds like a value and is not one' => ['all'],
+]);
 
 it('treats a valueless --fail-on as the default', function (): void {
     app()->instance(TypeEngine::class, WorkbenchEngine::make());

@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 use Docuccino\Core\Document\UirDocument;
 use Docuccino\Core\Emit\UirEmitter;
+use Docuccino\Core\Extensions\Context\ViewerContext;
+use Docuccino\Core\Extensions\Contracts\Viewer;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
+use Docuccino\Laravel\Facades\Docuccino;
 use Docuccino\Laravel\Pipeline\DocumentGenerator;
 use Docuccino\Laravel\Runtime\DocumentCache;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
@@ -237,4 +240,208 @@ it('opts into the CDN when viewer.cdn is true', function (): void {
     $this->get('/docs/api')
         ->assertOk()
         ->assertSee('cdn.jsdelivr.net/npm/@scalar/api-reference', false);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Drivers
+|--------------------------------------------------------------------------
+|
+| `viewer.driver` picks which registered Viewer renders the page. Everything below runs over the whole
+| shipped set — a seam proven on one driver is not proven — plus the unknown-name degradation.
+|
+*/
+
+dataset('viewer drivers', [
+    'scalar' => ['scalar', 'id="api-reference"', 'scalar', 'cdn.jsdelivr.net/npm/@scalar/api-reference'],
+    'redoc' => ['redoc', '<redoc spec-url=', 'redoc', 'cdn.jsdelivr.net/npm/redoc@2/bundles/redoc.standalone.js'],
+]);
+
+it('renders the default page byte for byte', function (): void {
+    // The page an app already serves is a contract with everyone who has it bookmarked, so making the
+    // viewer pluggable may not move a byte of it.
+    app()['env'] = 'local';
+
+    $spec = url('/docs/api.json');
+    $asset = url('/docs/api/assets/scalar.js');
+
+    expect($this->get('/docs/api')->assertOk()->getContent())->toBe(<<<HTML
+        <!doctype html>
+        <html lang="en">
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>API Documentation</title>
+        </head>
+        <body>
+            <script id="api-reference" data-url="{$spec}"></script>
+            <script src="{$asset}"></script>
+        </body>
+        </html>
+        HTML);
+});
+
+it('renders every shipped driver from its own locally served asset', function (string $driver, string $marker, string $asset, string $cdn): void {
+    config()->set('docuccino.documents.default.viewer.driver', $driver);
+    app()['env'] = 'local';
+
+    $this->get('/docs/api')
+        ->assertOk()
+        ->assertHeader('Content-Type', 'text/html; charset=UTF-8')
+        ->assertSee($marker, false)
+        // Whichever driver renders, it points at the document's own .json endpoint…
+        ->assertSee(url('/docs/api.json'), false)
+        // …and loads its script from this app, never a CDN.
+        ->assertSee('src="'.url('/docs/api/assets/'.$asset.'.js').'"', false)
+        ->assertDontSee('cdn.jsdelivr.net', false);
+
+    $this->get('/docs/api/assets/'.$asset.'.js')
+        ->assertOk()
+        ->assertHeader('Content-Type', 'application/javascript')
+        ->assertHeader('Cache-Control', 'immutable, max-age=31536000, public');
+})->with('viewer drivers');
+
+it('opts every shipped driver into the CDN when viewer.cdn is true', function (string $driver, string $marker, string $asset, string $cdn): void {
+    config()->set('docuccino.documents.default.viewer.driver', $driver);
+    config()->set('docuccino.documents.default.viewer.cdn', true);
+    app()['env'] = 'local';
+
+    $this->get('/docs/api')
+        ->assertOk()
+        ->assertSee($cdn, false)
+        ->assertDontSee(url('/docs/api/assets/'.$asset.'.js'), false);
+})->with('viewer drivers');
+
+it('gates every shipped driver and its asset', function (string $driver, string $marker, string $asset, string $cdn): void {
+    // The security-relevant one: authorization runs in the controller, ahead of any driver, and nothing
+    // else ever calls one — so no driver can be added that renders for someone the gate refuses.
+    config()->set('docuccino.documents.default.viewer.driver', $driver);
+    config()->set('docuccino.documents.default.viewer.gate', 'viewApiDocs');
+    Gate::before(static fn ($user = null): bool => false);
+
+    $this->get('/docs/api')->assertForbidden();
+    $this->get('/docs/api.json')->assertForbidden();
+    $this->get('/docs/api/assets/'.$asset.'.js')->assertForbidden();
+})->with('viewer drivers');
+
+it('serves only the assets the active driver publishes', function (): void {
+    config()->set('docuccino.documents.default.viewer.driver', 'scalar');
+    app()['env'] = 'local';
+
+    $this->get('/docs/api/assets/scalar.js')->assertOk();
+    $this->get('/docs/api/assets/redoc.js')->assertNotFound();
+
+    config()->set('docuccino.documents.default.viewer.driver', 'redoc');
+
+    $this->get('/docs/api/assets/redoc.js')->assertOk();
+    $this->get('/docs/api/assets/scalar.js')->assertNotFound();
+});
+
+it('reaches no file the driver did not publish', function (string $name): void {
+    app()['env'] = 'local';
+
+    $this->get('/docs/api/assets/'.$name.'.js')->assertNotFound();
+})->with([
+    'an unregistered name' => ['swagger'],
+    'a traversal' => ['..%2F..%2Fcomposer'],
+    'a dotted path' => ['../../composer'],
+]);
+
+it('falls back to the default driver and says so when viewer.driver names nothing', function (): void {
+    config()->set('docuccino.documents.default.viewer.driver', 'nope');
+    app()['env'] = 'local';
+
+    // A page whose whole job is to be readable degrades to the default rather than fataling, and the
+    // log carries the diagnosis — including the names the app could have asked for.
+    Log::shouldReceive('warning')->once()->withArgs(
+        static fn (string $message): bool => str_contains($message, '"nope"') && str_contains($message, 'scalar, redoc'),
+    );
+
+    $this->get('/docs/api')->assertOk()->assertSee('id="api-reference"', false);
+});
+
+it('renders a driver a third party registered', function (): void {
+    Docuccino::extend(new class implements Viewer
+    {
+        public function name(): string
+        {
+            return 'house-style';
+        }
+
+        public function render(ViewerContext $context): string
+        {
+            return '<h1>'.$context->config->key.'</h1>';
+        }
+    });
+
+    config()->set('docuccino.documents.default.viewer.driver', 'house-style');
+    app()['env'] = 'local';
+
+    expect($this->get('/docs/api')->assertOk()->getContent())->toBe('<h1>default</h1>');
+});
+
+it('lets a registration replace a shipped driver under its own name', function (): void {
+    Docuccino::extend(new class implements Viewer
+    {
+        public function name(): string
+        {
+            return 'scalar';
+        }
+
+        public function render(ViewerContext $context): string
+        {
+            return '<h1>rebranded</h1>';
+        }
+    });
+
+    app()['env'] = 'local';
+
+    // No `driver` key at all: the default name still resolves, now to the replacement.
+    expect($this->get('/docs/api')->assertOk()->getContent())->toBe('<h1>rebranded</h1>');
+});
+
+it('gates a third-party driver like any other', function (): void {
+    Docuccino::extend(new class implements Viewer
+    {
+        public function name(): string
+        {
+            return 'house-style';
+        }
+
+        public function render(ViewerContext $context): string
+        {
+            return '<h1>secret</h1>';
+        }
+    });
+
+    config()->set('docuccino.documents.default.viewer.driver', 'house-style');
+    config()->set('docuccino.documents.default.viewer.gate', 'viewApiDocs');
+    Gate::before(static fn ($user = null): bool => false);
+
+    $this->get('/docs/api')->assertForbidden();
+});
+
+it('serves an empty page and warns when a driver renders something unservable', function (): void {
+    Docuccino::extend(new class implements Viewer
+    {
+        public function name(): string
+        {
+            return 'broken';
+        }
+
+        /** @return array<string, string> */
+        public function render(ViewerContext $context): array
+        {
+            return ['not' => 'html'];
+        }
+    });
+
+    config()->set('docuccino.documents.default.viewer.driver', 'broken');
+    app()['env'] = 'local';
+
+    Log::shouldReceive('warning')->once()->withArgs(
+        static fn (string $message): bool => str_contains($message, 'rendered a array'),
+    );
+
+    expect($this->get('/docs/api')->assertOk()->getContent())->toBe('');
 });

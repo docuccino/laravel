@@ -13,7 +13,7 @@ use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParametersExtension;
 use Docuccino\Laravel\Routing\VendorRoutePolicy;
 use Docuccino\Laravel\Tests\Fixtures\QueryBuilder\GadgetListQuery;
 use Docuccino\Laravel\Tests\Fixtures\QueryBuilder\InjectedGadgetController;
-use Docuccino\Laravel\Tests\Support\QbTraceScript;
+use Docuccino\Laravel\Tests\Support\TraceScript;
 
 /**
  * The action that is HANDED its builder: the container resolves a `QueryBuilder` subclass which configures
@@ -25,8 +25,8 @@ use Docuccino\Laravel\Tests\Support\QbTraceScript;
 function injectedBuilderRun(string $actionChain, string $constructorChain, ?VendorRoutePolicy $vendor = null): array
 {
     $engine = new StubTypeEngine(traces: [
-        InjectedGadgetController::class.'::index' => QbTraceScript::forChain($actionChain, file: 'InjectedGadgetController.php'),
-        GadgetListQuery::class.'::__construct' => QbTraceScript::forChain($constructorChain, file: 'GadgetListQuery.php'),
+        InjectedGadgetController::class.'::index' => TraceScript::forChain($actionChain, file: 'InjectedGadgetController.php'),
+        GadgetListQuery::class.'::__construct' => TraceScript::forChain($constructorChain, file: 'GadgetListQuery.php'),
     ]);
 
     $context = new RouteContext(
