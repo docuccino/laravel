@@ -92,8 +92,8 @@ final class ConstValueToRules
     }
 
     /**
-     * Whether the last {@see fold()} could SEE a constraint it could not read — values spread in from an
-     * expression, an unplaceable argument — and widened the field rather than publishing a partial one.
+     * Whether the last {@see fold()} could SEE a constraint it could not read — a value that comes from a
+     * call, a variable or a spread — and widened the field rather than publishing a partial one.
      * Its rules are still true; they just say less than the code does, which is a thing to report.
      */
     public function widened(): bool
@@ -199,10 +199,19 @@ final class ConstValueToRules
 
     /**
      * The values an argument list states — a `Rule::in(...)` choice list, an `->only([...])` selection —
-     * whether written as one array argument or as several. Null where a spread or a named argument sits in
-     * the list ({@see ArgumentSlots}): a list read past one of those is a list MISSING values, and a
-     * published enum missing a legal value makes a generated client REJECT what the API accepts. There is
-     * no truthful partial answer, so the caller widens to no constraint and says so.
+     * whether written as one array argument or as several. Null unless EVERY entry named a value: an entry
+     * that names one this build cannot read is a value MISSING from the list, and a published enum missing
+     * a legal value makes a generated client REJECT what the API accepts. There is no truthful partial
+     * answer, so the caller widens to no constraint and says so.
+     *
+     * The reading is per entry rather than per shape on purpose. A spread or a named argument
+     * ({@see ArgumentSlots}) is only the loudest way a value goes unread — an argument the fold gave up on
+     * ({@see ConstValue::unknown()}), a nested array, another descriptor, a bare null all say the same
+     * thing, and a check that recognised fewer shapes than the fold produces would let the truncation back
+     * in through the quieter ones.
+     *
+     * An argument list with no entries at all is a different thing: `Rule::in()` states nothing, so there
+     * is nothing to have missed, and the empty list is what the caller reads as "no constraint recovered".
      *
      * @param  list<ConstValue>  $args
      * @return list<string>|null
@@ -214,15 +223,13 @@ final class ConstValueToRules
 
         $out = [];
         foreach ($source as $arg) {
-            if ($arg->isSpread()) {
+            if (! $arg->isScalar() || $arg->scalar === null) {
                 $this->widened = true;
 
                 return null;
             }
 
-            if ($arg->isScalar() && $arg->scalar !== null) {
-                $out[] = is_bool($arg->scalar) ? ($arg->scalar ? '1' : '0') : (string) $arg->scalar;
-            }
+            $out[] = is_bool($arg->scalar) ? ($arg->scalar ? '1' : '0') : (string) $arg->scalar;
         }
 
         return $out;

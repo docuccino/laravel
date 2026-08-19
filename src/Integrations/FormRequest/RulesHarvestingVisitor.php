@@ -61,9 +61,9 @@ abstract class RulesHarvestingVisitor implements TraceVisitor
     }
 
     /**
-     * Fields that DID recover rules, having lost one the fold could see was there — values spread in from
-     * an expression it cannot read. What they publish is true and says less than the code does, which is
-     * the one degradation nothing else reports.
+     * Fields that DID recover rules, having lost one the fold could see was there — values the rule states
+     * without writing them at it. What they publish is true and says less than the code does, which is the
+     * one degradation nothing else reports.
      *
      * @return list<string>
      */

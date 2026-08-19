@@ -18,8 +18,8 @@ use Docuccino\Laravel\Tests\Fixtures\FormRequest\CustomRuleRequest;
 use Docuccino\Laravel\Tests\Support\RulesTraceScript;
 
 /**
- * A rule that spreads its values in from somewhere the build cannot read states MORE legal values than the
- * document can. Publishing the half that is written makes a generated client reject what the API accepts,
+ * A rule that gets some of its values from somewhere the build cannot read states MORE legal values than
+ * the document can. Publishing the half that is written makes a generated client reject what the API accepts,
  * so the constraint is left off entirely — and left off quietly is a document that is merely vaguer than
  * the code, which nobody would ever find. `validation.rule-values-unread` is where the author finds it.
  */
@@ -101,6 +101,34 @@ it('reports the same loss on an inline validate(), against the route it happened
     expect($diagnostics)->toHaveCount(1)
         ->and($diagnostics[0]->message)->toContain('Inline validation field "status"')
         ->and($diagnostics[0]->routeSignature)->toBe($context->route->signature());
+});
+
+it('reports the same loss where the values come from a call rather than a spread', function (): void {
+    // The quieter shape, and the common one: nothing is spread, one argument simply does not fold. The
+    // published document is identical to the spread case, so the diagnostic has to be too.
+    $context = unreadValuesContext(
+        CustomRuleRequest::class.'::rules',
+        <<<'PHP'
+        return [
+            'status' => ['required', \Illuminate\Validation\Rule::in('any', $this->fallbackStatus())],
+        ];
+        PHP,
+    );
+
+    $rules = (new RulesFromClass)->analyse($context, CustomRuleRequest::class);
+
+    expect(array_map(
+        static fn ($rule): string => $rule->name,
+        $rules?->fields['status'] ?? [],
+    ))->toBe(['required']);
+
+    $diagnostics = array_values(array_filter(
+        $context->components->diagnostics(),
+        static fn ($d): bool => $d->code === 'validation.rule-values-unread',
+    ));
+
+    expect($diagnostics)->toHaveCount(1)
+        ->and($diagnostics[0]->message)->toContain('"status"');
 });
 
 it('reports nothing where every value is written at the rule', function (): void {

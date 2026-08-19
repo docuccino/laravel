@@ -101,7 +101,7 @@ final class RulesFromClass
                 severity: Severity::Info,
                 code: 'validation.rule-values-unread',
                 message: sprintf('Validation field "%s" on %s states values this build cannot read, so that constraint is left off the request schema; the rest of its rules are documented.', $field, $class),
-                help: 'The values are spread in from an expression (`Rule::in(...$choices)`) or passed under a name, and a partial list would make a client reject a value the API accepts. Write them where the rule is, or state them in an overlay.',
+                help: 'A value the rule states is not written at the rule — it comes from a call, a variable or a spread — and a partial list would make a client reject a value the API accepts. Write every value where the rule is, or state them in an overlay.',
             ));
         }
 

@@ -235,3 +235,70 @@ it('reports nothing widened for a fold that lost nothing', function (): void {
 
     expect($folder->widened())->toBeFalse();
 });
+
+it('publishes no choice list where a value comes from a call, and says it widened', function (): void {
+    // A spread is only the loudest way a value goes unread. `Rule::in('any', $this->fallback())` folds
+    // arg 1 to an `unknown`, and a reader that watched only for spreads published `in: ["any"]` — one
+    // legal value out of two, which is the same lie in a quieter shape.
+    $folder = new ConstValueToRules;
+    $rules = $folder->fold(ConstValue::array([
+        ConstValue::scalar('required'),
+        ConstValue::descriptor('Illuminate\\Validation\\Rule::in', [
+            ConstValue::scalar('any'),
+            ConstValue::unknown('non-constant factory arg'),
+        ]),
+    ]));
+
+    expect(array_map(static fn ($rule): string => $rule->name, $rules))->toBe(['required'])
+        ->and($folder->widened())->toBeTrue();
+});
+
+it('keeps every enum case where a narrowing chain names one from a call', function (): void {
+    // The narrowing direction, and the dangerous one: a half-read `->only([...])` drops cases the
+    // endpoint accepts. The full case list is the widening.
+    $folder = new ConstValueToRules;
+    $descriptor = ConstValue::descriptor(
+        'Illuminate\\Validation\\Rule::enum',
+        [ConstValue::scalar(WidgetStatus::class)],
+    )->withChainedCall('only', [ConstValue::array([
+        ConstValue::scalar('Draft'),
+        ConstValue::unknown('non-constant array item'),
+    ])]);
+
+    $rules = $folder->fold($descriptor);
+
+    expect($rules[0]->parameters)->toBe(['draft', 'published', 'archived'])
+        ->and($folder->widened())->toBeTrue();
+});
+
+it('widens for any entry of a value list that names no value', function (ConstValue $entry): void {
+    // Every shape the fold can put in a value list, one dataset entry each: whatever the entry is, if it
+    // does not name a value then the list is short, and a short list is the one thing never published.
+    $folder = new ConstValueToRules;
+    $rules = $folder->fold(ConstValue::descriptor('Illuminate\\Validation\\Rule::in', [
+        ConstValue::scalar('written'),
+        $entry,
+    ]));
+
+    expect($rules)->toBe([])
+        ->and($folder->widened())->toBeTrue();
+})->with([
+    'a spread' => fn (): ConstValue => ConstValue::spread('unplaceable factory arg'),
+    'an argument the fold gave up on' => fn (): ConstValue => ConstValue::unknown('non-constant factory arg'),
+    'a nested array' => fn (): ConstValue => ConstValue::array([ConstValue::scalar('a')]),
+    'another descriptor' => fn (): ConstValue => ConstValue::descriptor('App\\Choices::all', []),
+    'a rule object' => fn (): ConstValue => ConstValue::instance(BankReference::class, []),
+    'a bare null' => fn (): ConstValue => ConstValue::scalar(null),
+]);
+
+it('publishes an argument list that states nothing as no constraint, and widens nothing', function (array $args): void {
+    // `Rule::in()` and `Rule::in([])` state no values at all, so there is nothing to have missed. They
+    // stay what they were: no rule, and no report of a loss.
+    $folder = new ConstValueToRules;
+
+    expect($folder->fold(ConstValue::descriptor('Illuminate\\Validation\\Rule::in', $args)))->toBe([])
+        ->and($folder->widened())->toBeFalse();
+})->with([
+    'no arguments at all' => [[]],
+    'one empty array argument' => [[ConstValue::array([])]],
+]);

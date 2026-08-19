@@ -779,6 +779,35 @@ it('widens a rule whose values are spread in, rather than publishing the half it
         ->and($trace['unrecoverable'])->toBe([]);
 })->group('fixture');
 
+it('widens a rule whose values come from a call, in the shape an app reaches for first', function (): void {
+    // The same truncation without a spread anywhere: `Rule::in('any', $this->fallbackStatus())` and
+    // `->only([ListingStatus::Open, $this->alsoAllowed()])` each fold one argument to an `unknown`, and a
+    // reader watching only for spreads published `in: ["any"]` and `enum: ["open"]` — a client generated
+    // from either rejects what the endpoint accepts, and nothing said so.
+    $trace = FixtureRunner::traceRules(
+        'app/Http/Requests/UnreadChoicesRequest.php',
+        'App\\Http\\Requests\\UnreadChoicesRequest',
+        'rules',
+    );
+
+    $names = static fn (string $field): array => array_map(
+        static fn (array $rule): string => $rule['name'],
+        $trace['fields'][$field],
+    );
+
+    // The control: every value is written at the rule, so every value is published.
+    expect($names('visibility'))->toBe(['required', 'in'])
+        ->and($trace['fields']['visibility'][1]['parameters'])->toBe(['public', 'private']);
+
+    // No `in` at all rather than a short one, and every enum case the half-read `only()` would have cut.
+    expect($names('status'))->toBe(['required'])
+        ->and($names('priority'))->toBe(['nullable', 'enum'])
+        ->and($trace['fields']['priority'][1]['parameters'])->toBe(['open', 'closed', 'draft']);
+
+    expect($trace['widened'])->toBe(['status', 'priority'])
+        ->and($trace['unrecoverable'])->toBe([]);
+})->group('fixture');
+
 it('leaves a soft-delete filter unresolved when its key is not written at the call', function (): void {
     // Spatie documents `AllowedFilter::trashed()` as filtering on `trashed`, which is true of a call that
     // passed NO name. This one passes one it reads from config, so the endpoint accepts some other key and
