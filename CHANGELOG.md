@@ -7,6 +7,17 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.8.3
+
+### Features
+
+- type QB foreign-key filters off the related model's key ([#142](https://github.com/docuccino/docuccino/pull/142))
+- type QB filters off the subject model's primary key ([#141](https://github.com/docuccino/docuccino/pull/141))
+
+### Bug fixes
+
+- let a shared filter class declare its schema via a class-level attribute ([#143](https://github.com/docuccino/docuccino/pull/143))
+
 ## v0.8.1
 
 ### Bug fixes
