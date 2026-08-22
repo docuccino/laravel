@@ -51,6 +51,8 @@ $chain = 'QueryBuilder::for(\\Workbench\\App\\Models\\Gadget::class)->allowedFil
     ."AllowedFilter::operator('score', FilterOperator::EQUAL), "                             // static operator int
     ."AllowedFilter::custom('flag', \\Workbench\\App\\Filters\\DocumentedFilter::class), "   // custom attribute (int, example 42)
     ."AllowedFilter::custom('sc', \\Workbench\\App\\Filters\\ScoreFilter::class), "          // custom __invoke body (score int)
+    ."AllowedFilter::custom('from', \\Workbench\\App\\Filters\\DateFilter::class, 'starts_at'), " // generic custom, declared internal name → datetime cast
+    ."AllowedFilter::custom('starts_at', \\Workbench\\App\\Filters\\DateFilter::class), "    // generic custom, no internal name → its own name is the column
     .'AllowedFilter::trashed(),'                                                             // trashed with/only enum
     .'])->paginate()';
 
@@ -82,6 +84,13 @@ it('types each recovered filter kind off the model and applies the custom-filter
 
     // Custom filter class __invoke body `where('score', $value)` → the score integer cast.
     expect($byName['filter[sc]']['schema']['type'])->toBe('integer');
+
+    // A GENERIC custom filter (no attribute, no literal body column) types off the column binding the
+    // AllowedFilter call declares — the internal name, else the filter's own name. `format: date-time`
+    // can only come from the `starts_at` datetime cast, so this provably resolved rather than fell back.
+    expect($byName['filter[from]']['schema']['type'])->toBe('string')
+        ->and($byName['filter[from]']['schema']['format'])->toBe('date-time')
+        ->and($byName['filter[starts_at]']['schema']['format'])->toBe('date-time');
 
     // Trashed → fixed with/only enum.
     expect($byName['filter[trashed]']['schema']['enum'])->toBe(['with', 'only']);

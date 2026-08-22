@@ -728,9 +728,10 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
      * Typing for a filter built by a PROJECT factory (a `ListFilters::enum(...)` style helper returning
      * an `AllowedFilter`) rather than a Spatie `AllowedFilter::*` one. Everything needed is already in
      * the call-site arguments folded into the descriptor, so the factory body is never descended into: a
-     * backed-enum class-string argument names the value domain, otherwise the filter's own name is the
-     * column to type off, matching the usual `$column ?? $key` idiom. Bare strings and unhandled Spatie
-     * kinds return all-null and stay plain strings.
+     * backed-enum class-string argument names the value domain, otherwise a written column argument —
+     * else the filter's own name — is the column to type off, the usual `$column ?? $key` idiom. A
+     * second argument that isn't a column costs nothing: cast resolution fails closed to a plain
+     * string. Bare strings and unhandled Spatie kinds return all-null and stay plain strings.
      *
      * @return array{0: string|null, 1: string|null, 2: string|null, 3: string|null}
      */
@@ -746,7 +747,7 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
 
         return $enum !== null
             ? [null, null, $enum, $factoryClass]
-            : [$entry->name, null, null, $factoryClass];
+            : [$entry->column(), null, null, $factoryClass];
     }
 
     /** A backed-enum class-string among the folded arguments — the filter's value domain. */

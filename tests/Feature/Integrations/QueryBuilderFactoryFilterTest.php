@@ -18,8 +18,9 @@ use Docuccino\Laravel\Tests\Support\TraceScript;
 /**
  * A user-land filter factory (a `ListFilters`-style helper returning a Spatie `AllowedFilter`) is typed
  * from its call-site arguments, with no descent into the factory body. A backed-enum class-string
- * argument types the value off that enum directly; otherwise the filter's own key is the column, typed
- * off the model cast. Spatie's own factories and bare strings are untouched. This runs the real extension
+ * argument types the value off that enum directly; otherwise a written column argument — else the
+ * filter's own key — is the column, typed off the model cast. Spatie's own factories and bare strings
+ * are untouched. This runs the real extension
  * over a scripted trace — the enum/model reflection is real, and the engine descent is proven in the
  * fixture group.
  */
@@ -58,6 +59,7 @@ $factoryChain = 'QueryBuilder::for(\\Workbench\\App\\Models\\Gadget::class)->all
     ."\\Workbench\\App\\Support\\FilterFactory::boolean('active'), "                                             // column=key → model bool cast
     ."\\Workbench\\App\\Support\\FilterFactory::uuid('public_id'), "                                             // column=key → model string cast
     ."\\Workbench\\App\\Support\\FilterFactory::uuid('gadget', 'public_id'), "                                   // explicit 2nd arg → that column's cast
+    ."\\Workbench\\App\\Support\\FilterFactory::date('from', 'starts_at'), "                                     // explicit 2nd arg → datetime cast (format proves it)
     ."\\Workbench\\App\\Support\\FilterFactory::search('q', ['name']), "                                         // no single column → string
     ."AllowedFilter::partial('name'),"                                                                          // Spatie's own → untouched (string)
     .'])->paginate()';
@@ -96,6 +98,15 @@ it('types a uuid-factory filter off the model cast, by key and by explicit colum
         // In `uuid('gadget', 'public_id')` the first arg is the filter key, the second the column.
         ->and($byName['filter[gadget]']['schema']['type'])->toBe('string')
         ->and($byName['filter[gadget]']['schema'])->not->toHaveKey('enum');
+});
+
+it('types a factory filter off its explicit column argument, provably past the string fallback', function () use ($factoryChain): void {
+    // `string` can't tell a resolved cast from the plain-string fallback; `format: date-time` can only
+    // come from the `starts_at` datetime cast the second argument names.
+    $byName = runFactoryFilters($factoryChain);
+
+    expect($byName['filter[from]']['schema']['type'])->toBe('string')
+        ->and($byName['filter[from]']['schema']['format'])->toBe('date-time');
 });
 
 it('leaves a multi-column search factory and Spatie\'s own factories as plain strings', function () use ($factoryChain): void {

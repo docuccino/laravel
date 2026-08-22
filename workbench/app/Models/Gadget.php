@@ -7,6 +7,7 @@ namespace Workbench\App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use Workbench\App\Enums\WidgetStatus;
 
 /**
@@ -19,6 +20,7 @@ use Workbench\App\Enums\WidgetStatus;
  * @property bool $active
  * @property int $score
  * @property string $public_id
+ * @property Carbon $starts_at
  */
 final class Gadget extends Model
 {
@@ -36,6 +38,9 @@ final class Gadget extends Model
         // A string-cast identifier column, so a `FilterFactory::uuid()` filter types off the cast the
         // same way the boolean arm does (and is provably NOT left as an untyped default).
         'public_id' => 'string',
+        // A datetime cast: the one whose schema (`format: date-time`) is DISTINGUISHABLE from the
+        // plain-string fallback, so a filter typed off a declared column provably resolved the cast.
+        'starts_at' => 'datetime',
     ];
 
     /**

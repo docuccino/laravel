@@ -179,8 +179,9 @@ final class QueryBuilderParametersExtension implements OperationExtension
                 : $filter,
             'scope' => $this->applyColumn($filter, $this->scopes->resolve($model, $filter->name), $context, asArray: false),
             'custom' => $this->enrichCustom($filter, $model, $context),
-            // A project-factory filter with no enum argument types off its own name as the column (the
-            // `$column ?? $key` idiom). A name that isn't a column — a multi-column search — stays a string.
+            // A project-factory filter with no enum argument types off its written column argument, else
+            // its own name (the `$column ?? $key` idiom). A name that isn't a column — a multi-column
+            // search — stays a string.
             default => $filter->typeColumn !== null
                 ? $this->applyColumn($filter, $this->columns->resolve($model, $filter->typeColumn), $context, asArray: false)
                 : $filter,
@@ -230,7 +231,9 @@ final class QueryBuilderParametersExtension implements OperationExtension
 
     /**
      * A class-level `#[QueryParameter]` on the filter class is the explicit override and wins; otherwise
-     * the column its `__invoke` body filters on types the value.
+     * the column its `__invoke` body filters on types the value; failing that, the declared internal
+     * name — what Spatie passes a generic filter as `$property`, the filter's own name when none was
+     * written — resolves against the model's casts like any other column.
      */
     private function enrichCustom(QbEntry $filter, string $model, RouteContext $context): QbEntry
     {
@@ -247,9 +250,11 @@ final class QueryBuilderParametersExtension implements OperationExtension
             return $this->applyCustomAttribute($filter, $facts->attribute, $context);
         }
 
-        return $facts->column !== null
-            ? $this->applyColumn($filter, $this->columns->resolve($model, $facts->column), $context, asArray: false)
-            : $filter;
+        // A literal column in the body is the ground truth when there is one — a filter is free to
+        // ignore the $property it was handed.
+        $column = $facts->column ?? $filter->column();
+
+        return $this->applyColumn($filter, $this->columns->resolve($model, $column), $context, asArray: false);
     }
 
     /**

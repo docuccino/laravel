@@ -332,6 +332,24 @@ it('recovers a custom filter class FQCN from the F::class form', function (): vo
         ->and($facts->filters[0]->filterClass)->toBe('App\\Filters\\FlagFilter');
 });
 
+it('reads the custom internal-column name from the third factory argument', function (): void {
+    $facts = traceQbSnippet(
+        "QueryBuilder::for(App\\Models\\User::class)->allowedFilters([AllowedFilter::custom('from', App\\Filters\\DateFilter::class, 'starts_at')])"
+    )->facts;
+
+    expect($facts->filters[0]->internal)->toBe('starts_at')
+        ->and($facts->filters[0]->column())->toBe('starts_at');
+});
+
+it('types a project-factory filter off its written column argument, else its own key', function (): void {
+    $facts = traceQbSnippet(
+        "QueryBuilder::for(App\\Models\\User::class)->allowedFilters([ListFilters::date('from_date', 'created_at'), ListFilters::date('until')])"
+    )->facts;
+
+    expect($facts->filters[0]->typeColumn)->toBe('created_at')
+        ->and($facts->filters[1]->typeColumn)->toBe('until');
+});
+
 it('recovers the trashed filter, defaulting its name when called with no argument', function (): void {
     $facts = traceQbSnippet(
         'QueryBuilder::for(App\\Models\\User::class)->allowedFilters([AllowedFilter::trashed()])'

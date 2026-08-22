@@ -52,6 +52,14 @@ final class FilterFactory
         });
     }
 
+    /** A date filter over `$column` (the key by default). */
+    public static function date(string $key, ?string $column = null): AllowedFilter
+    {
+        return AllowedFilter::callback($key, static function (Builder $query, mixed $value) use ($column, $key): void {
+            $query->whereDate($column ?? $key, is_string($value) ? $value : '');
+        });
+    }
+
     /**
      * A free-text partial search across several columns — no single column, so it stays a plain string.
      *
