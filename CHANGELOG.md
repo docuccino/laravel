@@ -7,6 +7,12 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.8.1
+
+### Bug fixes
+
+- type QB filters off their declared column binding ([#137](https://github.com/docuccino/docuccino/pull/137))
+
 ## v0.6.0
 
 ### Features
