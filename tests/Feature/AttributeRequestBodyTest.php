@@ -77,6 +77,15 @@ it('patches one inferred body property while keeping inferred siblings', functio
         ->and($schema['required'])->toContain('title');
 });
 
+it('puts an attribute format on the body property beside its type', function (): void {
+    $body = runBodyParameters([
+        new BodyParameter(name: 'due_at', type: 'string', format: 'date-time'),
+    ]);
+
+    expect($body['content']['application/json']['schema']['properties']['due_at'])
+        ->toBe(['type' => 'string', 'format' => 'date-time']);
+});
+
 it('creates a request body from attributes when none was inferred', function (): void {
     $body = runBodyParameters([
         new BodyParameter(name: 'note', description: 'A free-text note', required: true),

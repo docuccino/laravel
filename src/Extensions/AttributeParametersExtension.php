@@ -25,8 +25,8 @@ use Docuccino\Core\TypeGrammar\TypeStringParser;
  * integer schema.
  *
  * A bracketed name (`#[QueryParameter('filter[status]')]`) patches the matching property of a
- * deepObject container parameter when one exists — type/description/example/default onto the property
- * schema, `required` onto the container's `required` list — so the deepObject and flat bracketed
+ * deepObject container parameter when one exists — type/description/format/example/default onto the
+ * property schema, `required` onto the container's `required` list — so the deepObject and flat bracketed
  * representations behave identically. With no such container it patches a flat `filter[status]`
  * parameter instead. Both create the member if it's missing.
  */
@@ -54,13 +54,13 @@ final class AttributeParametersExtension implements OperationExtension
             $property = $this->deepObjectProperty($operation, $attribute->name);
             if ($property === null) {
                 $parameter = $operation->parameter('query', $attribute->name);
-                $this->apply($parameter, $context, $attribute->type, $attribute->description, $attribute->required, $attribute->default, $attribute->example);
+                $this->apply($parameter, $context, $attribute->type, $attribute->description, $attribute->format, $attribute->required, $attribute->default, $attribute->example);
 
                 continue;
             }
 
             [$parentName, $childName, $schema] = $property;
-            $this->applyToProperty($schema, $context, $attribute->type, $attribute->description, $attribute->default, $attribute->example);
+            $this->applyToProperty($schema, $context, $attribute->type, $attribute->description, $attribute->format, $attribute->default, $attribute->example);
             if ($attribute->required) {
                 $deepRequired[$parentName][] = $childName;
             }
@@ -69,20 +69,17 @@ final class AttributeParametersExtension implements OperationExtension
 
         foreach ($context->attributes->all(HeaderParameter::class) as $attribute) {
             $parameter = $operation->parameter('header', $attribute->name);
-            $this->apply($parameter, $context, $attribute->type, $attribute->description, $attribute->required, null, $attribute->example);
+            $this->apply($parameter, $context, $attribute->type, $attribute->description, $attribute->format, $attribute->required, null, $attribute->example);
         }
 
         foreach ($context->attributes->all(CookieParameter::class) as $attribute) {
             $parameter = $operation->parameter('cookie', $attribute->name);
-            $this->apply($parameter, $context, $attribute->type, $attribute->description, $attribute->required, null, $attribute->example);
+            $this->apply($parameter, $context, $attribute->type, $attribute->description, $attribute->format, $attribute->required, null, $attribute->example);
         }
 
         foreach ($context->attributes->all(PathParameter::class) as $attribute) {
             $parameter = $operation->parameter('path', $attribute->name);
-            $this->apply($parameter, $context, $attribute->type, $attribute->description, true, null, $attribute->example);
-            if ($attribute->format !== null) {
-                $parameter->schema()->set('format', $attribute->format, Contribution::attribute($context->actionSource()));
-            }
+            $this->apply($parameter, $context, $attribute->type, $attribute->description, $attribute->format, true, null, $attribute->example);
         }
     }
 
@@ -91,6 +88,7 @@ final class AttributeParametersExtension implements OperationExtension
         RouteContext $context,
         ?string $type,
         ?string $description,
+        ?string $format,
         bool $required,
         mixed $default,
         mixed $example,
@@ -104,6 +102,11 @@ final class AttributeParametersExtension implements OperationExtension
             foreach ($context->converter()->toSchema($this->types->parse($type))->schema as $keyword => $value) {
                 $parameter->schema()->set($keyword, $value, $contribution);
             }
+        }
+
+        // After the type keywords, so an explicit format wins over one the type string implied.
+        if ($format !== null) {
+            $parameter->schema()->set('format', $format, $contribution);
         }
 
         if ($default !== null) {
@@ -140,12 +143,13 @@ final class AttributeParametersExtension implements OperationExtension
         return [$parent, $child, $container->schema()->property($child)];
     }
 
-    /** Type/description/default/example onto a deepObject property's schema. */
+    /** Type/description/format/default/example onto a deepObject property's schema. */
     private function applyToProperty(
         SchemaDraft $property,
         RouteContext $context,
         ?string $type,
         ?string $description,
+        ?string $format,
         mixed $default,
         mixed $example,
     ): void {
@@ -155,6 +159,9 @@ final class AttributeParametersExtension implements OperationExtension
             foreach ($context->converter()->toSchema($this->types->parse($type))->schema as $keyword => $value) {
                 $property->set($keyword, $value, $contribution);
             }
+        }
+        if ($format !== null) {
+            $property->set('format', $format, $contribution);
         }
         if ($description !== null) {
             $property->set('description', $description, $contribution);

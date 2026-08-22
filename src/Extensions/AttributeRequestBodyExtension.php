@@ -44,6 +44,10 @@ final class AttributeRequestBodyExtension implements OperationExtension
                 ? $context->converter()->toSchema($this->types->parse($attribute->type))->schema
                 : ['type' => 'string'];
 
+            // After the type keywords, so an explicit format wins over one the type string implied.
+            if ($attribute->format !== null) {
+                $property['format'] = $attribute->format;
+            }
             if ($attribute->description !== null) {
                 $property['description'] = $attribute->description;
             }
