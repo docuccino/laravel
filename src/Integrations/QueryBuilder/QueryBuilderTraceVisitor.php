@@ -353,7 +353,51 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
             return;
         }
 
-        $this->record($bucket, $this->entryWithContext($entry, $value, $slot, $base, $scope, $itemNode));
+        $recorded = $this->entryWithContext($entry, $value, $slot, $base, $scope, $itemNode);
+        // Recorded BEFORE the fold below is queued: an engine that answers synchronously must already
+        // find the entry to upgrade, same as the slot contract above.
+        $this->record($bucket, $recorded);
+        $this->deferFilterClassFold($recorded, $base, $scope);
+    }
+
+    /**
+     * A project factory whose call site names the filter still hides ONE fact in its body: the custom
+     * filter class it wraps (`AllowedFilter::custom($key, new self, …)` — the shared-filter idiom, where
+     * the class attribute lives). Ask the engine to fold the factory's return and, when it answers with
+     * a custom descriptor naming a class, upgrade the recorded entry so the extension reads that class
+     * exactly like a call-site `AllowedFilter::custom`. Anything else the fold answers — another factory
+     * kind, a branching body, nothing at all — changes nothing: the call-site typing stands.
+     */
+    private function deferFilterClassFold(QbEntry $entry, Node\Expr $base, TypeScope $scope): void
+    {
+        if ($entry->factoryClass === null || $entry->factoryEnum !== null || $entry->filterClass !== null
+            || ! $scope instanceof FoldsCallReturns
+        ) {
+            return;
+        }
+
+        $scope->deferReturnFold($base, function (?ConstValue $value, ?Node\Expr $returned) use ($entry): void {
+            if ($value === null || ! $value->isDescriptor() || $value->factory !== self::ALLOWED_FILTER.'::custom') {
+                return;
+            }
+
+            $class = $this->customFilterClass($value, null, null);
+            if ($class !== null) {
+                $this->upgradeFilterClass($entry, $class);
+            }
+        });
+    }
+
+    /** Swap the recorded entry for a copy carrying the filter class its factory's body fold recovered. */
+    private function upgradeFilterClass(QbEntry $entry, string $filterClass): void
+    {
+        foreach ($this->facts->filters as $index => $existing) {
+            if ($existing === $entry) {
+                $this->facts->filters[$index] = $entry->withFilterClass($filterClass);
+
+                return;
+            }
+        }
     }
 
     /**
@@ -726,12 +770,13 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
 
     /**
      * Typing for a filter built by a PROJECT factory (a `ListFilters::enum(...)` style helper returning
-     * an `AllowedFilter`) rather than a Spatie `AllowedFilter::*` one. Everything needed is already in
-     * the call-site arguments folded into the descriptor, so the factory body is never descended into: a
-     * backed-enum class-string argument names the value domain, otherwise a written column argument —
-     * else the filter's own name — is the column to type off, the usual `$column ?? $key` idiom. A
-     * second argument that isn't a column costs nothing: cast resolution fails closed to a plain
-     * string. Bare strings and unhandled Spatie kinds return all-null and stay plain strings.
+     * an `AllowedFilter`) rather than a Spatie `AllowedFilter::*` one. Everything the call site says is
+     * used as written: a backed-enum class-string argument names the value domain, otherwise a written
+     * column argument — else the filter's own name — is the column to type off, the usual
+     * `$column ?? $key` idiom. A second argument that isn't a column costs nothing: cast resolution
+     * fails closed to a plain string. The body is consulted for exactly one further fact, by return fold
+     * rather than descent — the custom filter class it may wrap ({@see deferFilterClassFold}). Bare
+     * strings and unhandled Spatie kinds return all-null and stay plain strings.
      *
      * @return array{0: string|null, 1: string|null, 2: string|null, 3: string|null}
      */
@@ -796,15 +841,21 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
     }
 
     /**
-     * The folded `F::class` second argument, else the type of a `new F` argument. A variable or dynamic
-     * instance is unrecoverable, and so is the `new F` form once the expression came back from a return fold
-     * — typing another file's node against this scope is not something the scope can honestly answer.
+     * The folded `F::class` second argument, else the class of a folded `new F(...)` instance value —
+     * the engine resolves the name (`self` included) in the callee's own scope, so the instance form
+     * survives a return fold. Failing both, the type of a `new F` argument node at the call site; a
+     * variable or dynamic instance is unrecoverable, and so is an unfolded node from another file —
+     * typing it against this scope is not something the scope can honestly answer.
      */
     private function customFilterClass(ConstValue $value, ?Node\Expr $base, ?TypeScope $scope): ?string
     {
         $second = $value->args[1] ?? null;
         if ($second instanceof ConstValue && $second->isScalar() && is_string($second->scalar) && $second->scalar !== '') {
             return $second->scalar;
+        }
+
+        if ($second instanceof ConstValue && $second->isInstance() && is_string($second->class) && $second->class !== '') {
+            return $second->class;
         }
 
         if ($base instanceof Node\Expr\StaticCall && $scope !== null) {

@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\QueryBuilder;
 
 /**
- * The typed shape a subject-model cast pins for an exact-filter column, resolved by
+ * The typed shape a subject model pins for an exact-filter column, resolved by
  * {@see FilterColumnResolver}: an enum (its FQCN — the extension expands it through the shared enum
- * machinery to backing values + `x-enumDescriptions`), a native cast scalar schema, or none (no
- * recognised cast → the filter stays a plain string). `dependencyFiles` are the files the resolution
- * read (the enum's declaring file) so they join the fragment-cache key.
+ * machinery to backing values + `x-enumDescriptions`), a scalar schema from a native cast or the
+ * primary key, or none (nothing types the column → the filter stays a plain string).
+ * `dependencyFiles` are the files the resolution read (the enum's declaring file) so they join the
+ * fragment-cache key.
  */
 final readonly class FilterColumn
 {
@@ -30,10 +31,26 @@ final readonly class FilterColumn
         public array $dependencyFiles = [],
     ) {}
 
-    /** No recognised cast — the filter keeps its plain-string shape. */
+    /** No recognised shape — the filter keeps its plain-string form. */
     public static function none(): self
     {
         return new self(self::KIND_NONE);
+    }
+
+    /**
+     * The same column with `$files` joined onto its dependency set. A refusal carries the files it
+     * read to refuse: edited, any of them could become an answer, and a warm fragment must see that.
+     *
+     * @param  list<string>  $files
+     */
+    public function withDependencyFiles(array $files): self
+    {
+        return new self(
+            $this->kind,
+            $this->enum,
+            $this->scalarSchema,
+            array_values(array_unique([...$this->dependencyFiles, ...$files])),
+        );
     }
 
     /**

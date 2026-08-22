@@ -8,14 +8,15 @@ use BackedEnum;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\ValidationException;
 use Spatie\QueryBuilder\AllowedFilter;
+use Workbench\App\Filters\PublicIdFilter;
 
 /**
  * A user-land filter factory (the recurring `ListFilters`-style idiom): each static returns a Spatie
- * `AllowedFilter` built from a single unconditional `AllowedFilter::callback(...)`, validating the
- * value and constraining the query. It exists so the QB integration can recover the filter's typing
- * from the CALL SITE — a backed-enum class-string argument names the value domain, and the filter's
- * own key is the column — WITHOUT descending into this body (mirroring a real app's convention of
- * keeping a single unconditional return so a static analyzer can resolve it). Only ever analysed.
+ * `AllowedFilter` built from a single unconditional factory call, validating the value and
+ * constraining the query. It exists so the QB integration can recover the filter's typing from the
+ * CALL SITE — a backed-enum class-string argument names the value domain, and the filter's own key is
+ * the column — while the body's single return stays foldable, which is how a wrapped custom filter
+ * class is found. Only ever analysed.
  */
 final class FilterFactory
 {
@@ -58,6 +59,12 @@ final class FilterFactory
         return AllowedFilter::callback($key, static function (Builder $query, mixed $value) use ($column, $key): void {
             $query->whereDate($column ?? $key, is_string($value) ? $value : '');
         });
+    }
+
+    /** A shared custom filter ({@see PublicIdFilter}) registered under `$key` — the wrapper-factory idiom. */
+    public static function publicId(string $key, ?string $column = null): AllowedFilter
+    {
+        return AllowedFilter::custom($key, new PublicIdFilter, $column ?? $key);
     }
 
     /**

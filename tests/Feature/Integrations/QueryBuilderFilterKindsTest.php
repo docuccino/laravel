@@ -11,6 +11,7 @@ use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParametersExtension;
 use Docuccino\Laravel\Tests\Support\TraceScript;
+use Workbench\App\Models\Beacon;
 
 /**
  * End-to-end proof of the QB filter-kind ENRICHMENT (round 2) in-process: a scripted trace over a real
@@ -40,10 +41,11 @@ function runFilterKinds(string $chain): array
         $byName[$parameter->name] = $parameter->toArray();
     }
 
-    return [$byName, $context->components->diagnostics()];
+    return [$byName, $context->components->diagnostics(), $context->dependencyFiles()];
 }
 
 $chain = 'QueryBuilder::for(\\Workbench\\App\\Models\\Gadget::class)->allowedFilters(['
+    ."AllowedFilter::exact('id'), "                                                          // exact on the primary key → the key schema
     ."'name', "                                                                              // bare, uncast → plain string, no nudge
     ."'status', "                                                                            // bare, enum-cast → partial-on-enum nudge
     ."AllowedFilter::scope('minScore'), "                                                    // scope int value
@@ -58,6 +60,9 @@ $chain = 'QueryBuilder::for(\\Workbench\\App\\Models\\Gadget::class)->allowedFil
 
 it('types each recovered filter kind off the model and applies the custom-filter attribute', function () use ($chain): void {
     [$byName] = runFilterKinds($chain);
+
+    // Exact filter on the primary key → the model's key schema (Gadget keys on a default int id).
+    expect($byName['filter[id]']['schema']['type'])->toBe('integer');
 
     // Bare uncast filter → plain string, generic description.
     expect($byName['filter[name]']['schema']['type'])->toBe('string')
@@ -106,6 +111,18 @@ it('emits a partial-on-enum info nudge for a partial filter over an enum column,
 
     expect($partialOnEnum)->toHaveCount(1)
         ->and($partialOnEnum[0]->message)->toContain('status');
+});
+
+it('types a belongsTo foreign-key filter off the related model\'s uuid key and keys the fragment on it', function (): void {
+    [$byName, , $files] = runFilterKinds(
+        "QueryBuilder::for(\\Workbench\\App\\Models\\Gadget::class)->allowedFilters([AllowedFilter::exact('beacon_id')])->paginate()",
+    );
+
+    // `format: uuid` can only come from Beacon's HasUuids key — a fallback would be a bare string —
+    // and the related model's file must key the fragment so editing Beacon re-documents the route.
+    expect($byName['filter[beacon_id]']['schema']['type'])->toBe('string')
+        ->and($byName['filter[beacon_id]']['schema']['format'])->toBe('uuid')
+        ->and($files)->toContain((new ReflectionClass(Beacon::class))->getFileName());
 });
 
 it('does not nudge when a partial filter targets a non-enum column', function (): void {

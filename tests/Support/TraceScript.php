@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Tests\Support;
 
+use Docuccino\Core\Inference\ConstValue;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\TraceVisitor;
 use PhpParser\Node;
@@ -25,16 +26,20 @@ final class TraceScript
      * @param  string  $file  the file the snippet stands for — one document may script SEVERAL walks (an
      *                        action, then each injected builder's constructor), and two of them claiming
      *                        one file would put two different call sites at the same place
+     * @param  array<string, array{0: ?ConstValue, 1: ?Node\Expr}>  $foldedReturns  method name → the
+     *                                                                              answer a deferred return fold gives, drained after the
+     *                                                                              walk exactly as the engine drains before the trace returns
      * @return callable(TraceVisitor): void
      */
     public static function forChain(
         string $chain,
         string $builderFqcn = 'Spatie\\QueryBuilder\\QueryBuilder',
         string $file = 'test.php',
+        array $foldedReturns = [],
     ): callable {
-        return static function (TraceVisitor $visitor) use ($chain, $builderFqcn, $file): void {
+        return static function (TraceVisitor $visitor) use ($chain, $builderFqcn, $file, $foldedReturns): void {
             $ast = (new ParserFactory)->createForNewestSupportedVersion()->parse("<?php\n\$q = ".$chain.";\n") ?? [];
-            $scope = new StubTraceScope(new ClassT($builderFqcn), file: $file);
+            $scope = new StubTraceScope(new ClassT($builderFqcn), $foldedReturns, file: $file);
 
             $traverser = new NodeTraverser(new class($visitor, $scope) extends NodeVisitorAbstract
             {
@@ -53,6 +58,26 @@ final class TraceScript
                 }
             });
             $traverser->traverse($ast);
+            // The engine answers deferred return folds once the walk is over; so does the stub.
+            $scope->drainReturnFolds();
         };
+    }
+
+    /**
+     * What the engine hands back for one folded return: the folded value plus the returned expression
+     * itself (AST-only, since it belongs to the callee's file). Folded through the same stub scope the
+     * visitor sees, so a fixture reads like the real answer.
+     *
+     * @return array{0: ?ConstValue, 1: ?Node\Expr}
+     */
+    public static function foldOf(string $expression): array
+    {
+        $ast = (new ParserFactory)->createForNewestSupportedVersion()->parse('<?php '.$expression.';') ?? [];
+        $statement = $ast[0] ?? null;
+        $expr = $statement instanceof Node\Stmt\Expression ? $statement->expr : null;
+
+        return $expr === null
+            ? [null, null]
+            : [(new StubTraceScope(new ClassT('Spatie\\QueryBuilder\\QueryBuilder')))->constantValueOf($expr), $expr];
     }
 }

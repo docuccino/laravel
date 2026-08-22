@@ -240,6 +240,51 @@ it('types a scope filter off its enum value parameter and a callback filter off 
         ->and($byName['active']['scalarSchema'])->toBe(['type' => 'boolean']);
 })->group('fixture');
 
+it('types a belongsTo foreign-key filter off the related model\'s uuid key, on the real engine', function (): void {
+    // `depot_id` carries no cast and is not Shipment's key — `format: uuid` can only come from the
+    // `depot()` relation's literal belongsTo read plus Depot's HasUuids key, proving the whole hop
+    // works out-of-process. Depot's file joining the dependency set is the hop's cache soundness.
+    $harvest = FixtureRunner::traceQbEnrich(
+        'app/Http/Controllers/ShipmentQueryController.php',
+        'App\\Http\\Controllers\\ShipmentQueryController',
+        'index',
+    );
+
+    expect($harvest['subjectModel'])->toBe('App\\Models\\Shipment');
+
+    $byName = [];
+    foreach ($harvest['filters'] as $filter) {
+        $byName[$filter['name']] = $filter;
+    }
+
+    expect($byName['depot_id']['columnKind'])->toBe('scalar')
+        ->and($byName['depot_id']['scalarSchema'])->toBe(['type' => 'string', 'format' => 'uuid'])
+        ->and($byName['depot_id']['dependencyBasenames'])->toContain('Depot.php');
+})->group('fixture');
+
+it('folds a shared-filter factory body to the custom filter class it wraps, on the real engine', function (): void {
+    // `UuidFilter::allowed('position_id')` names the filter at the call site, so the entry records
+    // outright — recovering the class its `#[QueryParameter]` lives on takes the engine folding the
+    // factory's return and resolving `new self` to the concrete class. That recovery is the
+    // engine-dependent half; the attribute's application is proven in-process.
+    $harvest = FixtureRunner::traceQbEnrich(
+        'app/Http/Controllers/PositionQueryController.php',
+        'App\\Http\\Controllers\\PositionQueryController',
+        'index',
+    );
+
+    expect($harvest['subjectModel'])->toBe('App\\Models\\Shipment');
+
+    $byName = [];
+    foreach ($harvest['filters'] as $filter) {
+        $byName[$filter['name']] = $filter;
+    }
+
+    expect($byName['position_id']['kind'])->toBe('allowed')
+        ->and($byName['position_id']['factoryClass'])->toBe('App\\Filters\\UuidFilter')
+        ->and($byName['position_id']['filterClass'])->toBe('App\\Filters\\UuidFilter');
+})->group('fixture');
+
 it('follows a `$query->query()` hop into a Query class OUTSIDE the project paths (modular layout)', function (): void {
     // InvoiceController + InvoiceIndexQuery live under `modules/` (namespace Modules\Billing), outside
     // the engine's project paths (only `app/` is in them) — the modular layout that hides a real app's

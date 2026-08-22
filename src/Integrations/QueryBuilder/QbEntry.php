@@ -16,8 +16,8 @@ namespace Docuccino\Laravel\Integrations\QueryBuilder;
  *   - `nullable`: from a `->nullable()` modifier — becomes a description note, never an extra enum case.
  *   - `comment`: the leading comment above the array entry, overriding the generic kind description.
  *   - `typeColumn`: the subject-model column whose cast types the value; null leaves it a plain string.
- *   - `filterClass`: a custom filter's FQCN, whose `#[QueryParameter]` or `__invoke` body the extension
- *     reads.
+ *   - `filterClass`: a custom filter's FQCN — written at the call site, or folded out of a project
+ *     factory's body — whose `#[QueryParameter]` or `__invoke` body the extension reads.
  *   - `enumTyped`: drives comma/whereIn array modelling. Only the whereIn kinds set it — a single-value
  *     comparison (scope/callback/operator) keeps a scalar enum schema.
  */
@@ -80,6 +80,27 @@ final readonly class QbEntry
             $this->typeColumn,
             $this->filterClass,
             $example ?? $this->example,
+            $this->factoryEnum,
+            $this->factoryClass,
+        );
+    }
+
+    /** A copy carrying the custom filter class a factory body's return fold recovered. */
+    public function withFilterClass(string $filterClass): self
+    {
+        return new self(
+            $this->name,
+            $this->kind,
+            $this->internal,
+            $this->hasDefault,
+            $this->default,
+            $this->nullable,
+            $this->comment,
+            $this->columnSchema,
+            $this->enumTyped,
+            $this->typeColumn,
+            $filterClass,
+            $this->example,
             $this->factoryEnum,
             $this->factoryClass,
         );

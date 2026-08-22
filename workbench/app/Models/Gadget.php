@@ -6,6 +6,7 @@ namespace Workbench\App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Workbench\App\Enums\WidgetStatus;
@@ -42,6 +43,16 @@ final class Gadget extends Model
         // plain-string fallback, so a filter typed off a declared column provably resolved the cast.
         'starts_at' => 'datetime',
     ];
+
+    /**
+     * A belongsTo whose default foreign key (`beacon_id`) types off the related model's uuid key.
+     *
+     * @return BelongsTo<Beacon, $this>
+     */
+    public function beacon(): BelongsTo
+    {
+        return $this->belongsTo(Beacon::class);
+    }
 
     /**
      * A scope whose value parameter is a backed enum — the scope filter types off it.

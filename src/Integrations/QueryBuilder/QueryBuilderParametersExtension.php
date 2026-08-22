@@ -152,8 +152,10 @@ final class QueryBuilderParametersExtension implements OperationExtension
     /**
      * Types one filter off the subject model per kind: `exact`/static `operator`/`callback` off the
      * resolved column's cast, a `scope` off its scope method's value parameter, a `custom` off its class
-     * attribute or `__invoke` body. A partial or bare-string filter over an enum column is never
-     * enum-typed — a substring match isn't an enum member — and gets a nudge towards `exact` instead.
+     * attribute or `__invoke` body, a project factory off the custom filter class its body wraps — else
+     * its own attribute, else its written column ({@see enrichProjectFactory}). A partial or bare-string
+     * filter over an enum column is never enum-typed — a substring match isn't an enum member — and gets
+     * a nudge towards `exact` instead.
      */
     private function enrichFilter(QbEntry $filter, string $model, RouteContext $context): QbEntry
     {
@@ -179,13 +181,36 @@ final class QueryBuilderParametersExtension implements OperationExtension
                 : $filter,
             'scope' => $this->applyColumn($filter, $this->scopes->resolve($model, $filter->name), $context, asArray: false),
             'custom' => $this->enrichCustom($filter, $model, $context),
-            // A project-factory filter with no enum argument types off its written column argument, else
-            // its own name (the `$column ?? $key` idiom). A name that isn't a column — a multi-column
-            // search — stays a string.
-            default => $filter->typeColumn !== null
-                ? $this->applyColumn($filter, $this->columns->resolve($model, $filter->typeColumn), $context, asArray: false)
-                : $filter,
+            default => $this->enrichProjectFactory($filter, $model, $context),
         };
+    }
+
+    /**
+     * A project-factory entry, in precedence order: the custom filter class its body's fold recovered
+     * answers exactly like `AllowedFilter::custom` (class attribute, then `__invoke` column); a factory
+     * that could not fold may still declare a class-level `#[QueryParameter]` of its own — the
+     * `UuidFilter::allowed()` idiom with an unfoldable body. Failing both, the written column argument —
+     * else the filter's own name — types off the model cast (the `$column ?? $key` idiom); a name that
+     * isn't a column stays a string. An unfoldable body is never guessed at: it contributes only what
+     * its class declares.
+     */
+    private function enrichProjectFactory(QbEntry $filter, string $model, RouteContext $context): QbEntry
+    {
+        if ($filter->filterClass !== null) {
+            return $this->enrichCustom($filter, $model, $context);
+        }
+
+        if ($filter->factoryClass !== null) {
+            // The factory file itself is already recorded by recordFactoryFile().
+            $facts = $this->customFilters->read($filter->factoryClass);
+            if ($facts->attribute !== null) {
+                return $this->applyCustomAttribute($filter, $facts->attribute, $context);
+            }
+        }
+
+        return $filter->typeColumn !== null
+            ? $this->applyColumn($filter, $this->columns->resolve($model, $filter->typeColumn), $context, asArray: false)
+            : $filter;
     }
 
     /** A column for a backed-enum class-string recovered from a project-factory argument. */
@@ -215,8 +240,11 @@ final class QueryBuilderParametersExtension implements OperationExtension
      */
     private function applyColumn(QbEntry $filter, FilterColumn $column, RouteContext $context, bool $asArray): QbEntry
     {
+        // Whatever the outcome — an enum's file, a foreign-key hop's related model, a refusal that read
+        // files to refuse — the resolution's inputs key the fragment.
+        $context->recordDependencyFiles($column->dependencyFiles);
+
         if ($column->isEnum() && $column->enum !== null) {
-            $context->recordDependencyFiles($column->dependencyFiles);
             $schema = $context->converter()->convert(new EnumT($column->enum, EnumReflection::names($column->enum)));
 
             return $filter->withColumn($schema, enumTyped: $asArray);
@@ -258,9 +286,9 @@ final class QueryBuilderParametersExtension implements OperationExtension
     }
 
     /**
-     * Folds the attribute's schema/description/default/example into the filter. Its `name` is ignored —
-     * the parameter name is always the `AllowedFilter` name. A route-level attribute still overrides
-     * this downstream.
+     * Folds the attribute's schema/description/format/default/example into the filter. Its `name` is
+     * ignored — the parameter name is always the `AllowedFilter` name. A route-level attribute still
+     * overrides this downstream.
      */
     private function applyCustomAttribute(QbEntry $filter, QueryParameter $attribute, RouteContext $context): QbEntry
     {
@@ -277,9 +305,20 @@ final class QueryBuilderParametersExtension implements OperationExtension
             example: $attribute->example,
         );
 
-        return $attribute->type === null
-            ? $filter
-            : $this->applyColumn($filter, $this->attributeColumn($attribute->type), $context, asArray: false);
+        if ($attribute->type !== null) {
+            $filter = $this->applyColumn($filter, $this->attributeColumn($attribute->type), $context, asArray: false);
+        }
+
+        // After the type, so an explicit format wins over one the type implied — mirroring the
+        // route-level attribute layer, so the one attribute means one thing wherever it sits. Alone, it
+        // rides on the filter's base string schema (a filter value is a string on the wire).
+        if ($attribute->format !== null) {
+            $schema = $filter->columnSchema ?? ['type' => 'string'];
+            $schema['format'] = $attribute->format;
+            $filter = $filter->withColumn($schema, enumTyped: $filter->enumTyped);
+        }
+
+        return $filter;
     }
 
     /**
@@ -304,11 +343,12 @@ final class QueryBuilderParametersExtension implements OperationExtension
     private function nudgePartialOnEnum(QbEntry $filter, string $model, RouteContext $context): void
     {
         $column = $this->columns->resolve($model, $filter->column());
+        // Recorded before the enum check: whether the nudge fires at all is a fact of these files.
+        $context->recordDependencyFiles($column->dependencyFiles);
         if (! $column->isEnum()) {
             return;
         }
 
-        $context->recordDependencyFiles($column->dependencyFiles);
         $context->components->addDiagnostic(new Diagnostic(
             severity: Severity::Info,
             code: 'query-builder.partial-on-enum',

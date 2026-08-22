@@ -69,6 +69,8 @@ final class EloquentModelReflector
      *
      * A column whose type can't be carried in a URL segment (an `array` cast, a `@property` naming a class)
      * is refused rather than emitted — the parameter is a path segment, not the serialised attribute.
+     * The Query Builder FilterColumnResolver mirrors the key/cast bracket — keep the precedence in
+     * step when editing here.
      *
      * @return array<string, mixed>|null
      */
