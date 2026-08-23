@@ -76,54 +76,203 @@ it('expresses filters as a single deepObject param under the deepObject policy',
         ]);
 });
 
-it('expresses sort as a comma string with a default by default', function (): void {
+it('expresses sort as a comma-serialised enum array under either list style', function (RepresentationPolicy $policy): void {
     $facts = factsWith(function (QueryBuilderFacts $f): void {
         $f->sorts = [new QbEntry('name', 'default'), new QbEntry('created_at', 'field')];
         $f->defaultSorts = ['name'];
     });
 
-    $specs = (new QueryBuilderParameters)->build($facts, bracketedPolicy());
+    $specs = (new QueryBuilderParameters)->build($facts, $policy);
 
     expect($specs)->toHaveCount(1);
     expect($specs[0]->name)->toBe('sort')
-        ->and($specs[0]->schema)->toBe(['type' => 'string', 'default' => 'name'])
-        ->and($specs[0]->style)->toBeNull()
-        ->and($specs[0]->description)->toContain('prefix `-` for descending');
-});
-
-it('expresses sort as an exploded array with an enum incl. the descending forms under the array policy', function (): void {
-    $facts = factsWith(function (QueryBuilderFacts $f): void {
-        $f->sorts = [new QbEntry('name', 'default'), new QbEntry('created_at', 'field')];
-        $f->defaultSorts = ['name'];
-    });
-
-    $specs = (new QueryBuilderParameters)->build($facts, deepObjectPolicy());
-
-    expect($specs[0]->name)->toBe('sort')
         ->and($specs[0]->style)->toBe('form')
         ->and($specs[0]->explode)->toBeFalse()
+        ->and($specs[0]->description)->toContain('prefix `-` for descending')
         ->and($specs[0]->schema)->toBe([
             'type' => 'array',
             'items' => ['type' => 'string', 'enum' => ['name', '-name', 'created_at', '-created_at']],
             'default' => ['name'],
         ]);
+})->with([
+    'comma' => [new RepresentationPolicy],
+    'array' => [new RepresentationPolicy(listStyle: 'array')],
+]);
+
+it('composes several default sorts into an array default, a descending one as written', function (): void {
+    $facts = factsWith(function (QueryBuilderFacts $f): void {
+        $f->sorts = [new QbEntry('issued_at', 'default'), new QbEntry('total', 'default')];
+        $f->defaultSorts = ['-issued_at', 'total'];
+    });
+
+    $schema = (new QueryBuilderParameters)->build($facts, bracketedPolicy())[0]->schema;
+
+    expect($schema['default'])->toBe(['-issued_at', 'total'])
+        ->and($schema['items']['enum'])->toContain('-issued_at');
 });
 
-it('expresses include as a comma string by default and an exploded array under the array policy', function (RepresentationPolicy $policy, array $expected): void {
+/**
+ * A `defaultSort` needs no allow-listing — Spatie validates only requested sorts — so a default can
+ * sit outside the emitted enum. A default violating its own schema would be a lie: any out-of-enum
+ * value moves the WHOLE default into the description, and an all-listed one keeps the schema default.
+ */
+it('drops a default sort outside its own enum into the description', function (array $defaults, bool $onSchema, string $note): void {
+    $facts = factsWith(function (QueryBuilderFacts $f) use ($defaults): void {
+        $f->sorts = [new QbEntry('name', 'default')];
+        $f->defaultSorts = $defaults;
+    });
+
+    $spec = (new QueryBuilderParameters)->build($facts, bracketedPolicy())[0];
+
+    if ($onSchema) {
+        expect($spec->schema['default'])->toBe($defaults)
+            ->and($spec->description)->not->toContain('Defaults to');
+    } else {
+        expect($spec->schema)->not->toHaveKey('default')
+            ->and($spec->description)->toEndWith($note);
+    }
+})->with([
+    'non-listed ascending' => [['created_at'], false, 'Defaults to `created_at`.'],
+    'non-listed descending' => [['-created_at'], false, 'Defaults to `-created_at`.'],
+    'mixed listed and non-listed drops the whole default' => [['name', '-created_at'], false, 'Defaults to `name`, `-created_at`.'],
+    'all listed keeps the schema default' => [['-name'], true, ''],
+]);
+
+/**
+ * Spatie splits list values on `query-builder.delimiter`, so the comma-array contract is only
+ * truthful on the default: another separator degrades sort/include and the enum whereIn filters to a
+ * plain string naming it (values restated where inline), and no separator at all means one value per
+ * request — the item schema itself.
+ */
+it('degrades every comma-form list under a custom delimiter', function (): void {
     $facts = factsWith(function (QueryBuilderFacts $f): void {
-        $f->includes = [new QbEntry('author', 'default'), new QbEntry('comments', 'default')];
+        $f->sorts = [new QbEntry('name', 'default')];
+        $f->includes = [new QbEntry('author', 'relationship')];
+        $f->filters = [(new QbEntry('status', 'exact'))->withColumn(enumColumnSchema(), enumTyped: true)];
+        $f->defaultSorts = ['-name'];
+    });
+    $config = new QueryBuilderConfig(delimiter: '|');
+
+    $byName = specsByName((new QueryBuilderParameters)->build($facts, bracketedPolicy(), $config));
+
+    expect($byName['sort']->schema)->toBe(['type' => 'string'])
+        ->and($byName['sort']->style)->toBeNull()
+        ->and($byName['sort']->description)->toContain('Values are separated by `|`.')
+        ->and($byName['sort']->description)->toEndWith('Defaults to `-name`.')
+        ->and($byName['include']->schema)->toBe(['type' => 'string'])
+        ->and($byName['include']->description)->toContain('Values are separated by `|`.')
+        ->and($byName['filter[status]']->schema)->toBe(['type' => 'string'])
+        ->and($byName['filter[status]']->style)->toBeNull()
+        ->and($byName['filter[status]']->description)->toContain('Accepts a `|`-separated list of values (matched as `whereIn`).')
+        ->and($byName['filter[status]']->description)->toContain('Values: draft, published, archived.');
+
+    $property = (new QueryBuilderParameters)->build($facts, deepObjectPolicy(), $config)[0]->schema['properties']['status'];
+    expect($property['type'])->toBe('string')->and($property)->not->toHaveKey('items');
+});
+
+it('emits single-value item schemas when an empty delimiter disables splitting', function (): void {
+    $facts = factsWith(function (QueryBuilderFacts $f): void {
+        $f->sorts = [new QbEntry('name', 'default')];
+        $f->filters = [(new QbEntry('status', 'exact'))->withColumn(enumColumnSchema(), enumTyped: true)];
+    });
+    $config = new QueryBuilderConfig(delimiter: '');
+
+    $byName = specsByName((new QueryBuilderParameters)->build($facts, bracketedPolicy(), $config));
+
+    // One value per request: the item enum IS the parameter's shape, and no list note is claimed.
+    expect($byName['sort']->schema)->toBe(['type' => 'string', 'enum' => ['name', '-name']])
+        ->and($byName['filter[status]']->schema)->toBe(enumColumnSchema())
+        ->and($byName['filter[status]']->description)->not->toContain('whereIn');
+});
+
+it('strips the descending prefix off an allow-listed sort name and dedupes both directions', function (): void {
+    // `allowedSorts('-name')` legalizes the base name in both directions — AllowedSort ltrim()s it.
+    $facts = factsWith(function (QueryBuilderFacts $f): void {
+        $f->sorts = [new QbEntry('-name', 'default'), new QbEntry('name', 'default')];
+    });
+
+    $spec = (new QueryBuilderParameters)->build($facts, bracketedPolicy())[0];
+
+    // The description names the base too — "Sort by: -name, name" would restate the convention badly.
+    expect($spec->schema['items']['enum'])->toBe(['name', '-name'])
+        ->and($spec->description)->toBe('Sort by: name (prefix `-` for descending).');
+});
+
+it('expresses include as a comma-serialised enum array under either list style', function (RepresentationPolicy $policy): void {
+    $facts = factsWith(function (QueryBuilderFacts $f): void {
+        $f->includes = [new QbEntry('author', 'relationship'), new QbEntry('comments', 'relationship')];
     });
 
     $specs = (new QueryBuilderParameters)->build($facts, $policy);
 
     expect($specs[0]->name)->toBe('include')
-        ->and($specs[0]->schema)->toBe($expected);
+        ->and($specs[0]->style)->toBe('form')
+        ->and($specs[0]->explode)->toBeFalse()
+        ->and($specs[0]->schema)->toBe([
+            'type' => 'array',
+            'items' => ['type' => 'string', 'enum' => ['author', 'comments']],
+        ]);
 })->with([
-    'comma' => [new RepresentationPolicy, ['type' => 'string']],
-    'array' => [new RepresentationPolicy(listStyle: 'array'), [
-        'type' => 'array',
-        'items' => ['type' => 'string', 'enum' => ['author', 'comments']],
-    ]],
+    'comma' => [new RepresentationPolicy],
+    'array' => [new RepresentationPolicy(listStyle: 'array')],
+]);
+
+/**
+ * The include enum mirrors Spatie's own allow-list expansion: a bare string legalizes its cumulative
+ * relationship partials plus Count/Exists forms for each dot-less partial, a suffixed bare string is
+ * that include alone, and a factory-built entry legalizes only its own name.
+ */
+it('expands the include enum exactly as Spatie legalizes each allow-list entry', function (array $includes, array $enum, ?QueryBuilderConfig $config): void {
+    $facts = factsWith(function (QueryBuilderFacts $f) use ($includes): void {
+        $f->includes = $includes;
+    });
+
+    $specs = (new QueryBuilderParameters)->build($facts, bracketedPolicy(), $config ?? new QueryBuilderConfig);
+
+    expect($specs[0]->schema['items']['enum'])->toBe($enum);
+})->with([
+    'bare top-level string mints Count and Exists' => [
+        [new QbEntry('customer', 'default')],
+        ['customer', 'customerCount', 'customerExists'],
+        null,
+    ],
+    'bare nested string mints cumulative partials, suffixes on the dot-less one' => [
+        [new QbEntry('posts.comments', 'default')],
+        ['posts', 'postsCount', 'postsExists', 'posts.comments'],
+        null,
+    ],
+    'bare string already suffixed is that include alone' => [
+        [new QbEntry('customerCount', 'default')],
+        ['customerCount'],
+        null,
+    ],
+    'factory entries legalize only their own name' => [
+        [new QbEntry('posts.comments', 'relationship'), new QbEntry('postsCount', 'count')],
+        ['posts.comments', 'postsCount'],
+        null,
+    ],
+    'bare string already Exists-suffixed is that include alone' => [
+        [new QbEntry('customerExists', 'default')],
+        ['customerExists'],
+        null,
+    ],
+    // Spatie's Str::endsWith skips empty needles: an empty suffix neither claims bare strings nor
+    // mints suffixed forms, and partial expansion still runs.
+    'an empty count suffix neither matches nor mints' => [
+        [new QbEntry('customer', 'default')],
+        ['customer', 'customerExists'],
+        new QueryBuilderConfig(countSuffix: ''),
+    ],
+    'overlapping expansions dedupe keeping first occurrence' => [
+        [new QbEntry('posts.comments', 'default'), new QbEntry('posts', 'default')],
+        ['posts', 'postsCount', 'postsExists', 'posts.comments'],
+        null,
+    ],
+    'configured suffixes shape the minted forms' => [
+        [new QbEntry('customer', 'default')],
+        ['customer', 'customerCnt', 'customerHas'],
+        new QueryBuilderConfig(countSuffix: 'Cnt', existsSuffix: 'Has'),
+    ],
 ]);
 
 it('groups sparse fields into fields[type] params by default', function (): void {

@@ -55,6 +55,7 @@ $chain = 'QueryBuilder::for(\\Workbench\\App\\Models\\Gadget::class)->allowedFil
     ."AllowedFilter::custom('sc', \\Workbench\\App\\Filters\\ScoreFilter::class), "          // custom __invoke body (score int)
     ."AllowedFilter::custom('from', \\Workbench\\App\\Filters\\DateFilter::class, 'starts_at'), " // generic custom, declared internal name → datetime cast
     ."AllowedFilter::custom('starts_at', \\Workbench\\App\\Filters\\DateFilter::class), "    // generic custom, no internal name → its own name is the column
+    ."AllowedFilter::custom('opaque', \\Workbench\\App\\Filters\\CompositeFilter::class), "  // custom nothing can type → explicit unconstrained schema
     .'AllowedFilter::trashed(),'                                                             // trashed with/only enum
     .'])->paginate()';
 
@@ -97,6 +98,11 @@ it('types each recovered filter kind off the model and applies the custom-filter
         ->and($byName['filter[from]']['schema']['format'])->toBe('date-time')
         ->and($byName['filter[starts_at]']['schema']['format'])->toBe('date-time');
 
+    // A custom filter nothing can type (multi-clause __invoke, no attribute, no column binding) still
+    // publishes an explicit unconstrained schema — a parameter without one is invalid OAS, not vague.
+    expect($byName['filter[opaque]'])->toHaveKey('schema')
+        ->and($byName['filter[opaque]']['schema'])->toBe([]);
+
     // Trashed → fixed with/only enum.
     expect($byName['filter[trashed]']['schema']['enum'])->toBe(['with', 'only']);
 });
@@ -132,4 +138,25 @@ it('does not nudge when a partial filter targets a non-enum column', function ()
 
     $codes = array_map(static fn ($d): string => $d->code, $diagnostics);
     expect($codes)->not->toContain('query-builder.partial-on-enum');
+});
+
+it('emits sort and include as comma-serialised enum arrays end to end', function (): void {
+    [$byName] = runFilterKinds(
+        'QueryBuilder::for(\\Workbench\\App\\Models\\Gadget::class)'
+        ."->allowedSorts(['name', 'score'])->defaultSort('-name')"
+        ."->allowedIncludes(['maker.region', 'partsCount'])->paginate()",
+    );
+
+    expect($byName['sort']['style'])->toBe('form')
+        ->and($byName['sort']['explode'])->toBeFalse()
+        ->and($byName['sort']['schema']['type'])->toBe('array')
+        ->and($byName['sort']['schema']['items']['enum'])->toBe(['name', '-name', 'score', '-score'])
+        ->and($byName['sort']['schema']['default'])->toBe(['-name']);
+
+    // The bare nested string legalizes its partials and their Count/Exists forms exactly as Spatie
+    // does; the already-suffixed one is that include alone.
+    expect($byName['include']['style'])->toBe('form')
+        ->and($byName['include']['explode'])->toBeFalse()
+        ->and($byName['include']['schema']['items']['enum'])
+        ->toBe(['maker', 'makerCount', 'makerExists', 'maker.region', 'partsCount']);
 });

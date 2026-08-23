@@ -968,9 +968,22 @@
             "in": "query",
             "description": "Sort by: name, created_at (prefix `-` for descending).",
             "required": false,
+            "style": "form",
+            "explode": false,
             "schema": {
-              "type": "string",
-              "default": "name"
+              "type": "array",
+              "default": [
+                "name"
+              ],
+              "items": {
+                "type": "string",
+                "enum": [
+                  "name",
+                  "-name",
+                  "created_at",
+                  "-created_at"
+                ]
+              }
             }
           }
         ],

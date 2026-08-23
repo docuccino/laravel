@@ -2797,7 +2797,9 @@
                   "layer": "integration",
                   "fields": [
                     "description",
-                    "required"
+                    "explode",
+                    "required",
+                    "style"
                   ],
                   "source": {
                     "file": "workbench/app/Http/Controllers/WidgetQueryController.php",
@@ -2811,6 +2813,8 @@
             "in": "query",
             "description": "Sort by: name, created_at (prefix `-` for descending).",
             "required": false,
+            "style": "form",
+            "explode": false,
             "schema": {
               "x-docuccino": {
                 "provenance": [
@@ -2819,6 +2823,7 @@
                     "layer": "integration",
                     "fields": [
                       "default",
+                      "items",
                       "type"
                     ],
                     "source": {
@@ -2829,8 +2834,19 @@
                   }
                 ]
               },
-              "type": "string",
-              "default": "name"
+              "type": "array",
+              "default": [
+                "name"
+              ],
+              "items": {
+                "type": "string",
+                "enum": [
+                  "name",
+                  "-name",
+                  "created_at",
+                  "-created_at"
+                ]
+              }
             }
           }
         ],
@@ -3450,11 +3466,11 @@
     "document": {
       "id": "doc:default",
       "configHash": "5f2fa7f04d876587d654542b680caee47345866b9fdf48bc1e55e33f72a81989",
-      "contentHash": "62b34a3c08242237b3ec785dcc67a074d5294affb09f814f844a342ad30fbc98"
+      "contentHash": "49b122597d48758ac6892aaf29e3db42e99ce4699d14e31c805e8de6652b1ba0"
     },
     "generator": {
       "name": "docuccino/laravel",
-      "version": "0.1.0",
+      "version": "0.8.3",
       "specVersion": "1.0.0"
     }
   }

@@ -329,6 +329,36 @@ it('invalidates fragments when the query-builder parameter names change (booted-
     expect($engine->analyzeCount)->toBeGreaterThan(0);
 });
 
+it('invalidates fragments when a query-builder include suffix changes (booted-app cache input)', function (): void {
+    fragmentCacheDir('fragments');
+    $engine = new CountingTypeEngine(WorkbenchEngine::make());
+    app()->instance(TypeEngine::class, $engine);
+
+    generateDocument()->document;
+    $engine->analyzeCount = 0;
+
+    // The suffix reshapes every documented include enum while touching no route file.
+    config()->set('query-builder.suffixes.count', 'Cnt');
+    generateDocument()->document;
+
+    expect($engine->analyzeCount)->toBeGreaterThan(0);
+});
+
+it('invalidates fragments when the query-builder delimiter changes (booted-app cache input)', function (): void {
+    fragmentCacheDir('fragments');
+    $engine = new CountingTypeEngine(WorkbenchEngine::make());
+    app()->instance(TypeEngine::class, $engine);
+
+    generateDocument()->document;
+    $engine->analyzeCount = 0;
+
+    // The delimiter decides whether lists carry the comma-array contract at all.
+    config()->set('query-builder.delimiter', '|');
+    generateDocument()->document;
+
+    expect($engine->analyzeCount)->toBeGreaterThan(0);
+});
+
 it('invalidates fragments when the auth guard map changes (booted-app cache input)', function (string $key, mixed $value): void {
     // Which security integration owns a route is decided by the guard's DRIVER, so re-pointing a guard
     // re-documents every operation behind it while touching no route file. Keyed by Sanctum's

@@ -25,6 +25,14 @@ final readonly class QueryBuilderConfig
         // The package throws InvalidFilter/Sort/Includes (400) for anything unknown unless EVERY
         // `disable_*_exception` is set. On by default, so QB operations document a 400.
         public bool $strict = true,
+        // `query-builder.suffixes.*`: a bare-string include also legalizes its Count/Exists forms
+        // under these suffixes, so they shape the documented include enum. An empty suffix is kept
+        // as written — Spatie's Str::endsWith skips empty needles, so it neither matches nor mints.
+        public string $countSuffix = 'Count',
+        public string $existsSuffix = 'Exists',
+        // `query-builder.delimiter`: what sort/include/filter values split on. The comma-array list
+        // modelling is only truthful on the default; anything else degrades the lists.
+        public string $delimiter = ',',
     ) {}
 
     /**
@@ -39,6 +47,7 @@ final readonly class QueryBuilderConfig
         }
 
         $parameters = is_array($config['parameters'] ?? null) ? $config['parameters'] : [];
+        $suffixes = is_array($config['suffixes'] ?? null) ? $config['suffixes'] : [];
 
         return new self(
             filter: self::string($parameters, 'filter', 'filter'),
@@ -51,7 +60,16 @@ final readonly class QueryBuilderConfig
                 && ($config['disable_invalid_sort_query_exception'] ?? false) === true
                 && ($config['disable_invalid_includes_query_exception'] ?? false) === true
             ),
+            countSuffix: self::rawString($suffixes, 'count', 'Count'),
+            existsSuffix: self::rawString($suffixes, 'exists', 'Exists'),
+            delimiter: self::rawString($config, 'delimiter', ','),
         );
+    }
+
+    /** Whether list values split on the comma the array modelling serialises. */
+    public function splitsOnComma(): bool
+    {
+        return $this->delimiter === ',';
     }
 
     /** The bracketed `filter[<name>]`-style key for a filter member. */
@@ -74,5 +92,18 @@ final readonly class QueryBuilderConfig
         $value = $parameters[$key] ?? null;
 
         return is_string($value) && $value !== '' ? $value : $default;
+    }
+
+    /**
+     * Like {@see string()} but an empty string is a value, not an omission — Spatie honors an empty
+     * suffix or delimiter as written.
+     *
+     * @param  array<array-key, mixed>  $config
+     */
+    private static function rawString(array $config, string $key, string $default): string
+    {
+        $value = $config[$key] ?? null;
+
+        return is_string($value) ? $value : $default;
     }
 }
