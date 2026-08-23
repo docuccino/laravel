@@ -7,6 +7,21 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.8.4
+
+### Features
+
+- document sparse fieldsets as enums of the allow-list ([#154](https://github.com/docuccino/docuccino/pull/154))
+- describe and name the include and sort enum values ([#153](https://github.com/docuccino/docuccino/pull/153))
+- document include and sort as enums of the allow-list ([#148](https://github.com/docuccino/docuccino/pull/148))
+
+### Bug fixes
+
+- serve each viewer the OpenAPI version it implements ([#157](https://github.com/docuccino/docuccino/pull/157))
+- report unreadable attributes, inherit class-level ones, read @deprecated ([#161](https://github.com/docuccino/docuccino/pull/161))
+- type string-backed enum route bindings from the enum ([#160](https://github.com/docuccino/docuccino/pull/160))
+- degrade include and sort typing on spatie/laravel-query-builder below v7 ([#152](https://github.com/docuccino/docuccino/pull/152))
+
 ## v0.8.3
 
 ### Features
