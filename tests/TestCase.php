@@ -13,6 +13,7 @@ use Orchestra\Testbench\TestCase as Orchestra;
 use Workbench\App\Http\Controllers\BrokenController;
 use Workbench\App\Http\Controllers\FormController;
 use Workbench\App\Http\Controllers\IntegrationsController;
+use Workbench\App\Http\Controllers\LedgerQueryController;
 use Workbench\App\Http\Controllers\SecretController;
 use Workbench\App\Http\Controllers\ValidationController;
 use Workbench\App\Http\Controllers\WidgetController;
@@ -64,6 +65,8 @@ abstract class TestCase extends Orchestra
         // Query Builder (scripted trace), rate limiting, spatie/laravel-permission, and a withTrashed
         // route-model binding.
         $router->get('api/widget-query', [WidgetQueryController::class, 'index']);
+        // Include + sparse-fieldset allow-lists, so a golden locks those two enums and their prose.
+        $router->get('api/ledger-query', [LedgerQueryController::class, 'index']);
         $router->get('api/rate-limited', [FormController::class, 'index'])->middleware('throttle:60,1');
         $router->get('api/moderated-forms', [FormController::class, 'index'])->middleware('permission:moderate forms,web');
         $router->get('api/archived-forms/{form}', [FormController::class, 'show'])->withTrashed();

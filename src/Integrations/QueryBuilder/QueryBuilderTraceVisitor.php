@@ -631,6 +631,10 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
      */
     private function recordUnresolved(QbEntrySlot $slot): void
     {
+        // Which list lost an entry, before the per-site dedupe: the loss widens that list's schema
+        // whether or not its call site already earned a diagnostic.
+        $this->facts->unresolvedLists[$slot->bucket] = true;
+
         $key = self::siteKey($slot->location, $slot->method);
         if (isset($this->diagnosed[$key])) {
             return;

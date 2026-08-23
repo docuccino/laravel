@@ -141,7 +141,7 @@ it('builds a model schema honouring hidden, appends, and casts', function (): vo
     // case descriptions live on the component).
     expect($widget['properties']['status'])->toBe(['$ref' => '#/components/schemas/WidgetStatus'])
         ->and($registry->schemas()['WidgetStatus']['enum'])->toBe(['draft', 'published', 'archived'])
-        ->and($registry->schemas()['WidgetStatus'])->toHaveKey('x-enumDescriptions');
+        ->and($registry->schemas()['WidgetStatus'])->toHaveKey('x-enum-descriptions');
 
     // Every declared column is present in the payload, so all are required — a nullable column
     // (created_at) is required with a null-admitting type. The appended accessor stays optional.

@@ -161,6 +161,8 @@ it('hoists the item class a recovered list names into components', function (): 
         ->and($schemas['SnapshotFormData']['properties']['status'])->toBe([
             'type' => 'string',
             'enum' => ['Open', 'Closed', 'Draft'],
+            'x-enum-varnames' => ['Open', 'Closed', 'Draft'],
+            'x-enumNames' => ['Open', 'Closed', 'Draft'],
             'description' => 'Publication status frozen at submit.',
         ]);
 })->group('fixture');

@@ -105,3 +105,46 @@ it('brackets filter and fields member keys under the effective parameter names',
     expect($config->filterKey('status'))->toBe('f[status]')
         ->and($config->fieldsKey('articles'))->toBe('flds[articles]');
 });
+
+it('parses the installed package major off a composer version string, reading anything unreadable as current', function (?string $version, int $major): void {
+    // Composer is the only supported install path, so a runtime API that can't answer (or a dev
+    // checkout) is a harness artifact — treated as the supported major, never as an old install.
+    expect(QueryBuilderConfig::majorOf($version))->toBe($major);
+})->with([
+    'plain semver' => ['7.3.3', 7],
+    'v-prefixed' => ['v7.0.0', 7],
+    'v6' => ['6.4.4', 6],
+    'v5' => ['5.8.1', 5],
+    'runtime API silent' => [null, 7],
+    'dev branch' => ['dev-main', 7],
+]);
+
+it('threads the detected major through fromArray, the empty bag included', function (): void {
+    expect(QueryBuilderConfig::fromArray([], 6)->spatieMajor)->toBe(6)
+        ->and(QueryBuilderConfig::fromArray([], 6)->recovered)->toBeFalse()
+        ->and(QueryBuilderConfig::fromArray(['delimiter' => ','], 6)->spatieMajor)->toBe(6)
+        ->and(QueryBuilderConfig::fromArray([])->spatieMajor)->toBe(7);
+});
+
+it('treats only majors below the supported one as legacy', function (int $major, bool $legacy): void {
+    expect((new QueryBuilderConfig(spatieMajor: $major))->legacyPackage())->toBe($legacy);
+})->with([
+    'v5' => [5, true],
+    'v6' => [6, true],
+    'v7' => [7, false],
+    'a future major' => [8, false],
+]);
+
+/**
+ * The one predicate the list emitter and the collision report share. Every combination that drops the
+ * enum has to answer false here, or the report claims member names the document never published.
+ */
+it('mints names only where an allow-list is published as an enum', function (QueryBuilderConfig $config, bool $mints): void {
+    expect($config->mintsNames())->toBe($mints);
+})->with([
+    'the defaults' => [new QueryBuilderConfig, true],
+    'no splitting at all still enums one value' => [new QueryBuilderConfig(delimiter: ''), true],
+    'a custom delimiter degrades to a plain string' => [new QueryBuilderConfig(delimiter: '|'), false],
+    'a pre-v7 package degrades to a plain string' => [new QueryBuilderConfig(spatieMajor: 6), false],
+    'both at once' => [new QueryBuilderConfig(delimiter: '|', spatieMajor: 6), false],
+]);

@@ -326,7 +326,7 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             $vendor = new VendorRoutePolicy($app->basePath('vendor'));
 
             return new QueryBuilderParametersExtension(
-                QueryBuilderConfig::fromArray($config),
+                QueryBuilderConfig::fromArray($config, self::spatieQueryBuilderMajor()),
                 isVendorFile: $vendor->isVendorFile(...),
             );
         });
@@ -335,7 +335,7 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             /** @var array<string, mixed> $config */
             $config = (array) config('query-builder', []);
 
-            return new QueryBuilderConfigDigestContributor(QueryBuilderConfig::fromArray($config));
+            return new QueryBuilderConfigDigestContributor(QueryBuilderConfig::fromArray($config, self::spatieQueryBuilderMajor()));
         });
 
         // Passport's oauth2 scheme (and the cache digest below) need facts that only live on the
@@ -407,6 +407,24 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
         }
 
         return is_string($reference) ? '@'.$reference : '';
+    }
+
+    /**
+     * The installed spatie/laravel-query-builder major, off Composer's runtime API. No extra cache
+     * keying: the app's composer.lock is already in {@see BuildFingerprint}, so an upgrade retires
+     * warm fragments on its own.
+     */
+    private static function spatieQueryBuilderMajor(): int
+    {
+        if (! class_exists(InstalledVersions::class)) {
+            return QueryBuilderConfig::majorOf(null);
+        }
+
+        try {
+            return QueryBuilderConfig::majorOf(InstalledVersions::getVersion('spatie/laravel-query-builder'));
+        } catch (Throwable) {
+            return QueryBuilderConfig::majorOf(null);
+        }
     }
 
     /** A non-empty string config value, or null when unset/blank. */

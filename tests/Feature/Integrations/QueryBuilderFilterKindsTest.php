@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Composer\InstalledVersions;
 use Docuccino\Core\Draft\OperationDraft;
 use Docuccino\Core\Extensions\Context\AttributeSet;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
@@ -9,6 +10,7 @@ use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
+use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderConfig;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParametersExtension;
 use Docuccino\Laravel\Tests\Support\TraceScript;
 use Workbench\App\Models\Beacon;
@@ -19,7 +21,7 @@ use Workbench\App\Models\Beacon;
  * cast / scope signature / custom filter, and the partial-on-enum nudge fires — without the real
  * engine (that is proven behaviourally in the fixture group).
  */
-function runFilterKinds(string $chain): array
+function runFilterKinds(string $chain, ?QueryBuilderConfig $config = null): array
 {
     $engine = new StubTypeEngine(traces: [
         'App\\Gadgets::index' => TraceScript::forChain($chain),
@@ -34,7 +36,7 @@ function runFilterKinds(string $chain): array
     );
 
     $operation = new OperationDraft;
-    (new QueryBuilderParametersExtension)->handle($operation, $context);
+    (new QueryBuilderParametersExtension($config ?? new QueryBuilderConfig))->handle($operation, $context);
 
     $byName = [];
     foreach ($operation->freeze()->parameters as $parameter) {
@@ -159,4 +161,54 @@ it('emits sort and include as comma-serialised enum arrays end to end', function
         ->and($byName['include']['explode'])->toBeFalse()
         ->and($byName['include']['schema']['items']['enum'])
         ->toBe(['maker', 'makerCount', 'makerExists', 'maker.region', 'partsCount']);
+});
+
+it('degrades sort, include and fields to plain strings and says so, on a pre-v7 package', function (): void {
+    $chain = 'QueryBuilder::for(\\Workbench\\App\\Models\\Gadget::class)'
+        ."->allowedSorts(['name'])->allowedIncludes(['maker'])->allowedFields(['label'])->paginate()";
+
+    [$byName, $diagnostics] = runFilterKinds($chain, new QueryBuilderConfig(spatieMajor: 6));
+
+    $legacy = array_values(array_filter($diagnostics, fn ($d): bool => $d->code === 'query-builder.legacy-package-version'));
+
+    expect($byName['sort']['schema']['type'])->toBe('string')
+        ->and($byName['sort']['schema'])->not->toHaveKey('items')
+        ->and($byName['sort'])->not->toHaveKey('style')
+        ->and($byName['include']['schema']['type'])->toBe('string')
+        ->and($byName['include']['schema'])->not->toHaveKey('items')
+        ->and($byName['include']['description'])->toBe('Include related resources: maker.')
+        ->and($byName['fields']['schema']['type'])->toBe('string')
+        ->and($byName['fields']['schema'])->not->toHaveKey('items')
+        ->and($legacy)->toHaveCount(1)
+        ->and($legacy[0]->message)->toBe('spatie/laravel-query-builder below v7 is installed, so the sort/include/fields allow-lists are documented as plain strings rather than value enums.');
+});
+
+it('never reports a legacy package on the supported major, and skips the report where no list was recovered', function (): void {
+    $sorted = 'QueryBuilder::for(\\Workbench\\App\\Models\\Gadget::class)'
+        ."->allowedSorts(['name'])->paginate()";
+    [, $diagnostics] = runFilterKinds($sorted);
+
+    // Filters-only on a legacy install loses nothing, so there is nothing to say.
+    $filtersOnly = 'QueryBuilder::for(\\Workbench\\App\\Models\\Gadget::class)'
+        ."->allowedFilters(['name'])->paginate()";
+    [, $legacyDiagnostics] = runFilterKinds($filtersOnly, new QueryBuilderConfig(spatieMajor: 6));
+
+    $codes = array_map(fn ($d): string => $d->code, [...$diagnostics, ...$legacyDiagnostics]);
+    expect($codes)->not->toContain('query-builder.legacy-package-version');
+});
+
+it('reports a legacy package where fields alone were recovered', function (): void {
+    $fieldsOnly = 'QueryBuilder::for(\\Workbench\\App\\Models\\Gadget::class)'
+        ."->allowedFields(['label'])->paginate()";
+
+    [$byName, $diagnostics] = runFilterKinds($fieldsOnly, new QueryBuilderConfig(spatieMajor: 6));
+
+    expect($byName['fields']['schema']['type'])->toBe('string')
+        ->and(array_map(fn ($d): string => $d->code, $diagnostics))->toContain('query-builder.legacy-package-version');
+});
+
+it('detects the installed package as the supported major', function (): void {
+    // The real-path guard on version detection: the suite runs against the vendored v7, so the
+    // parser reading anything else here means detection stopped seeing real versions.
+    expect(QueryBuilderConfig::majorOf(InstalledVersions::getVersion('spatie/laravel-query-builder')))->toBe(7);
 });

@@ -67,6 +67,21 @@ final class QueryBuilderFacts
     public array $unresolved = [];
 
     /**
+     * The allow-lists one of those expressions belonged to, keyed by bucket. Each recovered member of
+     * such a list is still true; its SET is not, so a closed enum over it would tell a generated client
+     * to reject a value the server accepts.
+     *
+     * @var array<string, true>
+     */
+    public array $unresolvedLists = [];
+
+    /** Whether an entry of one allow-list went unresolved, so its recovered values are not the legal set. */
+    public function partial(string $bucket): bool
+    {
+        return isset($this->unresolvedLists[$bucket]);
+    }
+
+    /**
      * True when nothing documentable was recovered — the extension then contributes no parameters.
      */
     public function isEmpty(): bool

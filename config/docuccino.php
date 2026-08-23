@@ -127,7 +127,7 @@ return [
                 'nullable' => 'type-array',     // type-array: type: [string, null] | anyof: a {type: null} branch
                 'operation_id' => 'route-name', // route-name | controller-method (InvoiceController@store)
                 // 'enums' => [
-                //     'naming' => 'none',      // none | x-enumNames | x-enum-varnames (codegen name hints)
+                //     'naming' => 'names',     // names (both hint spellings) | none | x-enumNames | x-enum-varnames
                 //     'components' => true,    // true hoists each enum to a $ref'd component; false inlines it
                 // ],
                 // 'errors' => [

@@ -74,10 +74,9 @@ it('types an enum-factory filter off its backed-enum class-string argument (scal
         ->and($byName['__components']['WidgetStatus'])->toBe([
             'type' => 'string',
             'enum' => ['draft', 'published', 'archived'],
-            'x-enumDescriptions' => [
-                'draft' => 'Not yet visible to applicants.',
-                'published' => 'Live and accepting traffic.',
-            ],
+            'x-enum-descriptions' => ['Not yet visible to applicants.', 'Live and accepting traffic.', ''],
+            'x-enum-varnames' => ['Draft', 'Published', 'Archived'],
+            'x-enumNames' => ['Draft', 'Published', 'Archived'],
         ]);
 });
 

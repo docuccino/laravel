@@ -92,6 +92,15 @@ final class WorkbenchEngine
                 'Workbench\\App\\Http\\Controllers\\WidgetQueryController::index' => TraceScript::forChain(
                     "QueryBuilder::for(\\Workbench\\App\\Models\\Form::class)->allowedFilters(['name', AllowedFilter::exact('status')])->allowedSorts(['name', 'created_at'])->defaultSort('name')->paginate(20)",
                 ),
+                // The include/sparse-fieldset endpoint: the allow-list comment, the relation docblock and
+                // the column summary each describe a value, so the golden locks the whole ladder.
+                'Workbench\\App\\Http\\Controllers\\LedgerQueryController::index' => TraceScript::forChain(<<<'PHP'
+                    QueryBuilder::for(\Workbench\App\Models\Ledger::class)->allowedIncludes([
+                        // The forms filed against this ledger.
+                        'entries',
+                        'auditor',
+                    ])->allowedFields(['reference', 'opened_at', 'entries.id'])->paginate(20)
+                    PHP),
                 // The flagship QB-list endpoint: a QB subclass paginated through a custom terminal
                 // (`paginateList`, declared as one in config). It runs over both the QB params visitor
                 // (filters/sorts + the custom terminal's page params) and the resource-envelope visitor
@@ -256,6 +265,11 @@ final class WorkbenchEngine
                     new PropertyMetadata('status', ScalarT::string()),
                     new PropertyMetadata('meta', ScalarT::string()),
                 ]),
+                self::LEDGER_MODEL => new ClassMetadata(self::LEDGER_MODEL, [
+                    new PropertyMetadata('id', ScalarT::int()),
+                    new PropertyMetadata('reference', ScalarT::string(), 'The ledger\'s human reference.'),
+                    new PropertyMetadata('opened_at', UnionT::of([ScalarT::string(), new NullT])),
+                ]),
                 self::GADGET_MODEL => new ClassMetadata(self::GADGET_MODEL, [
                     new PropertyMetadata('id', ScalarT::int()),
                     new PropertyMetadata('label', ScalarT::string()),
@@ -294,6 +308,8 @@ final class WorkbenchEngine
     private const WIDGET_MODEL = 'Docuccino\\Laravel\\Tests\\Fixtures\\Eloquent\\Widget';
 
     private const GADGET_MODEL = 'Docuccino\\Laravel\\Tests\\Fixtures\\Eloquent\\Gadget';
+
+    private const LEDGER_MODEL = 'Workbench\\App\\Models\\Ledger';
 
     private const PAYMENT_EXCEPTION = 'Workbench\\App\\Exceptions\\PaymentRequiredException';
 }

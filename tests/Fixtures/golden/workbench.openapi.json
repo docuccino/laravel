@@ -581,6 +581,139 @@
         }
       }
     },
+    "/api/ledger-query": {
+      "get": {
+        "summary": "List ledgers, with related resources and a sparse fieldset selectable via the query string.",
+        "tags": [
+          "LedgerQuery"
+        ],
+        "parameters": [
+          {
+            "name": "fields",
+            "in": "query",
+            "description": "Comma-separated fields: reference, opened_at.",
+            "required": false,
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "reference",
+                  "opened_at"
+                ],
+                "x-enum-descriptions": [
+                  "The ledger's human reference.",
+                  ""
+                ],
+                "x-enum-varnames": [
+                  "Reference",
+                  "OpenedAt"
+                ],
+                "x-enumNames": [
+                  "Reference",
+                  "OpenedAt"
+                ]
+              }
+            }
+          },
+          {
+            "name": "fields[entries]",
+            "in": "query",
+            "description": "Comma-separated fields: id.",
+            "required": false,
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "id"
+                ],
+                "x-enum-varnames": [
+                  "Id"
+                ],
+                "x-enumNames": [
+                  "Id"
+                ]
+              }
+            }
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "description": "Include related resources: entries, auditor.",
+            "required": false,
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "entries",
+                  "entriesCount",
+                  "entriesExists",
+                  "auditor",
+                  "auditorCount",
+                  "auditorExists"
+                ],
+                "x-enum-descriptions": [
+                  "The forms filed against this ledger.",
+                  "Count of related `entries` records.",
+                  "Whether related `entries` records exist.",
+                  "The clerk who signed the ledger off.",
+                  "Count of related `auditor` records.",
+                  "Whether related `auditor` records exist."
+                ],
+                "x-enum-varnames": [
+                  "Entries",
+                  "EntriesCount",
+                  "EntriesExists",
+                  "Auditor",
+                  "AuditorCount",
+                  "AuditorExists"
+                ],
+                "x-enumDescriptions": {
+                  "entries": "The forms filed against this ledger.",
+                  "entriesCount": "Count of related `entries` records.",
+                  "entriesExists": "Whether related `entries` records exist.",
+                  "auditor": "The clerk who signed the ledger off.",
+                  "auditorCount": "Count of related `auditor` records.",
+                  "auditorExists": "Whether related `auditor` records exist."
+                },
+                "x-enumNames": [
+                  "Entries",
+                  "EntriesCount",
+                  "EntriesExists",
+                  "Auditor",
+                  "AuditorCount",
+                  "AuditorExists"
+                ]
+              }
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
     "/api/model-widgets/{id}": {
       "get": {
         "summary": "An Eloquent model → object schema from columns + casts + visible/hidden.",
@@ -982,6 +1115,18 @@
                   "-name",
                   "created_at",
                   "-created_at"
+                ],
+                "x-enum-varnames": [
+                  "Name",
+                  "NameDesc",
+                  "CreatedAt",
+                  "CreatedAtDesc"
+                ],
+                "x-enumNames": [
+                  "Name",
+                  "NameDesc",
+                  "CreatedAt",
+                  "CreatedAtDesc"
                 ]
               }
             }
@@ -989,19 +1134,7 @@
         ],
         "responses": {
           "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
+            "$ref": "#/components/responses/BadRequest"
           }
         }
       }
@@ -1224,6 +1357,14 @@
           "email"
         ]
       },
+      "BadRequest": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
       "FormData": {
         "type": "object",
         "properties": {
@@ -1391,13 +1532,34 @@
           "published",
           "archived"
         ],
-        "x-enumDescriptions": {
-          "draft": "Not yet visible to applicants.",
-          "published": "Live and accepting traffic."
-        }
+        "x-enum-descriptions": [
+          "Not yet visible to applicants.",
+          "Live and accepting traffic.",
+          ""
+        ],
+        "x-enum-varnames": [
+          "Draft",
+          "Published",
+          "Archived"
+        ],
+        "x-enumNames": [
+          "Draft",
+          "Published",
+          "Archived"
+        ]
       }
     },
     "responses": {
+      "BadRequest": {
+        "description": "Bad Request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/BadRequest"
+            }
+          }
+        }
+      },
       "NotFound": {
         "description": "Not Found",
         "content": {

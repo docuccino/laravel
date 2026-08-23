@@ -172,6 +172,14 @@
                 "enum": [
                   "name",
                   "-name"
+                ],
+                "x-enum-varnames": [
+                  "Name",
+                  "NameDesc"
+                ],
+                "x-enumNames": [
+                  "Name",
+                  "NameDesc"
                 ]
               }
             }
@@ -432,7 +440,7 @@
     "document": {
       "id": "doc:qb-list",
       "configHash": "c9f5d66df023f27dc769fb8dc2db5728d169b11f438b972bda50d0b415ecf356",
-      "contentHash": "7fbbb50be4af8168c1e8e2be6254780531f1b355edce7111d953ecdd9862cd02"
+      "contentHash": "ba7fc2cfe2b8770ebb142ec389d20bf8b809fab286106d0ab6eb2debe58c1e46"
     },
     "generator": {
       "name": "docuccino/laravel",

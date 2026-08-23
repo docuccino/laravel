@@ -15,6 +15,9 @@ namespace Docuccino\Laravel\Integrations\QueryBuilder;
  */
 final readonly class QueryBuilderConfig
 {
+    /** The major whose minting/expansion grammar the documented enums encode. */
+    private const SUPPORTED_MAJOR = 7;
+
     public function __construct(
         public string $filter = 'filter',
         public string $sort = 'sort',
@@ -33,6 +36,10 @@ final readonly class QueryBuilderConfig
         // `query-builder.delimiter`: what sort/include/filter values split on. The comma-array list
         // modelling is only truthful on the default; anything else degrades the lists.
         public string $delimiter = ',',
+        // The installed package major. Below v7 the include grammar differs (the explicit factory
+        // itself minted Count/Exists + partials) and the old config keys are not read, so the
+        // sort/include enums degrade to plain strings.
+        public int $spatieMajor = self::SUPPORTED_MAJOR,
     ) {}
 
     /**
@@ -40,10 +47,10 @@ final readonly class QueryBuilderConfig
      *
      * @param  array<string, mixed>  $config
      */
-    public static function fromArray(array $config): self
+    public static function fromArray(array $config, int $spatieMajor = self::SUPPORTED_MAJOR): self
     {
         if ($config === []) {
-            return new self(recovered: false);
+            return new self(recovered: false, spatieMajor: $spatieMajor);
         }
 
         $parameters = is_array($config['parameters'] ?? null) ? $config['parameters'] : [];
@@ -63,13 +70,43 @@ final readonly class QueryBuilderConfig
             countSuffix: self::rawString($suffixes, 'count', 'Count'),
             existsSuffix: self::rawString($suffixes, 'exists', 'Exists'),
             delimiter: self::rawString($config, 'delimiter', ','),
+            spatieMajor: $spatieMajor,
         );
+    }
+
+    /**
+     * The major of a composer version string. Null or an unparseable version (`dev-main`) reads as the
+     * supported major: composer is the only supported install path, so a runtime API that can't answer
+     * is a test-harness artifact, not an old install.
+     */
+    public static function majorOf(?string $version): int
+    {
+        return $version !== null && preg_match('/^v?(\d+)\./', $version, $matches) === 1
+            ? (int) $matches[1]
+            : self::SUPPORTED_MAJOR;
+    }
+
+    /** Whether the installed package predates the grammar the sort/include enums encode. */
+    public function legacyPackage(): bool
+    {
+        return $this->spatieMajor < self::SUPPORTED_MAJOR;
     }
 
     /** Whether list values split on the comma the array modelling serialises. */
     public function splitsOnComma(): bool
     {
         return $this->delimiter === ',';
+    }
+
+    /**
+     * Whether an allow-list is published as a value enum, and therefore whether the SDK member names
+     * that ride on it reach the document at all. The one predicate both the emitter and the collision
+     * report read: a custom delimiter degrades the list to a plain string exactly as an old package
+     * does, so a report deriving its own answer would claim names nobody can see.
+     */
+    public function mintsNames(): bool
+    {
+        return ! $this->legacyPackage() && ($this->splitsOnComma() || $this->delimiter === '');
     }
 
     /** The bracketed `filter[<name>]`-style key for a filter member. */
