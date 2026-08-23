@@ -15,6 +15,7 @@ use Docuccino\Core\Lint\MissingDescriptionLint;
 use Docuccino\Core\Lint\OperationIdStyleLint;
 use Docuccino\Core\Lint\SensitiveFieldLint;
 use Docuccino\Core\Lint\UndocumentedTagLint;
+use Docuccino\Core\Lint\VacuousUnionLint;
 use Docuccino\Laravel\Exceptions\DefaultExceptionToResponse;
 use Docuccino\Laravel\Extensions\AttributeParametersExtension;
 use Docuccino\Laravel\Extensions\AttributeRequestBodyExtension;
@@ -126,6 +127,7 @@ final class DefaultExtensions
             MissingDescriptionLint::class,
             OperationIdStyleLint::class,
             UndocumentedTagLint::class,
+            VacuousUnionLint::class,
             // Diagnostics-only too: what is wrong with the committed recordings, said once per document.
             RecordedExampleAudit::class,
         ];

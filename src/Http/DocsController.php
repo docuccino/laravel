@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Http;
 
 use Docuccino\Core\Document\UirDocument;
-use Docuccino\Core\Emit\OpenApi32Emitter;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\ViewerContext;
 use Docuccino\Core\Inference\TypeEngine;
@@ -147,30 +146,31 @@ final class DocsController
         $source = $config->viewer['source'] ?? 'generate';
         $json = match ($source) {
             'artifact' => $this->fromArtifact($config, $engine),
-            'cache' => $cache->get($document) ?? $this->coldCacheFallback($document, $engine),
-            default => $this->generate($document, $engine),
+            'cache' => $cache->get($document, $this->drivers->formatFor($config)) ?? $this->coldCacheFallback($config, $engine),
+            default => $this->generate($config, $engine),
         };
 
         return new Response($json, 200, ['Content-Type' => 'application/json']);
     }
 
-    private function generate(string $document, TypeEngine $engine): string
+    private function generate(DocumentConfig $config, TypeEngine $engine): string
     {
-        return (new OpenApi32Emitter)->emit($this->builder->build($document, $engine)->document);
+        return $this->drivers->emitFor($config, $this->builder->build($config->key, $engine)->document);
     }
 
     /**
-     * A cold cache generates rather than serving an empty document, and warns so the missed
-     * `docuccino:cache` warm-up is visible instead of silently degrading.
+     * A cold cache — or one warmed for a format this viewer is no longer served — generates rather
+     * than serving an empty document, and warns so the missed `docuccino:cache` warm-up is visible
+     * instead of silently degrading.
      */
-    private function coldCacheFallback(string $document, TypeEngine $engine): string
+    private function coldCacheFallback(DocumentConfig $config, TypeEngine $engine): string
     {
         Log::warning(sprintf(
-            'Docuccino viewer "%s" is configured with source=cache but the cache is cold; generating on the fly. Run `docuccino:cache` to warm it.',
-            $document,
+            'Docuccino viewer "%s" is configured with source=cache but no cached payload matches the format it is served; generating on the fly. Run `docuccino:cache` to warm it.',
+            $config->key,
         ));
 
-        return $this->generate($document, $engine);
+        return $this->generate($config, $engine);
     }
 
     /**
@@ -269,7 +269,7 @@ final class DocsController
                 $config->key,
             ));
 
-            return $this->generate($config->key, $engine);
+            return $this->generate($config, $engine);
         }
 
         $absolute = Paths::absolute($target->path, base_path());
@@ -290,11 +290,12 @@ final class DocsController
         }
 
         // A UIR artifact (the `uir` field) is re-emitted as OAS — the viewer expects OAS, and a UIR's
-        // internal x-docuccino provenance must never reach the browser. Plain OpenAPI streams through.
+        // internal x-docuccino provenance must never reach the browser. Plain OpenAPI streams through
+        // untouched, so an artifact exported for a specific viewer stays that viewer's business.
         $decoded = json_decode($contents, true);
         if (is_array($decoded) && isset($decoded['uir'])) {
             /** @var array<string, mixed> $decoded */
-            return (new OpenApi32Emitter)->emit(UirDocument::fromArray($decoded));
+            return $this->drivers->emitFor($config, UirDocument::fromArray($decoded));
         }
 
         return $contents;

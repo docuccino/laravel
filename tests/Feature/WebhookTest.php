@@ -18,6 +18,7 @@ use Docuccino\Laravel\Tests\Fixtures\Webhooks\Collision\AlphaClaim;
 use Docuccino\Laravel\Tests\Fixtures\Webhooks\Collision\BetaClaim;
 use Docuccino\Laravel\Tests\Fixtures\Webhooks\Locality\Anchor\Anchor;
 use Docuccino\Laravel\Tests\Fixtures\Webhooks\Locality\Neighbour\Neighbour;
+use Docuccino\Laravel\Tests\Fixtures\Webhooks\Malformed\Reported;
 use Docuccino\Laravel\Tests\Support\ThrowingTypeEngine;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 
@@ -140,6 +141,24 @@ it('degrades what it cannot take at its word, publishes what it can, and says so
         ->and($document['webhooks']['degraded.unresolvable']['post']['requestBody']['content']['application/json']['schema'])->toBe([])
         // …and the webhook beside them is untouched by any of it.
         ->and($document['webhooks']['degraded.untouched']['post']['operationId'])->toBe('degraded.untouched');
+});
+
+it('reports an unreadable attribute on a webhook class, and publishes the webhook anyway', function (): void {
+    bindStubEngine();
+
+    $result = generateDocument(withWebhooksIn('tests/Fixtures/Webhooks/Malformed'));
+    $reports = diagnosticsCoded($result->diagnostics, 'attribute.unreadable');
+
+    expect($reports)->toHaveCount(1)
+        ->and($reports[0]->severity->value)->toBe('warning')
+        ->and($reports[0]->message)->toBe(sprintf(
+            'The #[Group] on %s could not be instantiated and was ignored.',
+            Reported::class,
+        ))
+        ->and($reports[0]->help)->toContain('TypeError')
+        // A webhook has no route, so there is no signature to hang the report on.
+        ->and($reports[0]->routeSignature)->toBeNull()
+        ->and(array_keys($result->document->toArray()['webhooks']))->toBe(['malformed.reported']);
 });
 
 it('settles two classes claiming one webhook name on the pair, not on which was met first', function (): void {

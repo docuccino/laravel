@@ -9,6 +9,8 @@ use Docuccino\Laravel\Tests\Fixtures\Eloquent\Merchant;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Post;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Vault;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Widget;
+use Workbench\App\Enums\WidgetPriority;
+use Workbench\App\Enums\WidgetStatus;
 
 /**
  * Actions whose route-model bindings the `{param:column}` routes bind against. Each parameter is
@@ -44,6 +46,21 @@ final class BindingController
 
     /** A binding on something that is not an Eloquent model at all. */
     public function ticket(Ticket $ticket): array
+    {
+        return [];
+    }
+
+    public function status(WidgetStatus $status): array
+    {
+        return [];
+    }
+
+    public function priority(WidgetPriority $priority): array
+    {
+        return [];
+    }
+
+    public function channel(Channel $channel): array
     {
         return [];
     }

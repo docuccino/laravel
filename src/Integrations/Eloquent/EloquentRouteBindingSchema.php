@@ -23,15 +23,17 @@ final class EloquentRouteBindingSchema implements RouteBindingFieldSchemaResolve
     ) {}
 
     /**
-     * Always resolves a schema — an `integer` default for a non-model binding, else the model's
-     * route-key schema — and never null. The string fallback comes from a DISABLED integration
-     * contributing no resolver at all, not from this answering nothing.
+     * The bound model's route-key schema, or null for a binding that is no Eloquent model at all —
+     * a custom `UrlRoutable` keys on whatever its `resolveRouteBinding` says, so guessing its shape
+     * here would be a confident wrong answer. The caller owns the string fallback.
      *
-     * @return array<string, mixed>
+     * @return array<string, mixed>|null
      */
-    public function keySchemaFor(string $modelFqcn): array
+    public function keySchemaFor(string $modelFqcn): ?array
     {
-        return $this->reflector->keySchemaFor($modelFqcn);
+        return EloquentModelReflector::isModel($modelFqcn)
+            ? $this->reflector->keySchemaFor($modelFqcn)
+            : null;
     }
 
     /**

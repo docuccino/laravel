@@ -25,6 +25,8 @@ use Docuccino\Laravel\Integrations\SpatieData\SpatieDataDigestContributor;
 use Docuccino\Laravel\Integrations\Support\AuthConfigDigestContributor;
 use Docuccino\Laravel\Pipeline\DocumentGenerator;
 use Docuccino\Laravel\Registry\DefaultExtensions;
+use Docuccino\Laravel\Tests\Fixtures\Attributes\InheritingController;
+use Docuccino\Laravel\Tests\Fixtures\Attributes\LegacyBaseController;
 use Docuccino\Laravel\Tests\Fixtures\Rules\BankReference;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\CustomRuleController;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\CustomRuleData;
@@ -579,6 +581,53 @@ it('invalidates the query-builder fragment when an enum-cast filter file changes
     generateDocument()->document;
 
     // The other half: a dependency that no longer hashes to what was stored rebuilds the fragment.
+    expect($engine->analyzeCount)->toBeGreaterThan(0);
+});
+
+it('invalidates a fragment when the PARENT controller carrying the class attributes changes', function (): void {
+    $dir = fragmentCacheDir('fragments');
+    app('router')->get('api/zz-attr-inherit', [InheritingController::class, 'index']);
+
+    $engine = new CountingTypeEngine(WorkbenchEngine::make());
+    app()->instance(TypeEngine::class, $engine);
+
+    // Cold run: the operation's tags and summary come from LegacyBaseController's class attributes, so
+    // the whole hierarchy's declaring files are recorded as dependencies.
+    generateDocument()->document;
+    $engine->analyzeCount = 0;
+
+    generateDocument()->document;
+    expect($engine->analyzeCount)->toBe(0);
+
+    // The disagreement is staged in this row's own cache rather than by rewriting the fixture on disk —
+    // the reason spelled out on the enum-cast row above.
+    $baseFile = (string) (new ReflectionClass(LegacyBaseController::class))->getFileName();
+    $rewritten = 0;
+
+    foreach (glob($dir.'/*.json') ?: [] as $entry) {
+        /** @var array{dependencies?: list<array{file?: string, hash?: string}>} $decoded */
+        $decoded = json_decode((string) file_get_contents($entry), true);
+        $changed = false;
+
+        foreach ($decoded['dependencies'] ?? [] as $index => $dependency) {
+            if (($dependency['file'] ?? null) === $baseFile) {
+                $decoded['dependencies'][$index]['hash'] = str_repeat('0', 64);
+                $changed = true;
+            }
+        }
+
+        if ($changed) {
+            file_put_contents($entry, (string) json_encode($decoded));
+            $rewritten++;
+        }
+    }
+
+    // Half the claim: the base controller's file really is on the child route's dependency list.
+    expect($rewritten)->toBeGreaterThan(0);
+
+    generateDocument()->document;
+
+    // The other half: an attribute added to the base retires the warm fragment.
     expect($engine->analyzeCount)->toBeGreaterThan(0);
 });
 

@@ -205,6 +205,7 @@ return [
                 // package. Your own driver registers with Docuccino::extend() and is named here.
                 // 'driver' => 'scalar',
                 // 'cdn' => true, // load the driver's script from a CDN instead of the shipped asset
+                // 'configuration' => [], // passed verbatim to Scalar's data-configuration (theme, layout, …)
             ],
         ],
     ],
@@ -269,6 +270,12 @@ return [
             // Tag names to accept, e.g. ['Internal'].
             'allow' => [],
         ],
+        // Flags an anyOf whose empty {} branch accepts anything, making its typed branches decorative.
+        // 'vacuous_union' => [
+        //     'enabled' => true,
+        //     // Operation signatures or operationIds to accept, e.g. ['GET /api/ping'].
+        //     'allow' => [],
+        // ],
     ],
 
     /*

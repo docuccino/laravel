@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Routing;
 
+use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Extensions\ResolvedExtensions;
 use Docuccino\Core\Extensions\Schema\ComponentRegistry;
+use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Provenance\SourcePathResolver;
 use Docuccino\Core\TypeGrammar\DocBlockReader;
@@ -63,10 +65,19 @@ final class RouteContextBuilder
 
         [$pathParameters, $optional] = $this->pathParameters($descriptor->uri);
 
-        return new RouteContext(
+        $documentedMethod = $method ?? $descriptor->primaryMethod();
+        $signature = $descriptor->signature($documentedMethod);
+
+        $context = new RouteContext(
             route: $descriptor,
             actionRef: $reflected->actionRef,
-            attributes: $this->attributes->collect($reflected),
+            attributes: $this->attributes->collect(
+                $reflected,
+                static function (Diagnostic $diagnostic) use ($components): void {
+                    $components->addDiagnostic($diagnostic);
+                },
+                $signature,
+            ),
             engine: $engine,
             document: $document,
             extensions: $extensions,
@@ -78,11 +89,20 @@ final class RouteContextBuilder
             description: $prose['description'],
             components: $components,
             pathResolver: $this->pathResolver,
-            documentedMethod: $method ?? $descriptor->primaryMethod(),
+            documentedMethod: $documentedMethod,
             allowsTrashedBindings: $route->allowsTrashedBindings(),
             formRequestClass: $this->formRequestClass($reflected),
             operationId: $operationId,
+            deprecated: $prose['deprecated'],
         );
+
+        // Class-level attributes walk the controller's parents, so the whole hierarchy's files key the
+        // fragment — an attribute added to a base controller must retire warm fragments.
+        if ($reflected->controllerClass !== null) {
+            $context->recordDependencyFiles(DeclarationFiles::of($reflected->controllerClass));
+        }
+
+        return $context;
     }
 
     /**

@@ -17,7 +17,7 @@ beforeEach(function (): void {
 it('caches the built document and stores retrievable JSON', function (): void {
     $this->artisan('docuccino:cache')->assertSuccessful();
 
-    $cached = app(DocumentCache::class)->get('default');
+    $cached = app(DocumentCache::class)->get('default', 'openapi-3.2');
 
     expect($cached)->toBeString()
         ->and($cached)->toContain('"openapi": "3.2.0"')
@@ -27,18 +27,18 @@ it('caches the built document and stores retrievable JSON', function (): void {
 it('serves the same bytes the OpenAPI export writes', function (): void {
     $this->artisan('docuccino:cache')->assertSuccessful();
 
-    expect(app(DocumentCache::class)->get('default'))
+    expect(app(DocumentCache::class)->get('default', 'openapi-3.2'))
         ->toBe(file_get_contents(dirname(__DIR__).'/Fixtures/golden/workbench.openapi.json'));
 });
 
 it('clears a cached document', function (): void {
     $cache = app(DocumentCache::class);
     $this->artisan('docuccino:cache')->assertSuccessful();
-    expect($cache->get('default'))->not->toBeNull();
+    expect($cache->get('default', 'openapi-3.2'))->not->toBeNull();
 
     $this->artisan('docuccino:clear')->assertSuccessful();
 
-    expect($cache->get('default'))->toBeNull();
+    expect($cache->get('default', 'openapi-3.2'))->toBeNull();
 });
 
 it('fails for an unknown document', function (): void {

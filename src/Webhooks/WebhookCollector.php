@@ -17,8 +17,8 @@ use Docuccino\Core\Provenance\RootRelativeSourcePathResolver;
 use Docuccino\Core\Provenance\Source;
 use Docuccino\Core\Support\ConfinedPath;
 use Docuccino\Core\TypeGrammar\DocBlockReader;
+use Docuccino\Laravel\Routing\AttributeCollector;
 use ReflectionClass;
-use Throwable;
 
 /**
  * Reads `documents.*.webhooks.dir` into the `#[Webhook]` declarations that document publishes.
@@ -35,6 +35,7 @@ final readonly class WebhookCollector
     public function __construct(
         private string $basePath,
         private DocBlockReader $docblocks = new DocBlockReader,
+        private AttributeCollector $attributes = new AttributeCollector,
     ) {}
 
     /**
@@ -107,7 +108,7 @@ final readonly class WebhookCollector
     {
         $reflection = new ReflectionClass($class);
 
-        $attributes = self::attributesOf($reflection);
+        $attributes = $this->attributesOf($reflection, $diagnostics);
         $webhook = $attributes->first(Webhook::class);
         if ($webhook === null || $attributes->has(ExcludeFromDocs::class)) {
             return null;
@@ -205,28 +206,20 @@ final readonly class WebhookCollector
     }
 
     /**
-     * The Docuccino attributes declared on the class itself. PHP does not inherit class attributes and
-     * neither does this: a controller's don't reach its subclasses either, and a `#[Webhook]` that DID
-     * inherit would give every subclass of a base event the base's name to fight over.
+     * The Docuccino attributes on the class itself — {@see AttributeCollector::collectOne()}, which
+     * walks nowhere, so a `#[Webhook]` is never inherited from a base event.
      *
      * @param  ReflectionClass<object>  $class
+     * @param  list<Diagnostic>  $diagnostics
      */
-    private static function attributesOf(ReflectionClass $class): AttributeSet
+    private function attributesOf(ReflectionClass $class, array &$diagnostics): AttributeSet
     {
-        $set = new AttributeSet;
-
-        foreach ($class->getAttributes() as $attribute) {
-            if (! str_starts_with($attribute->getName(), 'Docuccino\\Attributes\\')) {
-                continue;
-            }
-
-            try {
-                $set->add($attribute->newInstance());
-            } catch (Throwable) {
-                // A malformed attribute usage is skipped rather than failing the whole build.
-            }
-        }
-
-        return $set;
+        return $this->attributes->collectOne(
+            $class,
+            $class->getName(),
+            static function (Diagnostic $diagnostic) use (&$diagnostics): void {
+                $diagnostics[] = $diagnostic;
+            },
+        );
     }
 }

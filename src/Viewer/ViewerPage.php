@@ -77,7 +77,8 @@ final readonly class ViewerPage
         return is_string($title) && $title !== '' ? $title : 'API Documentation';
     }
 
-    private function attr(string $value): string
+    /** A value escaped for an HTML attribute — drivers building their own attributes share it. */
+    public function attr(string $value): string
     {
         return htmlspecialchars($value, ENT_QUOTES);
     }
