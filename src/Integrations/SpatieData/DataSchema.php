@@ -17,6 +17,8 @@ use Docuccino\Core\Inference\ClassRef;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\DType\DType;
 use Docuccino\Core\Inference\DType\UnionT;
+use Docuccino\Laravel\Integrations\Support\PageComponent;
+use Docuccino\Laravel\Integrations\Support\PaginationParts;
 use Docuccino\Laravel\Integrations\Support\SpatieDataEnvelope;
 
 /**
@@ -32,7 +34,8 @@ use Docuccino\Laravel\Integrations\Support\SpatieDataEnvelope;
  * - the paginated variants render spatie's OWN envelope ({@see SpatieDataEnvelope}), not Laravel's
  *   resource envelope — `links` is an array of `{url,label,active}` and meta carries `*_page_url`.
  * - a paginated collection is always wrapped (`PaginatedCollectionIsAlwaysWrapped`), so its envelope's
- *   items key IS the wrap key; it never picks up a second outer wrap.
+ *   items key IS the wrap key; it never picks up a second outer wrap. That envelope hoists to a
+ *   shared component of its own ({@see PageComponent}), one per Data class and kind.
  *
  * Wrapping otherwise applies only at the response root ({@see SchemaContext::depth()} === 1), from
  * {@see WrapResolver} — so a nested Data property's shared `$ref` stays wrap-free.
@@ -214,11 +217,24 @@ final class DataSchema implements TypeToSchema
         $kind = $this->reflector->collectionKind($type->fqcn);
         if ($kind === 'length' || $kind === 'cursor') {
             $dataKey = $this->wrap->key(null) ?? 'data';
-            $schema = $kind === 'length'
-                ? SpatieDataEnvelope::length($items, $dataKey)
-                : SpatieDataEnvelope::cursor($items, $dataKey);
 
-            return new SchemaResult($schema, 0.9);
+            // The envelope's links/meta are one component per shape; only `data` is per Data class.
+            $schema = PaginationParts::hoist(
+                $context,
+                SpatieDataEnvelope::of($kind, $items, $dataKey),
+                SpatieDataEnvelope::parts($kind),
+            );
+
+            // One page-of-X component per Data class and kind, so N paginated operations share it.
+            $reference = PageComponent::reference(
+                $context,
+                $kind,
+                $item instanceof ClassT ? $item->fqcn : null,
+                $items,
+                $schema,
+            );
+
+            return new SchemaResult($reference ?? $schema, 0.9);
         }
 
         // A plain DataCollection is a bare array, wrapped only at the response root.

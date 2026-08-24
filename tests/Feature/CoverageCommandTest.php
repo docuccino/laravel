@@ -115,7 +115,14 @@ it('says so when the logs span longer than a run, and stays quiet when they do n
 
     $stale = $this->logs.'/2.0.deadbeef.ids';
     file_put_contents($stale, implode("\n", array_slice($this->ids, 2, 1))."\n");
-    touch($stale, time() - 9000);
+
+    // Both mtimes come off one base, so the span is exactly 2h30m however long the run above took —
+    // offset one of them from a second time() and a second spent here reads as 2h 29m.
+    $base = time();
+    foreach (CoverageLog::scan($this->logs)->files as $log) {
+        touch($log, $base);
+    }
+    touch($stale, $base - 9000);
     clearstatcache();
 
     $this->artisan('docuccino:coverage')

@@ -105,13 +105,15 @@ it('drives the supported tokens through the shared chain to the expected schema'
     ]);
 
     $props = $result->schema['properties'];
-    expect($props['email'])->toBe(['type' => 'string', 'format' => 'email'])
-        ->and($props['uuid'])->toBe(['type' => 'string', 'format' => 'uuid'])
-        ->and($props['url'])->toBe(['type' => 'string', 'format' => 'uri'])
-        ->and($props['in'])->toBe(['type' => 'string', 'enum' => ['draft', 'published']])
-        ->and($props['max'])->toBe(['type' => 'string', 'maxLength' => 500])
-        ->and($props['between'])->toBe(['type' => 'integer', 'minimum' => 1, 'maximum' => 10])
-        ->and($props['regex'])->toBe(['type' => 'string', 'pattern' => '^[a-z]+$'])
+    // Each carries the example its own rule earns — the format's sample, the enum's first member,
+    // the bound itself (ValidationVocabularyTest owns the whole table).
+    expect($props['email'])->toBe(['type' => 'string', 'format' => 'email', 'example' => 'user@example.com'])
+        ->and($props['uuid'])->toBe(['type' => 'string', 'format' => 'uuid', 'example' => '3fa85f64-5717-4562-b3fc-2c963f66afa6'])
+        ->and($props['url'])->toBe(['type' => 'string', 'format' => 'uri', 'example' => 'https://example.com'])
+        ->and($props['in'])->toBe(['type' => 'string', 'enum' => ['draft', 'published'], 'example' => 'draft'])
+        ->and($props['max'])->toBe(['type' => 'string', 'maxLength' => 500, 'example' => 'example'])
+        ->and($props['between'])->toBe(['type' => 'integer', 'minimum' => 1, 'maximum' => 10, 'example' => 1])
+        ->and($props['regex'])->toBe(['type' => 'string', 'pattern' => '^[a-z]+$', 'example' => 'example'])
         // `#[ArrayType]` alone says only "an array"; the recovered `list<string>` synthesises the
         // `arrayType.*` item field Laravel would write by hand, so the items survive it.
         ->and($props['arrayType'])->toBe(['type' => 'array', 'items' => ['type' => 'string']]);

@@ -78,5 +78,5 @@ it('merges a validated nested filter onto the query builder\'s bracketed paramet
 
     // Coherent: the numeric bounds sit on a numeric type, not on a shadowing `type: string`.
     expect($latitude['schema'])->toBe(['type' => 'number', 'minimum' => -90, 'maximum' => 90])
-        ->and($latitude['description'])->toBe('Custom filter');
+        ->and($latitude['description'])->toBe('Filters the result set by `radius_lat`.');
 });

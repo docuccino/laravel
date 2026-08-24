@@ -1372,6 +1372,7 @@
                         "producer": "integration:json-api-paginate",
                         "layer": "integration",
                         "fields": [
+                          "$ref",
                           "items",
                           "properties",
                           "required",
@@ -1411,84 +1412,7 @@
                       }
                     ]
                   },
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/ArticleResource"
-                      }
-                    },
-                    "links": {
-                      "type": "object",
-                      "properties": {
-                        "first": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
-                        "last": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
-                        "next": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
-                        "prev": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        }
-                      }
-                    },
-                    "meta": {
-                      "type": "object",
-                      "properties": {
-                        "current_page": {
-                          "type": "integer"
-                        },
-                        "from": {
-                          "type": [
-                            "integer",
-                            "null"
-                          ]
-                        },
-                        "last_page": {
-                          "type": "integer"
-                        },
-                        "path": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
-                        "per_page": {
-                          "type": "integer"
-                        },
-                        "to": {
-                          "type": [
-                            "integer",
-                            "null"
-                          ]
-                        },
-                        "total": {
-                          "type": "integer"
-                        }
-                      }
-                    }
-                  },
-                  "required": [
-                    "data",
-                    "links",
-                    "meta"
-                  ]
+                  "$ref": "#/components/schemas/ArticleResourcePage"
                 }
               }
             }
@@ -1755,7 +1679,7 @@
             },
             "name": "fields",
             "in": "query",
-            "description": "Comma-separated fields: reference, opened_at.",
+            "description": "Fields to return: reference, opened_at.",
             "required": false,
             "style": "form",
             "explode": false,
@@ -1822,7 +1746,7 @@
             },
             "name": "fields[entries]",
             "in": "query",
-            "description": "Comma-separated fields: id.",
+            "description": "Fields to return: id.",
             "required": false,
             "style": "form",
             "explode": false,
@@ -2411,6 +2335,7 @@
                         "producer": "integration:api-resources",
                         "layer": "integration",
                         "fields": [
+                          "$ref",
                           "items",
                           "properties",
                           "required",
@@ -2450,84 +2375,7 @@
                       }
                     ]
                   },
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/ArticleResource"
-                      }
-                    },
-                    "links": {
-                      "type": "object",
-                      "properties": {
-                        "first": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
-                        "last": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
-                        "next": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
-                        "prev": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        }
-                      }
-                    },
-                    "meta": {
-                      "type": "object",
-                      "properties": {
-                        "current_page": {
-                          "type": "integer"
-                        },
-                        "from": {
-                          "type": [
-                            "integer",
-                            "null"
-                          ]
-                        },
-                        "last_page": {
-                          "type": "integer"
-                        },
-                        "path": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
-                        "per_page": {
-                          "type": "integer"
-                        },
-                        "to": {
-                          "type": [
-                            "integer",
-                            "null"
-                          ]
-                        },
-                        "total": {
-                          "type": "integer"
-                        }
-                      }
-                    }
-                  },
-                  "required": [
-                    "data",
-                    "links",
-                    "meta"
-                  ]
+                  "$ref": "#/components/schemas/ArticleResourcePage"
                 }
               }
             }
@@ -2993,7 +2841,7 @@
             },
             "name": "filter[name]",
             "in": "query",
-            "description": "Partial-match filter",
+            "description": "Substring match on `name`.",
             "required": false,
             "schema": {
               "x-docuccino": {
@@ -3038,7 +2886,7 @@
             },
             "name": "filter[status]",
             "in": "query",
-            "description": "Exact-match filter. Accepts a comma-separated list of values (matched as `whereIn`).",
+            "description": "Exact match on `status`. Accepts a comma-separated list of values (matched as `whereIn`).",
             "required": false,
             "style": "form",
             "explode": false,
@@ -3657,7 +3505,8 @@
           },
           "body": {
             "type": "string",
-            "maxLength": 500
+            "maxLength": 500,
+            "example": "example"
           },
           "heading": {
             "type": "string"
@@ -3708,6 +3557,31 @@
         "required": [
           "id",
           "title"
+        ]
+      },
+      "ArticleResourcePage": {
+        "x-docuccino": {
+          "id": "sch:v1:ml6bn2m2gvl7a5fe"
+        },
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArticleResource"
+            }
+          },
+          "links": {
+            "$ref": "#/components/schemas/PaginationLinks"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        },
+        "required": [
+          "data",
+          "links",
+          "meta"
         ]
       },
       "AuthorData": {
@@ -3827,6 +3701,76 @@
           "message"
         ]
       },
+      "PaginationLinks": {
+        "x-docuccino": {
+          "id": "sch:v1:ygkjpxjgdcdk6bvw"
+        },
+        "type": "object",
+        "properties": {
+          "first": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "prev": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "PaginationMeta": {
+        "x-docuccino": {
+          "id": "sch:v1:7fi652lnus2kwipy"
+        },
+        "type": "object",
+        "properties": {
+          "current_page": {
+            "type": "integer"
+          },
+          "from": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "last_page": {
+            "type": "integer"
+          },
+          "path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "per_page": {
+            "type": "integer"
+          },
+          "to": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      },
       "StoreWidgetRequest": {
         "x-docuccino": {
           "id": "sch:v1:zh4wul5w3rfncvua"
@@ -3843,18 +3787,21 @@
           },
           "name": {
             "type": "string",
-            "maxLength": 100
+            "maxLength": 100,
+            "example": "example"
           },
           "quantity": {
             "type": "integer",
-            "minimum": 1
+            "minimum": 1,
+            "example": 1
           },
           "role": {
             "type": "string",
             "enum": [
               "admin",
               "user"
-            ]
+            ],
+            "example": "admin"
           }
         },
         "required": [
@@ -4020,11 +3967,11 @@
     "document": {
       "id": "doc:default",
       "configHash": "fc8a7ba56d982bad106a900c66fea6a360dadb98e050880c2e44a863c49a97b9",
-      "contentHash": "9f2829a94acdb91f078e6ba36ecf82496bce005f598937f0ba836ae532ee682d"
+      "contentHash": "a5109b5019ed103f00caaf4ead5d918d825922fa355f11def42a9b70f64b594f"
     },
     "generator": {
       "name": "docuccino/laravel",
-      "version": "0.8.3",
+      "version": "0.8.4",
       "specVersion": "1.0.0"
     }
   }

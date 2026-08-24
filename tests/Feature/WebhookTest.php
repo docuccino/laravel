@@ -93,6 +93,23 @@ it('carries the class docblock, its #[Group] and its #[DeprecatedOperation] onto
         ->and($archived['deprecated'])->toBeTrue();
 });
 
+/**
+ * A webhook is built by its own reader rather than by the overrides extension, so the two spellings of
+ * "deprecated" have to be honoured here as well — a receiver reading the published contract learns
+ * nothing from a tag a route operation would have published.
+ */
+it('marks a webhook deprecated from either spelling, and publishes the reason with it', function (): void {
+    $webhooks = stubDocumentArray(withWebhooksIn('tests/Fixtures/Webhooks/Deprecated'))['webhooks'];
+
+    $tag = $webhooks['tag.retired']['post'];
+    $label = $webhooks['label.retired']['post'];
+
+    expect($tag['deprecated'])->toBeTrue()
+        ->and($tag['description'])->toBe('**Deprecated:** Replaced by label.retired.')
+        ->and($label['deprecated'])->toBeTrue()
+        ->and($label['description'])->toBe('**Deprecated:** Replaced by taxonomy.changed.');
+});
+
 it('documents what the receiver is expected to answer', function (): void {
     $document = stubDocumentArray(withWorkbenchWebhooks());
 

@@ -34,22 +34,44 @@ final class QueryBuilderParameters
     private const OPAQUE_KINDS = ['callback', 'custom'];
 
     /**
-     * Filter kind → human description fragment.
+     * The token {@see FILTER_DESCRIPTIONS} spends on the filter's public name. Public API: a sentence
+     * configured under `integrations.query_builder.filter_descriptions` may spend it too, and it is the
+     * ONLY token those sentences interpolate — anything else is published verbatim.
+     */
+    public const FIELD_TOKEN = '%field%';
+
+    /**
+     * The vague-but-true prose for a filter whose matching lives in user code, and the degrade for a kind
+     * this table doesn't know. It states that the parameter filters and on which public key, and claims
+     * no match semantics — a wrong "exact match" would send a consumer's client at the wrong contract.
+     */
+    private const OPAQUE_DESCRIPTION = 'Filters the result set by `%field%`.';
+
+    /**
+     * Filter kind → the contract its prose states, {@see FIELD_TOKEN} standing in for the filter's PUBLIC
+     * name. Never the internal column (`exact('status', 'status_code')` documents `status`): the reader
+     * cannot see the codebase, and the column is not what they send. Kinds whose matching is user code's
+     * carry {@see OPAQUE_DESCRIPTION} rather than invent semantics.
+     *
+     * The closed set of kinds a document may override — {@see filterKinds()} publishes it, and
+     * `QueryBuilderConfig::$filterDescriptions` is merged over it per kind.
      *
      * @var array<string, string>
      */
     private const FILTER_DESCRIPTIONS = [
-        'default' => 'Partial-match filter',
-        'partial' => 'Partial-match filter',
-        'exact' => 'Exact-match filter',
-        'beginsWithStrict' => 'Begins-with filter',
-        'endsWithStrict' => 'Ends-with filter',
-        'scope' => 'Query-scope filter',
-        'callback' => 'Custom filter',
-        'custom' => 'Custom filter',
-        'operator' => 'Operator filter',
+        'default' => 'Substring match on `%field%`.',
+        'partial' => 'Substring match on `%field%`.',
+        'exact' => 'Exact match on `%field%`.',
+        'beginsWithStrict' => 'Prefix match on `%field%`.',
+        'endsWithStrict' => 'Suffix match on `%field%`.',
+        'scope' => self::OPAQUE_DESCRIPTION,
+        'callback' => self::OPAQUE_DESCRIPTION,
+        'custom' => self::OPAQUE_DESCRIPTION,
+        // Which comparison is Spatie's `FilterOperator` argument, which the trace reads only for
+        // staticness — so the direction is not ours to state, and the comparison itself is.
+        'operator' => 'Compares `%field%` against the value.',
         'trashed' => 'Soft-delete filter: `with` includes soft-deleted records, `only` returns only soft-deleted; omit to exclude them.',
-        'belongsTo' => 'Relationship filter',
+        'belongsTo' => 'Matches records belonging to the given `%field%`.',
     ];
 
     /**
@@ -207,10 +229,12 @@ final class QueryBuilderParameters
         return $schema;
     }
 
-    /** A filter's description: its comment (else the kind fragment), plus whereIn/nullable notes. */
+    /** A filter's description: its comment (else the kind's contract sentence), plus whereIn/nullable notes. */
     private function filterDescription(QbEntry $filter, QueryBuilderConfig $config): string
     {
-        $base = $filter->comment ?? self::filterKindDescription($filter->kind);
+        // The entry's own comment describes THIS filter, so it still outranks a per-kind sentence, which
+        // describes every filter of that kind.
+        $base = $filter->comment ?? self::filterKindDescription($filter, $config);
 
         $notes = [];
         if ($filter->enumTyped) {
@@ -224,8 +248,8 @@ final class QueryBuilderParameters
             return $base;
         }
 
-        // Terminate the lead so the appended notes read as sentences. Note-less filters keep their bare
-        // fragment, which is what the goldens pin.
+        // Terminate the lead so the appended notes read as sentences. Every generated sentence already
+        // ends itself; an author's comment is whatever they wrote.
         $lead = preg_match('/[.!?]$/', $base) === 1 ? $base : $base.'.';
 
         return implode(' ', [$lead, ...$notes]);
@@ -582,7 +606,7 @@ final class QueryBuilderParameters
         if ($policy->filtersDeepObject()) {
             $properties = [];
             foreach ($groups as $type => $columns) {
-                $prose = sprintf('Comma-separated fields: %s.', implode(', ', $columns));
+                $prose = sprintf('Fields to return: %s.', implode(', ', $columns));
                 [$schema, $prose] = self::listSchema($columns, $prose, $config, $policy->enumNaming, self::fieldDescriptions($facts, $type, $columns, $describer), $facts->partial('fields'));
                 $schema['description'] = $prose;
                 $properties[$type === '' ? '_' : $type] = $schema;
@@ -602,7 +626,7 @@ final class QueryBuilderParameters
             $specs[] = self::commaListSpec(
                 $type === '' ? $config->fields : $config->fieldsKey($type),
                 $columns,
-                sprintf('Comma-separated fields: %s.', implode(', ', $columns)),
+                sprintf('Fields to return: %s.', implode(', ', $columns)),
                 $config,
                 $policy->enumNaming,
                 self::fieldDescriptions($facts, $type, $columns, $describer),
@@ -693,8 +717,30 @@ final class QueryBuilderParameters
         return array_values(array_filter([$page, $size]));
     }
 
-    private static function filterKindDescription(string $kind): string
+    /**
+     * The kind's contract sentence, with the public name substituted. A document's configured sentence
+     * for this kind wins over {@see FILTER_DESCRIPTIONS}; every kind it does not name keeps its default,
+     * which is what makes the setting a merge rather than a replacement. A configured sentence spends
+     * {@see FIELD_TOKEN} exactly as a built-in one does, and one carrying no token is published as
+     * written — a constant sentence is legal (`trashed` ships one).
+     */
+    private static function filterKindDescription(QbEntry $filter, QueryBuilderConfig $config): string
     {
-        return self::FILTER_DESCRIPTIONS[$kind] ?? 'Filter';
+        $template = $config->filterDescriptions[$filter->kind]
+            ?? self::FILTER_DESCRIPTIONS[$filter->kind]
+            ?? self::OPAQUE_DESCRIPTION;
+
+        return str_replace(self::FIELD_TOKEN, $filter->name, $template);
+    }
+
+    /**
+     * Every filter kind {@see FILTER_DESCRIPTIONS} describes — the source of truth for what a document
+     * may override, so the config diagnostic and the catalogue test read the table rather than a copy.
+     *
+     * @return list<string>
+     */
+    public static function filterKinds(): array
+    {
+        return array_keys(self::FILTER_DESCRIPTIONS);
     }
 }

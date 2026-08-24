@@ -33,5 +33,8 @@ final class JsonRuleTransformer implements RuleTransformer
         }
 
         $field->set('contentMediaType', 'application/json');
+
+        // The value is a JSON document in a string; the empty object is the shortest legal one.
+        $field->proposeExample('{}');
     }
 }

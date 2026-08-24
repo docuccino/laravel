@@ -35,6 +35,9 @@ final class FileRuleTransformer implements RuleTransformer
     {
         $field->markMultipart();
 
+        // An upload's bytes are not an illustration, and every rule here means an upload.
+        $field->proposeExample(null);
+
         if ($rule->name === 'dimensions') {
             if ($rule->parameters !== []) {
                 $note = 'Image dimensions: '.implode(', ', $rule->parameters).'.';

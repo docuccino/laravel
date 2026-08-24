@@ -15,14 +15,21 @@ beforeEach(function (): void {
 });
 
 it('wraps a paginated resource collection in the length-aware envelope', function (): void {
-    $op = generateDocument()->document->toArray()['paths']['/api/paginated-articles']['get'];
-    $schema = $op['responses']['200']['content']['application/json']['schema'];
+    $document = generateDocument()->document->toArray();
+    $op = $document['paths']['/api/paginated-articles']['get'];
+
+    // The envelope is a shared page component; the operation points at it.
+    $schema = resolveSchema($document, $op['responses']['200']['content']['application/json']['schema']);
+
+    // …and the envelope's own members are components too, so the page states only `data` itself.
+    $links = resolveSchema($document, $schema['properties']['links']);
+    $meta = resolveSchema($document, $schema['properties']['meta']);
 
     expect($schema['type'])->toBe('object')
         ->and($schema['required'])->toBe(['data', 'links', 'meta'])
         ->and($schema['properties']['data']['items'])->toHaveKey('$ref')
-        ->and(array_keys($schema['properties']['links']['properties']))->toBe(['first', 'last', 'prev', 'next'])
-        ->and($schema['properties']['meta']['properties'])->toHaveKeys(['current_page', 'last_page', 'total']);
+        ->and(array_keys($links['properties']))->toBe(['first', 'last', 'prev', 'next'])
+        ->and($meta['properties'])->toHaveKeys(['current_page', 'last_page', 'total']);
 });
 
 it('documents how to ask for the next page of a paginated resource collection', function (): void {
@@ -39,10 +46,14 @@ it('documents how to ask for the next page of a paginated resource collection', 
 });
 
 it('documents the jsonPaginate response envelope alongside its page params', function (): void {
-    $op = generateDocument()->document->toArray()['paths']['/api/json-paginated-articles']['get'];
+    $document = generateDocument()->document->toArray();
+    $op = $document['paths']['/api/json-paginated-articles']['get'];
 
+    // Same item type and same kind as the paginate() endpoint next door, so it is the same component:
+    // one page-of-ArticleResource type in a generated client, not one per producer.
     $schema = $op['responses']['200']['content']['application/json']['schema'];
-    expect($schema['required'])->toBe(['data', 'links', 'meta']);
+    expect($schema['$ref'])->toBe($document['paths']['/api/paginated-articles']['get']['responses']['200']['content']['application/json']['schema']['$ref'])
+        ->and(resolveSchema($document, $schema)['required'])->toBe(['data', 'links', 'meta']);
 
     // The package's own vocabulary, and nothing beside it: `jsonPaginate` is not one of the terminals
     // the resource-collection page key is minted for, so no bare `page` joins these.
@@ -62,9 +73,11 @@ it('still data-wraps a paginated collection when resource wrapping is disabled',
     expect($plain['type'])->toBe('array');
 
     // ...but a paginated one keeps it: the envelope forces `data` even so (bare-array branch).
-    $paginated = $document['paths']['/api/paginated-articles']['get']['responses']['200']['content']['application/json']['schema'];
+    $reference = $document['paths']['/api/paginated-articles']['get']['responses']['200']['content']['application/json']['schema'];
+    $paginated = resolveSchema($document, $reference);
     expect($paginated['type'])->toBe('object')
-        ->and($paginated)->not->toHaveKey('items')
+        // The `items` the bare-array body left behind came off with everything else the `$ref` replaced.
+        ->and($reference)->not->toHaveKey('items')
         ->and($paginated['properties'])->toHaveKey('data')
         ->and($paginated['required'])->toBe(['data', 'links', 'meta']);
 });

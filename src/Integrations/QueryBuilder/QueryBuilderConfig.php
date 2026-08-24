@@ -6,24 +6,31 @@ namespace Docuccino\Laravel\Integrations\QueryBuilder;
 
 /**
  * The `spatie/laravel-query-builder` settings that name the request keys. An app can rename
- * `filter`/`sort`/`include`/`fields`/`append` under `query-builder.parameters.*`, so documented names
- * have to follow the effective config. A pure value object, dataset-testable in isolation.
+ * `filter`/`sort`/`include`/`fields` under `query-builder.parameters.*`, so documented names have to
+ * follow the effective config. A pure value object, dataset-testable in isolation.
  *
  * When the config bag is missing entirely — package installed but its namespace never merged — this falls
  * back to the package defaults and records `recovered = false`, so the extension can say so in a
  * diagnostic instead of quietly assuming.
+ *
+ * {@see $filterDescriptions} is the one member that does NOT come from the package's bag: it is
+ * Docuccino's own per-document `integrations.query_builder.filter_descriptions`, threaded on by
+ * {@see withFilterDescriptions()} because the prose it replaces is decided here.
  */
 final readonly class QueryBuilderConfig
 {
     /** The major whose minting/expansion grammar the documented enums encode. */
     private const SUPPORTED_MAJOR = 7;
 
+    /**
+     * @param  array<string, string>  $filterDescriptions  filter kind => the sentence that leads its
+     *                                                     description, from the document's own config
+     */
     public function __construct(
         public string $filter = 'filter',
         public string $sort = 'sort',
         public string $include = 'include',
         public string $fields = 'fields',
-        public string $append = 'append',
         public bool $recovered = true,
         // The package throws InvalidFilter/Sort/Includes (400) for anything unknown unless EVERY
         // `disable_*_exception` is set. On by default, so QB operations document a 400.
@@ -40,7 +47,42 @@ final readonly class QueryBuilderConfig
         // itself minted Count/Exists + partials) and the old config keys are not read, so the
         // sort/include enums degrade to plain strings.
         public int $spatieMajor = self::SUPPORTED_MAJOR,
+        public array $filterDescriptions = [],
     ) {}
+
+    /**
+     * A copy carrying the document's `integrations.query_builder.filter_descriptions`, MERGED over the
+     * built-in table rather than replacing it: only the kinds named here are overridden, and every
+     * other kind keeps its default sentence (the merge itself happens at lookup, in
+     * {@see QueryBuilderParameters::filterKindDescription()}).
+     *
+     * Non-string entries are dropped — a sentence is a string — and a key naming no filter kind is kept
+     * as configured so nothing silently rewrites the reader's config; it simply never matches, and
+     * `ConfigDiagnostics` names it.
+     */
+    public function withFilterDescriptions(mixed $configured): self
+    {
+        $descriptions = [];
+        foreach (is_array($configured) ? $configured : [] as $kind => $sentence) {
+            if (is_string($sentence)) {
+                $descriptions[(string) $kind] = $sentence;
+            }
+        }
+
+        return new self(
+            filter: $this->filter,
+            sort: $this->sort,
+            include: $this->include,
+            fields: $this->fields,
+            recovered: $this->recovered,
+            strict: $this->strict,
+            countSuffix: $this->countSuffix,
+            existsSuffix: $this->existsSuffix,
+            delimiter: $this->delimiter,
+            spatieMajor: $this->spatieMajor,
+            filterDescriptions: $descriptions,
+        );
+    }
 
     /**
      * Built from the effective `query-builder` config bag; an empty one yields defaults, unrecovered.
@@ -61,7 +103,6 @@ final readonly class QueryBuilderConfig
             sort: self::string($parameters, 'sort', 'sort'),
             include: self::string($parameters, 'include', 'include'),
             fields: self::string($parameters, 'fields', 'fields'),
-            append: self::string($parameters, 'append', 'append'),
             strict: ! (
                 ($config['disable_invalid_filter_query_exception'] ?? false) === true
                 && ($config['disable_invalid_sort_query_exception'] ?? false) === true

@@ -300,7 +300,7 @@ it('appends a rules() override to property inference under #[MergeValidationRule
     $override = tracedOverride('app/Data/MergedRulesData.php', 'App\\Data\\MergedRulesData');
     $schema = realRequestSchema(MergedRulesData::class, $metadata, $override);
 
-    expect($schema['properties']['name'])->toBe(['type' => 'string', 'maxLength' => 255, 'minLength' => 3])
+    expect($schema['properties']['name'])->toBe(['type' => 'string', 'maxLength' => 255, 'minLength' => 3, 'example' => 'example'])
         ->and($schema['required'])->toBe(['name']);
 })->group('fixture');
 

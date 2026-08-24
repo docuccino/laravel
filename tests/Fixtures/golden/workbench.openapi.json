@@ -435,84 +435,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/ArticleResource"
-                      }
-                    },
-                    "links": {
-                      "type": "object",
-                      "properties": {
-                        "first": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
-                        "last": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
-                        "next": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
-                        "prev": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        }
-                      }
-                    },
-                    "meta": {
-                      "type": "object",
-                      "properties": {
-                        "current_page": {
-                          "type": "integer"
-                        },
-                        "from": {
-                          "type": [
-                            "integer",
-                            "null"
-                          ]
-                        },
-                        "last_page": {
-                          "type": "integer"
-                        },
-                        "path": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
-                        "per_page": {
-                          "type": "integer"
-                        },
-                        "to": {
-                          "type": [
-                            "integer",
-                            "null"
-                          ]
-                        },
-                        "total": {
-                          "type": "integer"
-                        }
-                      }
-                    }
-                  },
-                  "required": [
-                    "data",
-                    "links",
-                    "meta"
-                  ]
+                  "$ref": "#/components/schemas/ArticleResourcePage"
                 }
               }
             }
@@ -591,7 +514,7 @@
           {
             "name": "fields",
             "in": "query",
-            "description": "Comma-separated fields: reference, opened_at.",
+            "description": "Fields to return: reference, opened_at.",
             "required": false,
             "style": "form",
             "explode": false,
@@ -621,7 +544,7 @@
           {
             "name": "fields[entries]",
             "in": "query",
-            "description": "Comma-separated fields: id.",
+            "description": "Fields to return: id.",
             "required": false,
             "style": "form",
             "explode": false,
@@ -823,84 +746,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/ArticleResource"
-                      }
-                    },
-                    "links": {
-                      "type": "object",
-                      "properties": {
-                        "first": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
-                        "last": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
-                        "next": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
-                        "prev": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        }
-                      }
-                    },
-                    "meta": {
-                      "type": "object",
-                      "properties": {
-                        "current_page": {
-                          "type": "integer"
-                        },
-                        "from": {
-                          "type": [
-                            "integer",
-                            "null"
-                          ]
-                        },
-                        "last_page": {
-                          "type": "integer"
-                        },
-                        "path": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
-                        "per_page": {
-                          "type": "integer"
-                        },
-                        "to": {
-                          "type": [
-                            "integer",
-                            "null"
-                          ]
-                        },
-                        "total": {
-                          "type": "integer"
-                        }
-                      }
-                    }
-                  },
-                  "required": [
-                    "data",
-                    "links",
-                    "meta"
-                  ]
+                  "$ref": "#/components/schemas/ArticleResourcePage"
                 }
               }
             }
@@ -1065,7 +911,7 @@
           {
             "name": "filter[name]",
             "in": "query",
-            "description": "Partial-match filter",
+            "description": "Substring match on `name`.",
             "required": false,
             "schema": {
               "type": "string"
@@ -1074,7 +920,7 @@
           {
             "name": "filter[status]",
             "in": "query",
-            "description": "Exact-match filter. Accepts a comma-separated list of values (matched as `whereIn`).",
+            "description": "Exact match on `status`. Accepts a comma-separated list of values (matched as `whereIn`).",
             "required": false,
             "style": "form",
             "explode": false,
@@ -1277,7 +1123,8 @@
           },
           "body": {
             "type": "string",
-            "maxLength": 500
+            "maxLength": 500,
+            "example": "example"
           },
           "heading": {
             "type": "string"
@@ -1325,6 +1172,28 @@
         "required": [
           "id",
           "title"
+        ]
+      },
+      "ArticleResourcePage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArticleResource"
+            }
+          },
+          "links": {
+            "$ref": "#/components/schemas/PaginationLinks"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        },
+        "required": [
+          "data",
+          "links",
+          "meta"
         ]
       },
       "AuthorData": {
@@ -1408,6 +1277,70 @@
           "message"
         ]
       },
+      "PaginationLinks": {
+        "type": "object",
+        "properties": {
+          "first": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "prev": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "properties": {
+          "current_page": {
+            "type": "integer"
+          },
+          "from": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "last_page": {
+            "type": "integer"
+          },
+          "path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "per_page": {
+            "type": "integer"
+          },
+          "to": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      },
       "StoreWidgetRequest": {
         "type": "object",
         "properties": {
@@ -1421,18 +1354,21 @@
           },
           "name": {
             "type": "string",
-            "maxLength": 100
+            "maxLength": 100,
+            "example": "example"
           },
           "quantity": {
             "type": "integer",
-            "minimum": 1
+            "minimum": 1,
+            "example": 1
           },
           "role": {
             "type": "string",
             "enum": [
               "admin",
               "user"
-            ]
+            ],
+            "example": "admin"
           }
         },
         "required": [

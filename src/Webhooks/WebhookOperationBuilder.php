@@ -10,6 +10,8 @@ use Docuccino\Attributes\Internal;
 use Docuccino\Attributes\Response;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
+use Docuccino\Core\Draft\DeprecationNote;
+use Docuccino\Core\Draft\DescriptionAppender;
 use Docuccino\Core\Draft\OperationDraft;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Contracts\TypeSchemaConverter;
@@ -54,9 +56,22 @@ final readonly class WebhookOperationBuilder
         // an author writes the name they already wrote in that file.
         $imports = ImportContext::forFile($webhook->files[0] ?? null);
 
+        // Both spellings of "deprecated" read here exactly as they do on a route operation: the flag from
+        // either, the reason as a description paragraph, the attribute outranking the docblock.
+        $attributeReason = DeprecationNote::paragraph($webhook->attributes->first(DeprecatedOperation::class)?->reason);
+        $docblockReason = DeprecationNote::paragraph($webhook->deprecationReason);
+
         $operation->setOperationId($webhook->name, Contribution::fallback($source));
         $operation->setSummary($webhook->summary, Contribution::docblock($source));
-        $operation->setDescription($webhook->description, Contribution::docblock($source));
+        $operation->setDescription(
+            $attributeReason === null && $docblockReason !== null
+                ? DescriptionAppender::joined($webhook->description, $docblockReason)
+                : $webhook->description,
+            Contribution::docblock($source),
+        );
+        if ($webhook->deprecated) {
+            $operation->setDeprecated(true, Contribution::docblock($source));
+        }
 
         $this->applyBody($operation, $webhook, $converter, $imports, $source, $diagnostics);
         $this->applyResponses($operation, $webhook, $converter, $imports, $source);
@@ -68,6 +83,10 @@ final readonly class WebhookOperationBuilder
 
         if ($webhook->attributes->has(DeprecatedOperation::class)) {
             $operation->setDeprecated(true, $attribute);
+        }
+
+        if ($attributeReason !== null) {
+            DescriptionAppender::append($operation, $attributeReason, $attribute);
         }
 
         if ($webhook->attributes->has(Internal::class)) {

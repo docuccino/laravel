@@ -19,9 +19,9 @@ use Docuccino\Laravel\Integrations\Validation\ValidationIntegration;
  * Exercises the Laravel rule vocabulary (the transformer set + effect-order ranking) driving the
  * core chain — the Laravel-side counterpart to the core driver's vocabulary-free unit test.
  */
-function vocabularyContext(): SchemaConverter
+function vocabularyContext(RepresentationPolicy $policy = new RepresentationPolicy): SchemaConverter
 {
-    return new SchemaConverter(DefaultTypeMappers::all(), new NullTypeEngine, new ComponentRegistry, new RepresentationPolicy);
+    return new SchemaConverter(DefaultTypeMappers::all(), new NullTypeEngine, new ComponentRegistry, $policy);
 }
 
 /**
@@ -29,7 +29,7 @@ function vocabularyContext(): SchemaConverter
  *
  * @param  array<string, string>  $fields
  */
-function convertLaravelRules(array $fields): ValidationSchema
+function convertLaravelRules(array $fields, RepresentationPolicy $policy = new RepresentationPolicy): ValidationSchema
 {
     $set = [];
     foreach ($fields as $field => $pipe) {
@@ -38,7 +38,7 @@ function convertLaravelRules(array $fields): ValidationSchema
 
     $ordered = (new RuleOrdering)->order(new RuleSet($set));
 
-    return (new DefaultValidationRulesToSchema(ValidationIntegration::transformers()))->convert($ordered, vocabularyContext());
+    return (new DefaultValidationRulesToSchema(ValidationIntegration::transformers()))->convert($ordered, vocabularyContext($policy));
 }
 
 /**
@@ -64,6 +64,12 @@ function convertFieldRules(array $rules): ValidationSchema
  * The floor list (docs/testing.md): every string-rule entry across every transformer gets a row here
  * asserting its schema effect. Presence/cross-field/multipart effects don't surface on the property
  * schema, so they're covered by the dedicated tests below — between them, every table entry is proven.
+ *
+ * Each row also pins the synthesized `example`, so this doubles as the rule → example table: a row
+ * WITHOUT one is a rule that earns no example, and the reason is on the row. The three ways that
+ * happens are all here — the rule pinned only a base type (`string`, `integer`), it left the value
+ * constrained outside the schema (`decimal`, `before`, `file`), or the value it wants contradicts the
+ * schema the same rule published (`date_format` with a time token).
  */
 it('maps every schema-producing string rule to its fragment', function (array $rules, array $expected): void {
     $property = convertFieldRules($rules)->schema['properties']['f'];
@@ -77,40 +83,40 @@ it('maps every schema-producing string rule to its fragment', function (array $r
     'integer' => [[['integer']], ['type' => 'integer']],
     'int' => [[['int']], ['type' => 'integer']],
     'numeric' => [[['numeric']], ['type' => 'number']],
-    'boolean' => [[['boolean']], ['type' => 'boolean']],
-    'bool' => [[['bool']], ['type' => 'boolean']],
+    'boolean' => [[['boolean']], ['type' => 'boolean', 'example' => true]],
+    'bool' => [[['bool']], ['type' => 'boolean', 'example' => true]],
     'array' => [[['array']], ['type' => 'array']],
-    'email' => [[['email']], ['format' => 'email', 'type' => 'string']],
-    'uuid' => [[['uuid']], ['format' => 'uuid', 'type' => 'string']],
-    'ulid' => [[['ulid']], ['format' => 'ulid', 'type' => 'string']],
-    'url' => [[['url']], ['format' => 'uri', 'type' => 'string']],
-    'ip' => [[['ip']], ['format' => 'ip', 'type' => 'string']],
-    'date' => [[['date']], ['format' => 'date', 'type' => 'string']],
+    'email' => [[['email']], ['format' => 'email', 'type' => 'string', 'example' => 'user@example.com']],
+    'uuid' => [[['uuid']], ['format' => 'uuid', 'type' => 'string', 'example' => '3fa85f64-5717-4562-b3fc-2c963f66afa6']],
+    'ulid' => [[['ulid']], ['format' => 'ulid', 'type' => 'string', 'example' => '01ARZ3NDEKTSV4RRFFQ69G5FAV']],
+    'url' => [[['url']], ['format' => 'uri', 'type' => 'string', 'example' => 'https://example.com']],
+    'ip' => [[['ip']], ['format' => 'ip', 'type' => 'string', 'example' => '192.0.2.1']],
+    'date' => [[['date']], ['format' => 'date', 'type' => 'string', 'example' => '2024-01-01']],
 
     // ChoiceRuleTransformer — string set and numeric set, plus the enum-FQCN note.
-    'in (string set)' => [[['in', ['draft', 'published']]], ['enum' => ['draft', 'published'], 'type' => 'string']],
-    'in (numeric set)' => [[['in', ['1', '2', '3']]], ['enum' => [1, 2, 3], 'type' => 'integer']],
-    'enum (folded values + note)' => [[['enum', ['a', 'b'], 'App\\Enums\\Kind']], ['description' => 'App\\Enums\\Kind', 'enum' => ['a', 'b'], 'type' => 'string']],
+    'in (string set)' => [[['in', ['draft', 'published']]], ['enum' => ['draft', 'published'], 'type' => 'string', 'example' => 'draft']],
+    'in (numeric set)' => [[['in', ['1', '2', '3']]], ['enum' => [1, 2, 3], 'type' => 'integer', 'example' => 1]],
+    'enum (folded values + note)' => [[['enum', ['a', 'b'], 'App\\Enums\\Kind']], ['description' => 'App\\Enums\\Kind', 'enum' => ['a', 'b'], 'type' => 'string', 'example' => 'a']],
     // Empty value set: the rule is consumed but contributes no enum (a bare typed field remains).
     'in (empty values)' => [[['string'], ['in', []]], ['type' => 'string']],
     // Already-typed guard: an explicit type is preserved, never overridden by the value-inferred one.
     'in (preserves an existing type)' => [[['integer'], ['in', ['a', 'b']]], ['enum' => ['a', 'b'], 'type' => 'integer']],
 
     // SizeRuleTransformer — type-aware min/max/between/size.
-    'min (string length)' => [[['string'], ['min', ['2']]], ['minLength' => 2, 'type' => 'string']],
-    'max (string length)' => [[['string'], ['max', ['9']]], ['maxLength' => 9, 'type' => 'string']],
-    'between (numeric bounds)' => [[['integer'], ['between', ['1', '5']]], ['maximum' => 5, 'minimum' => 1, 'type' => 'integer']],
+    'min (string length)' => [[['string'], ['min', ['2']]], ['minLength' => 2, 'type' => 'string', 'example' => 'example']],
+    'max (string length)' => [[['string'], ['max', ['9']]], ['maxLength' => 9, 'type' => 'string', 'example' => 'example']],
+    'between (numeric bounds)' => [[['integer'], ['between', ['1', '5']]], ['maximum' => 5, 'minimum' => 1, 'type' => 'integer', 'example' => 1]],
     'size (array items)' => [[['array'], ['size', ['3']]], ['maxItems' => 3, 'minItems' => 3, 'type' => 'array']],
     // Float bounds on a numeric field keep their decimal value (not truncated to int).
-    'min (float bound)' => [[['numeric'], ['min', ['2.5']]], ['minimum' => 2.5, 'type' => 'number']],
-    'max (float bound)' => [[['numeric'], ['max', ['9.75']]], ['maximum' => 9.75, 'type' => 'number']],
+    'min (float bound)' => [[['numeric'], ['min', ['2.5']]], ['minimum' => 2.5, 'type' => 'number', 'example' => 2.5]],
+    'max (float bound)' => [[['numeric'], ['max', ['9.75']]], ['maximum' => 9.75, 'type' => 'number', 'example' => 1]],
 
     // DateFormatRuleTransformer — date-only vs time-bearing pattern.
-    'date_format (date)' => [[['date_format', ['Y-m-d']]], ['description' => 'Expected format: Y-m-d', 'format' => 'date', 'type' => 'string']],
+    'date_format (date)' => [[['date_format', ['Y-m-d']]], ['description' => 'Expected format: Y-m-d', 'format' => 'date', 'type' => 'string', 'example' => '2024-01-01']],
     'date_format (date-time)' => [[['date_format', ['Y-m-d H:i:s']]], ['description' => 'Expected format: Y-m-d H:i:s', 'format' => 'date-time', 'type' => 'string']],
 
     // RegexRuleTransformer — delimiters stripped to a bare ECMA-262 pattern.
-    'regex' => [[['regex', ['/^[a-z]+$/']]], ['pattern' => '^[a-z]+$', 'type' => 'string']],
+    'regex' => [[['regex', ['/^[a-z]+$/']]], ['pattern' => '^[a-z]+$', 'type' => 'string', 'example' => 'example']],
 
     // ExistsRuleTransformer — a FK reference contributes a default string type only.
     'exists' => [[['exists', ['users', 'id']]], ['type' => 'string']],
@@ -125,27 +131,27 @@ it('maps every schema-producing string rule to its fragment', function (array $r
     'image' => [[['image']], ['description' => 'An image file.', 'format' => 'binary', 'type' => 'string']],
 
     // AlphaRuleTransformer — canonical ECMA-262 character-class patterns.
-    'alpha' => [[['alpha']], ['pattern' => '^[a-zA-Z]+$', 'type' => 'string']],
-    'alpha_num' => [[['alpha_num']], ['pattern' => '^[a-zA-Z0-9]+$', 'type' => 'string']],
-    'alpha_dash' => [[['alpha_dash']], ['pattern' => '^[a-zA-Z0-9_-]+$', 'type' => 'string']],
+    'alpha' => [[['alpha']], ['pattern' => '^[a-zA-Z]+$', 'type' => 'string', 'example' => 'example']],
+    'alpha_num' => [[['alpha_num']], ['pattern' => '^[a-zA-Z0-9]+$', 'type' => 'string', 'example' => 'example']],
+    'alpha_dash' => [[['alpha_dash']], ['pattern' => '^[a-zA-Z0-9_-]+$', 'type' => 'string', 'example' => 'example']],
 
     // AffixRuleTransformer — single value → anchored pattern (literal regex-escaped); multi → description.
-    'starts_with (single → pattern)' => [[['starts_with', ['abc']]], ['pattern' => '^abc', 'type' => 'string']],
-    'ends_with (single → pattern, escaped)' => [[['ends_with', ['.png']]], ['pattern' => '\\.png$', 'type' => 'string']],
-    'starts_with (multi → description)' => [[['starts_with', ['a', 'b']]], ['description' => 'Must start with one of: a, b.', 'type' => 'string']],
-    'ends_with (multi → description)' => [[['ends_with', ['x', 'y']]], ['description' => 'Must end with one of: x, y.', 'type' => 'string']],
+    'starts_with (single → pattern)' => [[['starts_with', ['abc']]], ['pattern' => '^abc', 'type' => 'string', 'example' => 'abcexample']],
+    'ends_with (single → pattern, escaped)' => [[['ends_with', ['.png']]], ['pattern' => '\\.png$', 'type' => 'string', 'example' => 'example.png']],
+    'starts_with (multi → description)' => [[['starts_with', ['a', 'b']]], ['description' => 'Must start with one of: a, b.', 'type' => 'string', 'example' => 'aexample']],
+    'ends_with (multi → description)' => [[['ends_with', ['x', 'y']]], ['description' => 'Must end with one of: x, y.', 'type' => 'string', 'example' => 'examplex']],
 
     // DigitsRuleTransformer — a digit count is a string pattern (leading zeros preserved), never an int.
-    'digits' => [[['digits', ['5']]], ['pattern' => '^\\d{5}$', 'type' => 'string']],
-    'digits_between' => [[['digits_between', ['2', '5']]], ['pattern' => '^\\d{2,5}$', 'type' => 'string']],
-    'max_digits' => [[['max_digits', ['4']]], ['pattern' => '^\\d{1,4}$', 'type' => 'string']],
-    'min_digits' => [[['min_digits', ['2']]], ['pattern' => '^\\d{2,}$', 'type' => 'string']],
+    'digits' => [[['digits', ['5']]], ['pattern' => '^\\d{5}$', 'type' => 'string', 'example' => '12345']],
+    'digits_between' => [[['digits_between', ['2', '5']]], ['pattern' => '^\\d{2,5}$', 'type' => 'string', 'example' => '12']],
+    'max_digits' => [[['max_digits', ['4']]], ['pattern' => '^\\d{1,4}$', 'type' => 'string', 'example' => '1']],
+    'min_digits' => [[['min_digits', ['2']]], ['pattern' => '^\\d{2,}$', 'type' => 'string', 'example' => '12']],
 
     // JsonRuleTransformer — a string carrying a JSON document.
-    'json' => [[['json']], ['contentMediaType' => 'application/json', 'type' => 'string']],
+    'json' => [[['json']], ['contentMediaType' => 'application/json', 'type' => 'string', 'example' => '{}']],
 
     // TimezoneRuleTransformer — no JSON-Schema format exists; documented as a described string.
-    'timezone' => [[['timezone']], ['description' => 'Must be a valid timezone identifier.', 'type' => 'string']],
+    'timezone' => [[['timezone']], ['description' => 'Must be a valid timezone identifier.', 'type' => 'string', 'example' => 'UTC']],
 
     // DateComparisonRuleTransformer — description + format when the target is a parseable date.
     'before' => [[['before', ['2024-01-01']]], ['description' => 'Must be a date before 2024-01-01.', 'format' => 'date', 'type' => 'string']],
@@ -166,12 +172,12 @@ it('maps every schema-producing string rule to its fragment', function (array $r
     // NumericRuleTransformer — decimal note, multipleOf, and the numeric-literal comparison bounds.
     'decimal (fixed)' => [[['decimal', ['2']]], ['description' => 'Must have 2 decimal places.', 'type' => 'number']],
     'decimal (range)' => [[['decimal', ['2', '4']]], ['description' => 'Must have between 2 and 4 decimal places.', 'type' => 'number']],
-    'multiple_of' => [[['multiple_of', ['5']]], ['multipleOf' => 5, 'type' => 'number']],
-    'multiple_of (float)' => [[['multiple_of', ['0.5']]], ['multipleOf' => 0.5, 'type' => 'number']],
-    'gt (numeric literal)' => [[['gt', ['0']]], ['exclusiveMinimum' => 0, 'type' => 'number']],
-    'gte (numeric literal)' => [[['gte', ['1']]], ['minimum' => 1, 'type' => 'number']],
-    'lt (numeric literal)' => [[['lt', ['100']]], ['exclusiveMaximum' => 100, 'type' => 'number']],
-    'lte (numeric literal)' => [[['lte', ['99']]], ['maximum' => 99, 'type' => 'number']],
+    'multiple_of' => [[['multiple_of', ['5']]], ['multipleOf' => 5, 'type' => 'number', 'example' => 5]],
+    'multiple_of (float)' => [[['multiple_of', ['0.5']]], ['multipleOf' => 0.5, 'type' => 'number', 'example' => 1]],
+    'gt (numeric literal)' => [[['gt', ['0']]], ['exclusiveMinimum' => 0, 'type' => 'number', 'example' => 1]],
+    'gte (numeric literal)' => [[['gte', ['1']]], ['minimum' => 1, 'type' => 'number', 'example' => 1]],
+    'lt (numeric literal)' => [[['lt', ['100']]], ['exclusiveMaximum' => 100, 'type' => 'number', 'example' => 1]],
+    'lte (numeric literal)' => [[['lte', ['99']]], ['maximum' => 99, 'type' => 'number', 'example' => 1]],
 
     // ArrayShapeRuleTransformer — list → array; distinct → uniqueItems.
     'list' => [[['list']], ['type' => 'array']],
@@ -203,13 +209,23 @@ it('maps every schema-producing string rule to its fragment', function (array $r
     // AnnotationRuleTransformer — the keywords a #[RuleSchema] states outright. An example is coerced
     // back to the field's resolved type, having travelled as a string parameter.
     'format' => [[['string'], ['format', ['iban']]], ['format' => 'iban', 'type' => 'string']],
-    'format (never overwrites a type rule\'s own)' => [[['email'], ['format', ['iban']]], ['format' => 'email', 'type' => 'string']],
+    'format (never overwrites a type rule\'s own)' => [[['email'], ['format', ['iban']]], ['format' => 'email', 'type' => 'string', 'example' => 'user@example.com']],
     'description' => [[['string'], ['description', ['A bank reference.']]], ['description' => 'A bank reference.', 'type' => 'string']],
-    'description (appends to an earlier note)' => [[['timezone'], ['description', ['Europe only.']]], ['description' => 'Must be a valid timezone identifier. Europe only.', 'type' => 'string']],
+    'description (appends to an earlier note)' => [[['timezone'], ['description', ['Europe only.']]], ['description' => 'Must be a valid timezone identifier. Europe only.', 'type' => 'string', 'example' => 'UTC']],
     'example (string)' => [[['string'], ['example', ['GB123456']]], ['example' => 'GB123456', 'type' => 'string']],
     'example (integer)' => [[['integer'], ['example', ['42']]], ['example' => 42, 'type' => 'integer']],
     'example (number)' => [[['numeric'], ['example', ['1.25']]], ['example' => 1.25, 'type' => 'number']],
     'example (boolean)' => [[['boolean'], ['example', ['true']]], ['example' => true, 'type' => 'boolean']],
+    // An author's example outranks a synthesized one — the format's sample never overwrites it.
+    'example (outranks the synthesized one)' => [[['email'], ['example', ['ops@example.test']]], ['example' => 'ops@example.test', 'format' => 'email', 'type' => 'string']],
+
+    // Degradations of the synthesis itself: bounds that cross admit no value; a floor so high the
+    // sample would stop illustrating anything; a format sample the length bound then rejects. Each
+    // publishes no example rather than one the endpoint's own validator would refuse.
+    'no example (bounds cross)' => [[['integer'], ['min', ['10']], ['max', ['5']]], ['maximum' => 5, 'minimum' => 10, 'type' => 'integer']],
+    'no example (length floor above the cap)' => [[['string'], ['min', ['100']]], ['minLength' => 100, 'type' => 'string']],
+    'no example (format sample too long for the bound)' => [[['email'], ['max', ['5']]], ['format' => 'email', 'maxLength' => 5, 'type' => 'string']],
+    'no example (unknown format states no sample)' => [[['string'], ['format', ['iban']]], ['format' => 'iban', 'type' => 'string']],
 ]);
 
 it('normalises regex delimiters to a bare ECMA-262 pattern across delimiter styles', function (string $raw, string $expected): void {
@@ -352,9 +368,9 @@ it('applies size rules type-aware and independent of author order', function ():
     $reorderedName = $reordered['properties']['name'];
     ksort($reorderedName);
 
-    expect($direct['properties']['name'])->toBe(['type' => 'string', 'minLength' => 2, 'maxLength' => 100])
-        ->and($reorderedName)->toBe(['maxLength' => 100, 'minLength' => 2, 'type' => 'string'])
-        ->and($int['properties']['age'])->toBe(['type' => 'integer', 'minimum' => 1, 'maximum' => 120]);
+    expect($direct['properties']['name'])->toBe(['type' => 'string', 'minLength' => 2, 'maxLength' => 100, 'example' => 'example'])
+        ->and($reorderedName)->toBe(['example' => 'example', 'maxLength' => 100, 'minLength' => 2, 'type' => 'string'])
+        ->and($int['properties']['age'])->toBe(['type' => 'integer', 'minimum' => 1, 'maximum' => 120, 'example' => 1]);
 });
 
 it('maps type + format + choice + regex + date_format rules', function (): void {
@@ -366,11 +382,11 @@ it('maps type + format + choice + regex + date_format rules', function (): void 
         'when' => 'date_format:Y-m-d',
     ])->schema;
 
-    expect($schema['properties']['email'])->toBe(['type' => 'string', 'format' => 'email'])
-        ->and($schema['properties']['id'])->toBe(['type' => 'string', 'format' => 'uuid'])
-        ->and($schema['properties']['status'])->toBe(['type' => 'string', 'enum' => ['draft', 'published']])
-        ->and($schema['properties']['slug'])->toBe(['type' => 'string', 'pattern' => '^[a-z]+$'])
-        ->and($schema['properties']['when'])->toBe(['type' => 'string', 'format' => 'date', 'description' => 'Expected format: Y-m-d'])
+    expect($schema['properties']['email'])->toBe(['type' => 'string', 'format' => 'email', 'example' => 'user@example.com'])
+        ->and($schema['properties']['id'])->toBe(['type' => 'string', 'format' => 'uuid', 'example' => '3fa85f64-5717-4562-b3fc-2c963f66afa6'])
+        ->and($schema['properties']['status'])->toBe(['type' => 'string', 'enum' => ['draft', 'published'], 'example' => 'draft'])
+        ->and($schema['properties']['slug'])->toBe(['type' => 'string', 'pattern' => '^[a-z]+$', 'example' => 'example'])
+        ->and($schema['properties']['when'])->toBe(['type' => 'string', 'format' => 'date', 'description' => 'Expected format: Y-m-d', 'example' => '2024-01-01'])
         ->and($schema['required'])->toBe(['email']);
 });
 
@@ -420,6 +436,57 @@ it('raises an info diagnostic for a rule no transformer handles', function (): v
         ->and($result->diagnostics)->toHaveCount(1)
         ->and($result->diagnostics[0]->code)->toBe('validation.rule-unhandled');
 });
+
+/**
+ * The real Laravel vocabulary honouring `representation.examples.formats`: an `email` rule still writes
+ * `format: email`, and the sample beside it is the one the document configured. Only the formats named
+ * move — this is the merge, seen from the vocabulary that produces the formats in the first place.
+ */
+it('illustrates a Laravel format rule with the document\'s configured sample', function (): void {
+    $policy = RepresentationPolicy::fromConfig(['examples' => ['formats' => [
+        'email' => 'jane@example.com',
+        'ip' => '198.51.100.7',
+    ]]]);
+
+    $schema = convertLaravelRules([
+        'contact' => 'required|email',
+        'host' => 'required|ip',
+        'site' => 'required|url',
+        'ref' => 'required|uuid',
+    ], $policy)->schema;
+
+    expect($schema['properties']['contact'])->toBe(['type' => 'string', 'format' => 'email', 'example' => 'jane@example.com'])
+        ->and($schema['properties']['host'])->toBe(['type' => 'string', 'format' => 'ip', 'example' => '198.51.100.7'])
+        // Not configured, so untouched: the documentation-reserved constants stand.
+        ->and($schema['properties']['site'])->toBe(['type' => 'string', 'format' => 'uri', 'example' => 'https://example.com'])
+        ->and($schema['properties']['ref'])->toBe(['type' => 'string', 'format' => 'uuid', 'example' => '3fa85f64-5717-4562-b3fc-2c963f66afa6']);
+});
+
+it('falls back to the built-in sample where a later Laravel rule narrows the field past the configured one', function (): void {
+    $policy = RepresentationPolicy::fromConfig(['examples' => ['formats' => ['email' => 'jane.doe+billing@example.com']]]);
+
+    $result = convertLaravelRules(['contact' => 'required|email|max:20'], $policy);
+
+    expect($result->schema['properties']['contact'])
+        ->toBe(['type' => 'string', 'format' => 'email', 'maxLength' => 20, 'example' => 'user@example.com'])
+        ->and(array_map(static fn ($d): string => $d->code, $result->diagnostics))->toBe(['config.format-sample-rejected'])
+        ->and($result->diagnostics[0]->message)->toContain('field "contact"')
+        ->and($result->diagnostics[0]->message)->toContain('maxLength');
+});
+
+it('emits byte-identical properties when no format sample is configured', function (array $configured): void {
+    $fields = ['contact' => 'required|email', 'site' => 'required|url', 'ref' => 'required|uuid'];
+
+    $bare = convertLaravelRules($fields);
+    $configuredResult = convertLaravelRules($fields, RepresentationPolicy::fromConfig($configured));
+
+    expect(json_encode($configuredResult->schema))->toBe(json_encode($bare->schema))
+        ->and($configuredResult->diagnostics)->toBe([]);
+})->with([
+    'nothing configured' => [[]],
+    'an empty formats map' => [['examples' => ['formats' => []]]],
+    'a format none of these fields carries' => [['examples' => ['formats' => ['duration' => 'PT1H']]]],
+]);
 
 it('describes the field-reference forms of date-comparison and numeric-comparison rules', function (): void {
     // A field-reference comparison target is a runtime relationship: the numeric bound isn't a literal

@@ -6,6 +6,7 @@ namespace Docuccino\Laravel\Tests\Support;
 
 use Docuccino\Core\Inference\ConstValue;
 use Docuccino\Core\Inference\DType\ClassT;
+use Docuccino\Core\Inference\DType\DType;
 use Docuccino\Core\Inference\TraceVisitor;
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
@@ -29,6 +30,9 @@ final class TraceScript
      * @param  array<string, array{0: ?ConstValue, 1: ?Node\Expr}>  $foldedReturns  method name → the
      *                                                                              answer a deferred return fold gives, drained after the
      *                                                                              walk exactly as the engine drains before the trace returns
+     * @param  array<string, DType>  $variableTypes  variable name → its type, for a snippet where one
+     *                                               receiver is not the chain's (a `$request` the page size
+     *                                               is read off)
      * @return callable(TraceVisitor): void
      */
     public static function forChain(
@@ -36,10 +40,11 @@ final class TraceScript
         string $builderFqcn = 'Spatie\\QueryBuilder\\QueryBuilder',
         string $file = 'test.php',
         array $foldedReturns = [],
+        array $variableTypes = [],
     ): callable {
-        return static function (TraceVisitor $visitor) use ($chain, $builderFqcn, $file, $foldedReturns): void {
+        return static function (TraceVisitor $visitor) use ($chain, $builderFqcn, $file, $foldedReturns, $variableTypes): void {
             $ast = (new ParserFactory)->createForNewestSupportedVersion()->parse("<?php\n\$q = ".$chain.";\n") ?? [];
-            $scope = new StubTraceScope(new ClassT($builderFqcn), $foldedReturns, file: $file);
+            $scope = new StubTraceScope(new ClassT($builderFqcn), $foldedReturns, file: $file, variableTypes: $variableTypes);
 
             $traverser = new NodeTraverser(new class($visitor, $scope) extends NodeVisitorAbstract
             {

@@ -88,7 +88,7 @@ final class QueryBuilderParametersExtension implements OperationExtension
 
         $contribution = Contribution::integration('query-builder', $context->actionSource());
 
-        foreach ($this->builder->build($facts, $context->representation(), $this->config, $describer) as $spec) {
+        foreach ($this->builder->build($facts, $context->representation(), $this->effectiveConfig($context), $describer) as $spec) {
             $spec->applyTo($operation->parameter('query', $spec->name), $contribution);
         }
 
@@ -297,19 +297,28 @@ final class QueryBuilderParametersExtension implements OperationExtension
      * Folds the attribute's schema/description/format/default/example into the filter. Its `name` is
      * ignored — the parameter name is always the `AllowedFilter` name. A route-level attribute still
      * overrides this downstream.
+     *
+     * The class attribute speaks for EVERY call site, so anything the entry itself says is the narrower
+     * claim and wins: a comment above the entry over `description`, a chained `->default()` over
+     * `default`. Not a contradiction of the fallback < inference < integration < docblock < attribute
+     * ladder — both facts arrive here, at the integration layer, and this resolves them within it.
+     * `type`/`format`/`example` have no per-entry rival, so the attribute is simply the only claim.
      */
     private function applyCustomAttribute(QbEntry $filter, QueryParameter $attribute, RouteContext $context): QbEntry
     {
         $default = is_scalar($attribute->default) ? $attribute->default : null;
+        // Passing null preserves what the entry carries, so the narrower claim wins by not being offered
+        // a replacement.
+        $overridesDefault = $default !== null && ! $filter->hasDefault;
 
         // Description/default/example are type-independent, so set them first and let the type supply
         // the schema afterwards — applyColumn preserves them.
         $filter = $filter->withColumn(
             null,
             enumTyped: false,
-            comment: $attribute->description,
-            hasDefault: $default !== null,
-            default: $default,
+            comment: $filter->comment === null ? $attribute->description : null,
+            hasDefault: $overridesDefault,
+            default: $overridesDefault ? $default : null,
             example: $attribute->example,
         );
 
@@ -383,12 +392,18 @@ final class QueryBuilderParametersExtension implements OperationExtension
      * A paginating terminal was reached but not one allow-list entry turned up, recovered or unresolved
      * — usually the chain lives behind an indirection the trace couldn't follow. Names the action so the
      * loss isn't silent.
+     *
+     * Silent, though, once a `defaultSort()` turned up: that is a chain call where an allow-list would
+     * sit, so empty allow-lists beside it are the endpoint's truth rather than a recovery miss. Only a
+     * chain call counts — the subject model, the terminal and its arguments are all readable without
+     * descending into the chain at all.
      */
     private function reportNoAllowLists(QueryBuilderFacts $facts, RouteContext $context): void
     {
         if (! $facts->paginates
             || $facts->filters !== [] || $facts->sorts !== [] || $facts->includes !== [] || $facts->fields !== []
             || $facts->unresolved !== []
+            || $facts->defaultSorts !== []
         ) {
             return;
         }
@@ -396,7 +411,7 @@ final class QueryBuilderParametersExtension implements OperationExtension
         $context->components->addDiagnostic(new Diagnostic(
             severity: Severity::Info,
             code: 'query-builder.no-allowlists-recovered',
-            message: sprintf('A paginating Query Builder terminal was reached in %s but no allowed filters/sorts/includes were recovered.', $context->actionRef->symbol()),
+            message: sprintf('A paginating Query Builder terminal was reached in %s, but no allow-lists and no default sort were recovered from the chain.', $context->actionRef->symbol()),
             routeSignature: $context->route->signature(),
             help: 'If this endpoint offers filters/sorts, declare them via allowedFilters()/allowedSorts() somewhere the trace reaches: a method returning your QueryBuilder subclass is followed, and so is the constructor of a QueryBuilder subclass the action is type-hinted on (type-hint the subclass itself, not an interface or the base builder). Otherwise this is expected.',
         ));
@@ -495,5 +510,18 @@ final class QueryBuilderParametersExtension implements OperationExtension
         $terminals = $context->document->integration('query_builder')['pagination_terminals'] ?? null;
 
         return is_array($terminals) ? array_values(array_filter($terminals, 'is_string')) : [];
+    }
+
+    /**
+     * The package config the provider recovered, plus this DOCUMENT's own filter-description overrides —
+     * recovered here rather than in the provider because the bag is per-document, exactly like
+     * {@see customTerminals()}. It rides the document's `configHash`, so a changed sentence retires
+     * warm fragments on its own.
+     */
+    private function effectiveConfig(RouteContext $context): QueryBuilderConfig
+    {
+        return $this->config->withFilterDescriptions(
+            $context->document->integration('query_builder')['filter_descriptions'] ?? null,
+        );
     }
 }

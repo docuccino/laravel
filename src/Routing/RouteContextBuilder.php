@@ -94,6 +94,7 @@ final class RouteContextBuilder
             formRequestClass: $this->formRequestClass($reflected),
             operationId: $operationId,
             deprecated: $prose['deprecated'],
+            deprecationReason: $prose['deprecationReason'],
         );
 
         // Class-level attributes walk the controller's parents, so the whole hierarchy's files key the

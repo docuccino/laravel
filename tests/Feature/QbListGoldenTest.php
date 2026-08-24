@@ -46,8 +46,11 @@ it('emits the flagship QB list document byte-identical to its committed golden',
     $op = $document['paths']['/api/qb-list']['get'];
     $paramNames = array_map(static fn (array $p): string => $p['name'], $op['parameters']);
 
+    // A custom terminal is length-aware, so the body is the shared length-aware page component.
+    $page = resolveSchema($document, $op['responses']['200']['content']['application/json']['schema']);
+
     expect($op['responses'])->toHaveKeys(['200', '400'])
-        ->and($op['responses']['200']['content']['application/json']['schema']['properties'] ?? [])->toHaveKeys(['data', 'links', 'meta'])
+        ->and($page['properties'] ?? [])->toHaveKeys(['data', 'links', 'meta'])
         ->and($paramNames)->toContain('filter[name]')
         ->and($paramNames)->toContain('page')
         // `paginateList(20)` fixes the size at the call site, so no page-size key is claimed beside it.

@@ -62,7 +62,7 @@ function convertWithWrap(ClassT $type, WrapResolver $wrap): array
     $components = new ComponentRegistry;
     $converter = new SchemaConverter([new DataSchema(wrap: $wrap), ...DefaultTypeMappers::all()], waveDEngine(), $components);
 
-    return ['root' => $converter->toSchema($type)->schema, 'components' => $components];
+    return ['root' => $converter->toSchema($type)->schema, 'components' => $components, 'converter' => $converter];
 }
 
 // Wrapping — precedence + non-double-wrap.
@@ -141,11 +141,14 @@ it('uses the wrap key as the paginated envelope items key without double-wrappin
     );
 
     // The envelope is {itemsKey, links, meta}: the wrap key becomes the items key rather than an outer
-    // wrap around the whole {data,links,meta} shape (spatie's PaginatedCollectionIsAlwaysWrapped).
-    expect(array_keys($result['root']['properties']))->toBe([$expectedItemsKey, 'links', 'meta'])
-        ->and($result['root']['required'])->toBe([$expectedItemsKey, 'links', 'meta'])
-        ->and($result['root']['properties'][$expectedItemsKey]['type'])->toBe('array')
-        ->and($result['root']['properties'][$expectedItemsKey]['items'])->toHaveKey('$ref');
+    // wrap around the whole {data,links,meta} shape (spatie's PaginatedCollectionIsAlwaysWrapped). It is
+    // a component of its own, so the wrap key is read off the page schema rather than off the root.
+    [, $page] = convertedComponent($result['converter'], $result['root']);
+
+    expect(array_keys($page['properties']))->toBe([$expectedItemsKey, 'links', 'meta'])
+        ->and($page['required'])->toBe([$expectedItemsKey, 'links', 'meta'])
+        ->and($page['properties'][$expectedItemsKey]['type'])->toBe('array')
+        ->and($page['properties'][$expectedItemsKey]['items'])->toHaveKey('$ref');
 })->with([
     'default data key' => ['data', 'data'],
     'custom global key' => ['records', 'records'],
@@ -157,7 +160,9 @@ it('defaults the paginated envelope items key to data when no wrap is configured
         new WrapResolver,
     );
 
-    expect(array_keys($result['root']['properties']))->toBe(['data', 'links', 'meta']);
+    [, $page] = convertedComponent($result['converter'], $result['root']);
+
+    expect(array_keys($page['properties']))->toBe(['data', 'links', 'meta']);
 });
 
 it('wraps a plain DataCollection at the root under the global key, but leaves it a bare array nested', function (): void {

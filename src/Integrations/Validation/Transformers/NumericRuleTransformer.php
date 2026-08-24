@@ -53,6 +53,10 @@ final class NumericRuleTransformer implements RuleTransformer
             : sprintf('Must have %s decimal places.', $min);
 
         $this->describe($field, $note);
+
+        // JSON numbers carry no trailing zeros, so no literal can state "two decimal places" — an
+        // example would be a value this endpoint rejects.
+        $field->proposeExample(null);
     }
 
     private function multipleOf(ValidationField $field, ValidationRule $rule): void
@@ -74,8 +78,10 @@ final class NumericRuleTransformer implements RuleTransformer
         }
 
         if (! is_numeric($value)) {
-            // A field reference — a runtime relationship, described not constrained.
+            // A field reference — a runtime relationship, described not constrained. Nothing constant
+            // is provably on its legal side, so the example is withdrawn with it.
             $this->describe($field, sprintf('%s %s.', $this->phrase($rule->name), $value));
+            $field->proposeExample(null);
 
             return;
         }

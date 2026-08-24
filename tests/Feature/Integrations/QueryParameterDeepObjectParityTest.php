@@ -27,7 +27,7 @@ function paritySeedDeepObject(OperationDraft $operation, Contribution $by): void
     // property is a nested draft carrying integration provenance.
     (new QueryParameterSpec(
         name: 'filter',
-        schema: ['type' => 'object', 'properties' => ['status' => ['type' => 'string', 'description' => 'Exact-match filter']]],
+        schema: ['type' => 'object', 'properties' => ['status' => ['type' => 'string', 'description' => 'Exact match on `status`.']]],
         description: 'Filter the result set.',
         style: 'deepObject',
         explode: true,
@@ -40,7 +40,7 @@ function paritySeedBracketed(OperationDraft $operation, Contribution $by): void
     (new QueryParameterSpec(
         name: 'filter[status]',
         schema: ['type' => 'string'],
-        description: 'Exact-match filter',
+        description: 'Exact match on `status`.',
     ))->applyTo($operation->parameter('query', 'filter[status]'), $by);
 }
 

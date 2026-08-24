@@ -134,6 +134,16 @@ return [
                 //     'components' => true,    // true hoists an error body repeated across operations to one
                 //                              // $ref'd components.responses entry; false inlines every copy
                 // ],
+                // 'pagination' => [
+                //     'components' => true,    // true hoists a paginated envelope to one $ref'd component per
+                //                              // item type and paginator kind; false inlines every copy
+                // ],
+                // 'examples' => [
+                //     // JSON Schema `format` => the value synthesized examples illustrate it with,
+                //     // merged over the built-ins. Still validated against each field's own rules; one
+                //     // that fails falls back to the built-in sample and says so.
+                //     'formats' => ['email' => 'jane@example.com'],
+                // ],
             ],
 
             // The policy `docuccino:diff --enforce` holds a changeset to.
@@ -157,6 +167,10 @@ return [
                 // 'query_builder' => [
                 //     'enabled' => true,
                 //     'pagination_terminals' => ['paginateList'], // your own paginating method names
+                //     // Filter kind => the sentence that leads its description, merged over the
+                //     // built-ins (kinds you leave out keep theirs). `%field%` is the one supported
+                //     // token: the filter's public name.
+                //     'filter_descriptions' => ['exact' => 'Matches `%field%` exactly.'],
                 // ],
                 // 'json_api_paginate' => ['enabled' => true],
                 // 'timacdonald_json_api' => ['enabled' => true],

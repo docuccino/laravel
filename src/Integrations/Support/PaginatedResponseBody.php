@@ -23,6 +23,10 @@ use Docuccino\Laravel\Integrations\TimacdonaldJsonApi\TimacdonaldResourceReflect
  * precedence, overriding the inference-layer `{data: [...]}` body already emitted. Laravel keeps the
  * `data` wrapper on paginated responses even under `withoutWrapping`, so a leftover bare-array `items`
  * keyword is removed.
+ *
+ * The envelope's `links`/`meta` are hoisted to one component per shape ({@see PaginationParts}), and the
+ * envelope itself to one per item type and kind where it can be ({@see PageComponent}) — so the body
+ * becomes a `$ref` and every keyword the inline form wrote comes back off.
  */
 final class PaginatedResponseBody
 {
@@ -60,15 +64,36 @@ final class PaginatedResponseBody
             return;
         }
 
-        $envelope = match ($kind) {
-            'simple' => PaginationEnvelope::simple($items),
-            'cursor' => PaginationEnvelope::cursor($items),
-            default => PaginationEnvelope::length($items),
-        };
+        $envelope = PaginationParts::hoist(
+            $context->converter(),
+            PaginationEnvelope::of($kind, $items),
+            PaginationEnvelope::parts($kind),
+        );
+
+        $item = $collection->typeArgs[0] ?? null;
+        $reference = PageComponent::reference(
+            $context->converter(),
+            $kind,
+            $item instanceof ClassT ? $item->fqcn : null,
+            $items,
+            $envelope,
+        );
 
         $response = $operation->response('200');
         $mediaType = $response->primaryMediaType() ?: 'application/json';
         $content = $response->content($mediaType);
+
+        if ($reference !== null) {
+            // The whole body is the component now, so every keyword the inline envelope would have
+            // written — plus the `items` below — comes off, and a bare `$ref` is left in their place.
+            foreach (['type', 'properties', 'required', 'items'] as $keyword) {
+                $content->set($keyword, Remove::value(), $by);
+            }
+
+            $content->set('$ref', $reference['$ref'], $by);
+
+            return;
+        }
 
         foreach ($envelope as $keyword => $value) {
             $content->set($keyword, $value, $by);

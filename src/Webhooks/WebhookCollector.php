@@ -153,6 +153,8 @@ final readonly class WebhookCollector
             attributes: $attributes,
             summary: $prose['summary'],
             description: $prose['description'],
+            deprecated: $prose['deprecated'],
+            deprecationReason: $prose['deprecationReason'],
             files: DeclarationFiles::forClass($reflection),
             source: $this->sourceOf($reflection),
         );

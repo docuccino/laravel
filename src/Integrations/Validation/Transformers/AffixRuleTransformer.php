@@ -37,6 +37,10 @@ final class AffixRuleTransformer implements RuleTransformer
             $field->setType('string');
         }
 
+        // The affix itself, so the example carries the required literal rather than a filler the
+        // anchored pattern would reject. First value where several are legal — the list is authored.
+        $field->proposeExample($rule->name === 'starts_with' ? $values[0].'example' : 'example'.$values[0]);
+
         if (count($values) === 1) {
             $escaped = self::escape($values[0]);
             $field->set('pattern', $rule->name === 'starts_with' ? '^'.$escaped : $escaped.'$');

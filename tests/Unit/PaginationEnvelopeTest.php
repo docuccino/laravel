@@ -13,11 +13,7 @@ use Docuccino\Laravel\Integrations\Support\SpatieDataEnvelope;
 $item = ['$ref' => '#/components/schemas/Article'];
 
 it('builds the Laravel paginator envelope per mode', function (string $mode, array $linkKeys, array $metaKeys, array $metaAbsent) use ($item): void {
-    $schema = match ($mode) {
-        'length' => PaginationEnvelope::length($item),
-        'simple' => PaginationEnvelope::simple($item),
-        'cursor' => PaginationEnvelope::cursor($item),
-    };
+    $schema = PaginationEnvelope::of($mode, $item);
 
     expect($schema['type'])->toBe('object')
         ->and($schema['required'])->toBe(['data', 'links', 'meta'])
@@ -38,7 +34,7 @@ it('builds the Laravel paginator envelope per mode', function (string $mode, arr
 ]);
 
 it('builds spatie\'s own envelope per mode (links array, *_page_url meta)', function (string $mode, array $metaKeys, array $metaAbsent) use ($item): void {
-    $schema = $mode === 'cursor' ? SpatieDataEnvelope::cursor($item) : SpatieDataEnvelope::length($item);
+    $schema = SpatieDataEnvelope::of($mode, $item);
 
     expect($schema['required'])->toBe(['data', 'links', 'meta'])
         // links is an ARRAY of {url,label,active}, not the Laravel {first,last,prev,next} object.

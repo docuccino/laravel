@@ -21,7 +21,7 @@ use Workbench\App\Models\Beacon;
  * cast / scope signature / custom filter, and the partial-on-enum nudge fires — without the real
  * engine (that is proven behaviourally in the fixture group).
  */
-function runFilterKinds(string $chain, ?QueryBuilderConfig $config = null): array
+function runFilterKinds(string $chain, ?QueryBuilderConfig $config = null, array $integrations = []): array
 {
     $engine = new StubTypeEngine(traces: [
         'App\\Gadgets::index' => TraceScript::forChain($chain),
@@ -32,7 +32,7 @@ function runFilterKinds(string $chain, ?QueryBuilderConfig $config = null): arra
         actionRef: new ActionRef('', 'App\\Gadgets', 'index'),
         attributes: new AttributeSet,
         engine: $engine,
-        document: new DocumentConfig('default', []),
+        document: new DocumentConfig('default', [], raw: $integrations === [] ? [] : ['integrations' => $integrations]),
     );
 
     $operation = new OperationDraft;
@@ -70,7 +70,7 @@ it('types each recovered filter kind off the model and applies the custom-filter
     // Bare uncast filter → plain string, generic description.
     expect($byName['filter[name]']['schema']['type'])->toBe('string')
         ->and($byName['filter[name]']['schema'])->not->toHaveKey('enum')
-        ->and($byName['filter[name]']['description'])->toBe('Partial-match filter');
+        ->and($byName['filter[name]']['description'])->toBe('Substring match on `name`.');
 
     // Bare filter over an enum column is NOT enum-typed (partial), stays a string.
     expect($byName['filter[status]']['schema']['type'])->toBe('string')
@@ -206,6 +206,46 @@ it('reports a legacy package where fields alone were recovered', function (): vo
     expect($byName['fields']['schema']['type'])->toBe('string')
         ->and(array_map(fn ($d): string => $d->code, $diagnostics))->toContain('query-builder.legacy-package-version');
 });
+
+/**
+ * The recovery half of the filter-description override: the sentences come off the DOCUMENT's own
+ * `integrations.query_builder` bag, exactly where `pagination_terminals` comes from, and reach the
+ * emitted parameter through the real extension. Kinds the document does not name keep their defaults,
+ * and the request-form notes still compose after the configured lead.
+ */
+it('describes filters with the sentences the document configured, keeping the defaults it did not name', function (): void {
+    $chain = 'QueryBuilder::for(\\Workbench\\App\\Models\\Gadget::class)->allowedFilters(['
+        ."AllowedFilter::exact('status'), "
+        ."'name', "
+        .'])->paginate()';
+
+    [$configured] = runFilterKinds($chain, integrations: ['query_builder' => ['filter_descriptions' => [
+        'exact' => 'Matches `%field%` exactly.',
+    ]]]);
+    [$default] = runFilterKinds($chain);
+
+    expect($configured['filter[status]']['description'])
+        ->toBe('Matches `status` exactly. Accepts a comma-separated list of values (matched as `whereIn`).')
+        // Not named, so unchanged.
+        ->and($configured['filter[name]']['description'])->toBe($default['filter[name]']['description'])
+        // And the schema is untouched: prose is all this setting can move.
+        ->and($configured['filter[status]']['schema'])->toBe($default['filter[status]']['schema']);
+});
+
+it('emits the same parameters when the document configures no filter descriptions', function (mixed $bag): void {
+    $chain = 'QueryBuilder::for(\\Workbench\\App\\Models\\Gadget::class)->allowedFilters(['
+        ."AllowedFilter::exact('status'), 'name', "
+        .'])->paginate()';
+
+    [$bare] = runFilterKinds($chain);
+    [$withBag] = runFilterKinds($chain, integrations: ['query_builder' => ['filter_descriptions' => $bag]]);
+
+    expect($withBag)->toBe($bare);
+})->with([
+    'an empty map' => [[]],
+    'a key naming no kind' => [['wibble' => 'Never reached.']],
+    'a non-string sentence' => [['exact' => ['nope']]],
+]);
 
 it('detects the installed package as the supported major', function (): void {
     // The real-path guard on version detection: the suite runs against the vendored v7, so the

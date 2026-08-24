@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 use Docuccino\Laravel\Tests\Fixtures\ComponentNames\ClaimController;
 use Docuccino\Laravel\Tests\Fixtures\ComponentNames\SsoController;
+use Docuccino\Laravel\Tests\Fixtures\Pagination\PagesController;
 use Docuccino\Laravel\Tests\Fixtures\RouteBindings\BindingController;
 use Docuccino\Laravel\Tests\Fixtures\SharedErrors\ErrorsController;
 use Docuccino\Laravel\Tests\Fixtures\TagNames\Admin\ReportController as AdminReportController;
 use Docuccino\Laravel\Tests\Fixtures\TagNames\Api\ReportController as ApiReportController;
 use Docuccino\Laravel\Tests\Support\LocalityEngine;
+use Docuccino\Laravel\Tests\Support\PaginationEngine;
 use Illuminate\Routing\Router;
 
 /**
@@ -106,6 +108,36 @@ it('does not move a route it did not touch', function (callable $baseline, calla
         static fn (Router $r) => $r->get('api/aaa-refused-again', [ErrorsController::class, 'refusedAgain']),
         'GET /api/zz-denied',
         null,
+    ],
+
+    // Two item types paginated the same way. A page named for its position — `Page`, then `Page_2` —
+    // is deterministic per build and still hands the earlier-sorting route the plain name, so adding a
+    // list endpoint elsewhere in the application renames this one's page type.
+    'a second item type paginated beside the first' => [
+        static fn (Router $r) => $r->get('api/zz-page-articles', [PagesController::class, 'articles']),
+        static fn (Router $r) => $r->get('api/aaa-page-authors', [PagesController::class, 'authors']),
+        'GET /api/zz-page-articles',
+        PaginationEngine::factory(),
+    ],
+
+    // The same item type paginated a second way. Both pages are facets of one identity, so the kinds
+    // must separate them without either being the one that had to move. The cursor page also SHARES the
+    // subject's `links` component, so the projection covers a hoisted envelope member arriving twice.
+    'the same item type paginated by cursor beside by page' => [
+        static fn (Router $r) => $r->get('api/zz-page-articles', [PagesController::class, 'articles']),
+        static fn (Router $r) => $r->get('api/aaa-page-cursor', [PagesController::class, 'cursorArticles']),
+        'GET /api/zz-page-articles',
+        PaginationEngine::factory(),
+    ],
+
+    // A page whose envelope members are shapes the document had not seen: a simple page shares neither
+    // `links` nor `meta` with a length-aware one. Those components are named for their shapes, so two
+    // arriving beside the subject's may not renumber the ones it points at.
+    'a paginator whose envelope members are new shapes' => [
+        static fn (Router $r) => $r->get('api/zz-page-articles', [PagesController::class, 'articles']),
+        static fn (Router $r) => $r->get('api/aaa-page-simple', [PagesController::class, 'simpleArticles']),
+        'GET /api/zz-page-articles',
+        PaginationEngine::factory(),
     ],
 
     // A catch-all contributes a diagnostic and no operation. Nothing it reports may reach the routes it

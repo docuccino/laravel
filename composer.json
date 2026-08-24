@@ -48,7 +48,15 @@
     "suggest": {
         "illuminate/testing": "Required by the contract-testing helpers (Docuccino\\Laravel\\Testing) — every Laravel application already has it through laravel/framework.",
         "phpunit/phpunit": "Required by the contract-testing helpers (Docuccino\\Laravel\\Testing), which are only ever loaded from a test suite.",
-        "docuccino/inference-phpstan": "Required for static type inference — install as a dev dependency: composer require --dev docuccino/inference-phpstan. Without it documentation comes from docblocks and attributes only."
+        "docuccino/inference-phpstan": "Required for static type inference — install as a dev dependency: composer require --dev docuccino/inference-phpstan. Without it documentation comes from docblocks and attributes only.",
+        "laravel/passport": "^12.0 || ^13.0 — documents the OAuth2 security scheme and the scopes each route's middleware requires.",
+        "laravel/sanctum": "^4.0 — documents the bearer-token security scheme and the abilities each route's middleware requires.",
+        "lorisleiva/laravel-actions": "^2.0 — reads action classes used as controllers: the dispatched method's signature, a body from rules(), a 403 from authorize().",
+        "spatie/laravel-data": "^4.0 — documents Data classes as component schemas and request bodies, including name mapping, wrapping and rules() overrides.",
+        "spatie/laravel-json-api-paginate": "^2.0 — documents the page[number] / page[size] / page[cursor] parameters and the paginator envelope from jsonPaginate().",
+        "spatie/laravel-permission": "^6.0 — publishes the roles and permissions a route's middleware requires (opt-in per document).",
+        "spatie/laravel-query-builder": "^7.0 — documents the filter[…], sort, include and fields[…] parameters from the query's allow-lists.",
+        "timacdonald/json-api": "^1.0@beta — documents JSON:API resources as JSON:API documents, plus their include and fields parameters."
     },
     "autoload": {
         "psr-4": {

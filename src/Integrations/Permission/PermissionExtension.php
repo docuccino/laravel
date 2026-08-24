@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\Permission;
 
 use Docuccino\Attributes\Unauthenticated;
+use Docuccino\Core\Draft\DescriptionAppender;
 use Docuccino\Core\Draft\OperationDraft;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
 use Docuccino\Core\Patch\Contribution;
-use Docuccino\Laravel\Integrations\Support\DescriptionAppender;
 
 /**
  * Documents the authorization a `spatie/laravel-permission` middleware enforces. Each

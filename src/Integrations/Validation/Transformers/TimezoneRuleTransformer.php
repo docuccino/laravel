@@ -34,5 +34,8 @@ final class TimezoneRuleTransformer implements RuleTransformer
         if (! $field->has('description')) {
             $field->set('description', 'Must be a valid timezone identifier.');
         }
+
+        // No keyword carries "is a timezone", so the example is the rule's to propose.
+        $field->proposeExample('UTC');
     }
 }

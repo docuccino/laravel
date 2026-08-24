@@ -29,6 +29,8 @@ final readonly class WebhookDeclaration
         public AttributeSet $attributes,
         public ?string $summary = null,
         public ?string $description = null,
+        public bool $deprecated = false,
+        public ?string $deprecationReason = null,
         public array $files = [],
         public ?Source $source = null,
     ) {}

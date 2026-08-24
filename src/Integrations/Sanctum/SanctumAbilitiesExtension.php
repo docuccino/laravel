@@ -6,12 +6,12 @@ namespace Docuccino\Laravel\Integrations\Sanctum;
 
 use Docuccino\Attributes\Abilities;
 use Docuccino\Attributes\Unauthenticated;
+use Docuccino\Core\Draft\DescriptionAppender;
 use Docuccino\Core\Draft\OperationDraft;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
 use Docuccino\Core\Patch\Contribution;
-use Docuccino\Laravel\Integrations\Support\DescriptionAppender;
 
 /**
  * Documents the Sanctum token abilities an operation requires. Each `abilities:`/`ability:` middleware (or

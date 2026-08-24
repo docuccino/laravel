@@ -86,7 +86,7 @@ it('reports a malformed CLASS-level attribute, naming the class it was written o
         ->and($operation['summary'])->toBe('Still documented from the class');
 });
 
-it('marks an operation deprecated from the @deprecated docblock tag', function (): void {
+it('marks an operation deprecated from the @deprecated docblock tag, publishing its reason', function (): void {
     [$document] = ($this->builtDocument)(static function (Router $router): void {
         $router->get('api/zz-attr-deprecated', [InheritingController::class, 'archived']);
         // The control: no tag, no flag.
@@ -97,5 +97,8 @@ it('marks an operation deprecated from the @deprecated docblock tag', function (
     $live = $document['paths']['/api/zz-attr-live']['get'];
 
     expect($deprecated['deprecated'] ?? null)->toBeTrue()
-        ->and($live)->not->toHaveKey('deprecated');
+        // The tag's trailing text is the reason, and a summary-only docblock leaves it the description.
+        ->and($deprecated['description'])->toBe('**Deprecated:** Superseded by the v2 listing.')
+        ->and($live)->not->toHaveKey('deprecated')
+        ->and($live)->not->toHaveKey('description');
 });

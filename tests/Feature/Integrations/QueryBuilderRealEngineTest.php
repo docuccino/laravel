@@ -154,7 +154,7 @@ it('turns the real-engine harvest into bracketed query parameters', function ():
     expect(array_keys($byName))->toEqualCanonicalizing([
         'filter[name]', 'filter[status]', 'filter[email]', 'sort', 'page',
     ]);
-    expect($byName['filter[status]']->description)->toBe('Exact-match filter')
+    expect($byName['filter[status]']->description)->toBe('Exact match on `status`.')
         ->and($byName['sort']->schema['default'])->toBe(['name'])
         ->and($byName['sort']->schema['items']['enum'])->toContain('name', '-name')
         ->and($byName['page']->schema)->toBe(['type' => 'integer', 'default' => 1, 'minimum' => 1]);

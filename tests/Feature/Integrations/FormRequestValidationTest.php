@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Docuccino\Core\Contract\ContractIndex;
+use Docuccino\Core\Contract\Examples\ExampleAudit;
 use Docuccino\Core\Inference\ActionAnalysis;
 use Docuccino\Core\Inference\DType\ArrayShapeField;
 use Docuccino\Core\Inference\DType\ArrayShapeT;
@@ -61,10 +63,33 @@ it('documents a FormRequest as a request body recovered from rules()', function 
 
     expect($schema['type'])->toBe('object')
         ->and($schema['required'])->toBe(['name', 'quantity', 'role'])
-        ->and($schema['properties']['name'])->toBe(['type' => 'string', 'maxLength' => 100])
-        ->and($schema['properties']['quantity'])->toBe(['type' => 'integer', 'minimum' => 1])
+        ->and($schema['properties']['name'])->toBe(['type' => 'string', 'maxLength' => 100, 'example' => 'example'])
+        ->and($schema['properties']['quantity'])->toBe(['type' => 'integer', 'minimum' => 1, 'example' => 1])
+        // An upload gets no example: bytes are not an illustration.
         ->and($schema['properties']['avatar'])->toBe(['type' => ['string', 'null'], 'format' => 'binary', 'description' => 'An image file.'])
-        ->and($schema['properties']['role'])->toBe(['type' => 'string', 'enum' => ['admin', 'user']]);
+        ->and($schema['properties']['role'])->toBe(['type' => 'string', 'enum' => ['admin', 'user'], 'example' => 'admin']);
+});
+
+/**
+ * The end of the chain: a synthesized example is only worth anything if the document a client
+ * validates against agrees with it. This audits the whole document through the same check an authored
+ * example goes through, and pins that the walk actually found some — a scan matching nothing would
+ * otherwise pass forever.
+ */
+it('publishes request-body examples the document itself validates', function (): void {
+    app('router')->post('api/validated-widgets', [ValidationController::class, 'store']);
+
+    $document = generateWith(stubRulesEngine());
+    $properties = $document['components']['schemas']['StoreWidgetRequest']['properties'];
+
+    $examples = array_filter($properties, static fn (array $property): bool => array_key_exists('example', $property));
+
+    expect(array_keys($examples))->toBe(['name', 'quantity', 'role']);
+
+    $report = (new ExampleAudit(ContractIndex::fromArray($document)))->run();
+
+    expect($report->checked)->toBeGreaterThanOrEqual(count($examples))
+        ->and($report->findings)->toBe([]);
 });
 
 it('does not add a request body to a route with no recoverable rules', function (): void {
