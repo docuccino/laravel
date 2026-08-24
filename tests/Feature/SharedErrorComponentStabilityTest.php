@@ -64,8 +64,20 @@ function errorRefAt(array $document, string $path): ?string
  */
 function errorSchemaNames(array $document): array
 {
+    return errorComponentNames($document, 'schemas');
+}
+
+/**
+ * Every shared 403 component of one bucket, by name — the published set a `$ref` has to name a member
+ * of, which is what makes an assertion about one of them exact rather than merely not-the-other.
+ *
+ * @param  array<string, mixed>  $document
+ * @return list<string>
+ */
+function errorComponentNames(array $document, string $bucket): array
+{
     $names = array_keys(array_filter(
-        $document['components']['schemas'] ?? [],
+        $document['components'][$bucket] ?? [],
         static fn (string $name): bool => str_starts_with($name, 'Error403'),
         ARRAY_FILTER_USE_KEY,
     ));
@@ -82,9 +94,12 @@ it('shares one shape between two operations that describe it differently', funct
 
     expect(errorRefAt($document, '/api/zz-denied'))->not->toBeNull()
         ->and(errorRefAt($document, '/api/zz-denied-again'))->toBe(errorRefAt($document, '/api/zz-denied'))
-        // Each keeps the prose it was given; only the body moved.
-        ->and($denied['description'])->toBe('Forbidden')
-        ->and($again['description'])->toBe('You may not do that');
+        // One response as well as one shape — prose does not change what a response is — and each arm
+        // keeps the words it was given: the shared component states the ones it published, and the arm
+        // that says something else states its own beside the `$ref` that overrides them.
+        ->and($denied['$ref'] ?? null)->toBe($again['$ref'] ?? null)
+        ->and(resolveResponse($document, $denied)['description'])->toBe('Forbidden')
+        ->and(resolveResponse($document, $again)['description'])->toBe('You may not do that');
 });
 
 it('shares the whole response between two operations that state it identically', function (): void {
@@ -93,13 +108,22 @@ it('shares the whole response between two operations that state it identically',
     $document = sharedErrorDocument()->document->toArray();
 
     $ref = $document['paths']['/api/zz-blocked']['get']['responses']['403']['$ref'] ?? null;
+    $denied = $document['paths']['/api/zz-denied']['get']['responses']['403']['$ref'] ?? null;
+
+    // Two bodies, two response components — and the two the pairs point at are exactly the two the
+    // document published, which says which name each pair got rather than only that they differ.
+    $published = array_map(
+        static fn (string $name): string => '#/components/responses/'.$name,
+        errorComponentNames($document, 'responses'),
+    );
+    $pointed = [$ref, $denied];
+    sort($pointed);
 
     expect($ref)->not->toBeNull()
         ->and($document['paths']['/api/zz-blocked-again']['get']['responses']['403']['$ref'] ?? null)->toBe($ref)
         ->and($document['components']['responses'][substr((string) $ref, strlen('#/components/responses/'))]['content']['application/json']['schema'] ?? [])
         ->toHaveKey('$ref')
-        // The pair that differs only in prose could not share a response, and kept its own.
-        ->and($document['paths']['/api/zz-denied']['get']['responses']['403'])->not->toHaveKey('$ref');
+        ->and($pointed)->toBe($published);
 });
 
 it('retires the plain name when two shapes contest a status', function (): void {

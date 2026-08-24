@@ -6,7 +6,6 @@ namespace Docuccino\Laravel\Extensions;
 
 use Docuccino\Attributes\CookieParameter;
 use Docuccino\Attributes\HeaderParameter;
-use Docuccino\Attributes\IgnoreParam;
 use Docuccino\Attributes\PathParameter;
 use Docuccino\Attributes\QueryParameter;
 use Docuccino\Core\Draft\OperationDraft;
@@ -20,9 +19,9 @@ use Docuccino\Core\TypeGrammar\TypeStringParser;
 
 /**
  * Applies the parameter attributes at the attribute precedence layer (design §7): query, header,
- * cookie and explicit path parameters, plus `#[IgnoreParam]` removals. Type strings are parsed to a
- * DType and converted through the route's schema chain, so `#[QueryParameter(type: 'int')]` gives an
- * integer schema.
+ * cookie and explicit path parameters. Type strings are parsed to a DType and converted through the
+ * route's schema chain, so `#[QueryParameter(type: 'int')]` gives an integer schema. The subtractive
+ * `#[IgnoreParam]` is {@see IgnoredParametersExtension}, which has to run after every producer.
  *
  * A bracketed name (`#[QueryParameter('filter[status]')]`) patches the matching property of a
  * deepObject container parameter when one exists — type/description/format/example/default onto the
@@ -43,10 +42,6 @@ final class AttributeParametersExtension implements OperationExtension
 
     public function handle(OperationDraft $operation, RouteContext $context): void
     {
-        foreach ($context->attributes->all(IgnoreParam::class) as $ignore) {
-            $this->remove($operation, $ignore->name, $ignore->in);
-        }
-
         // Accumulate per container and write the `required` list once — a second equal-layer write
         // would shadow rather than append.
         $deepRequired = [];
@@ -99,9 +94,7 @@ final class AttributeParametersExtension implements OperationExtension
         $parameter->setDescription($description, $contribution);
 
         if ($type !== null) {
-            foreach ($context->converter()->toSchema($this->types->parse($type))->schema as $keyword => $value) {
-                $parameter->schema()->set($keyword, $value, $contribution);
-            }
+            $parameter->schema()->declareShape($context->converter()->toSchema($this->types->parse($type))->schema, $contribution);
         }
 
         // After the type keywords, so an explicit format wins over one the type string implied.
@@ -156,9 +149,7 @@ final class AttributeParametersExtension implements OperationExtension
         $contribution = Contribution::attribute($context->actionSource());
 
         if ($type !== null) {
-            foreach ($context->converter()->toSchema($this->types->parse($type))->schema as $keyword => $value) {
-                $property->set($keyword, $value, $contribution);
-            }
+            $property->declareShape($context->converter()->toSchema($this->types->parse($type))->schema, $contribution);
         }
         if ($format !== null) {
             $property->set('format', $format, $contribution);
@@ -189,13 +180,6 @@ final class AttributeParametersExtension implements OperationExtension
             $merged = array_values(array_unique([...$existingNames, ...$children]));
 
             $schema->set('required', $merged, Contribution::attribute($context->actionSource()));
-        }
-    }
-
-    private function remove(OperationDraft $operation, string $name, ?string $in): void
-    {
-        foreach ($in === null ? ['query', 'path', 'header', 'cookie'] : [$in] as $location) {
-            $operation->removeParameter($location, $name);
         }
     }
 }

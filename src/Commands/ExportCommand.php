@@ -15,6 +15,7 @@ use Docuccino\Core\Extensions\Context\ExportTarget;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Support\AtomicFile;
 use Docuccino\Core\Support\Directory;
+use Docuccino\Laravel\Config\DocumentEmitOptions;
 use Docuccino\Laravel\Config\ExportDiagnostics;
 use Docuccino\Laravel\Pipeline\DocumentBuilder;
 use Docuccino\Laravel\Support\Paths;
@@ -272,11 +273,10 @@ final class ExportCommand extends Command
         // `--yaml` is the single-target override's say; a configured target states it in its own path.
         $yaml = $this->option('yaml') === true || $target->yaml();
 
-        return (new EmitOptions)
+        return DocumentEmitOptions::for($config)
             ->withYaml($yaml && Formats::serialisesYaml($target->format))
             ->withProvenance($this->provenanceLevel())
-            ->withKeepIds($this->option('drop-ids') !== true)
-            ->withMockFakerKey($config->mockFakerKey());
+            ->withKeepIds($this->option('drop-ids') !== true);
     }
 
     private function provenanceLevel(): ProvenanceLevel

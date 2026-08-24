@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Extensions;
 
+use Docuccino\Attributes\IgnoreResponse;
+use Docuccino\Attributes\Response;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Draft\OperationDraft;
@@ -50,7 +52,10 @@ final class InferredResponsesExtension implements OperationExtension
 
     /**
      * The OAS range key a redirect documents under: `RedirectResponse` takes any 3xx and the return site
-     * names none of them, so the range is what the code proves and 302 would be a guess.
+     * names none of them, so the range is what the code proves and 302 would be a guess. Whether it is
+     * still there once every layer has spoken belongs to the document lint of the same name, not here: an
+     * attribute retires it ({@see OperationDraft::supersedeStatusRange()}), and a diagnostic raised from
+     * this side would tell an author who pinned the code to pin it again.
      */
     private const REDIRECT_STATUS = '3XX';
 
@@ -95,15 +100,18 @@ final class InferredResponsesExtension implements OperationExtension
         /** @var array<string, array{payloads: list<DType>, location: ?SourceLocation, empty: bool, headers: ?array<string, mixed>, bodies: array<string, array<string, mixed>>}> $byStatus */
         $byStatus = [];
 
-        /** @var array<string, true> $unrecovered */
+        /** @var array<string, list<string>> $unrecovered */
         $unrecovered = [];
 
         foreach ($analysis->returns as $return) {
             [$status, $payload, $empty, $headers, $bodies] = $this->unwrap($return->type, $fileCalls);
 
+            // Every status the class landed on, not just the first: two return paths of one bare
+            // JsonResponse are two responses the document cannot describe, and a declaration at one of
+            // them settles that one.
             $bare = $this->unrecoveredResponse($return->type, $bodies);
-            if ($bare !== null) {
-                $unrecovered[$bare] = true;
+            if ($bare !== null && ! in_array($status, $unrecovered[$bare] ?? [], true)) {
+                $unrecovered[$bare][] = $status;
             }
 
             // A bare void/never return (no JsonResponse wrapper) documents nothing.
@@ -124,7 +132,7 @@ final class InferredResponsesExtension implements OperationExtension
             }
         }
 
-        $this->reportUnrecovered($context, array_keys($unrecovered));
+        $this->reportUnrecovered($context, $unrecovered);
 
         if ($byStatus === []) {
             return;
@@ -137,28 +145,6 @@ final class InferredResponsesExtension implements OperationExtension
             // PHP coerced the '200' key to int; the draft API and reason table want the string back.
             $this->emit($operation, $context, (string) $status, $bucket['payloads'], $bucket['location'], $producer, $bucket['headers'], $bucket['bodies']);
         }
-
-        if (isset($byStatus['3XX'])) {
-            $this->reportUnpinnedRedirect($context);
-        }
-    }
-
-    /**
-     * The return site redirects but doesn't say to what code, so the response lands on the `3XX` range.
-     * Pinning it is advice for the API's author, hence a diagnostic rather than a description consumers read.
-     */
-    private function reportUnpinnedRedirect(RouteContext $context): void
-    {
-        $context->components->addDiagnostic(new Diagnostic(
-            severity: Severity::Info,
-            code: 'inferred-response.unpinned-redirect',
-            message: sprintf(
-                '%s returns a redirect whose exact 3xx status is not stated at the return site, so it is documented as the 3XX range.',
-                $context->actionRef->symbol(),
-            ),
-            routeSignature: $context->route->signature(),
-            help: 'Pin it with #[Response(302)] (or the code this endpoint always answers with) when the redirect is not conditional.',
-        ));
     }
 
     /**
@@ -167,15 +153,24 @@ final class InferredResponsesExtension implements OperationExtension
      * deliberate empty one. A streamed body loses its media type rather than its shape, so it gets the
      * advice that actually fixes it.
      *
-     * @param  list<string>  $fqcns
+     * Unlike the redirect range, this is not a question the finished document can answer: a framework
+     * response the analyzer got nothing from is documented as no body at all, which reads exactly like a
+     * deliberately empty one. So the one extra fact needed — did the author name the body themselves —
+     * is read here ({@see named()}), rather than the notice firing at somebody who did.
+     *
+     * @param  array<string, list<string>>  $fqcns  the unrecovered response class → every status it landed on
      */
     private function reportUnrecovered(RouteContext $context, array $fqcns): void
     {
-        foreach ($fqcns as $fqcn) {
+        foreach ($fqcns as $fqcn => $statuses) {
             // The streamed JSON response is the exception: it names its own media type, so what it is
             // missing is the SHAPE, and the payload advice is the one that fixes it.
             $streamed = (FrameworkClasses::isStreamed($fqcn) || FrameworkClasses::isBinaryFile($fqcn))
                 && ! FrameworkClasses::isStreamedJson($fqcn);
+
+            if ($this->named($context, $statuses, $streamed)) {
+                continue;
+            }
 
             $context->components->addDiagnostic(new Diagnostic(
                 severity: Severity::Info,
@@ -189,10 +184,59 @@ final class InferredResponsesExtension implements OperationExtension
                 ),
                 routeSignature: $context->route->signature(),
                 help: $streamed
-                    ? 'Pass the type where the response is built (response()->stream($callback, 200, [\'Content-Type\' => \'text/csv\'])), or declare it with #[Response(mediaType: \'text/csv\')].'
+                    ? 'Name the type where the response is built (response()->stream($callback, 200, [\'Content-Type\' => \'text/csv\'])), or declare the body and its media type together with #[Response(type: YourPayload::class, mediaType: \'text/csv\')] — mediaType alone documents nothing to put under it.'
                     : 'Build the payload where the analyzer can see it (return response()->json($payload) from the action itself rather than handing back a collaborator\'s response), or declare the body with #[Response(type: YourPayload::class)].',
             ));
         }
+    }
+
+    /**
+     * Whether the author has already said what these statuses carry — ALL of them. A declaration settles
+     * the status it names and no other, so a class that reached two statuses is only silenced by two.
+     *
+     * @param  list<string>  $statuses
+     */
+    private function named(RouteContext $context, array $statuses, bool $streamed): bool
+    {
+        foreach ($statuses as $status) {
+            if (! $this->namedAt($context, $status, $streamed)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Whether one status is settled: a `#[Response]` naming a body type for it, or an `#[IgnoreResponse]`
+     * saying the response is not real. Both run a layer above this one and settle exactly the fact the
+     * diagnostic reports missing, so firing anyway would ask for a declaration that is already there. A
+     * `#[Response]` with no `type:` is not one of them: it names a status and leaves the body as
+     * unrecovered as it found it.
+     *
+     * A streamed body is missing its MEDIA TYPE rather than its shape, so there the declaration has to
+     * name one as well — `mediaType:` left unwritten is the JSON default, which is not a statement about
+     * what the stream sends, and the notice says exactly that.
+     */
+    private function namedAt(RouteContext $context, string $status, bool $streamed): bool
+    {
+        foreach ($context->attributes->all(IgnoreResponse::class) as $ignore) {
+            if ((string) $ignore->status === $status) {
+                return true;
+            }
+        }
+
+        foreach ($context->attributes->all(Response::class) as $declared) {
+            if ($declared->type === null || (string) $declared->status !== $status) {
+                continue;
+            }
+
+            if (! $streamed || $declared->mediaType !== null) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

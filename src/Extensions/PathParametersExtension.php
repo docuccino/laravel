@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Extensions;
 
 use BackedEnum;
+use Docuccino\Attributes\PathParameter;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Draft\OperationDraft;
@@ -75,7 +76,7 @@ final class PathParametersExtension implements OperationExtension
 
                 if ($isBound && $field !== null) {
                     $this->reportUntypedColumn($context, $name, $context->routeBindings[$name], $field);
-                } elseif ($isBound) {
+                } elseif ($isBound && ! self::declaresType($context, $name)) {
                     $this->reportUntypedBinding($context, $name, $context->routeBindings[$name]);
                 }
             }
@@ -122,6 +123,23 @@ final class PathParametersExtension implements OperationExtension
         }
 
         return (new ReflectionEnum($fqcn))->getBackingType()?->getName() === 'string';
+    }
+
+    /**
+     * Whether `#[PathParameter]` already names this segment's type. The attribute layer applies it a
+     * whole extension later, so the untyped-binding notice would otherwise name a parameter the document
+     * types perfectly and send its author at the attribute they had already written. Its remedy is the
+     * one thing that settles it, so reading it here is what makes the notice true.
+     */
+    private static function declaresType(RouteContext $context, string $name): bool
+    {
+        foreach ($context->attributes->all(PathParameter::class) as $declared) {
+            if ($declared->name === $name && $declared->type !== null) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** Says the binding itself went untyped, without guessing why nothing answered for it. */

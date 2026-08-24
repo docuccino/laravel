@@ -137,7 +137,9 @@ it('emits the full shape for every array member typed in its own @var', function
         'type' => 'array',
         'items' => ['type' => 'string'],
         'description' => 'Flat list of permission strings the candidate held at submit.',
-        'example' => '["listing.view", "listing.create"]',
+        // `@example ["listing.view", "listing.create"]` is text in the docblock and a JSON array in the
+        // document: an example is copied out of the document, so it is published as the type beside it.
+        'example' => ['listing.view', 'listing.create'],
     ]],
     '@phpstan-var list<SnapshotFormData>' => ['attachments', [
         'type' => 'array',
@@ -322,7 +324,8 @@ it('attaches a #[Mock] hint to the real recovered shape, following a #[MapName] 
     expect($component['properties']['snapshot_schema_version'])->toBe([
         'type' => 'integer',
         'description' => 'Snapshot schema version. Bumped if the shape changes; renderers branch on this.',
-        'example' => '1',
+        // `@example 1` beside `type: integer` publishes the number, not the digit as text.
+        'example' => 1,
         'x-docuccino' => ['mock' => ['faker' => 'randomDigit', 'seedGroup' => 'snapshot']],
     ])
         ->and($component['properties']['profile']['x-docuccino'])->toBe(['mock' => ['faker' => 'safeEmail']])

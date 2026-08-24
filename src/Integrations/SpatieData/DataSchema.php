@@ -12,6 +12,7 @@ use Docuccino\Core\Extensions\Schema\ComponentHoist;
 use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Docuccino\Core\Extensions\Schema\MockHints;
 use Docuccino\Core\Extensions\Schema\SchemaResult;
+use Docuccino\Core\Extensions\Schema\TypedExample;
 use Docuccino\Core\Inference\ClassMetadata;
 use Docuccino\Core\Inference\ClassRef;
 use Docuccino\Core\Inference\DType\ClassT;
@@ -126,7 +127,19 @@ final class DataSchema implements TypeToSchema
                     $schema['description'] = $property->summary;
                 }
                 if ($property->example !== null) {
-                    $schema['example'] = $property->example;
+                    // A docblock tag can only hold text, so `@example false` arrives as `"false"` and has
+                    // to be read as the type computed a line ago — an example is the part of the document
+                    // a consumer copies, so a wrongly-typed one is false rather than merely vague.
+                    $example = TypedExample::of($property->example, $schema['type'] ?? null);
+                    if ($example === null) {
+                        $context->diagnostic(TypedExample::untypable(
+                            $fqcn.'::$'.$property->name,
+                            $property->example,
+                            $schema['type'] ?? null,
+                        ));
+                    } else {
+                        $schema['example'] = $example[0];
+                    }
                 }
                 $default = $this->reflector->propertyDefault($fqcn, $property->name);
                 if ($default['hasDefault'] && $default['value'] !== null) {

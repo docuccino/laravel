@@ -3,6 +3,6 @@
         "severity": "info",
         "code": "inferred-handler.too-dynamic",
         "message": "The exception handler Docuccino\\Laravel\\Tests\\Support\\DynamicRenderer::__invoke could not fold a JSON response for 1 exception type(s): Illuminate\\Database\\Eloquent\\ModelNotFoundException; those responses defer to the next error tier.",
-        "help": "Return a JSON response with a constant status (or a helper that does) from the handler, or document these responses with an attribute, so Docuccino can recover their shape."
+        "help": "Return a JsonResponse from the arm \u2014 `response()->json(\u2026)`, not a plain `response()`, a view or a redirect \u2014 and give it a literal integer status: `404`, not `$e->getCode()` or a ternary. Either a status that folds or a body that folds is enough, and that is what settles this. Naming these responses with #[Response] corrects the document instead, and this notice keeps naming the callback."
     }
 ]

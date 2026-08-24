@@ -43,9 +43,6 @@ final class ActionHtmlResponseExtension implements OperationExtension
         $response = $operation->response('200');
         $response->setDescription('OK', $by);
 
-        $content = $response->content(HtmlRepresentation::MEDIA_TYPE);
-        foreach (HtmlRepresentation::SCHEMA as $keyword => $value) {
-            $content->set($keyword, $value, $by);
-        }
+        $response->content(HtmlRepresentation::MEDIA_TYPE)->declareShape(HtmlRepresentation::SCHEMA, $by);
     }
 }

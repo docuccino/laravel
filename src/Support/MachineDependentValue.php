@@ -94,7 +94,9 @@ final class MachineDependentValue
     /**
      * The report for a URL whose host the route itself names (`Route::domain(...)`), or null when that
      * host is a fine thing to publish. No config key answered for it and no docuccino option overrides
-     * it, so the help names the two ways out instead of a pin.
+     * it, so the help names the two ways out instead of a pin — and says which of them settles this,
+     * since an overlay is applied after the build and so corrects the document without clearing the
+     * report that named it.
      */
     public static function forHost(string $subject, string $url, string $routeSignature): ?Diagnostic
     {
@@ -108,7 +110,7 @@ final class MachineDependentValue
                 $subject,
                 self::redact($url),
             ),
-            "Bind the route to the host clients actually use, or rewrite the operation's servers with an overlay, so the document says the same thing wherever it is built.",
+            "Bind the route to the host clients actually use, which is what settles this. Rewriting the operation's servers with an overlay makes the document say the same thing wherever it is built, and this warning keeps naming the route.",
             $routeSignature,
         );
     }

@@ -50,7 +50,7 @@ final class HandlerDeferralSummaryTransformer implements DocumentTransformer
                     $preview,
                     $more,
                 ),
-                help: 'Return a JSON response with a constant status (or a helper that does) from the handler, or document these responses with an attribute, so Docuccino can recover their shape.',
+                help: 'Return a JsonResponse from the arm — `response()->json(…)`, not a plain `response()`, a view or a redirect — and give it a literal integer status: `404`, not `$e->getCode()` or a ternary. Either a status that folds or a body that folds is enough, and that is what settles this. Naming these responses with #[Response] corrects the document instead, and this notice keeps naming the callback.',
             ));
         }
     }

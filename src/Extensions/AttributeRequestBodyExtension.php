@@ -9,16 +9,26 @@ use Docuccino\Core\Draft\OperationDraft;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
+use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
+use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Patch\Contribution;
 use Docuccino\Core\TypeGrammar\TypeStringParser;
 
 /**
  * Applies `#[BodyParameter]` attributes to the request body (design §Attribute set). Each one patches a
- * single property of the inferred body — adding or overriding just that property, keeping every
- * inferred sibling — and creates a body outright when nothing was inferred. The merge is re-applied at
- * the attribute layer, so the attribute wins for the property it names while an inferred body's media
+ * single property of the recovered body — adding or overriding just that property, keeping every
+ * recovered sibling — and creates a body outright when nothing was recovered. The merge is re-applied at
+ * the attribute layer, so the attribute wins for the property it names while a recovered body's media
  * type (multipart, say) survives.
+ *
+ * `requestBody` is ONE guarded field every producer writes whole, so a merge can only keep what it can
+ * already read: this runs LATE in the Request phase, behind every recoverer that writes a body at the
+ * integration layer (FormRequest/inline rules, spatie-Data, laravel-actions, and a third-party
+ * recoverer at the default priority). Running ahead of them instead is not a lost merge but a lost
+ * body — the attribute's one-property body wins the field at layer 40 and the recovered one is
+ * shadowed, taking its 422 with it.
  */
+#[ExtensionOrder(priority: Priorities::LATE)]
 final class AttributeRequestBodyExtension implements OperationExtension
 {
     public function __construct(
@@ -55,7 +65,7 @@ final class AttributeRequestBodyExtension implements OperationExtension
                 $property['example'] = $attribute->example;
             }
 
-            // Just this one property; inferred siblings stay put.
+            // Just this one property; recovered siblings stay put.
             $properties[$attribute->name] = $property;
             $required = $this->withRequired($required, $attribute->name, $attribute->required);
         }
@@ -64,7 +74,7 @@ final class AttributeRequestBodyExtension implements OperationExtension
     }
 
     /**
-     * The inferred body as `[mediaType, properties, required, bodyRequired]`, or an empty
+     * The recovered body as `[mediaType, properties, required, bodyRequired]`, or an empty
      * `application/json` object body. The first content media type wins.
      *
      * @return array{0: string, 1: array<string, mixed>, 2: list<string>, 3: bool}

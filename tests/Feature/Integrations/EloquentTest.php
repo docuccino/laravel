@@ -334,6 +334,17 @@ it('weakens date claims to plain strings and diagnoses a serializeDate() overrid
 
     $codes = array_map(static fn ($d): string => $d->code, $registry->diagnostics());
     expect($codes)->toContain('eloquent.custom-date-serialization');
+
+    // The condition is a method the model declares, so no annotation clears it and none can put the
+    // `format` back either — the help says so rather than sending the reader after an annotation that
+    // does not exist.
+    $note = array_values(array_filter(
+        $registry->diagnostics(),
+        static fn ($d): bool => $d->code === 'eloquent.custom-date-serialization',
+    ));
+    expect($note[0]->help)->toBe(
+        'The date/datetime columns are documented as `type: string` without a `format`, and no annotation puts one back: no attribute carries a column format, and a docblock type has no format to state. If clients need an exact one, state it in an overlay, which corrects the document and leaves this notice naming the model.',
+    );
 });
 
 it('reflects $with and the serializeDate override in the model facts', function (): void {

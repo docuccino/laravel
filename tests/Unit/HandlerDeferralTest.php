@@ -68,7 +68,13 @@ it('emits one summary diagnostic per callback with count + first few exception t
         ->and($diagnostics[0]->message)->toContain('5 exception type(s)')
         ->and($diagnostics[0]->message)->toContain('E1, E2, E3')
         ->and($diagnostics[0]->message)->toContain('(and 2 more)')
-        ->and($diagnostics[0]->message)->toContain('App\\Renderer::__invoke');
+        ->and($diagnostics[0]->message)->toContain('App\\Renderer::__invoke')
+        // The help names only what clears the deferral — a JsonResponse arm with a status or a body
+        // that folds — and says outright that the attribute corrects the document without silencing
+        // this, because the deferral is recorded before any attribute layer runs.
+        ->and($diagnostics[0]->help)->toBe(
+            'Return a JsonResponse from the arm — `response()->json(…)`, not a plain `response()`, a view or a redirect — and give it a literal integer status: `404`, not `$e->getCode()` or a ternary. Either a status that folds or a body that folds is enough, and that is what settles this. Naming these responses with #[Response] corrects the document instead, and this notice keeps naming the callback.',
+        );
 });
 
 it('emits one diagnostic per distinct callback, in sorted order', function (): void {

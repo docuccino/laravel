@@ -160,9 +160,7 @@ final readonly class WebhookOperationBuilder
             }
 
             $schema = $converter->toSchema($this->types->parse($declared->type, $imports))->schema;
-            foreach ($schema as $keyword => $value) {
-                $response->content($declared->mediaType)->set($keyword, $value, $attribute);
-            }
+            $response->content($declared->mediaType ?? Response::DEFAULT_MEDIA_TYPE)->declareShape($schema, $attribute);
         }
     }
 

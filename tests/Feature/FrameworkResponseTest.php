@@ -152,14 +152,19 @@ it('documents a redirect as a 3xx with a Location header and no body', function 
 
 it('raises the pin-the-status advice as a diagnostic, never in the published description', function (): void {
     // A description is read by the API's CONSUMERS, who cannot act on advice about a codebase they
-    // can't see; the author can, so the advice is a diagnostic.
+    // can't see; the author can, so the advice is a diagnostic. It comes from the document lint rather
+    // than from here, because whether the range survived is not a fact inference holds.
     [$responses, , $diagnostics] = documentForReturn(new ClassT(FrameworkClasses::REDIRECT_RESPONSE));
 
     expect($responses['3XX']['description'])->not->toContain('#[Response');
 
     $raised = array_values(array_filter(
         $diagnostics,
-        static fn ($d): bool => $d->code === 'inferred-response.unpinned-redirect' && $d->routeSignature === 'GET /api/forms',
+        // Four workbench routes point at this one action, and the lint names the OPERATION rather than
+        // the action, so it has something to say about each of them. The message opens with the
+        // signature, so an exact prefix is what picks out this one rather than `/api/forms/{form}`.
+        static fn ($d): bool => $d->code === 'lint.unpinned-redirect'
+            && str_starts_with($d->message, 'GET /api/forms publishes'),
     ));
 
     expect($raised)->toHaveCount(1)
@@ -172,7 +177,7 @@ it('raises no unpinned-redirect diagnostic for a route that never redirects', fu
     [, , $diagnostics] = documentForReturn(new ClassT(FrameworkClasses::JSON_RESPONSE));
 
     expect(array_map(static fn ($d): string => $d->code, $diagnostics))
-        ->not->toContain('inferred-response.unpinned-redirect');
+        ->not->toContain('lint.unpinned-redirect');
 });
 
 it('carries the 3XX range key through validation and every OpenAPI version', function (): void {

@@ -1373,7 +1373,6 @@
                         "layer": "integration",
                         "fields": [
                           "$ref",
-                          "items",
                           "properties",
                           "required",
                           "type"
@@ -2336,7 +2335,6 @@
                         "layer": "integration",
                         "fields": [
                           "$ref",
-                          "items",
                           "properties",
                           "required",
                           "type"
@@ -3753,11 +3751,11 @@
     "document": {
       "id": "doc:default",
       "configHash": "d74edbb0d3229a32fdc9eaa557e0099b3d6453491fbb44b517a56c9103a569b7",
-      "contentHash": "f9bcf8ff31ce35c3e38e4561afbc986a665f2afa0e25dc224fac3abd6400af32"
+      "contentHash": "7e18ff6a02ae75e0ec09b26fe771dc44c7b42cb97061d13958f9d4eafc9f8882"
     },
     "generator": {
       "name": "docuccino/laravel",
-      "version": "0.8.4",
+      "version": "0.8.5",
       "specVersion": "1.0.0"
     },
     "content": {

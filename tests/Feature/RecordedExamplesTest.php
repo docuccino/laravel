@@ -319,8 +319,9 @@ it('leaves a route it recorded nothing for exactly where it was', function (): v
     $after = recordedDocument($this->recordings);
 
     // The recording is the media type's, never the schema's: written into the schema it would change
-    // what this route's 403 IS, and the shared body its neighbour also points at would come apart.
-    expect($after['paths']['/api/zz-denied']['get']['responses']['403']['content']['application/json']['example'])
+    // what this route's 403 IS, and the shared body its neighbour also points at would come apart. The
+    // two share a response, so the illustration publishes on the component beside the shape it shows.
+    expect(resolveResponse($after, $after['paths']['/api/zz-denied']['get']['responses']['403'])['content']['application/json']['example'])
         ->toBe(['code' => 'forbidden'])
         ->and($after['paths']['/api/zz-denied-again'])->toBe($before['paths']['/api/zz-denied-again'])
         ->and($after['components']['schemas']['Error403'])->toBe($before['components']['schemas']['Error403']);
@@ -412,13 +413,26 @@ it('leaves a neighbour exactly where it was when a name is recorded on a shared 
 
     $after = recordedDocument($this->recordings);
 
-    // An `examples` map is not stripped before that pass groups bodies, so publishing one here would
-    // key the grouping and drop this route's neighbour out of the component they share.
-    expect($after['paths']['/api/zz-denied']['get']['responses']['403']['content']['application/json']['example'])
-        ->toBe(['code' => 'expired'])
-        ->and($after['paths']['/api/zz-denied']['get']['responses']['403']['content']['application/json'])->not->toHaveKey('examples')
+    // A recorded name is not an authored one, so it publishes as the singular example this route's arm
+    // carries into the response it shares.
+    $media = resolveResponse($after, $after['paths']['/api/zz-denied']['get']['responses']['403'])['content']['application/json'];
+
+    // The neighbour recorded nothing, so what a consumer READS for its 403 — the component it points at,
+    // its own words, its shape — is what it read before, with one sanctioned widening: the two state one
+    // response, so the illustration published on it is offered by both. That is the whole of the change,
+    // which is why it is stated as one member rather than left to a schema comparison.
+    $neighbour = resolveResponse($after, $after['paths']['/api/zz-denied-again']['get']['responses']['403']);
+    $before403 = resolveResponse($before, $before['paths']['/api/zz-denied-again']['get']['responses']['403']);
+
+    $widened = $neighbour;
+    unset($widened['content']['application/json']['example']);
+
+    expect($media['example'])->toBe(['code' => 'expired'])
+        ->and($media)->not->toHaveKey('examples')
         ->and($after['paths']['/api/zz-denied-again'])->toBe($before['paths']['/api/zz-denied-again'])
-        ->and($after['components']['responses'])->toBe($before['components']['responses']);
+        ->and($neighbour['content']['application/json']['example'])->toBe(['code' => 'expired'])
+        ->and($before403['content']['application/json'])->not->toHaveKey('example')
+        ->and($widened)->toBe($before403);
 });
 
 it('says so where a recorded name went nowhere', function (): void {

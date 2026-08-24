@@ -208,7 +208,7 @@ it('keeps the first of two declarations sharing a name, and says the second went
         ->and($diagnostics[0][1])->toBe('attribute.example-duplicate-name')
         ->and($diagnostics[0][2])->toContain('both named "twice"')
         ->and($operation['responses']['200']['content']['application/json']['examples'])
-        ->toBe(['twice' => ['value' => ['id' => 1]]]);
+        ->toBe(['twice' => ['value' => ['id' => 1, 'name' => 'Cog', 'status' => 'draft']]]);
 });
 
 it('keeps the named map when a nameless declaration shares the node, and says the bare one went', function (): void {
@@ -219,21 +219,37 @@ it('keeps the named map when a nameless declaration shares the node, and says th
     expect($diagnostics)->toHaveCount(1)
         ->and($diagnostics[0][1])->toBe('attribute.example-unusable')
         ->and($diagnostics[0][2])->toContain('never both')
-        ->and($media['examples'])->toBe(['named' => ['value' => ['id' => 1]]])
+        ->and($media['examples'])->toBe(['named' => ['value' => ['id' => 1, 'name' => 'Cog', 'status' => 'draft']]])
         ->and($media)->not->toHaveKey('example');
 });
 
-it('leaves an example that lies about its own schema to the example audit', function (): void {
-    // Nothing in the build can catch this: the declaration is well formed and the target exists. The
-    // audit holds every published example to the schema beside it, which is where this belongs.
+it('reports an example that lies about its own schema, on the build that publishes it', function (): void {
+    // No attribute rule can catch this: the declaration is well formed and the target exists. The audit
+    // holds every published example to the schema beside it, and it runs on every build — an example is
+    // the part of a document a consumer copies, so hearing about it only in an opt-in test is too late.
     [$diagnostics] = degradationDiagnostics('mismatchedValue');
-    expect($diagnostics)->toBe([]);
 
+    expect($diagnostics)->toHaveCount(1)
+        ->and($diagnostics[0][0])->toBe('warning')
+        ->and($diagnostics[0][1])->toBe('lint.example-mismatch')
+        ->and($diagnostics[0][2])->toContain('wrong-shape')
+        ->and($diagnostics[0][2])->toContain('The required properties (status) are missing')
+        ->and($diagnostics[0][3])->not->toBeNull();
+
+    // And the same finding through the audit's own entry point, which the contract assertion uses.
     $document = generateDocument()->document->toArray();
     $report = (new ExampleAudit(ContractIndex::fromArray($document)))->run();
 
     expect($report->ok())->toBeFalse()
         ->and($report->findings[0]->pointer)->toContain('wrong-shape');
+});
+
+it('says nothing about an example that satisfies the schema beside it', function (): void {
+    // The other half of the lint: it has to be silent on a document whose examples are all right, or
+    // it is a channel nobody reads. Every published example on these routes is a conforming body.
+    [$diagnostics] = degradationDiagnostics('duplicateName');
+
+    expect(array_column($diagnostics, 1))->not->toContain('lint.example-mismatch');
 });
 
 it('holds the examples it publishes to the schemas beside them', function (): void {

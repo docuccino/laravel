@@ -11,10 +11,12 @@ use Docuccino\Core\Extensions\BuiltIn\DefaultTypeMappers;
 use Docuccino\Core\Extensions\BuiltIn\EnumSchema;
 use Docuccino\Core\Extensions\BuiltIn\SharedErrorResponses;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
+use Docuccino\Core\Lint\ExampleSchemaLint;
 use Docuccino\Core\Lint\MissingDescriptionLint;
 use Docuccino\Core\Lint\OperationIdStyleLint;
 use Docuccino\Core\Lint\SensitiveFieldLint;
 use Docuccino\Core\Lint\UndocumentedTagLint;
+use Docuccino\Core\Lint\UnpinnedRedirectLint;
 use Docuccino\Core\Lint\VacuousUnionLint;
 use Docuccino\Laravel\Exceptions\DefaultExceptionToResponse;
 use Docuccino\Laravel\Extensions\AttributeParametersExtension;
@@ -23,6 +25,7 @@ use Docuccino\Laravel\Extensions\AttributeResponsesExtension;
 use Docuccino\Laravel\Extensions\AttributeSecurityExtension;
 use Docuccino\Laravel\Extensions\ErrorResponsesExtension;
 use Docuccino\Laravel\Extensions\FrameworkResponseTypeToSchema;
+use Docuccino\Laravel\Extensions\IgnoredParametersExtension;
 use Docuccino\Laravel\Extensions\ImplicitResponsesExtension;
 use Docuccino\Laravel\Extensions\InferredResponsesExtension;
 use Docuccino\Laravel\Extensions\PathParametersExtension;
@@ -80,6 +83,9 @@ final class DefaultExtensions
             AttributeOverridesExtension::class,
             // Reads a committed file of responses a test suite recorded; nothing is executed here.
             RecordedExamplesExtension::class,
+            // Finalize: every parameter every producer contributes now exists, so the subtractive
+            // #[IgnoreParam] can drop one without a later producer writing it back.
+            IgnoredParametersExtension::class,
             // Finalize: every response, parameter and request body a #[Example] could name now exists.
             AttributeExamplesExtension::class,
             RouteServersExtension::class,
@@ -128,6 +134,8 @@ final class DefaultExtensions
             OperationIdStyleLint::class,
             UndocumentedTagLint::class,
             VacuousUnionLint::class,
+            ExampleSchemaLint::class,
+            UnpinnedRedirectLint::class,
             // Diagnostics-only too: what is wrong with the committed recordings, said once per document.
             RecordedExampleAudit::class,
         ];

@@ -47,6 +47,10 @@ final class AttributeResponsesExtension implements OperationExtension
             $status = (string) $attribute->status;
             $response = $operation->response($status);
 
+            // Naming a code is also a statement about the range inference put it in
+            // ({@see OperationDraft::supersedeStatusRange()}).
+            $operation->supersedeStatusRange($status, Contribution::attribute($context->actionSource()));
+
             $response->setDescription('OK', Contribution::fallback());
             $response->setDescription($attribute->description, Contribution::attribute($context->actionSource()));
 
@@ -62,10 +66,20 @@ final class AttributeResponsesExtension implements OperationExtension
                 continue;
             }
 
-            $schema = $context->converter()->toSchema($this->types->parse($attribute->type, $imports))->schema;
-            foreach ($schema as $keyword => $value) {
-                $response->content($attribute->mediaType)->set($keyword, $value, Contribution::attribute($context->actionSource()));
+            // Naming the media type is the same statement one level down
+            // ({@see ResponseDraft::supersedeMediaRange()}) — but only a media type the author actually
+            // WROTE is a naming. The default publishes the body under JSON without claiming the stream a
+            // producer could only document as any-media-type is really JSON, which nobody said.
+            if ($attribute->mediaType !== null) {
+                $response->supersedeMediaRange($attribute->mediaType, Contribution::attribute($context->actionSource()));
             }
+
+            $mediaType = $attribute->mediaType ?? Response::DEFAULT_MEDIA_TYPE;
+
+            // One declared shape, not a keyword-by-keyword patch: whatever a producer worked out about
+            // the body it replaces comes off with it (SchemaDraft::declareShape()).
+            $schema = $context->converter()->toSchema($this->types->parse($attribute->type, $imports))->schema;
+            $response->content($mediaType)->declareShape($schema, Contribution::attribute($context->actionSource()));
         }
 
         $this->applyResponseHeaders($operation, $context, $imports);
@@ -104,7 +118,21 @@ final class AttributeResponsesExtension implements OperationExtension
         }
 
         foreach ($byStatus as $status => $headers) {
-            $operation->response((string) $status)->set('headers', $headers, Contribution::attribute($context->actionSource()));
+            // Naming a header AT a status is a statement that the status exists, so it retires the range
+            // the same way #[Response] does ({@see OperationDraft::supersedeStatusRange()}).
+            $operation->supersedeStatusRange((string) $status, Contribution::attribute($context->actionSource()));
+
+            // `headers` is one guarded field every producer writes whole, so a declaration has to carry
+            // what is already there or it replaces it — the declared header BESIDE a redirect's inherited
+            // `Location`, not instead of it. A name written twice is the author's.
+            $response = $operation->response((string) $status);
+            $inherited = $response->resolvedField('headers');
+
+            $response->set(
+                'headers',
+                is_array($inherited) ? [...$inherited, ...$headers] : $headers,
+                Contribution::attribute($context->actionSource()),
+            );
         }
     }
 }

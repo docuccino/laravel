@@ -66,6 +66,22 @@ it('writes a Postman collection alongside the OpenAPI document', function (): vo
         ->and($collection['item'])->not->toBeEmpty();
 });
 
+it('illustrates a format in the collection with the sample the document configured', function (): void {
+    // `representation.examples.formats` is one document-level answer to "what does a value of this
+    // format look like". The collection fabricates the values the document does not state, so reading
+    // the built-in table here would leave one document disagreeing with itself.
+    $dir = targetsDir();
+    configureTargets([['format' => 'postman', 'path' => $dir.'/collection.json']]);
+    config()->set('docuccino.documents.default.representation.examples.formats', ['date-time' => '2030-06-01T12:00:00Z']);
+
+    $this->artisan('docuccino:export')->assertSuccessful();
+
+    $collection = (string) file_get_contents($dir.'/collection.json');
+
+    expect($collection)->toContain('2030-06-01T12:00:00Z')
+        ->and($collection)->not->toContain('2024-01-01T00:00:00Z');
+});
+
 it('rejects a YAML path for a Postman target', function (): void {
     // Postman imports JSON only, so a `.yaml` collection is a file it refuses.
     configureTargets([['format' => 'postman', 'path' => targetsDir().'/collection.yaml']]);

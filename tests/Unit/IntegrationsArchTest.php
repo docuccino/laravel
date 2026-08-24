@@ -39,6 +39,12 @@ arch('built-in integrations consume only the public extension surface')
         'Docuccino\Core\Extensions\Schema\MockHints',
         'Docuccino\Core\Extensions\Schema\SchemaIdentity',
         'Docuccino\Core\Extensions\Schema\SchemaResult',
+        // Same exemption, same reason as EnumDecoration above: the ONE reading of an authored example
+        // literal against the type it will sit beside. A docblock `@example` and a `#[RuleSchema]`
+        // example rule both arrive as text, and the two integrations holding them — spatie-data on the
+        // response side, validation on the request side — must read `false` identically, or whichever
+        // one rolls its own publishes a string against `type: boolean`.
+        'Docuccino\Core\Extensions\Schema\TypedExample',
         'Docuccino\Core\Extensions\Validation\RecoveredRequest',
         'Docuccino\Core\Extensions\Validation\ResponseDraftApplier',
         'Docuccino\Core\Extensions\Validation\RuleSet',

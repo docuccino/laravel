@@ -301,7 +301,11 @@ it('says the media type is missing when a stream never states one', function ():
         ->and($raised)->toHaveCount(1)
         ->and($raised[0]->severity->value)->toBe('info')
         ->and($raised[0]->message)->toContain('media type')
-        ->and($raised[0]->help)->toContain("#[Response(mediaType: 'text/csv')]");
+        // The advice has to be the advice that works: `mediaType:` with no `type:` writes no body at
+        // all, so the attribute half names both or names nothing.
+        ->and($raised[0]->help)->toContain("mediaType: 'text/csv')]")
+        ->and($raised[0]->help)->toContain('#[Response(type:')
+        ->and($raised[0]->help)->toContain('mediaType alone documents nothing');
 });
 
 it('gives an action that serves two media types one content entry each', function (): void {

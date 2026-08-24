@@ -132,15 +132,24 @@ final class ImplicitResponsesExtension implements OperationExtension
 
     /**
      * True when a request extension recovered a validated body. Tested by layer, not by a closed
-     * producer list: a winning `requestBody` from any `integration:*` producer means some request
-     * recoverer owns the body, so third-party recoverers earn the 422 too — while an attribute-layer
-     * `#[BodyParameter]` body rightly doesn't.
+     * producer list: an `integration:*` producer on `requestBody` means some request recoverer built
+     * the body, so third-party recoverers earn the 422 too — while a body that is only ever
+     * `#[BodyParameter]` rightly doesn't.
+     *
+     * The whole trail is read, not just the winner. `requestBody` is one field written whole, so a
+     * `#[BodyParameter]` patching one property of a recovered body takes the field at the attribute
+     * layer — and the route still validates. Asking the winner alone made the 422 depend on whether an
+     * unrelated attribute happened to be present.
      */
     private function hasValidatedRequest(OperationDraft $operation): bool
     {
-        $producer = $operation->producerFor('requestBody');
+        foreach ($operation->producersFor('requestBody') as $producer) {
+            if (str_starts_with($producer, 'integration:')) {
+                return true;
+            }
+        }
 
-        return $producer !== null && str_starts_with($producer, 'integration:');
+        return false;
     }
 
     /**

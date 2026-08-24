@@ -14,6 +14,7 @@ use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
 use Docuccino\Laravel\Pipeline\DocumentGenerator;
+use Workbench\App\Http\Controllers\AnnotatedValidationController;
 use Workbench\App\Http\Controllers\ValidationController;
 use Workbench\App\Http\Requests\StoreWidgetRequest;
 
@@ -90,6 +91,54 @@ it('publishes request-body examples the document itself validates', function ():
 
     expect($report->checked)->toBeGreaterThanOrEqual(count($examples))
         ->and($report->findings)->toBe([]);
+});
+
+/**
+ * `requestBody` is one guarded field every producer writes whole, so a `#[BodyParameter]` can only
+ * patch what it can already read — which makes the attribute extension's position behind the
+ * recoverers load-bearing rather than incidental. Ahead of them it wrote a one-property body that won
+ * the field at layer 40 and shadowed the recovered one, which also took the 422 with it: the implicit
+ * 422 asks who produced the body.
+ */
+it('patches a recovered FormRequest body with one #[BodyParameter] and keeps its 422', function (): void {
+    app('router')->post('api/annotated-widgets', [AnnotatedValidationController::class, 'storeAnnotated']);
+
+    $document = generateWith(stubRulesEngine());
+    $operation = $document['paths']['/api/annotated-widgets']['post'];
+    $schema = $operation['requestBody']['content']['multipart/form-data']['schema'];
+
+    // Every recovered property survives, and the attribute's own is added beside them.
+    expect(array_keys($schema['properties']))->toBe(['name', 'quantity', 'avatar', 'role', 'note'])
+        ->and($schema['properties']['name'])->toBe(['type' => 'string', 'maxLength' => 100, 'example' => 'example'])
+        ->and($schema['properties']['note'])->toBe(['type' => 'string', 'description' => 'A free-text note.'])
+        ->and($schema['required'])->toBe(['name', 'quantity', 'role'])
+        ->and($operation['requestBody']['required'])->toBeTrue();
+
+    // The attribute wins the field, so the recovered body is patched rather than hoisted to a $ref.
+    expect($operation['requestBody']['content']['multipart/form-data']['schema'])->not->toHaveKey('$ref');
+
+    // The route still validates, so it still answers 422.
+    expect($operation['responses'])->toHaveKey(422);
+});
+
+/**
+ * The trail, not the winner, is what says a body was recovered — and the trail is what carries the
+ * attribute's own contribution too, so `--provenance=full` names both halves of the merge.
+ */
+it('records both halves of a patched body in provenance', function (): void {
+    app('router')->post('api/annotated-widgets', [AnnotatedValidationController::class, 'storeAnnotated']);
+
+    $document = generateWith(stubRulesEngine());
+    $records = $document['paths']['/api/annotated-widgets']['post']['x-docuccino']['provenance'];
+
+    $body = array_values(array_filter(
+        $records,
+        static fn (array $record): bool => in_array('requestBody', $record['fields'], true),
+    ));
+
+    expect($body)->toHaveCount(1)
+        ->and($body[0]['producer'])->toBe('attribute')
+        ->and(array_column($body[0]['overrode'], 'producer'))->toBe(['integration:form-request']);
 });
 
 it('does not add a request body to a route with no recoverable rules', function (): void {

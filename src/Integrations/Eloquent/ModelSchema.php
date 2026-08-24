@@ -165,7 +165,7 @@ final class ModelSchema implements TypeToSchema
                     severity: Severity::Info,
                     code: 'eloquent.custom-date-serialization',
                     message: sprintf('Model %s overrides serializeDate(), so its date attributes\' wire format is not statically known; they are documented as plain strings.', $fqcn),
-                    help: 'The date/datetime columns are documented as `type: string` without a `format`. Pin an exact format with an annotation if clients need one.',
+                    help: 'The date/datetime columns are documented as `type: string` without a `format`, and no annotation puts one back: no attribute carries a column format, and a docblock type has no format to state. If clients need an exact one, state it in an overlay, which corrects the document and leaves this notice naming the model.',
                 ));
             }
 

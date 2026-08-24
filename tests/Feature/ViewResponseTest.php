@@ -105,7 +105,7 @@ it('says nothing about a view the author could act on', function (): void {
     expect(array_map(static fn ($d): string => $d->code, $diagnostics))
         ->not->toContain('inferred-response.payload-unrecoverable')
         ->and(array_map(static fn ($d): string => $d->code, $diagnostics))
-        ->not->toContain('inferred-response.unpinned-redirect');
+        ->not->toContain('lint.unpinned-redirect');
 });
 
 it('refuses a view wherever it turns up, not just at the top level', function (): void {

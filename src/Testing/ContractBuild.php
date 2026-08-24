@@ -6,12 +6,12 @@ namespace Docuccino\Laravel\Testing;
 
 use Docuccino\Core\Contract\ContractIndex;
 use Docuccino\Core\Document\UirDocument;
-use Docuccino\Core\Emit\EmitOptions;
 use Docuccino\Core\Emit\Formats;
 use Docuccino\Core\Emit\ProvenanceLevel;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\ExportTarget;
 use Docuccino\Core\Inference\TypeEngine;
+use Docuccino\Laravel\Config\DocumentEmitOptions;
 use Docuccino\Laravel\Pipeline\DocumentBuilder;
 use Docuccino\Laravel\Support\GitShow;
 use Docuccino\Laravel\Support\Paths;
@@ -68,15 +68,15 @@ final class ContractBuild
     {
         $document = $this->fresh();
         $yaml = $target->yaml() && Formats::serialisesYaml($target->format);
+        $configured = DocumentEmitOptions::for($this->config());
 
         $variants = [];
         foreach (ProvenanceLevel::cases() as $provenance) {
             foreach ([true, false] as $keepIds) {
-                $output = Formats::emit($target->format, $document, new EmitOptions(
-                    keepIds: $keepIds,
-                    provenance: $provenance,
-                    yaml: $yaml,
-                ))->output;
+                $output = Formats::emit($target->format, $document, $configured
+                    ->withKeepIds($keepIds)
+                    ->withProvenance($provenance)
+                    ->withYaml($yaml))->output;
 
                 $variants[$output] = true;
             }
@@ -88,11 +88,10 @@ final class ContractBuild
     /** What `docuccino:export` writes with no flags — the form a failure message compares against. */
     public function canonicalEmission(ExportTarget $target): string
     {
-        return Formats::emit($target->format, $this->fresh(), new EmitOptions(
-            keepIds: true,
-            provenance: ProvenanceLevel::Winners,
-            yaml: $target->yaml() && Formats::serialisesYaml($target->format),
-        ))->output;
+        return Formats::emit($target->format, $this->fresh(), DocumentEmitOptions::for($this->config())
+            ->withKeepIds()
+            ->withProvenance(ProvenanceLevel::Winners)
+            ->withYaml($target->yaml() && Formats::serialisesYaml($target->format)))->output;
     }
 
     public function absolute(string $path): string

@@ -8,7 +8,6 @@ use Docuccino\Core\Draft\OperationDraft;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Patch\Contribution;
-use Docuccino\Core\Patch\Remove;
 use Docuccino\Laravel\Integrations\ApiResources\PaginatedResourceResponsesExtension;
 use Docuccino\Laravel\Integrations\ApiResources\ResourceReflector;
 use Docuccino\Laravel\Integrations\TimacdonaldJsonApi\TimacdonaldResourceReflector;
@@ -20,13 +19,14 @@ use Docuccino\Laravel\Integrations\TimacdonaldJsonApi\TimacdonaldResourceReflect
  *
  * The item schema comes from a fresh conversion of the collection type (hoist-deduped, so re-converting
  * costs no components), then goes into the {@see PaginationEnvelope} for that kind at INTEGRATION
- * precedence, overriding the inference-layer `{data: [...]}` body already emitted. Laravel keeps the
- * `data` wrapper on paginated responses even under `withoutWrapping`, so a leftover bare-array `items`
- * keyword is removed.
+ * precedence, replacing the inference-layer `{data: [...]}` body already emitted. It is written as one
+ * declared shape, so the keywords that body left behind come off with it — Laravel keeps the `data`
+ * wrapper on paginated responses even under `withoutWrapping`, and a leftover bare-array `items` beside
+ * an object envelope would be invalid.
  *
  * The envelope's `links`/`meta` are hoisted to one component per shape ({@see PaginationParts}), and the
- * envelope itself to one per item type and kind where it can be ({@see PageComponent}) — so the body
- * becomes a `$ref` and every keyword the inline form wrote comes back off.
+ * envelope itself to one per item type and kind where it can be ({@see PageComponent}) — so the body is
+ * declared as a bare `$ref` and the inline form's keywords come off the same way.
  */
 final class PaginatedResponseBody
 {
@@ -83,24 +83,10 @@ final class PaginatedResponseBody
         $mediaType = $response->primaryMediaType() ?: 'application/json';
         $content = $response->content($mediaType);
 
-        if ($reference !== null) {
-            // The whole body is the component now, so every keyword the inline envelope would have
-            // written — plus the `items` below — comes off, and a bare `$ref` is left in their place.
-            foreach (['type', 'properties', 'required', 'items'] as $keyword) {
-                $content->set($keyword, Remove::value(), $by);
-            }
-
-            $content->set('$ref', $reference['$ref'], $by);
-
-            return;
-        }
-
-        foreach ($envelope as $keyword => $value) {
-            $content->set($keyword, $value, $by);
-        }
-
-        // The envelope is an object, so a top-level `items` left by a withoutWrapping body is invalid.
-        $content->set('items', Remove::value(), $by);
+        // Either form is the whole body, so it is declared as one shape: the keywords the inference-layer
+        // `{data: […]}` — or a withoutWrapping bare array — left behind come off with the shape they
+        // described, which is what leaves a bare `$ref` where the component publishes.
+        $content->declareShape($reference ?? $envelope, $by);
     }
 
     /**

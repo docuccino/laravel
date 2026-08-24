@@ -65,8 +65,10 @@ final class ExampleDegradationsController
         return response()->json([]);
     }
 
-    #[Example(name: 'twice', value: ['id' => 1])]
-    #[Example(name: 'twice', value: ['id' => 2])]
+    // Both bodies satisfy WidgetData: which declaration wins is what this pins, so an incomplete
+    // example would only add an unrelated lint.example-mismatch on top of the answer.
+    #[Example(name: 'twice', value: ['id' => 1, 'name' => 'Cog', 'status' => 'draft'])]
+    #[Example(name: 'twice', value: ['id' => 2, 'name' => 'Sprocket', 'status' => 'draft'])]
     public function duplicateName(): JsonResponse
     {
         return response()->json([]);
@@ -108,8 +110,8 @@ final class ExampleDegradationsController
         return response()->json([]);
     }
 
-    #[Example(name: 'named', value: ['id' => 1])]
-    #[Example(value: ['id' => 2])]
+    #[Example(name: 'named', value: ['id' => 1, 'name' => 'Cog', 'status' => 'draft'])]
+    #[Example(value: ['id' => 2, 'name' => 'Sprocket', 'status' => 'draft'])]
     public function namedAndUnnamed(): JsonResponse
     {
         return response()->json([]);
@@ -127,8 +129,8 @@ final class ExampleDegradationsController
         return response()->json([]);
     }
 
-    // Well-formed, documented, and a lie about the body — nothing here can catch that, which is the
-    // example audit's job.
+    // Well-formed, documented, and a lie about the body: no attribute rule can catch that, so it is
+    // the example audit the build runs over the finished document that has to.
     #[Example(name: 'wrong-shape', value: ['id' => 'not a number', 'name' => 'Sprocket'])]
     public function mismatchedValue(): JsonResponse
     {

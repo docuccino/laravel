@@ -139,9 +139,10 @@ return [
                 //                              // item type and paginator kind; false inlines every copy
                 // ],
                 // 'examples' => [
-                //     // JSON Schema `format` => the value synthesized examples illustrate it with,
-                //     // merged over the built-ins. Still validated against each field's own rules; one
-                //     // that fails falls back to the built-in sample and says so.
+                //     // JSON Schema `format` => the value Docuccino illustrates it with — synthesized
+                //     // examples and a Postman collection's fabricated bodies alike — merged over the
+                //     // built-ins. Still validated against each field's own rules; one that fails falls
+                //     // back to the built-in sample and says so.
                 //     'formats' => ['email' => 'jane@example.com'],
                 // ],
             ],
@@ -288,6 +289,21 @@ return [
         // 'vacuous_union' => [
         //     'enabled' => true,
         //     // Operation signatures or operationIds to accept, e.g. ['GET /api/ping'].
+        //     'allow' => [],
+        // ],
+        // Checks every published example against the schema beside it — a consumer copies an example
+        // and sends it back, so one the schema rejects is worse than none.
+        // 'examples' => [
+        //     'enabled' => true,
+        //     // JSON pointers, or the label the message names, e.g.
+        //     // ['#/components/schemas/Invoice/properties/status/example'].
+        //     'allow' => [],
+        // ],
+        // Flags a redirect the document doesn't say exactly one thing about: the 3XX range alone, or
+        // the range still standing beside a concrete 3xx.
+        // 'unpinned_redirect' => [
+        //     'enabled' => true,
+        //     // Operation signatures or operationIds to accept, e.g. ['GET /auth/callback'].
         //     'allow' => [],
         // ],
     ],

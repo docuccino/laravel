@@ -9,7 +9,10 @@ use Docuccino\Core\Inference\ClassMetadata;
 use Docuccino\Core\Inference\ClassRef;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\DType\EnumT;
+use Docuccino\Core\Inference\DType\ListT;
+use Docuccino\Core\Inference\DType\NullT;
 use Docuccino\Core\Inference\DType\ScalarT;
+use Docuccino\Core\Inference\DType\UnionT;
 use Docuccino\Core\Inference\PropertyMetadata;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Laravel\Integrations\SpatieData\DataClassReflector;
@@ -19,6 +22,7 @@ use Docuccino\Laravel\Tests\Fixtures\SpatieData\AccountData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\AccountStatus;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\AddressData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ContainerShapeData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\ExampleTypesData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\PinnedRuleData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ProfileResource;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\RequestExclusionData;
@@ -203,4 +207,83 @@ it('maps a date-only data.date_format to the date format', function (): void {
     $converter->toSchema(new ClassT(AccountData::class));
 
     expect($components->schemas()['AccountData']['properties']['created_at'])->toBe(['type' => 'string', 'format' => 'date']);
+});
+
+/**
+ * The `@example` a property's docblock states, as the schema beside it has to carry it. A tag holds text
+ * and nothing else, so `@example false` reaches the mapper as the string `"false"`; the mirror below is
+ * that verbatim, which is exactly what the real engine hands over.
+ */
+function exampleTypesEngine(): StubTypeEngine
+{
+    return new StubTypeEngine(classes: [
+        ExampleTypesData::class => new ClassMetadata(ExampleTypesData::class, [
+            new PropertyMetadata('sso_required', ScalarT::bool(), 'Whether the team must sign in through SSO.', 'false'),
+            new PropertyMetadata('seats', ScalarT::int(), null, '7'),
+            new PropertyMetadata('utilisation', ScalarT::float(), null, '0.25'),
+            new PropertyMetadata('permissions', new ListT(ScalarT::string()), null, '["listing.view", "listing.create"]'),
+            new PropertyMetadata('slug', ScalarT::string(), null, 'acme'),
+            new PropertyMetadata('retention_days', new UnionT([ScalarT::int(), new NullT]), null, 'null'),
+            new PropertyMetadata('renewal_seats', ScalarT::int(), null, 'n/a'),
+        ]),
+    ]);
+}
+
+/** @return array{0: array<string, mixed>, 1: list<string>} */
+function exampleTypesComponent(): array
+{
+    $components = new ComponentRegistry;
+    $converter = new SchemaConverter([new DataSchema, ...DefaultTypeMappers::all()], exampleTypesEngine(), $components);
+    $converter->toSchema(new ClassT(ExampleTypesData::class));
+
+    /** @var array<string, mixed> $properties */
+    $properties = $components->schemas()['ExampleTypesData']['properties'];
+
+    return [$properties, array_map(static fn ($d): string => $d->code, $components->diagnostics())];
+}
+
+it('publishes a docblock example as the JSON type the schema beside it declares', function (string $property, mixed $example): void {
+    [$props] = exampleTypesComponent();
+
+    /** @var array<string, mixed> $schema */
+    $schema = $props[$property];
+
+    // `??` would read a published `null` example as no example at all, which is the one case here that
+    // has to be told apart from absence.
+    expect(array_key_exists('example', $schema))->toBeTrue()
+        ->and($schema['example'])->toBe($example);
+})->with([
+    // The pair that made the defect visible: `default: false` was typed and `example: "false"` was not,
+    // so one node claimed a boolean and illustrated it with a string.
+    'a boolean' => ['sso_required', false],
+    'an integer' => ['seats', 7],
+    'a number' => ['utilisation', 0.25],
+    'an array, from its JSON literal' => ['permissions', ['listing.view', 'listing.create']],
+    // A string type keeps the author's text exactly as written — there is nothing to read it as.
+    'a string' => ['slug', 'acme'],
+    // `integer|null`: the union is read most specific first, so `null` is the null and not the word.
+    'a nullable integer' => ['retention_days', null],
+]);
+
+it('makes a property carrying both a default and an example agree with itself', function (): void {
+    // Same node, two provenances — the constructor default through reflection, the example through the
+    // docblock. Before they were read the same way this node said `type: boolean, default: false,
+    // example: "false"`, and a consumer copying the example would have sent a string.
+    [$props] = exampleTypesComponent();
+
+    expect($props['sso_required'])->toBe([
+        'type' => 'boolean',
+        'description' => 'Whether the team must sign in through SSO.',
+        'example' => false,
+        'default' => false,
+    ]);
+});
+
+it('publishes no example it cannot read, and says which property and type', function (): void {
+    // `@example n/a` on an `int`. A wrong example is the one part of the document a consumer copies, so
+    // dropping it is the honest answer — and the author hears where to go and what to change.
+    [$props, $codes] = exampleTypesComponent();
+
+    expect($props['renewal_seats'])->not->toHaveKey('example')
+        ->and($codes)->toBe(['docblock.example-untypable']);
 });
