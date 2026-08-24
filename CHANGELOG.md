@@ -7,6 +7,22 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.8.5
+
+### Features
+
+- share the pagination envelope links and meta across page components ([#177](https://github.com/docuccino/docuccino/pull/177))
+- let a document override filter descriptions and format samples ([#176](https://github.com/docuccino/docuccino/pull/176))
+- share one page component per item type and paginator kind ([#169](https://github.com/docuccino/docuccino/pull/169))
+
+### Bug fixes
+
+- stop the diagnostics channel drowning in noise nobody can act on ([#175](https://github.com/docuccino/docuccino/pull/175))
+- stamp coverage-span tests from one base and let a reason replace the generic note ([#174](https://github.com/docuccino/docuccino/pull/174))
+- let a QB entry's own comment and default outrank its filter class attribute ([#173](https://github.com/docuccino/docuccino/pull/173))
+- describe each Query Builder filter by the match it performs ([#170](https://github.com/docuccino/docuccino/pull/170))
+- declare the packages the integrations target, and name the real fields separator ([#168](https://github.com/docuccino/docuccino/pull/168))
+
 ## v0.8.4
 
 ### Features
