@@ -7,6 +7,19 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.9.0
+
+### Breaking changes
+
+- patch a recovered request body instead of replacing it ([#184](https://github.com/docuccino/docuccino/pull/184))
+  - an operation with both a recovered request body and a `#[BodyParameter]` now publishes the recovered properties with the declared one patched in, rather than only the declared one, and gains the `422` it was previously missing. Documents affected by the old behaviour will change shape — in the direction of describing what the endpoint actually accepts.
+
+### Bug fixes
+
+- stop three help strings prescribing a remedy that changes nothing ([#187](https://github.com/docuccino/docuccino/pull/187))
+- remove an ignored parameter late enough that it stays removed ([#186](https://github.com/docuccino/docuccino/pull/186))
+- read a docblock example as the type its schema declares ([#180](https://github.com/docuccino/docuccino/pull/180))
+
 ## v0.8.5
 
 ### Features
