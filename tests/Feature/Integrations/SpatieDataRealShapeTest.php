@@ -114,10 +114,14 @@ it('emits the full shape for every array member typed in its own @var', function
 
     expect($component['properties'][$property])->toBe($expected);
 })->with([
+    // The shape that ended a released export, off the real engine: the empty schema under
+    // `additionalProperties` — which a draft can only hold as an empty ARRAY — with an authored example
+    // beside it, which is what makes the example lint look at it at all.
     '@var array<string, mixed>' => ['candidate', [
         'type' => 'object',
         'additionalProperties' => [],
         'description' => "Inline candidate profile state as it stood at submit: identity, contact details and whatever\nelse the tenant's profile schema carried.",
+        'example' => ['first_name' => 'Ada', 'last_name' => 'Lovelace'],
     ]],
     '@var array<string, array<string, string|null>>' => ['theme_data', [
         'type' => 'object',

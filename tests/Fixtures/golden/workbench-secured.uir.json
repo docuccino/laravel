@@ -425,7 +425,7 @@
                         "fields": [
                           "$ref"
                         ],
-                        "confidence": 0.9
+                        "confidence": 0.1
                       }
                     ]
                   },
@@ -3104,6 +3104,15 @@
           "id": {
             "type": "integer"
           },
+          "metadata": {
+            "description": "Whatever the publishing system stored alongside the article.",
+            "type": "object",
+            "additionalProperties": {},
+            "example": {
+              "source": "syndication",
+              "wordCount": 1200
+            }
+          },
           "subtitle": {
             "type": "string"
           }
@@ -3112,7 +3121,8 @@
           "id",
           "headline",
           "body",
-          "author"
+          "author",
+          "metadata"
         ]
       },
       "ArticleJsonApiResource": {
@@ -3203,6 +3213,10 @@
           "internal": {
             "type": "integer"
           },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {}
+          },
           "secret": {
             "type": "string"
           },
@@ -3215,7 +3229,8 @@
           "heading",
           "body",
           "secret",
-          "internal"
+          "internal",
+          "metadata"
         ]
       },
       "ArticleResource": {
@@ -3688,7 +3703,7 @@
     "document": {
       "id": "doc:secured",
       "configHash": "94201d8762854c81e0339989335efbb54aec3f6f6a92b868be5c89489a0de1af",
-      "contentHash": "79087cd156cb5e13d8a08005cc1be0a80a38c2259abe24fcd0d0b0e4768b8852"
+      "contentHash": "4732b4cd8f4f401bffed2096ec360a8d9eeb424706c52d294a08d7ea16c60ed3"
     },
     "generator": {
       "name": "docuccino/laravel",

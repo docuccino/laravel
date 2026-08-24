@@ -13,9 +13,11 @@ use Docuccino\Core\Inference\DType\DType;
 use Docuccino\Core\Inference\DType\EnumT;
 use Docuccino\Core\Inference\DType\ListT;
 use Docuccino\Core\Inference\DType\LiteralT;
+use Docuccino\Core\Inference\DType\MapT;
 use Docuccino\Core\Inference\DType\NullT;
 use Docuccino\Core\Inference\DType\ScalarT;
 use Docuccino\Core\Inference\DType\UnionT;
+use Docuccino\Core\Inference\DType\UnknownT;
 use Docuccino\Core\Inference\DType\VoidT;
 use Docuccino\Core\Inference\PropertyMetadata;
 use Docuccino\Core\Inference\ReturnSite;
@@ -250,6 +252,17 @@ final class WorkbenchEngine
                     new PropertyMetadata('internal', ScalarT::int()),
                     new PropertyMetadata('subtitle', UnionT::of([ScalarT::string(), new ClassT('Spatie\\LaravelData\\Optional')])),
                     new PropertyMetadata('author', UnionT::of([new ClassT(self::AUTHOR_DATA), new NullT])),
+                    // A free-form map with an `@example`, mirrored as the real engine hands it over:
+                    // `mixed` is UnknownT, whose schema is the EMPTY schema, so `additionalProperties`
+                    // is an empty array in the draft and `{}` in the artifact. That pair — the empty
+                    // schema plus an authored example — is what killed an export, and no fixture in this
+                    // repo had it when the example lint shipped.
+                    new PropertyMetadata(
+                        'metadata',
+                        new MapT(ScalarT::string(), new UnknownT('mixed')),
+                        'Whatever the publishing system stored alongside the article.',
+                        '{"source": "syndication", "wordCount": 1200}',
+                    ),
                 ]),
                 self::AUTHOR_DATA => new ClassMetadata(self::AUTHOR_DATA, [
                     new PropertyMetadata('name', ScalarT::string()),
