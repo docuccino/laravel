@@ -7,6 +7,21 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.10.0
+
+### Breaking changes
+
+- say what became of a configured path instead of failing in silence ([#228](https://github.com/docuccino/docuccino/pull/228))
+  - a document whose `info.description.file` could not be read published `description: ""` and now publishes no `description` member, with the `configHash` moving to match. An empty string claims this API's description *is* the empty string; absent is the true answer, and it now arrives with an error or a warning naming the key. Separately, a document naming `coverage.log` by absolute path re-fingerprints once, because that path is no longer folded into `configHash` — it was machine-dependent there.
+- consult #[IgnoreResponse] before a producer converts a body ([#206](https://github.com/docuccino/docuccino/pull/206))
+  - a document built from unchanged code can now lose responses it used to publish. A consumer cannot tell a repaired defect from a withdrawn response — a generated client loses a case from its error union, and `docuccino:diff` reports a removed response — so this is treated as breaking from the outside even though the old behaviour was the bug.
+
+### Bug fixes
+
+- describe the filter kinds the installed query builder ships ([#211](https://github.com/docuccino/docuccino/pull/211))
+- recognise every name mapper the installed spatie ships ([#209](https://github.com/docuccino/docuccino/pull/209))
+- read an authored @example wherever it is written ([#205](https://github.com/docuccino/docuccino/pull/205))
+
 ## v0.9.0
 
 ### Breaking changes
