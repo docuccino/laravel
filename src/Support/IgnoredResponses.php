@@ -50,18 +50,28 @@ final class IgnoredResponses
      *
      * Mapping is therefore a READ here, and a read leaves nothing behind: the registry rolls back to
      * where it stood, so a body converted only to be discarded hoists no component, and a diagnostic
-     * raised about a body nobody will see is not reported either.
+     * raised about a body nobody will see is not reported either. A mapper's ROUTE NOTES roll back with
+     * it — those are the same kind of fact reaching the document by another road, and a summary asking
+     * the author to make a response foldable that they asked by name to be dropped fires exactly where
+     * nothing can be done.
+     *
+     * What deliberately does NOT roll back is the route's DEPENDENCY FILES. A mapper read those to reach
+     * its answer, so the answer — including "and it was dropped" — is a function of them, and a fragment
+     * that did not re-hash them would serve a stale decision after the file that drove it changed.
+     * Over-keying costs a rebuild; under-keying costs correctness.
      */
     public static function mapThrow(RouteContext $context, ThrownException $throw): ?MappedResponse
     {
-        $snapshot = $context->components->snapshot();
+        $components = $context->components->snapshot();
+        $notes = $context->notes()->snapshot();
 
         $mapped = $context->mapThrow($throw);
         if ($mapped === null || ! self::drops($context, $mapped->draft->status)) {
             return $mapped;
         }
 
-        $context->components->restore($snapshot);
+        $context->components->restore($components);
+        $context->notes()->restore($notes);
 
         return null;
     }

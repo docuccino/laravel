@@ -9,6 +9,7 @@ use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\RepresentationPolicy;
 use Docuccino\Core\Support\Hydrate;
+use Docuccino\Core\Support\PlainText;
 use Docuccino\Laravel\Config\ConfigPaths;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderConfig;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParameters;
@@ -32,6 +33,8 @@ use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParameters;
  *   names no defined tag or would close a cycle — OAS 3.2 allows neither.
  * - A path-like key pointing outside the app base path. {@see ConfigPaths} can't relativise it, so it
  *   goes verbatim into the `configHash` and the output becomes machine-dependent.
+ * - A path-like key holding a NUL byte, which no filesystem call accepts. Every reader is handed
+ *   nothing instead ({@see ConfigPaths::unholdable()}), so this is what says the path was dropped.
  *
  * @internal
  */
@@ -134,6 +137,23 @@ final class ConfigDiagnostics
                     $type,
                 ),
                 help: sprintf('Set representation.examples.formats.%s to a string, or drop the key.', $format),
+            );
+        }
+
+        foreach (ConfigPaths::unholdable($document->raw) as $rejected) {
+            // A WARNING where its neighbours are info: the build did not merely ignore a switch, it
+            // dropped a path the author configured — an overlay is not applied, a content tree is not
+            // read — and the alternative for the same input was a `ValueError` out of `glob()` naming no
+            // config key at all. It cannot fire on anything but a value someone typed.
+            $diagnostics[] = new Diagnostic(
+                severity: Severity::Warning,
+                code: 'config.path-rejected',
+                message: sprintf(
+                    '%s contains a NUL byte, which no filesystem path can hold, so nothing read it — %s.',
+                    $rejected['key'],
+                    PlainText::of($rejected['path']),
+                ),
+                help: 'Write the path in single quotes, or escape the backslash — "\0" in a double-quoted PHP string is a NUL byte, not the two characters it looks like.',
             );
         }
 

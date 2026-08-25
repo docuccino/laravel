@@ -106,6 +106,21 @@ it('reports an added, a removed and a rewritten file as changes, and nothing els
         ->and(WatchSet::changed($before, $before))->toBe([]);
 });
 
+it('watches nothing for a configured path no filesystem call can accept', function (): void {
+    // The second reader of the same overlay globs, and the one with no diagnostics channel of its own:
+    // `glob()` raised here too, so `docuccino:watch` died on a config value the build had already
+    // refused. Refusing once at the config boundary is what makes both readers safe from one place.
+    config()->set('docuccino.documents.default.overlays', ["resources\0/overlays/*.yaml"]);
+    config()->set('docuccino.documents.default.content.dir', "resources\0/docs");
+    config()->set('docuccino.documents.default.webhooks.dir', "app\0/Webhooks");
+
+    $roots = $this->watched->documentRoots(['default']);
+
+    expect($roots)->toContain($this->fixture->path('config'))
+        ->and(array_filter($roots, static fn (string $root): bool => str_contains($root, "\0")))->toBe([])
+        ->and($this->watched->snapshot($roots))->toBeArray();
+});
+
 it('adds the webhook directory, and as a directory so a class created mid-session registers', function (): void {
     mkdir($this->fixture->path('app/Webhooks'), 0755, true);
     config()->set('docuccino.documents.default.webhooks.dir', 'app/Webhooks');

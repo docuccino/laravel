@@ -15,7 +15,9 @@ use Docuccino\Core\Overlay\OverlayDocument;
 use Docuccino\Core\Pipeline\GenerationResult;
 use Docuccino\Core\Provenance\MessagePaths;
 use Docuccino\Core\Provenance\RootRelativeSourcePathResolver;
+use Docuccino\Core\Support\ConfinedPath;
 use Docuccino\Core\Support\Hydrate;
+use Docuccino\Core\Support\PlainText;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
 use Docuccino\Laravel\Engine\EngineNeon;
 use Docuccino\Laravel\Engine\EnginePackage;
@@ -72,7 +74,13 @@ final class DocumentBuilder
         $config = $this->config($key);
         [$overlays, $overlayDiagnostics] = $this->overlays($config);
         [$extensions, $extensionDiagnostics] = ConfigExtensions::read();
-        $preDiagnostics = [...$this->engineDiagnostics(), ...$extensionDiagnostics, ...$overlayDiagnostics];
+        $preDiagnostics = [
+            ...$this->engineDiagnostics(),
+            ...$this->cachePathDiagnostics(),
+            ...$this->descriptionFileDiagnostics($config),
+            ...$extensionDiagnostics,
+            ...$overlayDiagnostics,
+        ];
 
         $result = $this->generator->generate($config, $engine, $extensions, $overlays);
 
@@ -137,6 +145,87 @@ final class DocumentBuilder
         return $analysing
             ? [...$diagnostics, ...$this->engineNeonDiagnostics()]
             : $diagnostics;
+    }
+
+    /**
+     * What became of `info.description.file` — a configured path the pipeline never touches, because
+     * {@see DocumentConfigFactory} reads it into the bag as contents at config time. That read has
+     * three outcomes and had one voice: nothing. A refused path and an absent file are the same silence
+     * as a description nobody configured, and the author is left with a document whose `info` has no
+     * description and no reason why.
+     *
+     * The same two codes and severities the `#[Description(file: …)]` reader raises, because it is the
+     * same fact with the same remedy — only the place to go and edit it differs, which is what the
+     * config-facing half of {@see ConfinedPath}'s help sentences is for. Reported here rather than in
+     * ConfigDiagnostics for the reason {@see engineNeonDiagnostics()} is: telling a refusal from an
+     * absence needs the base path, and a document's own config bag does not carry one.
+     *
+     * @return list<Diagnostic>
+     */
+    private function descriptionFileDiagnostics(DocumentConfig $config): array
+    {
+        $path = Hydrate::map(Hydrate::map($config->raw['info'] ?? null)['description'] ?? null)['file'] ?? null;
+
+        if (! is_string($path) || $path === '') {
+            return [];
+        }
+
+        $resolved = ConfinedPath::resolve($this->basePath, $path);
+
+        if ($resolved === null) {
+            return [new Diagnostic(
+                severity: Severity::Error,
+                code: 'description-file.escapes-base-path',
+                message: sprintf(
+                    'info.description.file "%s" does not name a path inside the application and was rejected, so the document has no description.',
+                    PlainText::of($path),
+                ),
+                help: ConfinedPath::CONFIG_FILE_ESCAPED_HELP,
+            )];
+        }
+
+        if (@file_get_contents($resolved) !== false) {
+            return [];
+        }
+
+        return [new Diagnostic(
+            severity: Severity::Warning,
+            code: 'description-file.missing',
+            message: sprintf(
+                'info.description.file "%s" could not be read, so the document has no description.',
+                PlainText::of($path),
+            ),
+            help: ConfinedPath::CONFIG_FILE_MISSING_HELP,
+        )];
+    }
+
+    /**
+     * `cache.path` names a directory no filesystem call can accept, so the fragment cache is off.
+     *
+     * The one path key outside the per-document bag that a BUILD reads, so ConfigDiagnostics — which
+     * only sees a document's own config — cannot report it, and this is the neighbouring channel that
+     * can. Same code and same severity as the document keys: what the author did is identical, and so
+     * is what it cost them.
+     *
+     * @return list<Diagnostic>
+     */
+    private function cachePathDiagnostics(): array
+    {
+        $configured = config('docuccino.cache.path');
+
+        if (! is_string($configured) || ConfinedPath::holdable($configured) !== null) {
+            return [];
+        }
+
+        return [new Diagnostic(
+            severity: Severity::Warning,
+            code: 'config.path-rejected',
+            message: sprintf(
+                'cache.path contains a NUL byte, which no filesystem path can hold, so the fragment cache is off and every route was rebuilt — %s.',
+                PlainText::of($configured),
+            ),
+            help: 'Write the path in single quotes, or escape the backslash — "\0" in a double-quoted PHP string is a NUL byte, not the two characters it looks like.',
+        )];
     }
 
     /**

@@ -20,6 +20,7 @@ use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Patch\Contribution;
 use Docuccino\Core\Provenance\Source;
 use Docuccino\Laravel\Exceptions\DeclaredErrorComponent;
+use Docuccino\Laravel\Support\ErrorComponentDiagnostic;
 use Docuccino\Laravel\Support\IgnoredResponses;
 
 /**
@@ -160,21 +161,16 @@ final class ErrorResponsesExtension implements OperationExtension
      * One warning per class that declared a name no `$ref` could point at. `claimComponentName()` drops
      * such a name at the write and says nothing, which leaves the author of the attribute with a line of
      * code that does nothing and no reason why — so the adapter, which unlike a draft has somewhere to
-     * say it, catches it where it reads it and names the class, the file and the name it read.
+     * say it, catches it where it reads it and names the class, the file and the name it read. The report
+     * itself is {@see ErrorComponentDiagnostic}'s: the render-method reader says the same thing.
      */
     private function reportIllegalName(RouteContext $context, DeclaredErrorComponent $declaration): void
     {
-        $context->components->addDiagnostic(new Diagnostic(
-            severity: Severity::Warning,
-            code: 'attribute.error-component-invalid',
-            message: sprintf(
-                '%s declares #[ErrorComponent("%s")], which is not a name an OpenAPI component key can carry, so the attribute names nothing and the response keeps the name it would have had.',
-                $declaration->declaredBy,
-                $declaration->name,
-            ),
-            source: $this->declarationSource($context, $declaration),
-            routeSignature: $context->route->signature(),
-            help: ComponentNames::LEGAL_NAME_HELP,
+        $context->components->addDiagnostic(ErrorComponentDiagnostic::illegalName(
+            $declaration->declaredBy,
+            $declaration->name,
+            $this->declarationSource($context, $declaration),
+            $context->route->signature(),
         ));
     }
 

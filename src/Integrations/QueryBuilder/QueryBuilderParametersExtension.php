@@ -413,7 +413,7 @@ final class QueryBuilderParametersExtension implements OperationExtension
         $context->components->addDiagnostic(new Diagnostic(
             severity: Severity::Info,
             code: 'query-builder.no-allowlists-recovered',
-            message: sprintf('A paginating Query Builder terminal was reached in %s, but no allow-lists and no default sort were recovered from the chain.', $context->actionRef->symbol()),
+            message: sprintf('A paginating Query Builder terminal was reached in %s, but no allow-lists and no default sort were recovered from the chain.', $context->actionLabel()),
             routeSignature: $context->route->signature(),
             help: 'If this endpoint offers filters/sorts, declare them via allowedFilters()/allowedSorts() somewhere the trace reaches: a method returning your QueryBuilder subclass is followed, and so is the constructor of a QueryBuilder subclass the action is type-hinted on (type-hint the subclass itself, not an interface or the base builder). Otherwise this is expected.',
         ));

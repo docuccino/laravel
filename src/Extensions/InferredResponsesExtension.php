@@ -189,7 +189,7 @@ final class InferredResponsesExtension implements OperationExtension
                     $streamed
                         ? '%s returns a bare %s, and nothing at the call site names the media type it streams, so the body is documented as any media type at all.'
                         : '%s returns a bare %s, so nothing names the response body and its shape could not be recovered.',
-                    $context->actionRef->symbol(),
+                    $context->actionLabel(),
                     $fqcn,
                 ),
                 routeSignature: $context->route->signature(),

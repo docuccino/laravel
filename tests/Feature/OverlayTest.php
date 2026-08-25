@@ -70,6 +70,43 @@ it('cannot reach a shared error response component, because transformers make th
         ->and($document['components']['responses']['NotFound']['description'] ?? null)->not->toBe('Overlaid');
 });
 
+it('degrades an overlay glob no filesystem can hold to a warning', function (): void {
+    // `glob()` raises a `ValueError` on a NUL byte and `@` does not suppress a throw, so this pattern
+    // took the whole build with it and named `glob()` rather than the config key that held it. The
+    // refusal is at the config boundary now, so the usable pattern beside it still applies.
+    file_put_contents($this->overlayDir.'/title.yaml', <<<'YAML'
+        overlay: 1.0.0
+        actions:
+          - target: $.info
+            update:
+              title: Overlaid Title
+        YAML);
+    config()->set('docuccino.documents.default.overlays', ["resources\0/overlays/*.yaml", $this->overlayDir.'/*.yaml']);
+
+    $result = app(DocumentBuilder::class)->build('default', WorkbenchEngine::make());
+
+    $rejected = diagnosticsCoded($result->diagnostics, 'config.path-rejected');
+    expect($rejected)->toHaveCount(1)
+        ->and($rejected[0]->severity->value)->toBe('warning')
+        ->and($rejected[0]->message)->toContain('overlays.0')
+        ->and($result->document->toArray()['info']['title'] ?? null)->toBe('Overlaid Title');
+});
+
+it('degrades a fragment-cache directory no filesystem can hold to a cold build and a warning', function (): void {
+    // Same byte, a different reader: `FragmentCache` reads and writes with `file_get_contents()` and
+    // `mkdir()`, so this killed the build from inside the cache. A cache that is off costs one rebuild
+    // per route and answers exactly what a warm one would.
+    config()->set('docuccino.cache.enabled', true);
+    config()->set('docuccino.cache.path', "storage/frag\0ments");
+
+    $result = app(DocumentBuilder::class)->build('default', WorkbenchEngine::make());
+
+    $rejected = diagnosticsCoded($result->diagnostics, 'config.path-rejected');
+    expect($rejected)->toHaveCount(1)
+        ->and($rejected[0]->message)->toContain('cache.path')
+        ->and($result->document->toArray())->toHaveKey('paths');
+});
+
 it('applies a valid overlay without warning', function (): void {
     file_put_contents($this->overlayDir.'/title.yaml', <<<'YAML'
         overlay: 1.0.0

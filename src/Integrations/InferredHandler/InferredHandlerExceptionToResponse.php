@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\InferredHandler;
 
-use Docuccino\Core\Diagnostics\Diagnostic;
-use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Draft\ResponseDraft;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\ExceptionToResponse;
@@ -18,6 +16,7 @@ use Docuccino\Core\Inference\CallableRef;
 use Docuccino\Core\Inference\ComponentDeclaration;
 use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Patch\Contribution;
+use Docuccino\Laravel\Support\ErrorComponentDiagnostic;
 use ReflectionMethod;
 use Throwable;
 
@@ -99,9 +98,10 @@ final class InferredHandlerExceptionToResponse implements ExceptionToResponse
      * A render method that declared a name no component key could carry. `claimComponentName()` drops
      * such a name at the write and says nothing, which leaves the author of the attribute with a line of
      * code that does nothing and no reason why — and this tier, unlike the draft, is handed the channel
-     * to say it. Raised per throw rather than remembered per name: a tier instance outlives a build, and
-     * a warm build that reported less than a cold one is a silent degradation, which repeating a line is
-     * not.
+     * to say it. The report is {@see ErrorComponentDiagnostic}'s, shared with the extension that reads the
+     * same attribute on an exception class. Raised per throw rather than remembered per name: a tier
+     * instance outlives a build, and a warm build that reported less than a cold one is a silent
+     * degradation, which repeating a line is not.
      *
      * Within one analysis it IS one report per mistake, keyed by the mistake and sorted, the way the class
      * anchor keys its own: a renderer with three `return`s under one bad attribute is one typo, and saying
@@ -123,17 +123,11 @@ final class InferredHandlerExceptionToResponse implements ExceptionToResponse
         ksort($illegal);
 
         foreach ($illegal as $declaration) {
-            $components->addDiagnostic(new Diagnostic(
-                severity: Severity::Warning,
-                code: 'attribute.error-component-invalid',
-                message: sprintf(
-                    '%s declares #[ErrorComponent("%s")], which is not a name an OpenAPI component key can carry, so the attribute names nothing and the response keeps the name it would have had.',
-                    $declaration->symbol,
-                    $declaration->name,
-                ),
-                source: $context->sourceAt($declaration->location, $declaration->symbol),
-                routeSignature: $context->route->signature(),
-                help: ComponentRegistry::LEGAL_NAME_HELP,
+            $components->addDiagnostic(ErrorComponentDiagnostic::illegalName(
+                $declaration->symbol,
+                $declaration->name,
+                $context->sourceAt($declaration->location, $declaration->symbol),
+                $context->route->signature(),
             ));
         }
     }

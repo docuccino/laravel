@@ -106,6 +106,14 @@ arch('built-in integrations consume only the public extension surface')
         // response attributes are extensions, the rate-limit 429 and the paginated rewraps are
         // integrations). An integration rolling its own reading is how one producer stops honouring it.
         'Docuccino\Laravel\Support\IgnoredResponses',
+        // And again: the ONE report for an `#[ErrorComponent]` naming something no component key can
+        // carry. Two producers read that attribute — a built-in extension on the exception class, this
+        // integration on a render method — and a private copy per integration is how one mistake starts
+        // being described two ways: the two had already drifted into byte-identical duplicates of a
+        // format string, a severity and a help sentence, with one reference row between them. An
+        // extension may not import an integration, so the statement lives under Laravel\Support. This
+        // widening was signed off by the maintainer; allow-list entries are never added without that.
+        'Docuccino\Laravel\Support\ErrorComponentDiagnostic',
     ]);
 
 arch('built-in integrations never reach into core internals or adapter wiring')

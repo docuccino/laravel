@@ -70,9 +70,11 @@ function documentFrom(array $raw, string $basePath = '/checkout/one'): DocumentC
 /** Path-like keys that SHAPE the document, so they are digested by `hash()`. */
 dataset('pathKeys', [
     'content.dir' => ['content.dir', 'resources/docs/api'],
+    'coverage.log' => ['coverage.log', 'storage/docuccino/coverage'],
     'examples.recordings' => ['examples.recordings', 'docs/recordings'],
     'info.description.file' => ['info.description.file', 'resources/docs/description.md'],
     'overlays[0]' => ['overlays.0', 'resources/docs/overlays/*.yaml'],
+    'webhooks.dir' => ['webhooks.dir', 'app/Webhooks'],
 ]);
 
 /** Path-like keys naming a DESTINATION: relativised, but outside `hash()` and never machine-dependent. */
@@ -80,14 +82,48 @@ dataset('destinationKeys', [
     'export.path' => ['export.path', 'docs/openapi.json'],
 ]);
 
-/** Every path-like key, for the behaviour both kinds share. */
-dataset('allPathKeys', [
-    'content.dir' => ['content.dir', 'resources/docs/api'],
-    'examples.recordings' => ['examples.recordings', 'docs/recordings'],
-    'export.path' => ['export.path', 'docs/openapi.json'],
-    'info.description.file' => ['info.description.file', 'resources/docs/description.md'],
-    'overlays[0]' => ['overlays.0', 'resources/docs/overlays/*.yaml'],
-]);
+/**
+ * Every path-like key whose dotted spelling is the same one a diagnostic names, for the behaviour both
+ * kinds share. `export.targets` is not one: a row reads `export.targets.0.path` and the diagnostics name
+ * the ENTRY, `export.targets.0`, so it has tests of its own below rather than a row here — which is why
+ * the guard beside this list excuses it by name and nothing else.
+ *
+ * @return array<string, array{0: string, 1: string}>
+ */
+function pathKeyRows(): array
+{
+    return [
+        'content.dir' => ['content.dir', 'resources/docs/api'],
+        'coverage.log' => ['coverage.log', 'storage/docuccino/coverage'],
+        'examples.recordings' => ['examples.recordings', 'docs/recordings'],
+        'export.path' => ['export.path', 'docs/openapi.json'],
+        'info.description.file' => ['info.description.file', 'resources/docs/description.md'],
+        'overlays[0]' => ['overlays.0', 'resources/docs/overlays/*.yaml'],
+        'webhooks.dir' => ['webhooks.dir', 'app/Webhooks'],
+    ];
+}
+
+dataset('allPathKeys', pathKeyRows());
+
+it('covers every path-like key this class knows with a dataset row', function (): void {
+    // The lists above are hand-written and PATH_KEYS is the source of truth, so a key added there and
+    // forgotten here would be relativised, reported and refused with nothing proving any of it.
+    /** @var array<string, mixed> $keys */
+    $keys = (array) (new ReflectionClass(ConfigPaths::class))->getConstant('PATH_KEYS');
+    $rows = array_values(pathKeyRows());
+
+    expect($keys)->toHaveCount(8);
+
+    foreach (array_keys($keys) as $key) {
+        if ($key === 'export.targets') {
+            continue;
+        }
+
+        $covered = array_filter($rows, static fn (array $row): bool => str_starts_with($row[0], (string) $key));
+
+        expect($covered)->not->toBe([], 'no pathKeyRows() row covers '.$key);
+    }
+});
 
 it('leaves a relative path untouched', function (string $key, string $relative): void {
     $document = documentFrom(rawWithPath($key, $relative));
@@ -207,6 +243,80 @@ it('resolves a relativised path back to the very same file it was configured wit
 
     expect(Paths::absolute($document->exportPath(), $base))->toBe($base.'/docs/openapi.json');
 });
+
+it('refuses a path no filesystem call can accept, and names the key that holds it', function (string $key, string $relative): void {
+    // A NUL byte is a path no filesystem can hold, and `glob()`, `realpath()`, `file_get_contents()`,
+    // `scandir()` and `mkdir()` all raise a `ValueError` on one — which `@` does not suppress. Refused
+    // once at the config boundary, so no reader downstream can be handed it, and reported by key: the
+    // alternative for the same input was an uncaught ValueError naming `glob()` and no config key at all.
+    $document = documentFrom(rawWithPath($key, "resources/docs\0/".$relative));
+
+    $diagnostics = array_values(array_filter(
+        ConfigDiagnostics::for($document),
+        static fn (Diagnostic $d): bool => $d->code === 'config.path-rejected',
+    ));
+
+    expect($diagnostics)->toHaveCount(1)
+        ->and($diagnostics[0]->severity)->toBe(Severity::Warning)
+        ->and($diagnostics[0]->message)->toContain($key)
+        // The offending value is the author's own text on its way into a published message, so the byte
+        // that got it refused is escaped rather than carried through.
+        ->and($diagnostics[0]->message)->not->toContain("\0");
+})->with('allPathKeys');
+
+it('hands every reader nothing rather than a path it would raise on', function (): void {
+    $document = documentFrom([
+        'content' => ['dir' => "resources\0/docs"],
+        'webhooks' => ['dir' => "app\0/Webhooks"],
+        'examples' => ['recordings' => "docs\0/recordings"],
+        'coverage' => ['log' => "storage\0/coverage"],
+        'overlays' => ["resources\0/overlays/*.yaml", 'resources/ok/*.yaml'],
+        'export' => ['path' => "docs\0/openapi.json"],
+    ]);
+
+    expect($document->contentDir())->toBeNull()
+        ->and($document->webhooksDir())->toBeNull()
+        ->and($document->recordingsDir())->toBeNull()
+        ->and($document->coverageLogDir())->toBeNull()
+        // The refused pattern is gone and the usable one beside it still applies — one bad entry costs
+        // its own overlay, not the whole list.
+        ->and($document->overlays)->toBe(['resources/ok/*.yaml'])
+        // A destination falls back to the documented default, exactly as a non-string value does.
+        ->and($document->exportPath())->toBe('docs/openapi.json');
+});
+
+it('reports an unusable export target as the shape problem it is, and by key', function (): void {
+    // `export.targets` already refuses to build on a malformed entry, and a path holding a NUL is as
+    // unusable as an absent one — so it reports there rather than through a mechanism of its own. The
+    // config diagnostic names it too, by ENTRY, which is the key the machine-dependent report uses.
+    $document = documentFrom(['export' => ['targets' => [['format' => 'openapi-3.2', 'path' => "docs\0.json"]]]]);
+
+    $rejected = array_values(array_filter(
+        ConfigDiagnostics::for($document),
+        static fn (Diagnostic $d): bool => $d->code === 'config.path-rejected',
+    ));
+
+    expect($document->exportTargetIssues())->toContain(['index' => 0, 'problem' => 'shape', 'detail' => ''])
+        ->and(array_map(static fn ($t): string => $t->path, $document->exportTargets()))->toBe(['docs/openapi.json'])
+        ->and($rejected)->toHaveCount(1)
+        ->and($rejected[0]->message)->toContain('export.targets.0');
+});
+
+it('keeps the refused value in the raw bag, so the configHash still describes what was configured', function (): void {
+    // Dropping it from `raw` would move every emitted `configHash` for a config nobody can read anyway,
+    // and would leave the reporter with nothing to name.
+    $document = documentFrom(['content' => ['dir' => "resources\0/docs"]]);
+
+    expect(readPath($document->raw, 'content.dir'))->toBe("resources\0/docs")
+        ->and(ConfigPaths::unholdable($document->raw))->toBe([['key' => 'content.dir', 'path' => "resources\0/docs"]]);
+});
+
+it('says nothing about a path it can hold', function (string $key, string $relative): void {
+    expect(array_filter(
+        ConfigDiagnostics::for(documentFrom(rawWithPath($key, $relative))),
+        static fn (Diagnostic $d): bool => $d->code === 'config.path-rejected',
+    ))->toBe([]);
+})->with('allPathKeys');
 
 it('expresses a path relative to a base path, or reports it as outside', function (?string $expected, string $path, string $base): void {
     expect(Paths::relative($path, $base))->toBe($expected);

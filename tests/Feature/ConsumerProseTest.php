@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Inference\TypeEngine;
+use Docuccino\Core\Support\ConfinedPath;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
+use Docuccino\Laravel\Pipeline\DocumentBuilder;
 use Docuccino\Laravel\Pipeline\DocumentGenerator;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Illuminate\Routing\Router;
@@ -104,6 +106,77 @@ it('says so when a #[Description(file:)] names a file that is not there', functi
     expect($result['paths']['/api/absent']['get']['description'] ?? null)->toBeNull()
         ->and($missing)->not->toBeEmpty()
         ->and($missing[0]->severity)->toBe(Severity::Warning);
+});
+
+/*
+ * The same file, configured rather than declared. `info.description.file` is read at config time and
+ * had ONE voice for three different outcomes — a refused path, an unreadable file, and a document that
+ * simply never configured a description — which is no voice at all: the author is left with an `info`
+ * object missing its description and no reason why.
+ */
+it('says so when info.description.file does not name a path inside the application', function (): void {
+    config()->set('docuccino.documents.default.info.description', ['file' => '../../../etc/passwd']);
+
+    $result = app(DocumentBuilder::class)->build('default', WorkbenchEngine::make());
+
+    $escaped = diagnosticsCoded($result->diagnostics, 'description-file.escapes-base-path');
+
+    expect($result->document->toArray()['info']['description'] ?? null)->toBeNull()
+        ->and($escaped)->toHaveCount(1)
+        ->and($escaped[0]->severity)->toBe(Severity::Error)
+        ->and($escaped[0]->message)->toContain('info.description.file')
+        ->and($escaped[0]->help)->toBe(ConfinedPath::CONFIG_FILE_ESCAPED_HELP);
+});
+
+it('says so when info.description.file names a file that is not there', function (): void {
+    config()->set('docuccino.documents.default.info.description', ['file' => 'resources/docs/nowhere.md']);
+
+    $result = app(DocumentBuilder::class)->build('default', WorkbenchEngine::make());
+
+    $missing = diagnosticsCoded($result->diagnostics, 'description-file.missing');
+
+    expect($result->document->toArray()['info']['description'] ?? null)->toBeNull()
+        ->and($missing)->toHaveCount(1)
+        ->and($missing[0]->severity)->toBe(Severity::Warning)
+        ->and($missing[0]->message)->toContain('resources/docs/nowhere.md')
+        ->and($missing[0]->help)->toBe(ConfinedPath::CONFIG_FILE_MISSING_HELP);
+});
+
+it('says so when info.description.file holds a byte no filesystem path can', function (): void {
+    // The third refusal `ConfinedPath` makes, and the one that used to be indistinguishable from the
+    // other two. It is a refusal like a traversal, not an absence, so it reports as one.
+    config()->set('docuccino.documents.default.info.description', ['file' => "resources/docs\0/api.md"]);
+
+    $result = app(DocumentBuilder::class)->build('default', WorkbenchEngine::make());
+
+    $escaped = diagnosticsCoded($result->diagnostics, 'description-file.escapes-base-path');
+
+    expect($escaped)->toHaveCount(1)
+        // The offending value is the author's own text on its way into a published message.
+        ->and($escaped[0]->message)->not->toContain("\0");
+});
+
+it('says nothing about an info.description.file it read, or one nobody configured', function (): void {
+    // The other half of the population: this fires only where an author configured a path, so it can
+    // never fire where there is nothing to act on.
+    $absolute = base_path('docuccino-configured-description.md');
+    file_put_contents($absolute, "Prose for whoever reads the document.\n");
+
+    config()->set('docuccino.documents.default.info.description', ['file' => 'docuccino-configured-description.md']);
+    $read = app(DocumentBuilder::class)->build('default', WorkbenchEngine::make());
+
+    @unlink($absolute);
+
+    config()->set('docuccino.documents.default.info.description', 'Written inline.');
+    $inline = app(DocumentBuilder::class)->build('default', WorkbenchEngine::make());
+
+    foreach ([$read, $inline] as $result) {
+        expect(diagnosticsCoded($result->diagnostics, 'description-file.escapes-base-path'))->toBe([])
+            ->and(diagnosticsCoded($result->diagnostics, 'description-file.missing'))->toBe([]);
+    }
+
+    expect($read->document->toArray()['info']['description'])->toBe('Prose for whoever reads the document.')
+        ->and($inline->document->toArray()['info']['description'])->toBe('Written inline.');
 });
 
 it('publishes #[Summary] and #[Description] over the docblock the maintainer reads', function (): void {

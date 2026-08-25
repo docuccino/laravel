@@ -134,12 +134,15 @@ it('re-emits the empty objects its subjects hold, rather than the lists a plain 
 });
 
 /**
- * A scan that finds nothing must fail. Well under what the tree holds today, far enough above zero that a
- * glob which stopped matching fails here instead of passing on an empty battery.
+ * A scan that finds nothing must fail. Each floor below is set from what the tree measures — 13 goldens,
+ * 39 subjects, 12,230 positions, 35 empty maps, 1,131 ordered maps — close enough underneath that a real
+ * truncation drops through it, far enough that retiring one golden does not.
  *
  * The empty-map count is the one that keeps THIS file honest: these documents hold empty maps, and a
  * reader that stopped preserving them — or an emitter that stopped writing them — would leave every
- * assertion above passing on a document with nothing left to get wrong.
+ * assertion above passing on a document with nothing left to get wrong. Which is why it is the one floor
+ * here that was worth nothing at all: pinned at 1 against 35, it passed with 34 of them gone, so the
+ * assertion it exists to protect could have been reduced to a single position and still looked green.
  *
  * It counts what was VALIDATED, not what sits on disk: summing the recorded UIR files measured
  * the INPUT, so an emitter answering `{}` for every one of them cleared that floor unchanged —
@@ -164,6 +167,6 @@ it('validates a plausible minimum of recorded documents, positions and empty map
     expect(count(adapterMetaSchemaGoldens()))->toBeGreaterThanOrEqual(10)
         ->and(count(adapterMetaSchemaSubjects()))->toBeGreaterThanOrEqual(30)
         ->and($positions)->toBeGreaterThanOrEqual(10000)
-        ->and($emptyMaps)->toBeGreaterThanOrEqual(1)
+        ->and($emptyMaps)->toBeGreaterThanOrEqual(25)
         ->and($orderedMaps)->toBeGreaterThanOrEqual(500);
 });

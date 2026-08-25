@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Tests\Fixtures\DeclaredErrors;
 
 use Docuccino\Attributes\ErrorComponent;
+use Docuccino\Attributes\IgnoreResponse;
 use Docuccino\Attributes\Response;
 
 /**
@@ -140,6 +141,13 @@ final class DeclaredErrorsController
     /** A status a mapper turns into a `$ref`: the component it points at is named where it is defined. */
     #[Response(status: 404, errorComponent: 'NamesTheReference')]
     public function twentyFirst(): array
+    {
+        return [];
+    }
+
+    /** Drops the 409 the error tiers would have built, so a mapping for it is read and then discarded. */
+    #[IgnoreResponse(409)]
+    public function twentySecond(): array
     {
         return [];
     }

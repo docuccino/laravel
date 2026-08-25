@@ -25,6 +25,9 @@ use Docuccino\Laravel\Support\Paths;
  * for the {@see DESTINATION_KEYS}, which say where artifacts are WRITTEN rather than what they hold.
  * Those sit outside the hash entirely, so an out-of-tree one makes nothing machine-dependent.
  *
+ * A path no filesystem call could accept at all is a different answer: {@see unholdable()} names it, the
+ * reader was handed nothing, and the build says so rather than raising out of `glob()`.
+ *
  * @internal
  */
 final class ConfigPaths
@@ -41,6 +44,10 @@ final class ConfigPaths
      */
     private const PATH_KEYS = [
         'content.dir' => PathShape::Single,
+        // A destination, but a HASHED one: only `export` is lifted out of DocumentConfig::hash(), so a
+        // coverage directory named absolutely folds this machine's layout into the emitted configHash
+        // exactly as a content directory would.
+        'coverage.log' => PathShape::Single,
         'examples.recordings' => PathShape::Single,
         'export.path' => PathShape::Single,
         'export.targets' => PathShape::TargetList,
@@ -132,6 +139,51 @@ final class ConfigPaths
 
             if (is_string($value) && str_starts_with($value, '/')) {
                 $found[] = ['key' => $key, 'path' => $value];
+            }
+        }
+
+        return $found;
+    }
+
+    /**
+     * Keys whose value no filesystem call could accept — a NUL byte ({@see ConfinedPath::holdable()}).
+     * Dotted key + offending path, in {@see PATH_KEYS} order, exactly as {@see machineDependent()}
+     * reports its own; every one of these has been refused by the time a reader sees it, so this is
+     * what says a configured path was dropped rather than acted on.
+     *
+     * Every key here, not just the ones that would have raised: which readers of a path call `glob()`
+     * and which get away with a stat is not something an author configuring one can be expected to
+     * know, and a key that reads as ignored today is a key that raises after the next refactor.
+     *
+     * @param  array<string, mixed>  $config
+     * @return list<array{key: string, path: string}>
+     */
+    public static function unholdable(array $config): array
+    {
+        $found = [];
+
+        foreach (self::PATH_KEYS as $key => $shape) {
+            $value = self::get($config, explode('.', $key));
+
+            if ($shape === PathShape::Single) {
+                if (is_string($value) && ConfinedPath::holdable($value) === null) {
+                    $found[] = ['key' => $key, 'path' => $value];
+                }
+
+                continue;
+            }
+
+            foreach (is_array($value) ? $value : [] as $index => $entry) {
+                $path = $shape === PathShape::TargetList
+                    ? (is_array($entry) ? $entry['path'] ?? null : null)
+                    : $entry;
+
+                if (is_string($path) && ConfinedPath::holdable($path) === null) {
+                    $found[] = [
+                        'key' => $key.'.'.(is_int($index) ? (string) $index : $index),
+                        'path' => $path,
+                    ];
+                }
             }
         }
 
