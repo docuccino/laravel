@@ -2,12 +2,14 @@
 
 declare(strict_types=1);
 
+use Docuccino\Core\Emit\UirEmitter;
 use Docuccino\Laravel\Tests\Fixtures\ComponentNames\ClaimController;
 use Docuccino\Laravel\Tests\Fixtures\ComponentNames\SsoController;
 use Docuccino\Laravel\Tests\Fixtures\RouteBindings\BindingController;
 use Docuccino\Laravel\Tests\Fixtures\SharedErrors\ErrorsController;
 use Docuccino\Laravel\Tests\Support\LocalityEngine;
 use Illuminate\Routing\Router;
+use Workbench\App\Http\Controllers\IntegrationsController;
 
 /**
  * A fragment cache is only sound if a warm build is indistinguishable from a cold one — bytes AND
@@ -165,3 +167,35 @@ it('serves a warm build exactly what a cold one would', function (callable $befo
         },
     ],
 ]);
+
+/**
+ * The one value a cached fragment could not carry. A fragment is JSON on disk, and it was read back
+ * with an associative decode, where `{}` and `[]` are the same PHP array — so a `{}` example went in
+ * and a `[]` came out, and all four halves of the rule broke at once: the warm build published
+ * `"example": []` beside `type: object`, its `contentHash` differed from the cold one's so a diff
+ * against a committed artifact read the component as removed and re-added, the example lint reported a
+ * mismatch nothing cold ever saw, and the component registry — which dedupes by content — counted the
+ * warm `[]` and the cold `{}` as two bodies contesting one name.
+ *
+ * Invisible until now because the cache suite's own rows carry no `{}`, and the free-form-map row pins
+ * the cold path only. `storeArticle` documents the Data class that carries `@example {}`.
+ */
+it('serves a warm build the empty-object example a cold one publishes', function (): void {
+    $routes = static function (Router $router): void {
+        $router->post('api/zz-articles', [IntegrationsController::class, 'storeArticle']);
+    };
+
+    // Bytes, document array and diagnostics, both directions — see assertWarmEqualsCold().
+    $warm = assertWarmEqualsCold($routes, $routes);
+
+    // …and equal-to-cold proves nothing unless the shared value is the right one, so pin what the warm
+    // build actually published: an object in the draft, `{}` in the bytes, and nothing said about it.
+    /** @var array<string, mixed> $overrides */
+    $overrides = $warm->document->toArray()['components']['schemas']['Article']['properties']['overrides'];
+
+    expect($overrides['example'])->toBeInstanceOf(stdClass::class)
+        ->and((array) $overrides['example'])->toBe([])
+        ->and((new UirEmitter)->emit($warm->document))->toContain('"example": {}')
+        ->and((new UirEmitter)->emit($warm->document))->not->toContain('"example": []')
+        ->and(diagnosticsCoded($warm->diagnostics, 'lint.example-mismatch'))->toBe([]);
+});

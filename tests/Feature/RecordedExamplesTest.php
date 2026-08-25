@@ -182,7 +182,7 @@ it('reports the same thing on a warm build as on a cold one, and rebuilds when t
         expect(glob($dir.'/*.json') ?: [])->not->toBeEmpty();
 
         $warm = recordedDocument($this->recordings);
-        expect($warm)->toBe($cold);
+        expect(graphDifferences($warm, $cold))->toBe([]);
 
         // Editing the committed file has to reach the document, or a re-recording would land warm.
         writeFormsRecording($this->recordings, ['data' => [['id' => 2, 'title' => 'Rewritten']]]);

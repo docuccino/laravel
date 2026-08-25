@@ -20,7 +20,7 @@ use Spatie\LaravelData\Attributes\Validation\EndsWith;
 use Spatie\LaravelData\Attributes\Validation\Filled;
 use Spatie\LaravelData\Attributes\Validation\In;
 use Spatie\LaravelData\Attributes\Validation\IntegerType;
-use Spatie\LaravelData\Attributes\Validation\Ip;
+use Spatie\LaravelData\Attributes\Validation\IP;
 use Spatie\LaravelData\Attributes\Validation\Json;
 use Spatie\LaravelData\Attributes\Validation\Max;
 use Spatie\LaravelData\Attributes\Validation\MaxDigits;
@@ -71,7 +71,7 @@ final class ValidatedData extends Data
         #[AlphaDash] public string $alphaDash,
         #[Date] public string $date,
         #[Json] public string $json,
-        #[Ip] public string $ip,
+        #[IP] public string $ip,
         #[Max(500)] public string $max,
         #[Min(1)] public int $min,
         #[Size(10)] public string $size,

@@ -16,6 +16,7 @@ use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Docuccino\Core\Provenance\RootRelativeSourcePathResolver;
 use Docuccino\Core\Provenance\Source;
 use Docuccino\Core\Support\ConfinedPath;
+use Docuccino\Core\Support\PlainText;
 use Docuccino\Core\TypeGrammar\DocBlockReader;
 use Docuccino\Laravel\Routing\AttributeCollector;
 use ReflectionClass;
@@ -74,7 +75,7 @@ final readonly class WebhookCollector
             return [[], [new Diagnostic(
                 severity: Severity::Warning,
                 code: 'webhook.dir-escapes-base',
-                message: sprintf('The webhook directory "%s" escapes the application base path and was ignored.', $configured),
+                message: sprintf('The webhook directory "%s" does not name a path inside the application and was ignored.', PlainText::of($configured)),
             )]];
         }
 

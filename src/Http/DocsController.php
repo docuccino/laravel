@@ -8,6 +8,7 @@ use Docuccino\Core\Document\UirDocument;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\ViewerContext;
 use Docuccino\Core\Inference\TypeEngine;
+use Docuccino\Core\Support\JsonValue;
 use Docuccino\Laravel\Pipeline\DocumentBuilder;
 use Docuccino\Laravel\Runtime\DocumentCache;
 use Docuccino\Laravel\Support\Paths;
@@ -17,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use JsonException;
 
 /**
  * The runtime viewer endpoints: the driver's HTML page, the `.json` spec (per `viewer.source`:
@@ -292,7 +294,17 @@ final class DocsController
         // A UIR artifact (the `uir` field) is re-emitted as OAS — the viewer expects OAS, and a UIR's
         // internal x-docuccino provenance must never reach the browser. Plain OpenAPI streams through
         // untouched, so an artifact exported for a specific viewer stays that viewer's business.
-        $decoded = json_decode($contents, true);
+        //
+        // Through the shared reader ({@see JsonValue}), because this re-emits: an associative decode
+        // reads an `example: {}` the export wrote back as `[]`, and the viewer would then answer with
+        // a different document from the file beside it. Bytes that are not JSON at all stream on, the
+        // same as a plain OpenAPI export does.
+        try {
+            $decoded = JsonValue::decode($contents);
+        } catch (JsonException) {
+            return $contents;
+        }
+
         if (is_array($decoded) && isset($decoded['uir'])) {
             /** @var array<string, mixed> $decoded */
             return $this->drivers->emitFor($config, UirDocument::fromArray($decoded));

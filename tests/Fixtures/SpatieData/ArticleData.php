@@ -17,7 +17,8 @@ use Spatie\LaravelData\Optional;
  * A Data fixture exercising the whole spatie surface the integration reads: `#[SchemaName]`/
  * `#[SchemaId]` component identity, a `#[MapName]` input+output rename, spatie's and Docuccino's
  * `#[Hidden]` (property- and class-level), an `Optional` marker, a spatie validation attribute, a
- * nested Data reference, and a free-form map carrying an `@example`. It is only ever reflected — never
+ * nested Data reference, and two free-form maps carrying an `@example` — one a populated object literal,
+ * one the empty `{}` that was refused as untypable and dropped. It is only ever reflected — never
  * instantiated.
  */
 #[SchemaName('Article')]
@@ -45,5 +46,14 @@ final class ArticleData extends Data
          * @example {"source": "syndication", "wordCount": 1200}
          */
         public array $metadata,
+        /**
+         * Per-article rendering overrides. Empty unless an editor set one, which is why the example is
+         * an empty object.
+         *
+         * @var array<string, mixed>
+         *
+         * @example {}
+         */
+        public array $overrides,
     ) {}
 }

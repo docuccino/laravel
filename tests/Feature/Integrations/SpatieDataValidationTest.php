@@ -34,10 +34,13 @@ use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
 use Docuccino\Laravel\Integrations\Validation\ValidationIntegration;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\AddressData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\BaseApiData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\CustomMappedController;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\CustomMappedData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ImmutableNodeData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\InheritedMergeRulesData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\MergedRulesController;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\MergedRulesData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\ReversedNameMapper;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ValidatedData;
 
 /**
@@ -71,7 +74,7 @@ it('recovers the right Laravel rule token from every supported spatie validation
     'AlphaDash' => ['alphaDash', 'alpha_dash'],
     'Date' => ['date', 'date'],
     'Json' => ['json', 'json'],
-    'Ip' => ['ip', 'ip'],
+    'IP' => ['ip', 'ip'],
     'Max' => ['max', 'max:500'],
     'Min' => ['min', 'min:1'],
     'Size' => ['size', 'size:10'],
@@ -232,6 +235,35 @@ it('keys the fragment on the base class that answered the attribute', function (
     expect($context->dependencyFiles())
         ->toContain((string) (new ReflectionClass(BaseApiData::class))->getFileName())
         ->toContain((string) (new ReflectionClass(InheritedMergeRulesData::class))->getFileName());
+});
+
+it('says so when a Data class is renamed by a mapper it cannot read', function (): void {
+    // A mapper of the application's own is arbitrary code, so the keys the endpoint really accepts are
+    // unknowable — the properties are documented under their own names and the reader is told the
+    // renaming was not applied, rather than being handed key names the server will reject.
+    $metadata = new ClassMetadata(CustomMappedData::class, [new PropertyMetadata('displayName', ScalarT::string())]);
+    $context = new RouteContext(
+        route: new RouteDescriptor(['POST'], 'api/custom-mapped'),
+        actionRef: new ActionRef('', CustomMappedController::class, 'store'),
+        attributes: new AttributeSet,
+        engine: new StubTypeEngine(classes: [CustomMappedData::class => $metadata]),
+        document: new DocumentConfig('default', []),
+        extensions: new ResolvedExtensions(
+            typeToSchema: DefaultTypeMappers::all(),
+            ruleTransformers: ValidationIntegration::transformers(),
+        ),
+    );
+
+    (new DataRequestExtension)->handle(new OperationDraft, $context);
+
+    $reported = array_values(array_filter(
+        $context->components->diagnostics(),
+        static fn ($d): bool => $d->code === 'spatie-data.unknown-mapper',
+    ));
+
+    expect($reported)->toHaveCount(1)
+        ->and($reported[0]->message)->toContain(ReversedNameMapper::class)
+        ->and($reported[0]->routeSignature)->toBe('POST api/custom-mapped');
 });
 
 /**

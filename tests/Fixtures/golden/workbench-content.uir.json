@@ -3229,6 +3229,12 @@
               "wordCount": 1200
             }
           },
+          "overrides": {
+            "description": "Per-article rendering overrides.",
+            "type": "object",
+            "additionalProperties": {},
+            "example": {}
+          },
           "subtitle": {
             "type": "string"
           }
@@ -3238,7 +3244,8 @@
           "headline",
           "body",
           "author",
-          "metadata"
+          "metadata",
+          "overrides"
         ]
       },
       "ArticleJsonApiResource": {
@@ -3333,6 +3340,10 @@
             "type": "object",
             "additionalProperties": {}
           },
+          "overrides": {
+            "type": "object",
+            "additionalProperties": {}
+          },
           "secret": {
             "type": "string"
           },
@@ -3346,7 +3357,8 @@
           "body",
           "secret",
           "internal",
-          "metadata"
+          "metadata",
+          "overrides"
         ]
       },
       "ArticleResource": {
@@ -3766,11 +3778,11 @@
     "document": {
       "id": "doc:default",
       "configHash": "d74edbb0d3229a32fdc9eaa557e0099b3d6453491fbb44b517a56c9103a569b7",
-      "contentHash": "d140f923187983c19005409debbcfff835eb173c9713d10a2a343dfd17eef1e3"
+      "contentHash": "9a5626e1fba5be9efe82f8ccf965670a06c3009e2ad5765f2773a9ef27ceaf62"
     },
     "generator": {
       "name": "docuccino/laravel",
-      "version": "0.8.5",
+      "version": "0.9.1",
       "specVersion": "1.0.0"
     },
     "content": {

@@ -12,6 +12,7 @@ use Docuccino\Laravel\Facades\Docuccino;
 use Docuccino\Laravel\Pipeline\DocumentGenerator;
 use Docuccino\Laravel\Runtime\DocumentCache;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
+use Docuccino\Laravel\Viewer\ViewerDrivers;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 
@@ -188,6 +189,45 @@ it('serves source=artifact, re-emitting a UIR artifact as OpenAPI', function ():
     expect($body)->toContain('"openapi"')
         ->and($body)->not->toContain('"uir"')
         ->and($body)->not->toContain('x-docuccino');
+
+    @unlink($artifact);
+});
+
+it('serves an artifact the empty objects it holds, so the viewer and the export agree', function (): void {
+    // The same document, two answers. `source=artifact` re-emits what `docuccino:export` shipped, and an
+    // associative decode on the way in reads `example: {}` back as `[]` — so the browser was shown a
+    // free-form example that lies about its shape while the file beside it was right. `{}` and `[]` are
+    // one PHP array, so this is invisible to every assertion that compares decoded documents.
+    config()->set('docuccino.documents.default.viewer.gate', 'viewApiDocs');
+    config()->set('docuccino.documents.default.viewer.source', 'artifact');
+    Gate::before(static fn ($user = null): bool => true);
+
+    $document = UirDocument::fromArray([
+        'uir' => '1.0.0',
+        'openapi' => '3.2.0',
+        'info' => ['title' => 'Artifact', 'version' => '1.0.0'],
+        'paths' => ['/things' => ['get' => ['responses' => ['200' => [
+            'description' => 'OK',
+            'content' => ['application/json' => [
+                'schema' => ['type' => 'object', 'additionalProperties' => true],
+                'example' => new stdClass,
+            ]],
+        ]]]]],
+    ]);
+
+    $artifact = sys_get_temp_dir().'/docuccino-empty-object-'.uniqid().'.json';
+    file_put_contents($artifact, (new UirEmitter)->emit($document));
+    config()->set('docuccino.documents.default.export.path', $artifact);
+
+    $body = $this->get('/docs/api.json')->assertOk()->getContent();
+
+    $config = app(DocumentConfigFactory::class)->make('default', (array) config('docuccino.documents.default'), 'skeleton');
+
+    expect($body)->toContain('"example": {}')
+        ->and($body)->not->toContain('"example": []')
+        // …and byte-for-byte what the document never written to disk emits, which is the whole claim:
+        // the round trip through the artifact costs the viewer nothing.
+        ->and($body)->toBe(app(ViewerDrivers::class)->emitFor($config, $document));
 
     @unlink($artifact);
 });

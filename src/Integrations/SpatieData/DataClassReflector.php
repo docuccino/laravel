@@ -114,12 +114,18 @@ final class DataClassReflector
      * `#[MapName(SnakeCaseMapper::class)]` renames every property; knowing the transform here is what
      * stops the mapper FQCN leaking as the documented JSON key.
      *
+     * It lists every zero-argument mapper the package ships, and may list one the resolved version does
+     * not have yet — spatie only treats a string as a mapper when the class exists, so a row for a
+     * mapper that isn't installed is never reached (see resolveMapped). `ProvidedNameMapper` is not a
+     * transform at all: it returns a fixed name, which is how spatie models a literal `#[MapName('key')]`.
+     *
      * @var array<string, string>
      */
     private const MAPPERS = [
         'Spatie\\LaravelData\\Mappers\\SnakeCaseMapper' => 'snake',
         'Spatie\\LaravelData\\Mappers\\CamelCaseMapper' => 'camel',
         'Spatie\\LaravelData\\Mappers\\StudlyCaseMapper' => 'studly',
+        'Spatie\\LaravelData\\Mappers\\KebabCaseMapper' => 'kebab',
         'Spatie\\LaravelData\\Mappers\\LowerCaseMapper' => 'lower',
         'Spatie\\LaravelData\\Mappers\\UpperCaseMapper' => 'upper',
     ];
@@ -135,6 +141,10 @@ final class DataClassReflector
      * validation chain, so `#[Max(100)]` documents identically to `'max:100'` on a FormRequest. Curated
      * to the common floor — an unmapped attribute degrades (see validationTokens) rather than guessing.
      *
+     * Reflection reports an attribute under the case it was WRITTEN in, so the key is the class name
+     * spatie declares — `IP`, not `Ip` — which is the only spelling whose source autoloads on a
+     * case-sensitive filesystem. A key that miscases one matches nothing.
+     *
      * @var array<string, string>
      */
     private const RULE_MAP = [
@@ -143,7 +153,7 @@ final class DataClassReflector
         'Email' => 'email', 'Url' => 'url', 'ActiveUrl' => 'active_url', 'Uuid' => 'uuid',
         'Ulid' => 'ulid', 'Numeric' => 'numeric', 'IntegerType' => 'integer', 'StringType' => 'string',
         'BooleanType' => 'boolean', 'ArrayType' => 'array', 'Alpha' => 'alpha', 'AlphaNumeric' => 'alpha_num',
-        'AlphaDash' => 'alpha_dash', 'Date' => 'date', 'Json' => 'json', 'Ip' => 'ip',
+        'AlphaDash' => 'alpha_dash', 'Date' => 'date', 'Json' => 'json', 'IP' => 'ip',
         'Max' => 'max', 'Min' => 'min', 'Size' => 'size', 'Between' => 'between',
         'In' => 'in', 'NotIn' => 'not_in', 'Regex' => 'regex', 'DateFormat' => 'date_format',
         'MaxDigits' => 'max_digits', 'MinDigits' => 'min_digits', 'DigitsBetween' => 'digits_between',
@@ -705,13 +715,17 @@ final class DataClassReflector
             return null;
         }
 
-        $mapped = self::mapWithMapper($value, $property);
-        if ($mapped !== null) {
-            return $mapped;
+        // What counts as a mapper is a function of the version the app resolved: spatie only treats a
+        // string as one when the class exists, and otherwise uses it verbatim as the key. So a name that
+        // isn't installed — a mapper from a later release, say — is a literal here too, exactly as the
+        // running application would key it.
+        if (! class_exists($value)) {
+            return $value;
         }
 
-        // Never leak an unrecognised mapper's FQCN as the key — unrecognisedMappers() reports it.
-        return class_exists($value) ? null : $value;
+        // A recognised mapper transforms; an unrecognised one yields null so the caller falls back to the
+        // property name, since its FQCN must never leak as the key. unrecognisedMappers() reports it.
+        return self::mapWithMapper($value, $property);
     }
 
     /**
@@ -724,6 +738,7 @@ final class DataClassReflector
             'snake' => Str::snake($property),
             'camel' => Str::camel($property),
             'studly' => Str::studly($property),
+            'kebab' => Str::kebab($property),
             'lower' => Str::lower($property),
             'upper' => Str::upper($property),
             default => null,

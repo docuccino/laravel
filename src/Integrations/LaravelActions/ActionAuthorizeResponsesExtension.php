@@ -12,6 +12,7 @@ use Docuccino\Core\Extensions\Validation\ResponseDraftApplier;
 use Docuccino\Core\Inference\ThrowConfidence;
 use Docuccino\Core\Inference\ThrowDisposition;
 use Docuccino\Core\Inference\ThrownException;
+use Docuccino\Laravel\Support\IgnoredResponses;
 use ReflectionClass;
 
 /**
@@ -51,7 +52,7 @@ final class ActionAuthorizeResponsesExtension implements OperationExtension
             ThrowDisposition::Signal,
         );
 
-        $mapped = $context->mapThrow($throw);
+        $mapped = IgnoredResponses::mapThrow($context, $throw);
         if ($mapped !== null) {
             // The synthetic exception has no recovered throw site, so anchor the 403 to the action —
             // authorize() is where it really comes from, and a source beats none.

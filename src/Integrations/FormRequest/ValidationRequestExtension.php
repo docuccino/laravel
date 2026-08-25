@@ -81,7 +81,7 @@ final class ValidationRequestExtension implements OperationExtension
                 severity: Severity::Info,
                 code: 'validation.rule-unrecoverable',
                 message: sprintf('Inline validation field "%s" has no statically recoverable rules; it is omitted from the request schema.', $field),
-                help: 'Its rules are a closure, a custom Rule object with no #[RuleSchema], or a Rule::when()/conditional descriptor. Express the field with recoverable rules (string/array rules, Rule::enum(), Rule::in(), …), or annotate the rule class with #[RuleSchema], so it is documented.',
+                help: RulesHarvestingVisitor::UNRECOVERABLE_HELP,
                 routeSignature: $context->route->signature(),
             ));
         }
@@ -91,7 +91,7 @@ final class ValidationRequestExtension implements OperationExtension
                 severity: Severity::Info,
                 code: 'validation.rule-values-unread',
                 message: sprintf('Inline validation field "%s" states values this build cannot read, so that constraint is left off the request schema; the rest of its rules are documented.', $field),
-                help: 'A value the rule states is not written at the rule — it comes from a call, a variable or a spread — and a partial list would make a client reject a value the API accepts. Write every value where the rule is, which is what settles it; an overlay corrects the document instead, and this notice keeps naming the rule.',
+                help: RulesHarvestingVisitor::WIDENED_HELP,
                 routeSignature: $context->route->signature(),
             ));
         }

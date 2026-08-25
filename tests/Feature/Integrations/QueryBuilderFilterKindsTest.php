@@ -11,8 +11,10 @@ use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderConfig;
+use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParameters;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParametersExtension;
 use Docuccino\Laravel\Tests\Support\TraceScript;
+use Spatie\QueryBuilder\AllowedFilter;
 use Workbench\App\Models\Beacon;
 
 /**
@@ -251,4 +253,51 @@ it('detects the installed package as the supported major', function (): void {
     // The real-path guard on version detection: the suite runs against the vendored v7, so the
     // parser reading anything else here means detection stopped seeing real versions.
     expect(QueryBuilderConfig::majorOf(InstalledVersions::getVersion('spatie/laravel-query-builder')))->toBe(7);
+});
+
+/**
+ * The v7 spellings, end to end: a kind is the factory method the app wrote, so these reach the table
+ * under their own names and get the match they perform rather than the opaque fallback.
+ */
+it('describes the filter kinds the installed major spells', function (): void {
+    [$byName] = runFilterKinds(
+        'QueryBuilder::for(\\Workbench\\App\\Models\\Gadget::class)->allowedFilters(['
+        ."AllowedFilter::beginsWith('name'), "
+        ."AllowedFilter::endsWith('slug'), "
+        ."AllowedFilter::groupOr('search', [AllowedFilter::partial('name'), AllowedFilter::partial('slug')]), "
+        ."AllowedFilter::groupAnd('both', [AllowedFilter::partial('name'), AllowedFilter::partial('slug')]), "
+        .'])->paginate()'
+    );
+
+    expect($byName['filter[name]']['description'])->toBe('Prefix match on `name`.')
+        ->and($byName['filter[slug]']['description'])->toBe('Suffix match on `slug`.')
+        ->and($byName['filter[search]']['description'])->toBe('Matches records where at least one of the conditions grouped under `search` holds.')
+        ->and($byName['filter[both]']['description'])->toBe('Matches records where every condition grouped under `both` holds.')
+        // A group's members are not filters of their own — the group publishes one key, and the value
+        // it takes is a string whatever its members type off.
+        ->and($byName['filter[search]']['schema']['type'])->toBe('string')
+        ->and($byName['filter[search]']['schema'])->not->toHaveKey('enum')
+        ->and($byName)->toHaveCount(5); // the four filters + the page parameter
+});
+
+it('describes the filters the installed package actually ships', function (): void {
+    // The description dataset is hand-maintained, so it only proves the rows it LISTS. This reads the
+    // vendor instead: every AllowedFilter factory the installed version ships owes the table a row, or
+    // a real call site falls through to the opaque sentence. One-directional on purpose — our table
+    // also carries the v6 spellings and kinds a lower-resolved 7.0 has not added yet, so a
+    // --prefer-lowest leg checks fewer factories and still passes while the locked leg catches the
+    // next release. The floor keeps a scan that stopped matching from passing on an empty set: 7.0
+    // already ships ten factories, and the group pair arrived in 7.3.
+    $factories = array_values(array_map(
+        static fn (ReflectionMethod $method): string => $method->getName(),
+        array_filter(
+            (new ReflectionClass(AllowedFilter::class))->getMethods(ReflectionMethod::IS_PUBLIC),
+            static fn (ReflectionMethod $method): bool => $method->isStatic()
+                && $method->getDeclaringClass()->getName() === AllowedFilter::class
+                && (string) $method->getReturnType() === 'static',
+        ),
+    ));
+
+    expect(count($factories))->toBeGreaterThanOrEqual(10)
+        ->and(array_diff($factories, QueryBuilderParameters::filterKinds()))->toBe([]);
 });

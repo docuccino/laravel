@@ -133,7 +133,7 @@ final class InferredHandlerExceptionToResponse implements ExceptionToResponse
                 ),
                 source: $context->sourceAt($declaration->location, $declaration->symbol),
                 routeSignature: $context->route->signature(),
-                help: 'A component key is letters, digits, ".", "_" and "-" only. A reason phrase as one word — "NotFound", "TooManyRequests" — is what reads best as a generated client\'s type.',
+                help: ComponentRegistry::LEGAL_NAME_HELP,
             ));
         }
     }

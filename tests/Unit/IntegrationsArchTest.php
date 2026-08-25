@@ -36,7 +36,11 @@ arch('built-in integrations consume only the public extension surface')
         // The one reader of #[Mock], for the same reason SchemaIdentity is here: every class-hoisting
         // mapper owes the same answer, and an integration rolling its own would fork the attribute's
         // meaning per package.
+        // The one reader of a property's docblock `@example`, here for the same reason MockHints is.
+        'Docuccino\Core\Extensions\Schema\DocumentedExamples',
         'Docuccino\Core\Extensions\Schema\MockHints',
+        // The one reader of the property-target prose attributes, here for the same reason MockHints is.
+        'Docuccino\Core\Extensions\Schema\PropertyAnnotations',
         'Docuccino\Core\Extensions\Schema\SchemaIdentity',
         'Docuccino\Core\Extensions\Schema\SchemaResult',
         // Same exemption, same reason as EnumDecoration above: the ONE reading of an authored example
@@ -96,6 +100,12 @@ arch('built-in integrations consume only the public extension surface')
         // for a laravel-actions `htmlResponse()`; an extension may not import an integration, so the one
         // sentence lives under Laravel\Support rather than being written twice and drifting.
         'Docuccino\Laravel\Support\HtmlRepresentation',
+        // And again: the ONE reading of #[IgnoreResponse]. Every producer that writes a response owes the
+        // same answer BEFORE it converts a body, because a response dropped after conversion leaves the
+        // components it hoisted behind — and the producers span both sides of the line (inference and the
+        // response attributes are extensions, the rate-limit 429 and the paginated rewraps are
+        // integrations). An integration rolling its own reading is how one producer stops honouring it.
+        'Docuccino\Laravel\Support\IgnoredResponses',
     ]);
 
 arch('built-in integrations never reach into core internals or adapter wiring')

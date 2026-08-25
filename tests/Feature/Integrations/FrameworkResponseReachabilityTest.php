@@ -5,6 +5,8 @@ declare(strict_types=1);
 use Docuccino\Core\Inference\ActionAnalysis;
 use Docuccino\Core\Inference\ClassMetadata;
 use Docuccino\Core\Inference\DType\ClassT;
+use Docuccino\Core\Inference\DType\LiteralT;
+use Docuccino\Core\Inference\DType\UnknownT;
 use Docuccino\Inference\PhpStan\Tests\Support\FixtureRunner;
 use Docuccino\Laravel\Support\FrameworkClasses;
 
@@ -39,7 +41,7 @@ it('recovers each guarded framework response class from an idiomatic action', fu
     'json' => [
         'app/Http/Controllers/SsoRedirectController.php',
         'App\\Http\\Controllers\\SsoRedirectController',
-        'reset',
+        'introspect',
         'Illuminate\\Http\\JsonResponse',
     ],
     'redirect' => [
@@ -94,9 +96,33 @@ it('keeps a really-recovered RedirectResponse out of components and documents it
 })->group('fixture');
 
 it('keeps a really-recovered bare JsonResponse out of components and says the body is unrecovered', function (): void {
-    // Nothing at the call site names a payload — the gateway's own return type is bare — so the 200
-    // documents an OPEN application/json body rather than the response object's members, and the loss
-    // is announced instead of passing for a deliberate shapeless body.
+    // Nothing at the call site names a payload — the collaborator is a CONTRACT, so there is no body to
+    // follow — so the 200 documents an OPEN application/json body rather than the response object's
+    // members, and the loss is announced instead of passing for a deliberate shapeless body.
+    $analysis = ActionAnalysis::fromArray(FixtureRunner::analyze(
+        'app/Http/Controllers/SsoRedirectController.php',
+        'App\\Http\\Controllers\\SsoRedirectController',
+        'introspect',
+    ));
+    $returnType = $analysis->returns[0]->type ?? null;
+    $fqcn = 'Illuminate\\Http\\JsonResponse';
+
+    [$responses, $document, $diagnostics] = documentForReturn(
+        $returnType,
+        [$fqcn => ClassMetadata::fromArray(FixtureRunner::classMetadata($fqcn))],
+    );
+
+    expect($responses['200']['content']['application/json']['schema'])->toBe([])
+        ->and(typeSchemas($document))->toBe([])
+        ->and(array_map(static fn ($d): string => $d->code, $diagnostics))
+        ->toContain('inferred-response.payload-unrecoverable');
+})->group('fixture');
+
+it('says the body is unrecovered when a fluent status was the only thing recovered', function (): void {
+    // `reset` stamps a status onto a response whose body nothing names, so the engine answers with a
+    // status and an UNRESOLVED payload. Parameterised is not the same as recovered: the notice has to
+    // fire here exactly as it does above, or a `->setStatusCode()` would buy the response a clean bill
+    // while leaving the consumer with the same open `{}`.
     $analysis = ActionAnalysis::fromArray(FixtureRunner::analyze(
         'app/Http/Controllers/SsoRedirectController.php',
         'App\\Http\\Controllers\\SsoRedirectController',
@@ -104,6 +130,10 @@ it('keeps a really-recovered bare JsonResponse out of components and says the bo
     ));
     $returnType = $analysis->returns[0]->type ?? null;
     $fqcn = 'Illuminate\\Http\\JsonResponse';
+
+    expect($returnType)->toBeInstanceOf(ClassT::class)
+        ->and($returnType->typeArgs[0] ?? null)->toBeInstanceOf(UnknownT::class)
+        ->and($returnType->typeArgs[1] ?? null)->toEqual(new LiteralT(200));
 
     [$responses, $document, $diagnostics] = documentForReturn(
         $returnType,

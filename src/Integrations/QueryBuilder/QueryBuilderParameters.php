@@ -53,6 +53,12 @@ final class QueryBuilderParameters
      * cannot see the codebase, and the column is not what they send. Kinds whose matching is user code's
      * carry {@see OPAQUE_DESCRIPTION} rather than invent semantics.
      *
+     * A kind is the factory method the application WROTE, so the key already names the package major
+     * that has it — v7's `beginsWith` and v6's `beginsWithStrict` cannot both appear in one codebase,
+     * and `groupOr`/`groupAnd` exist from 7.3 on. That is why this table is read without consulting
+     * `QueryBuilderConfig::$spatieMajor` while the sort/include enums are not: the evidence is the key.
+     * A row whose truth depends on the installed major rather than on the spelling would need that gate.
+     *
      * The closed set of kinds a document may override — {@see filterKinds()} publishes it, and
      * `QueryBuilderConfig::$filterDescriptions` is merged over it per kind.
      *
@@ -62,6 +68,10 @@ final class QueryBuilderParameters
         'default' => 'Substring match on `%field%`.',
         'partial' => 'Substring match on `%field%`.',
         'exact' => 'Exact match on `%field%`.',
+        'beginsWith' => 'Prefix match on `%field%`.',
+        'endsWith' => 'Suffix match on `%field%`.',
+        // The v6 spellings of the two above, kept because the integration activates on any installed
+        // major and the match they perform is the same one.
         'beginsWithStrict' => 'Prefix match on `%field%`.',
         'endsWithStrict' => 'Suffix match on `%field%`.',
         'scope' => self::OPAQUE_DESCRIPTION,
@@ -70,6 +80,9 @@ final class QueryBuilderParameters
         // Which comparison is Spatie's `FilterOperator` argument, which the trace reads only for
         // staticness — so the direction is not ours to state, and the comparison itself is.
         'operator' => 'Compares `%field%` against the value.',
+        // One key whose value every grouped member filter is applied to, joined by the conjunction.
+        'groupOr' => 'Matches records where at least one of the conditions grouped under `%field%` holds.',
+        'groupAnd' => 'Matches records where every condition grouped under `%field%` holds.',
         'trashed' => 'Soft-delete filter: `with` includes soft-deleted records, `only` returns only soft-deleted; omit to exclude them.',
         'belongsTo' => 'Matches records belonging to the given `%field%`.',
     ];

@@ -69,9 +69,27 @@ it('is strict by default and only relaxes when every invalid-query exception is 
         ->and(QueryBuilderConfig::fromArray([
             'disable_invalid_filter_query_exception' => true,
             'disable_invalid_sort_query_exception' => true,
-            'disable_invalid_includes_query_exception' => true,
+            'disable_invalid_include_query_exception' => true,
         ])->strict)->toBeFalse();
 });
+
+/**
+ * v7 renamed the invalid-include key to the singular form. Which spelling counts is the INSTALLED
+ * major's, not either-or: a v6 config file left behind by an upgrade still carries the plural key and
+ * v7 ignores it, so honouring it would document no 400 where the server throws one.
+ */
+it('reads the invalid-include exception key the installed major uses', function (int $major, string $key, bool $strict): void {
+    expect(QueryBuilderConfig::fromArray([
+        'disable_invalid_filter_query_exception' => true,
+        'disable_invalid_sort_query_exception' => true,
+        $key => true,
+    ], $major)->strict)->toBe($strict);
+})->with([
+    'v7 honors the singular key' => [7, 'disable_invalid_include_query_exception', false],
+    'v7 ignores the v6 plural key' => [7, 'disable_invalid_includes_query_exception', true],
+    'v6 honors the plural key' => [6, 'disable_invalid_includes_query_exception', false],
+    'v6 ignores the v7 singular key' => [6, 'disable_invalid_include_query_exception', true],
+]);
 
 it('reads the include Count/Exists suffixes, degrading each to the package default', function (): void {
     // Absent bag and absent/ill-typed entries → Spatie's defaults; published values are honored.

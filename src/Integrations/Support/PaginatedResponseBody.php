@@ -11,6 +11,7 @@ use Docuccino\Core\Patch\Contribution;
 use Docuccino\Laravel\Integrations\ApiResources\PaginatedResourceResponsesExtension;
 use Docuccino\Laravel\Integrations\ApiResources\ResourceReflector;
 use Docuccino\Laravel\Integrations\TimacdonaldJsonApi\TimacdonaldResourceReflector;
+use Docuccino\Laravel\Support\IgnoredResponses;
 
 /**
  * Wraps a resource-collection success response in the Laravel paginator envelope, once a trace has
@@ -55,9 +56,17 @@ final class PaginatedResponseBody
         return null;
     }
 
-    /** Rewraps the 200 body in the envelope for `$kind`. No-op when the body can't be located. */
+    /**
+     * Rewraps the 200 body in the envelope for `$kind`. No-op when the body can't be located, and no-op
+     * when the route drops its 200 — the conversion below is what hoists the item schema, the envelope's
+     * links/meta parts and the page component, so the check has to come first ({@see IgnoredResponses}).
+     */
     public static function wrap(OperationDraft $operation, RouteContext $context, ClassT $collection, string $kind, Contribution $by): void
     {
+        if (IgnoredResponses::drops($context, '200')) {
+            return;
+        }
+
         $result = $context->converter()->toSchema($collection);
         $items = self::itemsSchema($result->schema);
         if ($items === null) {

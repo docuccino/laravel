@@ -121,7 +121,7 @@ it('moves no byte of the emitted document, whatever the rules are set to', funct
         return $declare($raw);
     })->document->toArray();
 
-    expect($loud)->toBe($quiet);
+    expect(graphDifferences($loud, $quiet))->toBe([]);
 });
 
 it('lints a webhook the way it lints a route, and names the lever that renames it', function (): void {

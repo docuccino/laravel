@@ -13,6 +13,7 @@ use Docuccino\Core\Diff\Policy\VersioningPolicies;
 use Docuccino\Core\Document\UirDocument;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Support\Hydrate;
+use Docuccino\Core\Support\JsonValue;
 use Docuccino\Laravel\Pipeline\DocumentBuilder;
 use Docuccino\Laravel\Support\GitShow;
 use Docuccino\Laravel\Support\Paths;
@@ -122,7 +123,9 @@ final class DiffCommand extends Command
         }
 
         try {
-            $decoded = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
+            // Through the shared reader: an associative decode reads the old artifact's `{}` back as
+            // `[]`, so a document diffed against itself reported an example changing shape.
+            $decoded = JsonValue::decode($json);
         } catch (JsonException $exception) {
             $this->error(sprintf('Could not parse the old artifact as JSON: %s', TerminalText::of($exception->getMessage())));
 

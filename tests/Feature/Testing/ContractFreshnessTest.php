@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Docuccino\Core\Emit\EmitOptions;
 use Docuccino\Core\Emit\Formats;
 use Docuccino\Core\Emit\ProvenanceLevel;
+use Docuccino\Core\Support\JsonValue;
 use Docuccino\Laravel\Testing\ApiContract;
 use PHPUnit\Framework\AssertionFailedError;
 
@@ -160,7 +161,11 @@ it('holds every example in the generated document to its own schema', function (
 
 it('fails an example that disagrees with the schema beside it', function (): void {
     $path = workbenchContract();
-    $document = json_decode((string) file_get_contents($path), true);
+    // Through the shared reader: an associative decode would rewrite every `{}` in the artifact as `[]`
+    // on the way back out, and the audit would then rightly fail a second example this row never
+    // touched — one broken example is the whole point of the row.
+    /** @var array<string, mixed> $document */
+    $document = JsonValue::decode((string) file_get_contents($path));
     $document['components']['schemas']['FormData']['properties']['id']['example'] = 'not an integer';
     file_put_contents($path, (string) json_encode($document));
     ApiContract::using($path);

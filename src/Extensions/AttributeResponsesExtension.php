@@ -10,17 +10,26 @@ use Docuccino\Attributes\ResponseHeader;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Draft\OperationDraft;
+use Docuccino\Core\Draft\ResponseDraft;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
+use Docuccino\Core\Extensions\Schema\ComponentNames;
 use Docuccino\Core\Patch\Contribution;
 use Docuccino\Core\TypeGrammar\ImportContext;
 use Docuccino\Core\TypeGrammar\TypeStringParser;
+use Docuccino\Laravel\Support\IgnoredResponses;
 
 /**
  * Applies the response attributes as the attribute layer: `#[Response]` (per status, with a
  * parsed body type), `#[IgnoreResponse]` removals, and `#[ResponseHeader]` (grouped and merged per
  * status). Examples are the core attribute-examples extension's, which runs once every response exists.
+ *
+ * The removal is a BACKSTOP and not the mechanism: every built-in producer consults
+ * {@see IgnoredResponses} before it converts anything, because a response removed after its body was
+ * converted leaves the components that body hoisted behind. What the sweep still catches is a producer
+ * this package does not own — a third-party extension in an earlier phase — where an orphan is the
+ * lesser of the two defects. This extension's own writes below consult like every other producer.
  */
 final class AttributeResponsesExtension implements OperationExtension
 {
@@ -43,8 +52,18 @@ final class AttributeResponsesExtension implements OperationExtension
             $operation->removeResponse((string) $ignore->status);
         }
 
+        $this->reportIllegalComponents($context);
+
         foreach ($context->attributes->all(Response::class) as $attribute) {
             $status = (string) $attribute->status;
+
+            // Same action, same layer: the ignore is the retraction, so it wins over the declaration —
+            // and it wins BEFORE the declared type is parsed and converted, which is where a named class
+            // would hoist a component nothing would then reference.
+            if (IgnoredResponses::drops($context, $status)) {
+                continue;
+            }
+
             $response = $operation->response($status);
 
             // Naming a code is also a statement about the range inference put it in
@@ -53,6 +72,7 @@ final class AttributeResponsesExtension implements OperationExtension
 
             $response->setDescription('OK', Contribution::fallback());
             $response->setDescription($attribute->description, Contribution::attribute($context->actionSource()));
+            $this->claimDeclaredComponent($response, $attribute, $context);
 
             if ($attribute->type === null) {
                 continue;
@@ -85,6 +105,64 @@ final class AttributeResponsesExtension implements OperationExtension
         $this->applyResponseHeaders($operation, $context, $imports);
     }
 
+    /**
+     * The name a `#[Response]` declared, through the `claimComponentName()` every producer uses — the
+     * anchor for an error body an operation states itself, which `#[ErrorComponent]` cannot reach. Both
+     * arguments are stated there: `namesResponse:` because a declaration at the operation can see every
+     * representation the status answers with, and `specificity: 1` to put "the declaration nearest the
+     * operation wins" into the tuple the guard compares rather than leave it to phase order.
+     */
+    private function claimDeclaredComponent(ResponseDraft $response, Response $attribute, RouteContext $context): void
+    {
+        $response->claimComponentName(
+            $attribute->errorComponent,
+            Contribution::attribute($context->actionSource(), specificity: 1),
+            namesResponse: true,
+        );
+    }
+
+    /**
+     * One warning per `errorComponent:` no `$ref` could point at, under the code
+     * {@see ErrorResponsesExtension::reportIllegalName()} raises for the anchor next door — one mistake,
+     * one remedy, and only the declaration to go and fix differs. Keyed by the mistake rather than the
+     * declaration, and sorted, so what the route says never depends on attribute order.
+     */
+    private function reportIllegalComponents(RouteContext $context): void
+    {
+        /** @var array<string, array{string, string}> $illegal */
+        $illegal = [];
+        foreach ($context->attributes->all(Response::class) as $attribute) {
+            $name = $attribute->errorComponent;
+            if ($name === null || ComponentNames::isLegal($name)) {
+                continue;
+            }
+
+            $status = (string) $attribute->status;
+            if (IgnoredResponses::drops($context, $status)) {
+                continue;
+            }
+
+            $illegal[$status."\0".$name] = [$status, $name];
+        }
+
+        ksort($illegal);
+
+        foreach ($illegal as [$status, $name]) {
+            $context->components->addDiagnostic(new Diagnostic(
+                severity: Severity::Warning,
+                code: 'attribute.error-component-invalid',
+                message: sprintf(
+                    '#[Response(status: %s, errorComponent: "%s")] is not a name an OpenAPI component key can carry, so the argument names nothing and the response keeps the name it would have had.',
+                    $status,
+                    $name,
+                ),
+                source: $context->actionSource(),
+                routeSignature: $context->route->signature(),
+                help: ComponentNames::LEGAL_NAME_HELP,
+            ));
+        }
+    }
+
     private function reportBodylessBody(RouteContext $context, string $status, string $type): void
     {
         $context->components->addDiagnostic(new Diagnostic(
@@ -103,6 +181,10 @@ final class AttributeResponsesExtension implements OperationExtension
         $byStatus = [];
         foreach ($context->attributes->all(ResponseHeader::class) as $header) {
             $status = (string) $header->status;
+            if (IgnoredResponses::drops($context, $status)) {
+                continue;
+            }
+
             $schema = $header->type !== null
                 ? $context->converter()->toSchema($this->types->parse($header->type, $imports))->schema
                 : ['type' => 'string'];

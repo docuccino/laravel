@@ -23,6 +23,7 @@ use Docuccino\Laravel\Extensions\AttributeParametersExtension;
 use Docuccino\Laravel\Extensions\AttributeRequestBodyExtension;
 use Docuccino\Laravel\Extensions\AttributeResponsesExtension;
 use Docuccino\Laravel\Extensions\AttributeSecurityExtension;
+use Docuccino\Laravel\Extensions\DeclaredErrorComponentsExtension;
 use Docuccino\Laravel\Extensions\ErrorResponsesExtension;
 use Docuccino\Laravel\Extensions\FrameworkResponseTypeToSchema;
 use Docuccino\Laravel\Extensions\IgnoredParametersExtension;
@@ -86,6 +87,9 @@ final class DefaultExtensions
             // Finalize: every parameter every producer contributes now exists, so the subtractive
             // #[IgnoreParam] can drop one without a later producer writing it back.
             IgnoredParametersExtension::class,
+            // Finalize: a status only becomes a $ref once a mapper resolves, so this is the first point
+            // at which a declared error-component name is known to have reached nothing.
+            DeclaredErrorComponentsExtension::class,
             // Finalize: every response, parameter and request body a #[Example] could name now exists.
             AttributeExamplesExtension::class,
             RouteServersExtension::class,

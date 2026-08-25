@@ -27,6 +27,15 @@ use PhpParser\Node\Scalar\String_;
 abstract class RulesHarvestingVisitor implements TraceVisitor
 {
     /**
+     * What the author does about each of the two losses. They live here because this class is what
+     * decides a field is one or the other, and both recoverers report the same sentence — one owner, so
+     * the wording cannot drift from the rule it explains.
+     */
+    public const string UNRECOVERABLE_HELP = 'Its rules are a closure, a custom Rule object with no #[RuleSchema], or a Rule::when()/conditional descriptor. Express the field with recoverable rules (string/array rules, Rule::enum(), Rule::in(), …), or annotate the rule class with #[RuleSchema], so it is documented.';
+
+    public const string WIDENED_HELP = 'A value the rule states is not written at the rule — it comes from a call, a variable or a spread — and a partial list would make a client reject a value the API accepts. Write every value where the rule is, which is what settles it; an overlay corrects the document instead, and this notice keeps naming the rule.';
+
+    /**
      * @var array<string, list<ValidationRule>>
      */
     private array $fields = [];

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Extensions;
 
-use Docuccino\Attributes\IgnoreResponse;
 use Docuccino\Attributes\Response;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
@@ -23,11 +22,13 @@ use Docuccino\Core\Inference\DType\DType;
 use Docuccino\Core\Inference\DType\LiteralT;
 use Docuccino\Core\Inference\DType\NeverT;
 use Docuccino\Core\Inference\DType\UnionT;
+use Docuccino\Core\Inference\DType\UnknownT;
 use Docuccino\Core\Inference\DType\VoidT;
 use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Patch\Contribution;
 use Docuccino\Laravel\Support\BinaryRepresentation;
 use Docuccino\Laravel\Support\FrameworkClasses;
+use Docuccino\Laravel\Support\IgnoredResponses;
 
 /**
  * Infers the success response(s) from the action's return paths (design §5): each return type is
@@ -143,7 +144,16 @@ final class InferredResponsesExtension implements OperationExtension
 
         foreach ($byStatus as $status => $bucket) {
             // PHP coerced the '200' key to int; the draft API and reason table want the string back.
-            $this->emit($operation, $context, (string) $status, $bucket['payloads'], $bucket['location'], $producer, $bucket['headers'], $bucket['bodies']);
+            $status = (string) $status;
+
+            // Asked here rather than at the top, because the status a return path lands on is only known
+            // once the resolver chain has placed it — and asked BEFORE emit(), because emit() converts the
+            // payload, which is where a body hoists ({@see IgnoredResponses}).
+            if (IgnoredResponses::drops($context, $status)) {
+                continue;
+            }
+
+            $this->emit($operation, $context, $status, $bucket['payloads'], $bucket['location'], $producer, $bucket['headers'], $bucket['bodies']);
         }
     }
 
@@ -220,10 +230,8 @@ final class InferredResponsesExtension implements OperationExtension
      */
     private function namedAt(RouteContext $context, string $status, bool $streamed): bool
     {
-        foreach ($context->attributes->all(IgnoreResponse::class) as $ignore) {
-            if ((string) $ignore->status === $status) {
-                return true;
-            }
+        if (IgnoredResponses::drops($context, $status)) {
+            return true;
         }
 
         foreach ($context->attributes->all(Response::class) as $declared) {
@@ -485,7 +493,13 @@ final class InferredResponsesExtension implements OperationExtension
         }
 
         if ($type->fqcn === FrameworkClasses::JSON_RESPONSE) {
-            return $type->typeArgs !== [] ? null : $type->fqcn;
+            // Parameterised is not the same as recovered: a response the engine could only pin a STATUS on
+            // — a fluent `->setStatusCode(202)` over a body it could not follow — carries an unresolved
+            // payload arg, and its body is exactly as undescribed as a bare response's. A void payload is
+            // the opposite case: `noContent()` proves there is no body to describe.
+            $payload = $type->typeArgs[0] ?? null;
+
+            return $payload === null || $payload instanceof UnknownT ? $type->fqcn : null;
         }
 
         if ($bodies === []) {

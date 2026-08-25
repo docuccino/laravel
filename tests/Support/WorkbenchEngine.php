@@ -263,6 +263,16 @@ final class WorkbenchEngine
                         'Whatever the publishing system stored alongside the article.',
                         '{"source": "syndication", "wordCount": 1200}',
                     ),
+                    // The same map, with the EMPTY object literal beside it — the natural example on a
+                    // free-form map, and the one the reader refused as untypable, dropping a valid
+                    // example and warning about it. `{}` and `[]` are one PHP array, so this is the
+                    // fixture that keeps the object-ness alive from the reader through to the bytes.
+                    new PropertyMetadata(
+                        'overrides',
+                        new MapT(ScalarT::string(), new UnknownT('mixed')),
+                        'Per-article rendering overrides.',
+                        '{}',
+                    ),
                 ]),
                 self::AUTHOR_DATA => new ClassMetadata(self::AUTHOR_DATA, [
                     new PropertyMetadata('name', ScalarT::string()),

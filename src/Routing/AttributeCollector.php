@@ -8,6 +8,9 @@ use Closure;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Extensions\Context\AttributeSet;
+use Docuccino\Core\Provenance\ClassNames;
+use Docuccino\Core\Provenance\MessagePaths;
+use Docuccino\Core\Provenance\RootRelativeSourcePathResolver;
 use ReflectionClass;
 use ReflectionFunctionAbstract;
 use Throwable;
@@ -26,6 +29,20 @@ use Throwable;
 final class AttributeCollector
 {
     private const NAMESPACE_PREFIX = 'Docuccino\\Attributes\\';
+
+    /**
+     * Both halves of `attribute.unreadable` name something reflection supplied, and neither may be
+     * published as it stands. The CAUSE: PHP allows `new` in an attribute's arguments, so what
+     * instantiating one throws is not limited to the named errors PHP raises itself, and an anonymous
+     * exception's `::class` spells the absolute file it was written in plus a counter of the anonymous
+     * classes the PROCESS declared before it — {@see ClassNames} is where that becomes publishable. The
+     * SITE: an action's symbol falls back to the FILE where there is no class, so an ordinary closure
+     * route names one absolutely — {@see MessagePaths} is where that does.
+     */
+    public function __construct(
+        private readonly ClassNames $classNames = new ClassNames(new RootRelativeSourcePathResolver('')),
+        private readonly MessagePaths $messagePaths = new MessagePaths(new RootRelativeSourcePathResolver('')),
+    ) {}
 
     /**
      * @param  Closure(Diagnostic): void|null  $onUnreadable
@@ -76,13 +93,13 @@ final class AttributeCollector
             try {
                 $set->add($attribute->newInstance());
             } catch (Throwable $cause) {
-                $onUnreadable?->__invoke(self::unreadable($attribute->getName(), $site, $cause, $routeSignature));
+                $onUnreadable?->__invoke($this->unreadable($attribute->getName(), $site, $cause, $routeSignature));
             }
         }
     }
 
     /** The one `attribute.unreadable` mint — a route's actions and a webhook class both report it. */
-    private static function unreadable(string $attribute, string $site, Throwable $cause, ?string $routeSignature): Diagnostic
+    private function unreadable(string $attribute, string $site, Throwable $cause, ?string $routeSignature): Diagnostic
     {
         return new Diagnostic(
             severity: Severity::Warning,
@@ -90,10 +107,10 @@ final class AttributeCollector
             message: sprintf(
                 'The #[%s] on %s could not be instantiated and was ignored.',
                 substr($attribute, strlen(self::NAMESPACE_PREFIX)),
-                $site,
+                $this->messagePaths->relative($site),
             ),
             routeSignature: $routeSignature,
-            help: sprintf('Its constructor threw %s. Check the arguments at that declaration against the attribute\'s constructor.', $cause::class),
+            help: sprintf('Its constructor threw %s. Check the arguments at that declaration against the attribute\'s constructor.', $this->classNames->of($cause)),
         );
     }
 }

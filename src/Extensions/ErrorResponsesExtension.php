@@ -20,6 +20,7 @@ use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Patch\Contribution;
 use Docuccino\Core\Provenance\Source;
 use Docuccino\Laravel\Exceptions\DeclaredErrorComponent;
+use Docuccino\Laravel\Support\IgnoredResponses;
 
 /**
  * Turns the action's signalled exceptions into error responses (design §Errors): each runs through the
@@ -29,7 +30,9 @@ use Docuccino\Laravel\Exceptions\DeclaredErrorComponent;
  * Also the one place `#[ErrorComponent]` on an EXCEPTION CLASS is read, so the name an application
  * declares reaches the response through the same `claimComponentName()` every producer uses
  * ({@see applyDeclarations()}). The same attribute on a RENDER METHOD is read where the call path is
- * visible, which is the engine, and claimed by the tier that built the body from it.
+ * visible, which is the engine, and claimed by the tier that built the body from it. On anything else it
+ * is read by nothing, which {@see DeclaredErrorComponentsExtension} reports — from `Finalize`, so it is
+ * not lost to this class's early return.
  */
 final class ErrorResponsesExtension implements OperationExtension
 {
@@ -64,7 +67,9 @@ final class ErrorResponsesExtension implements OperationExtension
             // a different name from a cold one.
             $context->recordDependencyFiles(DeclarationFiles::of($throw->exceptionFqcn));
 
-            $mapped = $context->mapThrow($throw);
+            // Mapped through the ignore reader, so a status the route drops is neither published nor left
+            // holding the components its body hoisted ({@see IgnoredResponses::mapThrow()}).
+            $mapped = IgnoredResponses::mapThrow($context, $throw);
             if ($mapped === null) {
                 continue;
             }
@@ -169,7 +174,7 @@ final class ErrorResponsesExtension implements OperationExtension
             ),
             source: $this->declarationSource($context, $declaration),
             routeSignature: $context->route->signature(),
-            help: 'A component key is letters, digits, ".", "_" and "-" only. A reason phrase as one word — "NotFound", "TooManyRequests" — is what reads best as a generated client\'s type.',
+            help: ComponentNames::LEGAL_NAME_HELP,
         ));
     }
 

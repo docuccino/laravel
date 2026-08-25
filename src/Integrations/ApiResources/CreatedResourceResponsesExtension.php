@@ -12,6 +12,7 @@ use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Patch\Contribution;
+use Docuccino\Laravel\Support\IgnoredResponses;
 
 /**
  * Re-homes a bare single-resource success response from 200 to 201 when the action returns a resource
@@ -20,6 +21,11 @@ use Docuccino\Core\Patch\Contribution;
  * `wasRecentlyCreated` model. Runs LATE so the inferred 200 already exists; re-converts the resource
  * body under 201 (same media type) and drops the 200. Only the statically-clear create-wrap is
  * recovered — anything less degrades silently to the default 200. Yields to an explicit 201.
+ *
+ * A route that drops its 201 ({@see IgnoredResponses}) yields the same way, retraction included. The
+ * re-home is ONE finding — this operation answers 201, not 200 — so declining to publish it is declining
+ * the whole of it; taking the 200 away as well would drop a status the attribute never named, and leave
+ * the component inference hoisted for it reachable from nothing.
  */
 #[ExtensionOrder(priority: Priorities::LATE)]
 final class CreatedResourceResponsesExtension implements OperationExtension
@@ -32,7 +38,11 @@ final class CreatedResourceResponsesExtension implements OperationExtension
     public function handle(OperationDraft $operation, RouteContext $context): void
     {
         $resource = $this->singleResourceReturn($context);
-        if ($resource === null || ! $operation->hasResponse('200') || $operation->hasResponse('201')) {
+        if ($resource === null
+            || ! $operation->hasResponse('200')
+            || $operation->hasResponse('201')
+            || IgnoredResponses::drops($context, '201')
+        ) {
             return;
         }
 

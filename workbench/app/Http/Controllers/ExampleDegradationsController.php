@@ -80,6 +80,14 @@ final class ExampleDegradationsController
         return response()->json([]);
     }
 
+    // A stray escape in a double-quoted argument, which PHP accepts: no filesystem can hold the name,
+    // so every function that would answer for it raises instead of returning.
+    #[Example(name: 'nul', file: "docuccino-example-absent.json\0.txt")]
+    public function nulByteInFile(): JsonResponse
+    {
+        return response()->json([]);
+    }
+
     #[Example(name: 'absent', file: 'docuccino-example-absent.json')]
     public function missingFile(): JsonResponse
     {

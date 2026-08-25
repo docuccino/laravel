@@ -163,6 +163,14 @@ it('hoists the item class a recovered list names into components', function (): 
     // the DType's case names show through. The product emits the backing values (`open`/`closed`/`draft`)
     // plus x-enumDescriptions — pinned on the real engine in QueryBuilderRealEngineTest. What this
     // assertion is for is the HOIST: that the item class becomes a component of its own at all.
+    // The nested class is mapped by the GENERIC class mapper here, for the same reason the enum shows
+    // case names: `App\Data\SnapshotFormData` isn't autoloadable in-process, so `isData()` says no and
+    // DataSchema declines it. That makes this the real-metadata proof that the fallback mapper now reads
+    // a property's `@example` — the tag was recovered all along and only the Data mapper published it.
+    // `open` is the enum's BACKING value, so the pair agrees wherever the product emits backing values;
+    // the case names beside it are the harness artifact named above, and an example that really did
+    // violate its schema is caught by the document-level example audit, which validates against the
+    // whole schema rather than its `type` alone.
     expect(array_keys($schemas))->toBe(['SnapshotFormData', 'SnapshotData'])
         ->and($schemas['SnapshotFormData']['properties']['status'])->toBe([
             'type' => 'string',
@@ -170,6 +178,7 @@ it('hoists the item class a recovered list names into components', function (): 
             'x-enum-varnames' => ['Open', 'Closed', 'Draft'],
             'x-enumNames' => ['Open', 'Closed', 'Draft'],
             'description' => 'Publication status frozen at submit.',
+            'example' => 'open',
         ]);
 })->group('fixture');
 

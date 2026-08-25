@@ -152,7 +152,7 @@ it('emits an info diagnostic for a filter_descriptions key naming no filter kind
         )
         // The help lists the kinds that exist, read off the table itself.
         ->and($diagnostics[0]->help)->toBe(
-            'Filter kinds are: default, partial, exact, beginsWithStrict, endsWithStrict, scope, callback, custom, operator, trashed, belongsTo.',
+            'Filter kinds are: default, partial, exact, beginsWith, endsWith, beginsWithStrict, endsWithStrict, scope, callback, custom, operator, groupOr, groupAnd, trashed, belongsTo.',
         );
 });
 

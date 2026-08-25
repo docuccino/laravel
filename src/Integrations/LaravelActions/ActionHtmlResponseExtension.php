@@ -12,6 +12,7 @@ use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Patch\Contribution;
 use Docuccino\Laravel\Support\HtmlRepresentation;
+use Docuccino\Laravel\Support\IgnoredResponses;
 
 /**
  * Records the `text/html` success representation of an action that defines `htmlResponse()`. The package's
@@ -34,7 +35,9 @@ final class ActionHtmlResponseExtension implements OperationExtension
     {
         LaravelAction::dependsOnDeclaration($context);
 
-        if (! LaravelAction::definesHtmlResponse($context->actionRef->class)) {
+        // The html representation is additive to the 200, so an action that drops that status drops both
+        // representations with it ({@see IgnoredResponses}).
+        if (! LaravelAction::definesHtmlResponse($context->actionRef->class) || IgnoredResponses::drops($context, '200')) {
             return;
         }
 

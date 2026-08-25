@@ -106,13 +106,26 @@ final readonly class QueryBuilderConfig
             strict: ! (
                 ($config['disable_invalid_filter_query_exception'] ?? false) === true
                 && ($config['disable_invalid_sort_query_exception'] ?? false) === true
-                && ($config['disable_invalid_includes_query_exception'] ?? false) === true
+                && ($config[self::includeExceptionKey($spatieMajor)] ?? false) === true
             ),
             countSuffix: self::rawString($suffixes, 'count', 'Count'),
             existsSuffix: self::rawString($suffixes, 'exists', 'Exists'),
             delimiter: self::rawString($config, 'delimiter', ','),
             spatieMajor: $spatieMajor,
         );
+    }
+
+    /**
+     * The key that turns off the invalid-include exception, which v7 renamed from the plural
+     * `disable_invalid_includes_query_exception` to the singular form. The INSTALLED major decides which
+     * one to read, never both: a v6 config file left behind by an upgrade still carries the plural key,
+     * and v7 ignores it, so honouring either spelling would document no `400` where the server throws one.
+     */
+    private static function includeExceptionKey(int $spatieMajor): string
+    {
+        return $spatieMajor >= self::SUPPORTED_MAJOR
+            ? 'disable_invalid_include_query_exception'
+            : 'disable_invalid_includes_query_exception';
     }
 
     /**

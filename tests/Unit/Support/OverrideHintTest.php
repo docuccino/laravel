@@ -41,8 +41,9 @@ it('names the attribute that writes a response', function (string $label, string
     'the body' => ['responses.201.content.application/json.schema', 'type', '#[Response(status: 201, type: Invoice::class)]'],
     'headers' => ['responses.204', 'headers', "#[ResponseHeader(name: 'X-Total', status: 204)]"],
     // `component` is not a member of the response at all — it is the shared error body's published
-    // name, and #[Response] would not touch it.
-    'a shared error name' => ['responses.404', 'component', "#[ErrorComponent('InvoiceNotFound')] on the exception or its render method"],
+    // name, written by two anchors and by no other argument of #[Response]. The one nearest the
+    // operation leads, since it is the one that reaches a body nothing threw.
+    'a shared error name' => ['responses.404', 'component', "#[Response(status: 404, errorComponent: 'InvoiceNotFound')], or #[ErrorComponent] on the exception or its render method"],
 ]);
 
 it('falls back to the generic truth wherever no attribute writes the field', function (string $label, string $field): void {

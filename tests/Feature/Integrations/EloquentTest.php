@@ -322,6 +322,30 @@ it('adds $with eager-loaded relations as nested model schemas (to-many array, to
     expect($registry->schemas())->toHaveKeys(['Post', 'Merchant']);
 });
 
+it('omits an eager-loaded relation whose related model it could not resolve, and says which', function (): void {
+    // `$with` names a relation the document has to carry on every response, so a relation whose return
+    // type the engine cannot read leaves a hole. Guessing an object there would be a shape a client
+    // trusts and the server never sends — so the key is omitted and the reader is told where to annotate.
+    $components = new ComponentRegistry;
+    $engine = new StubTypeEngine(classes: [
+        Boutique::class => new ClassMetadata(Boutique::class, [new PropertyMetadata('id', ScalarT::int())]),
+    ]);
+
+    (new SchemaConverter([new ModelSchema, new EnumSchema, ...DefaultTypeMappers::all()], $engine, $components))
+        ->toSchema(new ClassT(Boutique::class));
+
+    $unresolved = array_values(array_filter(
+        $components->diagnostics(),
+        static fn ($d): bool => $d->code === 'eloquent.unresolved-eager-load',
+    ));
+
+    expect(array_map(static fn ($d): string => $d->message, $unresolved))->toBe([
+        'Could not resolve the related model of '.Boutique::class.'::posts() (declared in $with), so it is omitted from the schema.',
+        'Could not resolve the related model of '.Boutique::class.'::owner() (declared in $with), so it is omitted from the schema.',
+    ])
+        ->and($components->schemas()['Boutique']['properties'] ?? [])->not->toHaveKeys(['posts', 'owner']);
+});
+
 it('weakens date claims to plain strings and diagnoses a serializeDate() override', function (): void {
     $registry = modelRegistry(new ClassT(Chronicle::class));
     $chronicle = $registry->schemas()['Chronicle'];

@@ -26,6 +26,7 @@ use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Patch\Contribution;
 use Docuccino\Core\Provenance\Source;
 use Docuccino\Laravel\Integrations\Eloquent\CastSchema;
+use Docuccino\Laravel\Support\IgnoredResponses;
 use ReflectionClass;
 
 /**
@@ -116,7 +117,8 @@ final class QueryBuilderParametersExtension implements OperationExtension
     /**
      * In strict mode (the package default) an unknown filter/sort/include raises `InvalidQuery` → 400.
      * A synthetic 400 goes through the resolved exception→response chain so its body matches the
-     * document's error style. Skipped when strict mode is off or `error_responses => 'none'`.
+     * document's error style. Skipped when strict mode is off, `error_responses => 'none'`, or the route
+     * drops the status the chain answers at ({@see IgnoredResponses}).
      */
     private function documentStrictModeError(OperationDraft $operation, RouteContext $context): void
     {
@@ -128,7 +130,7 @@ final class QueryBuilderParametersExtension implements OperationExtension
         $source = $context->actionSource();
         $source = $source === null ? null : new Source($source->file, $source->line, 'query-builder:strict-mode');
 
-        $mapped = $context->mapThrow($throw);
+        $mapped = IgnoredResponses::mapThrow($context, $throw);
         if ($mapped !== null) {
             $this->errors->apply($operation, $mapped->draft, 'integration:query-builder', $source);
         }

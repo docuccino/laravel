@@ -770,10 +770,14 @@ it('leaves an untypable filter untyped only where the kind is user code', functi
     'default' => ['default', 'string'],
     'partial' => ['partial', 'string'],
     'exact' => ['exact', 'string'],
+    'beginsWith' => ['beginsWith', 'string'],
+    'endsWith' => ['endsWith', 'string'],
     'beginsWithStrict' => ['beginsWithStrict', 'string'],
     'endsWithStrict' => ['endsWithStrict', 'string'],
     'scope' => ['scope', 'string'],
     'operator' => ['operator', 'string'],
+    'groupOr' => ['groupOr', 'string'],
+    'groupAnd' => ['groupAnd', 'string'],
     'belongsTo' => ['belongsTo', 'string'],
     'unknown kind' => ['no-such-kind', 'string'],
 ]);
@@ -910,12 +914,16 @@ it('describes every filter kind as a contract, degrading an unknown kind to the 
     'default' => ['default', 'Substring match on `thing`.'],
     'partial' => ['partial', 'Substring match on `thing`.'],
     'exact' => ['exact', 'Exact match on `thing`.'],
+    'beginsWith' => ['beginsWith', 'Prefix match on `thing`.'],
+    'endsWith' => ['endsWith', 'Suffix match on `thing`.'],
     'beginsWithStrict' => ['beginsWithStrict', 'Prefix match on `thing`.'],
     'endsWithStrict' => ['endsWithStrict', 'Suffix match on `thing`.'],
     'scope' => ['scope', 'Filters the result set by `thing`.'],
     'callback' => ['callback', 'Filters the result set by `thing`.'],
     'custom' => ['custom', 'Filters the result set by `thing`.'],
     'operator' => ['operator', 'Compares `thing` against the value.'],
+    'groupOr' => ['groupOr', 'Matches records where at least one of the conditions grouped under `thing` holds.'],
+    'groupAnd' => ['groupAnd', 'Matches records where every condition grouped under `thing` holds.'],
     'belongsTo' => ['belongsTo', 'Matches records belonging to the given `thing`.'],
     'trashed' => ['trashed', 'Soft-delete filter: `with` includes soft-deleted records, `only` returns only soft-deleted; omit to exclude them.'],
     'unknown fallback' => ['wibble', 'Filters the result set by `thing`.'],
@@ -929,8 +937,8 @@ it('leaves no filter kind out of the description dataset', function (): void {
     $kinds = array_keys((array) (new ReflectionClass(QueryBuilderParameters::class))->getConstant('FILTER_DESCRIPTIONS'));
 
     expect($kinds)->toBe([
-        'default', 'partial', 'exact', 'beginsWithStrict', 'endsWithStrict',
-        'scope', 'callback', 'custom', 'operator', 'trashed', 'belongsTo',
+        'default', 'partial', 'exact', 'beginsWith', 'endsWith', 'beginsWithStrict', 'endsWithStrict',
+        'scope', 'callback', 'custom', 'operator', 'groupOr', 'groupAnd', 'trashed', 'belongsTo',
     ])
         // The published set a document's overrides are validated against has to be the same table, or the
         // diagnostic would refuse a kind that works (or accept one that does nothing).

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Extensions;
 
-use Docuccino\Attributes\IgnoreResponse;
 use Docuccino\Attributes\Unauthenticated;
 use Docuccino\Core\Draft\OperationDraft;
 use Docuccino\Core\Extensions\Context\RouteContext;
@@ -20,6 +19,7 @@ use Docuccino\Core\Inference\ThrowDisposition;
 use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Provenance\Source;
 use Docuccino\Laravel\Support\AuthMiddlewareDetector;
+use Docuccino\Laravel\Support\IgnoredResponses;
 use ReflectionClass;
 
 /**
@@ -69,65 +69,45 @@ final class ImplicitResponsesExtension implements OperationExtension
             return;
         }
 
-        $ignored = $this->ignoredStatuses($context);
-
         // 401 — behind auth middleware and not explicitly public.
         if (AuthMiddlewareDetector::matches($context) && ! $context->attributes->has(Unauthenticated::class)) {
-            $this->synthesize($operation, $context, 401, self::AUTHENTICATION, 'auth-middleware', $ignored);
+            $this->synthesize($operation, $context, 401, self::AUTHENTICATION, 'auth-middleware');
         }
 
         // 422 — a validated request body was recovered for a write verb.
         if ($this->hasValidatedRequest($operation)) {
-            $this->synthesize($operation, $context, 422, self::VALIDATION, 'validated-request', $ignored);
+            $this->synthesize($operation, $context, 422, self::VALIDATION, 'validated-request');
         }
 
         // 404 — one per operation, regardless of how many params are model-bound.
         if ($context->routeBindings !== []) {
-            $this->synthesize($operation, $context, 404, self::MODEL_NOT_FOUND, 'route-model-binding', $ignored);
+            $this->synthesize($operation, $context, 404, self::MODEL_NOT_FOUND, 'route-model-binding');
         }
 
         // 403 — authorization middleware or a FormRequest authorize() gate.
         $authorization = $this->authorizationSignal($context);
         if ($authorization !== null) {
-            $this->synthesize($operation, $context, 403, self::AUTHORIZATION, $authorization, $ignored);
+            $this->synthesize($operation, $context, 403, self::AUTHORIZATION, $authorization);
         }
     }
 
-    /**
-     * @param  array<int, true>  $ignored
-     */
     private function synthesize(
         OperationDraft $operation,
         RouteContext $context,
         int $status,
         string $exceptionFqcn,
         string $signal,
-        array $ignored,
     ): void {
-        if (isset($ignored[$status])) {
-            return;
-        }
-
         $throw = new ThrownException($exceptionFqcn, $status, [], ThrowConfidence::Certain, ThrowDisposition::Signal);
         $source = $this->signalSource($context, $signal);
 
-        $mapped = $context->mapThrow($throw);
+        // The ignore is read off the MAPPED status rather than off the synthetic one, so a mapper that
+        // answers this signal somewhere else is dropped by an attribute naming where it really landed
+        // ({@see IgnoredResponses::mapThrow()}).
+        $mapped = IgnoredResponses::mapThrow($context, $throw);
         if ($mapped !== null) {
             $this->applier->apply($operation, $mapped->draft, self::PRODUCER, $source);
         }
-    }
-
-    /**
-     * @return array<int, true>
-     */
-    private function ignoredStatuses(RouteContext $context): array
-    {
-        $ignored = [];
-        foreach ($context->attributes->all(IgnoreResponse::class) as $ignore) {
-            $ignored[$ignore->status] = true;
-        }
-
-        return $ignored;
     }
 
     /**

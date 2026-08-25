@@ -188,7 +188,12 @@ it('diagnoses every way a declaration can fail to describe an example, and publi
     'a media type the response has not got' => ['unknownMediaType', 'attribute.example-target-missing', 'warning', 'no "application/xml" content'],
     'a parameter that is not documented' => ['unknownParameter', 'attribute.example-target-missing', 'warning', 'no parameter named "nope"'],
     'a request body that does not exist' => ['noRequestBody', 'attribute.example-target-missing', 'warning', 'documents no request body'],
-    'a path that escapes the app' => ['escapingFile', 'example-file.escapes-base-path', 'error', 'escapes the application base path'],
+    'a path that escapes the app' => ['escapingFile', 'example-file.escapes-base-path', 'error', 'does not name a path inside the application'],
+    // A NUL byte is not a traversal and not an absent file: it is a name no filesystem can hold, so
+    // realpath() raises rather than answering. That reached the per-route catch, which cost the
+    // author the whole ROUTE for one stray escape and reported a PHP-internals string naming no
+    // attribute. It is refused where a traversal is, and the escape is shown rather than published raw.
+    'a path no filesystem can hold' => ['nulByteInFile', 'example-file.escapes-base-path', 'error', 'docuccino-example-absent.json\\x00.txt'],
     'a file that is not there' => ['missingFile', 'example-file.missing', 'warning', 'could not be read'],
     'malformed JSON' => ['malformedJson', 'example-file.invalid', 'warning', 'docuccino-example-broken.json'],
     'malformed YAML' => ['malformedYaml', 'example-file.invalid', 'warning', 'docuccino-example-broken.yaml'],

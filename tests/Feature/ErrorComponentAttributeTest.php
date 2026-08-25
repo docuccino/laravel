@@ -15,19 +15,23 @@ use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Patch\Contribution;
 use Docuccino\Core\Pipeline\GenerationResult;
 use Docuccino\Laravel\Facades\Docuccino;
+use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\BaseNamedController;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\DeclaredErrorsController;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\EscapedNameException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\HttpConflictException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\InheritedApiException;
+use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\InheritingErrorsController;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\MalformedNameException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\MistypedNameException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\OtherThingMissingException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\OverridingApiException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\ThingMissingException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\UndeclaredException;
+use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\ValidationFailedException;
 use Docuccino\Laravel\Tests\Support\CountingTypeEngine;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Illuminate\Routing\Router;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Workbench\App\Http\Controllers\FormController;
 
 /**
@@ -49,6 +53,23 @@ const DECLARED_ERROR_ACTIONS = [
     'second' => DeclaredErrorsController::class.'::second',
     'third' => DeclaredErrorsController::class.'::third',
     'fourth' => DeclaredErrorsController::class.'::fourth',
+    'fifth' => DeclaredErrorsController::class.'::fifth',
+    'sixth' => DeclaredErrorsController::class.'::sixth',
+    'seventh' => DeclaredErrorsController::class.'::seventh',
+    'eighth' => DeclaredErrorsController::class.'::eighth',
+    'ninth' => DeclaredErrorsController::class.'::ninth',
+    'tenth' => DeclaredErrorsController::class.'::tenth',
+    'eleventh' => DeclaredErrorsController::class.'::eleventh',
+    'twelfth' => DeclaredErrorsController::class.'::twelfth',
+    'thirteenth' => DeclaredErrorsController::class.'::thirteenth',
+    'fourteenth' => DeclaredErrorsController::class.'::fourteenth',
+    'fifteenth' => DeclaredErrorsController::class.'::fifteenth',
+    'sixteenth' => DeclaredErrorsController::class.'::sixteenth',
+    'seventeenth' => DeclaredErrorsController::class.'::seventeenth',
+    'eighteenth' => DeclaredErrorsController::class.'::eighteenth',
+    'nineteenth' => DeclaredErrorsController::class.'::nineteenth',
+    'twentieth' => DeclaredErrorsController::class.'::twentieth',
+    'twentyFirst' => DeclaredErrorsController::class.'::twentyFirst',
 ];
 
 /**
@@ -91,8 +112,9 @@ function declaringEngine(array $byAction): callable
  * document. Route URIs sort after everything the workbench states, so nothing here can perturb it.
  *
  * @param  array<string, array{class-string, int}>  $byAction  action name → `[FQCN, status]`
+ * @param  callable(array<string, mixed>): array<string, mixed>|null  $mutateConfig
  */
-function declaringBuild(array $byAction): GenerationResult
+function declaringBuild(array $byAction, ?callable $mutateConfig = null): GenerationResult
 {
     /** @var Router $router */
     $router = app('router');
@@ -102,7 +124,7 @@ function declaringBuild(array $byAction): GenerationResult
 
     app()->instance(TypeEngine::class, declaringEngine($byAction)());
 
-    return generateDocument();
+    return generateDocument($mutateConfig);
 }
 
 /**
@@ -154,6 +176,264 @@ afterEach(function (): void {
     removeFragmentCacheDirs('warm');
     removeFragmentCacheDirs('cold');
     removeFragmentCacheDirs('declared');
+});
+
+it('names nothing from an #[ErrorComponent] on the action, and says so', function (string $case, array $byAction, string $published): void {
+    // Reported as the attribute "changing nothing": an author put `#[ErrorComponent]` on the three
+    // controller methods answering the error they wanted named, re-exported, and got the same names back.
+    // `TARGET_METHOD` permits the placement and `AttributeCollector` even materialises it, but the two
+    // anchors that are READ are an exception class ({@see DeclaredErrorComponent::on()}) and a render
+    // method the engine analysed (`ReturnSite::$component`) — an action is neither, so nothing consults
+    // it. It loses to the weakest name there is, the status default, which is how little it does.
+    //
+    // The row with a `#[Response]`-declared body is the reported case exactly: a body an operation
+    // states itself, which no `#[ErrorComponent]` reader ever visits.
+    $result = declaringBuild($byAction);
+    $document = $result->document->toArray();
+
+    $misplaced = array_values(array_filter(
+        $result->diagnostics,
+        static fn ($d): bool => $d->code === 'attribute.error-component-unread',
+    ));
+
+    expect($document['components']['responses'])->toHaveKey($published)
+        ->and($document['components']['responses'])->not->toHaveKey('ActionNamed')
+        ->and($document['components']['schemas'] ?? [])->not->toHaveKey('ActionNamed')
+        // …and the placement is reported rather than ignored, naming both anchors that do work: once per
+        // route, because the attribute is on each of the two actions.
+        ->and($misplaced)->toHaveCount(2)
+        ->and($misplaced[0]->severity)->toBe(Severity::Warning)
+        ->and($misplaced[0]->message)->toContain('ActionNamed')
+        ->and($misplaced[0]->help)->toContain('exception class')
+        ->and($misplaced[0]->help)->toContain('render method');
+})->with([
+    ['a body the error tiers built', [
+        'fifth' => [UndeclaredException::class, 409],
+        'sixth' => [UndeclaredException::class, 409],
+    ], 'Conflict'],
+    ['a body the operation declared', [
+        'seventh' => [UndeclaredException::class, 409],
+        'eighth' => [UndeclaredException::class, 409],
+    ], 'Error410'],
+]);
+
+it('publishes a declared error response under the name its #[Response] gives it', function (): void {
+    // The anchor `#[ErrorComponent]` cannot be: a body the operation states itself. Named at the site
+    // that declares it, which is where the author already is and where the status and the media type are
+    // written down — so nothing has to be inferred about which of an operation's errors is meant.
+    $document = declaringBuild([
+        'ninth' => [UndeclaredException::class, 409],
+        'tenth' => [UndeclaredException::class, 409],
+    ])->document->toArray();
+
+    expect($document['components']['responses'])->toHaveKey('DeclaredGone')
+        ->and($document['components']['responses'])->not->toHaveKey('Error410')
+        // One representation, so the name reaches the shape under it too — one concept, one name.
+        ->and($document['components']['schemas'])->toHaveKey('DeclaredGone')
+        ->and($document['paths']['/api/zz-declared-ninth']['get']['responses']['410']['$ref'])
+        ->toBe('#/components/responses/DeclaredGone');
+});
+
+it('takes the nearest name when two #[Response] declarations name one status differently', function (): void {
+    // A response component covers every representation of a status, so a status has one name — and which
+    // one is the question the guard answers for every other field of the attribute: the first writer over
+    // a most-specific-first set, so the nearest declaration wins. `errorComponent:` settles no differently, and
+    // the name that lost is on the provenance trail where every other shadowed value is.
+    $result = declaringBuild([
+        'eleventh' => [UndeclaredException::class, 409],
+        'ninth' => [UndeclaredException::class, 409],
+    ]);
+    $document = $result->document->toArray();
+
+    $response = $document['paths']['/api/zz-declared-eleventh']['get']['responses']['410'];
+    $shadowed = [];
+    foreach ($response['x-docuccino']['provenance'] ?? [] as $record) {
+        foreach ($record['overrode'] ?? [] as $entry) {
+            if ($entry['field'] === 'component') {
+                $shadowed[] = $entry['value'];
+            }
+        }
+    }
+
+    expect($response['x-docuccino']['facts']['component'])->toBe('DeclaredGone')
+        ->and($shadowed)->toBe(['SecondName']);
+});
+
+it('lets the #[Response] that declares a status outrank the exception class\'s #[ErrorComponent]', function (): void {
+    // Both contribute at `attribute`, so the guard cannot order them and the specificity rule decides:
+    // the declaration nearest the operation wins. The mechanism is the one already written down — a
+    // declaration replaces the status DEFAULT and nothing a producer named itself
+    // ({@see DeclaredErrorComponent::mayReplace()}) — so the class anchor finds the status already named.
+    $document = declaringBuild([
+        'twelfth' => [ThingMissingException::class, 409],
+        'first' => [ThingMissingException::class, 409],
+    ])->document->toArray();
+
+    expect($document['components']['responses'])->toHaveKey('DeclaredConflict')
+        ->and($document['components']['responses'])->toHaveKey('ResourceMissing')
+        // …and each operation resolves to the name written nearest it.
+        ->and($document['paths']['/api/zz-declared-twelfth']['get']['responses']['409']['$ref'])
+        ->toBe('#/components/responses/DeclaredConflict')
+        ->and($document['paths']['/api/zz-declared-first']['get']['responses']['409']['$ref'])
+        ->toBe('#/components/responses/ResourceMissing');
+});
+
+it('keeps an exception class\'s name off a response answering with more than its body', function (): void {
+    // The topology the multi-representation rule exists to refuse, with the declaration on the anchor
+    // that cannot see past the body it raises. `#[ErrorComponent]` is written on an exception CLASS: it
+    // speaks for the error that class is, and knows nothing of the representation another producer put
+    // beside it at the same status. So its name describes the one-representation body and not the pair,
+    // and asking for it on both would send the seventy-five operations answering with the first up the
+    // ladder behind the two answering with the second — `ValidationError_5lwwjnmg` for a rename nobody
+    // asked for. Only a name written ABOUT the operation may reach a response stating several.
+    $document = declaringBuild([
+        'thirteenth' => [ValidationFailedException::class, 422],
+        'fourteenth' => [ValidationFailedException::class, 422],
+        'fifteenth' => [ValidationFailedException::class, 422],
+        'sixteenth' => [ValidationFailedException::class, 422],
+    ])->document->toArray();
+
+    $names = array_keys($document['components']['responses']);
+
+    expect($names)->toContain('ValidationError')
+        ->and(array_filter($names, static fn (string $n): bool => str_starts_with($n, 'ValidationError_')))->toBe([])
+        ->and($document['paths']['/api/zz-declared-fifteenth']['get']['responses']['422']['$ref'])
+        ->toBe('#/components/responses/ValidationError');
+});
+
+it('lets an action\'s component: beat the one its base controller declares', function (): void {
+    // `AttributeCollector` walks the controller's parents, and the set it builds is most-specific-first
+    // precisely so a child's declaration beats the base's. Every other `#[Response]` field settles that
+    // way — the guard takes the first writer at equal contribution — and `errorComponent:` settles that way
+    // too, so a base-controller default overridden on one action is an override rather than a standoff.
+    /** @var Router $router */
+    $router = app('router');
+    $router->get('api/zz-inheriting-overrides', [InheritingErrorsController::class, 'overrides']);
+    $router->get('api/zz-inheriting-inherits', [InheritingErrorsController::class, 'inherits']);
+
+    app()->instance(TypeEngine::class, WorkbenchEngine::make());
+
+    $result = generateDocument();
+    $document = $result->document->toArray();
+
+    $facts = static fn (string $uri): mixed => $document['paths'][$uri]['get']['responses']['410']['x-docuccino']['facts']['component'] ?? null;
+
+    expect($facts('/api/zz-inheriting-overrides'))->toBe('ActionGone')
+        ->and($facts('/api/zz-inheriting-inherits'))->toBe('BaseGone')
+        ->and(diagnosticsCoded($result->diagnostics, 'attribute.response-component-contested'))->toBeEmpty();
+});
+
+it('stays quiet about an #[ErrorComponent] a base controller declares for every action under it', function (): void {
+    // Measured before it was narrowed: one attribute, on one base, warned on all six routes of one child
+    // — one mistake told once per route, and linear in the API from there. Nothing in a route-scoped,
+    // fragment-cached pass can say it once instead: a per-build "already said" set makes what the
+    // document reports a function of which routes came from cache, and a warm build reporting less than
+    // a cold one is a silent degradation rather than a saving. So the report is the action's own
+    // declaration, which is one route and one report by construction; the inherited placement changes no
+    // name either way, and says nothing about names that were already what they will be.
+    /** @var Router $router */
+    $router = app('router');
+    foreach (['a', 'b', 'c', 'd', 'e', 'f'] as $action) {
+        $router->get('api/zz-based-'.$action, [BaseNamedController::class, $action]);
+    }
+
+    app()->instance(TypeEngine::class, WorkbenchEngine::make());
+
+    expect(diagnosticsCoded(generateDocument()->diagnostics, 'attribute.error-component-unread'))->toBeEmpty();
+});
+
+it('reports an #[ErrorComponent] on an action even where the build documents no errors', function (): void {
+    // `error_responses => 'none'` is what an application with no config key resolves to, and it used to
+    // take the report with it: the check sat behind `ErrorResponsesExtension`'s early return. A misplaced
+    // attribute is misplaced whether or not errors are being documented, so it is asked at `Finalize`,
+    // which nothing gates.
+    $result = declaringBuild(['fifth' => [UndeclaredException::class, 409]], static function (array $raw): array {
+        $raw['error_responses'] = 'none';
+
+        return $raw;
+    });
+
+    expect(diagnosticsCoded($result->diagnostics, 'attribute.error-component-unread'))->toHaveCount(1);
+});
+
+it('reports an errorComponent: no component key could carry', function (): void {
+    // `claimComponentName()` drops an illegal name at the write and says nothing, which is the same
+    // silence #187 removed from `#[ErrorComponent]` — an author who wrote `'Auth Challenge'`, a space
+    // and the most likely first attempt, gets their old names back and no reason why. One mistake, one
+    // remedy, so one code: the anchor that read it names itself in the message.
+    $result = declaringBuild(['seventeenth' => [UndeclaredException::class, 409]]);
+    $document = $result->document->toArray();
+
+    $rejected = diagnosticsCoded($result->diagnostics, 'attribute.error-component-invalid');
+
+    expect($rejected)->toHaveCount(1)
+        ->and($rejected[0]->severity)->toBe(Severity::Warning)
+        ->and($rejected[0]->message)->toContain('#[Response(status: 410')
+        ->and($rejected[0]->message)->toContain('Auth Challenge')
+        ->and($rejected[0]->help)->toContain('letters, digits')
+        // …and the name reached nothing, exactly as it did before it was reported.
+        ->and($document['paths']['/api/zz-declared-seventeenth']['get']['responses']['410']['x-docuccino']['facts'] ?? [])
+        ->not->toHaveKey('component');
+});
+
+it('lets an empty errorComponent: neither publish nor block the name beside it', function (): void {
+    // An empty string is no name. It is reported like any other name a key cannot carry, and — the half
+    // that would have been invisible — it does not take the status's one claim on the way past, so the
+    // legal declaration under it still wins.
+    $result = declaringBuild(['eighteenth' => [UndeclaredException::class, 409]]);
+    $document = $result->document->toArray();
+
+    expect($document['paths']['/api/zz-declared-eighteenth']['get']['responses']['410']['x-docuccino']['facts']['component'])
+        ->toBe('RealName')
+        ->and(diagnosticsCoded($result->diagnostics, 'attribute.error-component-invalid'))->toHaveCount(1);
+});
+
+it('reports an errorComponent: on a status that shares no error body', function (string $action, string $status): void {
+    // The argument names an ERROR component, and only an error body is ever published as one: the hoist
+    // groups 4xx and 5xx and nothing else. So a name below 400 is claimed, frozen into the facts, and
+    // then walked past — the same inert argument the whole branch exists to remove, one status over.
+    // Making it work instead would mean componentizing success responses, which is a different feature
+    // with document-wide byte impact and one the argument's own name could not describe.
+    $result = declaringBuild([$action => [UndeclaredException::class, 409]]);
+
+    $inert = diagnosticsCoded($result->diagnostics, 'attribute.error-component-unreachable');
+
+    expect($inert)->toHaveCount(1)
+        ->and($inert[0]->severity)->toBe(Severity::Warning)
+        ->and($inert[0]->message)->toContain('NotAnError')
+        ->and($inert[0]->message)->toContain($status.' is not an error status')
+        ->and($inert[0]->help)->toContain('4xx or 5xx');
+})->with([
+    ['nineteenth', '200'],
+    ['twentieth', '302'],
+]);
+
+it('reports an errorComponent: on a status a mapper turned into a $ref', function (): void {
+    // The Problem Details preset answers the whole status with a reference to a component it named where
+    // that component is defined, so there is no body here to carry another name. `ErrorResponsesExtension`
+    // has guarded the same path for the class anchor since it was written; it just did so in silence, and
+    // for an argument written AT the operation silence is the defect. Asked at Finalize because a status
+    // does not become a `$ref` until a mapper resolves, one phase after the claim is written.
+    /** @var Router $router */
+    $router = app('router');
+    $router->get('api/zz-declared-twentyFirst', [DeclaredErrorsController::class, 'twentyFirst']);
+
+    app()->instance(TypeEngine::class, declaringEngine(['twentyFirst' => [NotFoundHttpException::class, 404]])());
+
+    $result = generateDocument(static function (array $raw): array {
+        $raw['error_responses'] = 'problem-details';
+
+        return $raw;
+    });
+
+    $unreachable = diagnosticsCoded($result->diagnostics, 'attribute.error-component-unreachable');
+
+    expect($result->document->toArray()['paths']['/api/zz-declared-twentyFirst']['get']['responses']['404']['$ref'])
+        ->toBe('#/components/responses/ProblemNotFound')
+        ->and($unreachable)->toHaveCount(1)
+        ->and($unreachable[0]->message)->toContain('NamesTheReference')
+        ->and($unreachable[0]->message)->toContain('is a reference to a shared component')
+        ->and($unreachable[0]->help)->toContain('Name the component at its own definition');
 });
 
 it('names an undeclared exception\'s error after its status, as it always did', function (): void {

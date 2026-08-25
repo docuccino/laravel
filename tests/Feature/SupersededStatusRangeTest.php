@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Docuccino\Attributes\IgnoreResponse;
 use Docuccino\Attributes\Response;
 use Docuccino\Attributes\ResponseHeader;
 use Docuccino\Core\Draft\OperationDraft;
@@ -128,6 +129,23 @@ it('leaves an error range standing beside a declared member of its own class', f
     });
 
     expect($operation->responseStatuses())->toBe([(string) $status, $range]);
+})->with([
+    'client error' => ['4XX', 404],
+    'server error' => ['5XX', 503],
+]);
+
+it('leaves a range standing when an ignore names a member of it', function (string $range, int $status): void {
+    // A DECLARATION retires the redirect range because it makes the unknown code known. An ignore
+    // establishes nothing — it only subtracts the status it names — so it retires neither range, and the
+    // one it cannot name at all is the range key itself (`#[IgnoreResponse]` takes an int).
+    $operation = afterResponseAttributes([new IgnoreResponse(status: $status)], function (OperationDraft $draft) use ($range, $status): void {
+        seedInferredRedirect($draft);
+        $draft->response($range)->setDescription('Problem', Contribution::integration('problem-details'));
+        $draft->response((string) $status)->setDescription('Gone', Contribution::integration('problem-details'));
+    });
+
+    // The member the ignore names is the only thing gone; both ranges stand.
+    expect($operation->responseStatuses())->toBe(['3XX', $range]);
 })->with([
     'client error' => ['4XX', 404],
     'server error' => ['5XX', 503],

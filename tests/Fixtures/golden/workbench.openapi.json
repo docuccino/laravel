@@ -1051,6 +1051,12 @@
               "wordCount": 1200
             }
           },
+          "overrides": {
+            "description": "Per-article rendering overrides.",
+            "type": "object",
+            "additionalProperties": {},
+            "example": {}
+          },
           "subtitle": {
             "type": "string"
           }
@@ -1060,7 +1066,8 @@
           "headline",
           "body",
           "author",
-          "metadata"
+          "metadata",
+          "overrides"
         ]
       },
       "ArticleJsonApiResource": {
@@ -1149,6 +1156,10 @@
             "type": "object",
             "additionalProperties": {}
           },
+          "overrides": {
+            "type": "object",
+            "additionalProperties": {}
+          },
           "secret": {
             "type": "string"
           },
@@ -1162,7 +1173,8 @@
           "body",
           "secret",
           "internal",
-          "metadata"
+          "metadata",
+          "overrides"
         ]
       },
       "ArticleResource": {
