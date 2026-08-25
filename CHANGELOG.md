@@ -7,6 +7,12 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.10.1
+
+### Bug fixes
+
+- a union keeps every member a producer contributes one shape to ([#238](https://github.com/docuccino/docuccino/pull/238))
+
 ## v0.10.0
 
 ### Breaking changes
