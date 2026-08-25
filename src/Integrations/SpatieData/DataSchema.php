@@ -14,10 +14,12 @@ use Docuccino\Core\Extensions\Schema\DocumentedExamples;
 use Docuccino\Core\Extensions\Schema\MockHints;
 use Docuccino\Core\Extensions\Schema\PropertyAnnotations;
 use Docuccino\Core\Extensions\Schema\SchemaResult;
+use Docuccino\Core\Extensions\Schema\SchemaUnion;
 use Docuccino\Core\Inference\ClassMetadata;
 use Docuccino\Core\Inference\ClassRef;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\DType\DType;
+use Docuccino\Core\Inference\DType\NullT;
 use Docuccino\Core\Inference\DType\UnionT;
 use Docuccino\Laravel\Integrations\Support\PageComponent;
 use Docuccino\Laravel\Integrations\Support\PaginationParts;
@@ -172,21 +174,58 @@ final class DataSchema implements TypeToSchema
             return ['type' => 'array', 'items' => $context->convert(new ClassT($item))];
         }
 
+        if (! self::hasDateTime($clean)) {
+            return $context->convert($clean);
+        }
+
         // Only the `U` cast format changes the wire TYPE (integer timestamp); every other explicit
-        // format still renders as a date/date-time string below.
-        if ($this->reflector->dateTimeCastFormat($fqcn, $property) === 'U') {
-            return ['type' => 'integer', 'description' => 'Unix timestamp (seconds).'];
+        // format still renders as a date/date-time string.
+        $serialized = $this->reflector->dateTimeCastFormat($fqcn, $property) === 'U'
+            ? ['type' => 'integer', 'description' => 'Unix timestamp (seconds).']
+            : ['type' => 'string', 'format' => $this->dateFormatToOas()];
+
+        return $this->withDateTime($clean, $serialized, $context);
+    }
+
+    /**
+     * The property's schema with its `DateTimeInterface` members replaced by the shape they serialise
+     * to — CONTRIBUTED to the union rather than put in its place, so a `?CarbonImmutable` keeps the
+     * `null` the API really sends and a `CarbonImmutable|int` keeps its integer arm. Date-time members
+     * collapse to one, since they all serialise identically.
+     *
+     * @param  array<string, mixed>  $serialized
+     * @return array<string, mixed>
+     */
+    private function withDateTime(DType $clean, array $serialized, SchemaContext $context): array
+    {
+        if (! $clean instanceof UnionT) {
+            return $serialized;
         }
 
-        if ($this->isDateTime($clean)) {
-            return ['type' => 'string', 'format' => $this->dateFormatToOas()];
+        $members = [];
+        $dated = false;
+        foreach ($clean->members as $member) {
+            if ($member instanceof NullT) {
+                continue;
+            }
+
+            if ($member instanceof ClassT && DataClassReflector::isDateTime($member->fqcn)) {
+                if (! $dated) {
+                    $members[] = $serialized;
+                    $dated = true;
+                }
+
+                continue;
+            }
+
+            $members[] = $context->convert($member);
         }
 
-        return $context->convert($clean);
+        return SchemaUnion::of($members, $clean->containsNull(), $context->representation()->nullable);
     }
 
     /** Whether the marker-stripped type is, or unions in, a `DateTimeInterface`. */
-    private function isDateTime(DType $clean): bool
+    private static function hasDateTime(DType $clean): bool
     {
         if ($clean instanceof ClassT) {
             return DataClassReflector::isDateTime($clean->fqcn);

@@ -16,6 +16,7 @@ use Docuccino\Core\Extensions\Schema\EnumReflection;
 use Docuccino\Core\Extensions\Schema\MockHints;
 use Docuccino\Core\Extensions\Schema\PropertyAnnotations;
 use Docuccino\Core\Extensions\Schema\SchemaResult;
+use Docuccino\Core\Extensions\Schema\SchemaUnion;
 use Docuccino\Core\Inference\ActionAnalysis;
 use Docuccino\Core\Inference\CallableRef;
 use Docuccino\Core\Inference\ClassMetadata;
@@ -128,7 +129,7 @@ final class ModelSchema implements TypeToSchema
             }
 
             // created_at/updated_at/deleted_at — always present on a persisted model, so required.
-            foreach ($this->frameworkColumns($facts) as [$name, $schema]) {
+            foreach ($this->frameworkColumns($facts, $context) as [$name, $schema]) {
                 if (isset($properties[$name]) || ! self::isColumnVisible($name, $facts['visible'], $hidden)) {
                     continue;
                 }
@@ -267,9 +268,11 @@ final class ModelSchema implements TypeToSchema
                 continue;
             }
 
+            // A to-one relation is null when the row has no parent, expressed the same way every other
+            // nullable member of the document is.
             $properties[$key] = $toMany
                 ? ['type' => 'array', 'items' => $itemSchema]
-                : ['anyOf' => [$itemSchema, ['type' => 'null']]];
+                : SchemaUnion::nullable($itemSchema, $context->representation()->nullable);
             $required[] = $key;
         }
     }
@@ -342,42 +345,27 @@ final class ModelSchema implements TypeToSchema
             return $context->convert($type);
         }
 
-        // A cast only describes the non-null shape, so widen when the column type admits null.
-        return $type instanceof UnionT && $type->containsNull() ? self::widenNullable($cast) : $cast;
-    }
-
-    /**
-     * Adds a `null` branch to a fragment's `type` (2020-12 `[t, null]` form). Enum and already-nullable
-     * fragments pass through untouched.
-     *
-     * @param  array<string, mixed>  $schema
-     * @return array<string, mixed>
-     */
-    private static function widenNullable(array $schema): array
-    {
-        $type = $schema['type'] ?? null;
-
-        if (is_string($type) && $type !== 'null') {
-            $schema['type'] = [$type, 'null'];
-        } elseif (is_array($type) && ! in_array('null', $type, true)) {
-            $schema['type'] = [...array_values($type), 'null'];
-        }
-
-        return $schema;
+        // A cast only describes the non-null shape, so contribute it to the union when the column type
+        // admits null — including when the cast is a `$ref`, which cannot carry `type: [x, null]` and
+        // so has to take an explicit branch rather than silently forbid the null.
+        return $type instanceof UnionT && $type->containsNull()
+            ? SchemaUnion::nullable($cast, $context->representation()->nullable)
+            : $cast;
     }
 
     /**
      * The timestamp / soft-delete columns as `[name, schema]` pairs. created_at/updated_at are non-null
-     * on any persisted model; deleted_at is null unless the row is trashed.
+     * on any persisted model; deleted_at is null unless the row is trashed — expressed by contributing
+     * the one date-time shape to a union, so the two cannot drift apart.
      *
      * @param  ModelFacts  $facts
      * @return list<array{0: string, 1: array<string, mixed>}>
      */
-    private function frameworkColumns(array $facts): array
+    private function frameworkColumns(array $facts, SchemaContext $context): array
     {
-        $weaken = $facts['overridesSerializeDate'];
-        $dateTime = $weaken ? ['type' => 'string'] : ['type' => 'string', 'format' => 'date-time'];
-        $nullableDateTime = $weaken ? ['type' => ['string', 'null']] : ['type' => ['string', 'null'], 'format' => 'date-time'];
+        $dateTime = $facts['overridesSerializeDate']
+            ? ['type' => 'string']
+            : ['type' => 'string', 'format' => 'date-time'];
 
         $columns = [];
         if ($facts['timestamps']) {
@@ -385,7 +373,7 @@ final class ModelSchema implements TypeToSchema
             $columns[] = ['updated_at', $dateTime];
         }
         if ($facts['softDeletes']) {
-            $columns[] = ['deleted_at', $nullableDateTime];
+            $columns[] = ['deleted_at', SchemaUnion::nullable($dateTime, $context->representation()->nullable)];
         }
 
         return $columns;

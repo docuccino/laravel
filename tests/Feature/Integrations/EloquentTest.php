@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Docuccino\Core\Extensions\BuiltIn\DefaultTypeMappers;
 use Docuccino\Core\Extensions\BuiltIn\EnumSchema;
+use Docuccino\Core\Extensions\Context\RepresentationPolicy;
 use Docuccino\Core\Extensions\Schema\ComponentRegistry;
 use Docuccino\Core\Extensions\Schema\SchemaConverter;
 use Docuccino\Core\Inference\ActionAnalysis;
@@ -23,6 +24,7 @@ use Docuccino\Laravel\Integrations\Eloquent\ModelSchema;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Blank;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Boutique;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Chronicle;
+use Docuccino\Laravel\Tests\Fixtures\Eloquent\Consignment;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Coupon;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\CustomCaster;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Gadget;
@@ -74,6 +76,12 @@ function eloquentEngine(): StubTypeEngine
             new PropertyMetadata('issued_at', UnionT::of([ScalarT::string(), new NullT])),
             new PropertyMetadata('meta', ScalarT::string()),
             new PropertyMetadata('status', ScalarT::string()),
+        ]),
+        Consignment::class => new ClassMetadata(Consignment::class, [
+            new PropertyMetadata('id', ScalarT::int()),
+            new PropertyMetadata('status', UnionT::of([ScalarT::string(), new NullT])),
+            new PropertyMetadata('manifest', UnionT::of([ScalarT::string(), new NullT])),
+            new PropertyMetadata('sealed_at', UnionT::of([ScalarT::string(), new NullT])),
         ]),
         Boutique::class => new ClassMetadata(Boutique::class, [
             new PropertyMetadata('id', ScalarT::int()),
@@ -159,6 +167,45 @@ it('synthesises timestamps + soft-delete columns and a uuid primary key', functi
         ->and($vault['properties']['deleted_at'])->toBe(['type' => ['string', 'null'], 'format' => 'date-time'])
         ->and($vault['required'])->toBe(['id', 'label', 'created_at', 'updated_at', 'deleted_at']);
 });
+
+/*
+ * A cast describes the non-null shape only, so a nullable cast column has to CONTRIBUTE that shape to a
+ * union rather than publish it in place of one. Two of the three fragments a cast can produce fold the
+ * null into their own `type`; the third — an enum cast's `$ref` — cannot, and used to be handed back
+ * untouched, publishing a schema that forbade the null the column really carries.
+ */
+it('keeps the null on every cast-fragment shape a nullable column can produce', function (string $column, array $expected): void {
+    $consignment = modelSchema(new ClassT(Consignment::class))['Consignment'];
+
+    expect($consignment['properties'][$column])->toBe($expected);
+})->with([
+    'an enum cast, whose $ref takes a branch' => ['status', [
+        'anyOf' => [['$ref' => '#/components/schemas/WidgetStatus'], ['type' => 'null']],
+    ]],
+    'a json cast, whose type LIST gains a member' => ['manifest', ['type' => ['array', 'object', 'null']]],
+    'a datetime cast, whose named type becomes a list' => ['sealed_at', ['type' => ['string', 'null'], 'format' => 'date-time']],
+    // The soft-delete column beside them, synthesised rather than cast, and expressed the same way.
+    'the synthesised soft-delete column' => ['deleted_at', ['type' => ['string', 'null'], 'format' => 'date-time']],
+]);
+
+it('expresses a nullable cast column in the shape the document asked for', function (string $column, array $expected): void {
+    // Under the `anyof` policy every nullable member is a branch, cast columns included — a producer
+    // that widened its own fragment expressed nullability in a shape the rest of the document did not.
+    $components = new ComponentRegistry;
+    (new SchemaConverter(
+        [new ModelSchema, new EnumSchema, ...DefaultTypeMappers::all()],
+        eloquentEngine(),
+        $components,
+        new RepresentationPolicy(nullable: 'anyof'),
+    ))->toSchema(new ClassT(Consignment::class));
+
+    expect($components->schemas()['Consignment']['properties'][$column])->toBe($expected);
+})->with([
+    'an enum cast' => ['status', ['anyOf' => [['$ref' => '#/components/schemas/WidgetStatus'], ['type' => 'null']]]],
+    'a json cast' => ['manifest', ['anyOf' => [['type' => ['array', 'object']], ['type' => 'null']]]],
+    'a datetime cast' => ['sealed_at', ['anyOf' => [['type' => 'string', 'format' => 'date-time'], ['type' => 'null']]]],
+    'the synthesised soft-delete column' => ['deleted_at', ['anyOf' => [['type' => 'string', 'format' => 'date-time'], ['type' => 'null']]]],
+]);
 
 it('resolves the route-key schema for a bound model across every key kind', function (string $fqcn, array $expected): void {
     // The pure resolver a bound `{model}` path parameter uses (uuid/ulid/int/string), degrading to

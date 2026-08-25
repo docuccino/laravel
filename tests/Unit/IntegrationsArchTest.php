@@ -43,6 +43,12 @@ arch('built-in integrations consume only the public extension surface')
         'Docuccino\Core\Extensions\Schema\PropertyAnnotations',
         'Docuccino\Core\Extensions\Schema\SchemaIdentity',
         'Docuccino\Core\Extensions\Schema\SchemaResult',
+        // The ONE expression of a union, for the reason EnumDecoration is here: an integration that
+        // special-cases one member of one — a serialised date-time, a cast column's wire shape — has to
+        // contribute it to the same assembly core's union mapper uses. Rolling its own is how a member
+        // gets dropped (a `?CarbonImmutable` publishing a non-nullable string) and how one producer
+        // expresses nullability in a shape the document's `nullable` policy did not ask for.
+        'Docuccino\Core\Extensions\Schema\SchemaUnion',
         // Same exemption, same reason as EnumDecoration above: the ONE reading of an authored example
         // literal against the type it will sit beside. A docblock `@example` and a `#[RuleSchema]`
         // example rule both arrive as text, and the two integrations holding them — spatie-data on the

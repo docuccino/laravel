@@ -20,6 +20,7 @@ use Docuccino\Laravel\Tests\Fixtures\SpatieData\MfaChallengeData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\MockedSnapshotData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\SaveAnswersData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\SnapshotData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\TimelineData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\UpdateNodeData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\UploadPolicyData;
 
@@ -347,4 +348,32 @@ it('attaches a #[Mock] hint to the real recovered shape, following a #[MapName] 
         ->and($component['properties']['permissions']['x-docuccino'])->toBe(['mock' => ['faker' => 'numberBetween:1,9']])
         // …and everything unnamed is byte-identical to what the untouched twin publishes.
         ->and($component['properties']['forms'])->not->toHaveKey('x-docuccino');
+})->group('fixture');
+
+it('keeps the null on a nullable timestamp the real engine reports as a union', function (): void {
+    // The absence this fills: no fixture Data class had a NULLABLE date-time, so the date-time special
+    // case answering for the whole union — and dropping the null arm — shipped with the suite green.
+    // What the engine hands over is `CarbonImmutable|null`; what the document must say is that the value
+    // is a date-time string OR null, because that is what the API sends.
+    [, $component] = realDataComponent('App\Data\TimelineData', TimelineData::class);
+
+    expect($component['properties']['publishedAt'])->toBe([
+        'type' => ['string', 'null'],
+        'format' => 'date-time',
+        'description' => 'When the listing went live, or null while it is still a draft.',
+        // And the authored `@example null` reads as the null itself — against the old `type: string` it
+        // published the four characters instead, which the document's own example lint then reported.
+        'example' => null,
+    ])
+        // The `format: 'U'` cast changes the wire TYPE, and had the same hole.
+        ->and($component['properties']['expiresAt'])->toBe([
+            'type' => ['integer', 'null'],
+            'description' => 'When the listing stops accepting applications, or null if it never does.',
+        ])
+        // The non-null control, unchanged: a bare date-time IS the serialised string.
+        ->and($component['properties']['createdAt'])->toBe([
+            'type' => 'string',
+            'format' => 'date-time',
+            'description' => 'When the listing was first created.',
+        ]);
 })->group('fixture');
