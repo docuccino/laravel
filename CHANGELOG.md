@@ -7,6 +7,13 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.10.4
+
+### Bug fixes
+
+- keep the declared container through the rule vocabulary ([#252](https://github.com/docuccino/docuccino/pull/252))
+- a date field's format comes from its most specific source ([#251](https://github.com/docuccino/docuccino/pull/251))
+
 ## v0.10.3
 
 ### Bug fixes
