@@ -11,9 +11,13 @@ use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
  * `min`, `max`, `between:a,b`, `size:n`, mapped to the keyword Laravel's own semantics imply: numeric →
- * `minimum`/`maximum`, array → `minItems`/`maxItems`, anything else → `minLength`/`maxLength`. Runs after
- * {@see TypeRuleTransformer} and {@see FileRuleTransformer} so the type is known; untyped falls back to
- * string-length bounds, matching Laravel's coercion.
+ * `minimum`/`maximum`, array → `minItems`/`maxItems`, object → `minProperties`/`maxProperties`, anything
+ * else → `minLength`/`maxLength`. Runs after {@see TypeRuleTransformer} and {@see FileRuleTransformer} so
+ * the type is known; untyped falls back to string-length bounds, matching Laravel's coercion.
+ *
+ * Laravel sizes an array and an object identically — it counts the entries — so which of the two the
+ * field is decides between two keyword pairs that mean the same thing to it and different things to a
+ * validator reading the document. A length keyword on either is a bound nothing applies.
  *
  * On a file field these bounds are kilobytes, not string length, so `file|max:2048` must not become
  * `maxLength: 2048`. OpenAPI has no file-size keyword, so it becomes a description note instead.
@@ -78,6 +82,7 @@ final class SizeRuleTransformer implements RuleTransformer
         return match ($type) {
             'integer', 'number' => ['minimum', 'maximum'],
             'array' => ['minItems', 'maxItems'],
+            'object' => ['minProperties', 'maxProperties'],
             default => ['minLength', 'maxLength'],
         };
     }

@@ -18,6 +18,7 @@ use Docuccino\Laravel\Integrations\Validation\Transformers\ConditionalRequiredRu
 use Docuccino\Laravel\Integrations\Validation\Transformers\ConfirmedRuleTransformer;
 use Docuccino\Laravel\Integrations\Validation\Transformers\DateComparisonRuleTransformer;
 use Docuccino\Laravel\Integrations\Validation\Transformers\DateFormatRuleTransformer;
+use Docuccino\Laravel\Integrations\Validation\Transformers\DateWireRuleTransformer;
 use Docuccino\Laravel\Integrations\Validation\Transformers\DigitsRuleTransformer;
 use Docuccino\Laravel\Integrations\Validation\Transformers\ExistsRuleTransformer;
 use Docuccino\Laravel\Integrations\Validation\Transformers\FileRuleTransformer;
@@ -53,6 +54,7 @@ final class ValidationIntegration
             new PresenceRuleTransformer,
             new TypeRuleTransformer,
             new AdditionalPropertiesRuleTransformer,
+            new DateWireRuleTransformer,
             new DateFormatRuleTransformer,
             new DateComparisonRuleTransformer,
             new FileRuleTransformer,

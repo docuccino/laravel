@@ -255,7 +255,7 @@ return [
         'leakage' => [
             'enabled' => true,
             // Property names or JSON pointers to accept, e.g.
-            // ['reset_token', '#/components/schemas/Invoice/properties/status']. A name silences this
+            // ['reset_token', '/components/schemas/Invoice/properties/status']. A name silences this
             // lint only; the response recorder redacts by name regardless and honours a pointer alone.
             'allow' => [],
             // Extra heuristics, merged over the built-in table (built-in tokens keep their label).
@@ -295,8 +295,8 @@ return [
         // and sends it back, so one the schema rejects is worse than none.
         // 'examples' => [
         //     'enabled' => true,
-        //     // JSON pointers, or the label the message names, e.g.
-        //     // ['#/components/schemas/Invoice/properties/status/example'].
+        //     // JSON pointers as the message prints them, or the label it names, e.g.
+        //     // ['/components/schemas/Invoice/properties/status/example'].
         //     'allow' => [],
         // ],
         // Flags a redirect the document doesn't say exactly one thing about: the 3XX range alone, or

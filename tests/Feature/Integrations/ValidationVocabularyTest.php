@@ -66,10 +66,11 @@ function convertFieldRules(array $rules): ValidationSchema
  * schema, so they're covered by the dedicated tests below — between them, every table entry is proven.
  *
  * Each row also pins the synthesized `example`, so this doubles as the rule → example table: a row
- * WITHOUT one is a rule that earns no example, and the reason is on the row. The three ways that
- * happens are all here — the rule pinned only a base type (`string`, `integer`), it left the value
- * constrained outside the schema (`decimal`, `before`, `file`), or the value it wants contradicts the
- * schema the same rule published (`date_format` with a time token).
+ * WITHOUT one is a rule that earns no example, and the reason is on the row. The two ways that happens
+ * are both here — the rule pinned only a base type (`string`, `integer`), or it left the value constrained
+ * outside the schema (`decimal`, `before`, `file`). A rule that knows the exact bytes publishes them and
+ * claims a `format` only where the pattern's own values satisfy it, so no row's proposal is refused by the
+ * schema its own rule wrote.
  */
 it('maps every schema-producing string rule to its fragment', function (array $rules, array $expected): void {
     $property = convertFieldRules($rules)->schema['properties']['f'];
@@ -107,13 +108,28 @@ it('maps every schema-producing string rule to its fragment', function (array $r
     'max (string length)' => [[['string'], ['max', ['9']]], ['maxLength' => 9, 'type' => 'string', 'example' => 'example']],
     'between (numeric bounds)' => [[['integer'], ['between', ['1', '5']]], ['maximum' => 5, 'minimum' => 1, 'type' => 'integer', 'example' => 1]],
     'size (array items)' => [[['array'], ['size', ['3']]], ['maxItems' => 3, 'minItems' => 3, 'type' => 'array']],
+    // The object branch: Laravel's size rules count an OBJECT's keys, so a length keyword here would be
+    // a bound every validator reading the document silently ignores.
+    'min (object keys)' => [[['object'], ['min', ['1']]], ['minProperties' => 1, 'type' => 'object']],
+    'max (object keys)' => [[['object'], ['max', ['4']]], ['maxProperties' => 4, 'type' => 'object']],
+    'between (object keys)' => [[['object'], ['between', ['1', '4']]], ['maxProperties' => 4, 'minProperties' => 1, 'type' => 'object']],
+    'size (object keys)' => [[['object'], ['size', ['2']]], ['maxProperties' => 2, 'minProperties' => 2, 'type' => 'object']],
+    'max (map keys)' => [[['additional_properties', ['{"type":"string"}']], ['max', ['4']]], ['additionalProperties' => ['type' => 'string'], 'maxProperties' => 4, 'type' => 'object']],
     // Float bounds on a numeric field keep their decimal value (not truncated to int).
     'min (float bound)' => [[['numeric'], ['min', ['2.5']]], ['minimum' => 2.5, 'type' => 'number', 'example' => 2.5]],
     'max (float bound)' => [[['numeric'], ['max', ['9.75']]], ['maximum' => 9.75, 'type' => 'number', 'example' => 1]],
 
-    // DateFormatRuleTransformer — date-only vs time-bearing pattern.
-    'date_format (date)' => [[['date_format', ['Y-m-d']]], ['description' => 'Expected format: Y-m-d', 'format' => 'date', 'type' => 'string', 'example' => '2024-01-01']],
-    'date_format (date-time)' => [[['date_format', ['Y-m-d H:i:s']]], ['description' => 'Expected format: Y-m-d H:i:s', 'format' => 'date-time', 'type' => 'string']],
+    // DateFormatRuleTransformer — the pattern named either way, and a `format` claimed only where the
+    // pattern's own values satisfy it. The example is rendered WITH the pattern, since the bytes are the
+    // one thing the schema cannot carry.
+    'date_format (an ISO date)' => [[['date_format', ['Y-m-d']]], ['description' => 'Expected format: Y-m-d', 'format' => 'date', 'type' => 'string', 'example' => '2024-01-01']],
+    'date_format (an ISO date-time)' => [[['date_format', ['Y-m-d\TH:i:sP']]], ['description' => 'Expected format: Y-m-d\TH:i:sP', 'format' => 'date-time', 'type' => 'string', 'example' => '2024-01-01T00:00:00+00:00']],
+    // No `format` word describes these, so none is claimed — `date-time` would mark the value the endpoint
+    // actually accepts invalid.
+    'date_format (a pattern no format names)' => [[['date_format', ['Y-m-d H:i:s']]], ['description' => 'Expected format: Y-m-d H:i:s', 'type' => 'string', 'example' => '2024-01-01 00:00:00']],
+    'date_format (withdraws the date rule\'s format)' => [[['date'], ['date_format', ['d/m/Y']]], ['description' => 'Expected format: d/m/Y', 'type' => 'string', 'example' => '01/01/2024']],
+    // Degradation: nothing to name, so the field is a bare string rather than a format claimed of nothing.
+    'date_format (no parameter)' => [[['date_format']], ['type' => 'string']],
 
     // RegexRuleTransformer — delimiters stripped to a bare ECMA-262 pattern.
     'regex' => [[['regex', ['/^[a-z]+$/']]], ['pattern' => '^[a-z]+$', 'type' => 'string', 'example' => 'example']],
@@ -183,14 +199,34 @@ it('maps every schema-producing string rule to its fragment', function (array $r
     'list' => [[['list']], ['type' => 'array']],
     'distinct' => [[['distinct']], ['type' => 'array', 'uniqueItems' => true]],
 
-    // AdditionalPropertiesRuleTransformer — a recovered `array<string, V>`: the value schema arrives as
-    // JSON, and `object` replaces the `array` a Laravel type rule can only have said.
+    // AdditionalPropertiesRuleTransformer — the two words the Laravel vocabulary has none of. `object`
+    // says a JSON object; `additional_properties` says the same and states the value schema, which
+    // arrives as JSON. Both replace the `array` a Laravel type rule can only have said.
     'additional_properties' => [[['additional_properties', ['{"type":"string"}']]], ['additionalProperties' => ['type' => 'string'], 'type' => 'object']],
     'additional_properties (open values)' => [[['additional_properties', ['{}']]], ['additionalProperties' => [], 'type' => 'object']],
     'additional_properties (overrides the array rule beside it)' => [[['array'], ['additional_properties', ['{"type":"integer"}']]], ['additionalProperties' => ['type' => 'integer'], 'type' => 'object']],
     // Degradation: nothing to decode, or a parameter that isn't a schema, leaves the field untouched.
     'additional_properties (no parameter)' => [[['string'], ['additional_properties']], ['type' => 'string']],
     'additional_properties (unparseable parameter)' => [[['string'], ['additional_properties', ['not json']]], ['type' => 'string']],
+    'object' => [[['object']], ['type' => 'object']],
+    'object (replaces the array rule beside it)' => [[['array'], ['object']], ['type' => 'object']],
+
+    // DateWireRuleTransformer — a date-typed property's own wire format, stated by the recovering
+    // integration because the rule vocabulary has no word for it. The parameter is the PHP `date()` format
+    // itself, answered by the same policy as `date_format` above.
+    'date_wire (an ISO date)' => [[['date_wire', ['Y-m-d']]], ['format' => 'date', 'type' => 'string', 'example' => '2024-01-01']],
+    'date_wire (an ISO date-time)' => [[['date_wire', ['Y-m-d\TH:i:sP']]], ['format' => 'date-time', 'type' => 'string', 'example' => '2024-01-01T00:00:00+00:00']],
+    // It IS the more specific source, so unlike every already-typed guard above it REPLACES the format
+    // the coarse `date` rule guessed.
+    'date_wire (overrides the date rule beside it)' => [[['date'], ['date_wire', ['Y-m-d\TH:i:sP']]], ['format' => 'date-time', 'type' => 'string', 'example' => '2024-01-01T00:00:00+00:00']],
+    // A format nothing names: the pattern is stated and the coarse rule's guess withdrawn, so the example
+    // is bytes the endpoint accepts rather than the ISO value a `date` claim would have produced.
+    'date_wire (a bespoke format)' => [[['date'], ['date_wire', ['d/m/Y']]], ['description' => 'Expected format: d/m/Y', 'type' => 'string', 'example' => '01/01/2024']],
+    // An escaped literal is a literal: `\T` writes a "T" and names no time at all.
+    'date_wire (an escaped literal)' => [[['date'], ['date_wire', ['Y-m-d\T']]], ['description' => 'Expected format: Y-m-d\T', 'type' => 'string', 'example' => '2024-01-01T']],
+    // The one shape that isn't a string: the coarse rule's `format` goes with the type it belonged to.
+    'date_wire (timestamp)' => [[['date'], ['date_wire', ['U']]], ['description' => 'Unix timestamp (seconds).', 'type' => 'integer']],
+    'date_wire (no parameter)' => [[['date'], ['date_wire']], ['format' => 'date', 'type' => 'string', 'example' => '2024-01-01']],
 
     // ProhibitedRuleTransformer — the conditional forms stay documented, with the condition as a note.
     // (A bare `prohibited` never reaches a field at all; RuleSetNormalizerTest covers that.)

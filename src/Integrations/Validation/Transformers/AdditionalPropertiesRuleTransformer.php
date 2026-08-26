@@ -10,10 +10,12 @@ use Docuccino\Core\Extensions\Validation\ValidationField;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
- * `additional_properties` — a recovered `array<string, V>` property: a JSON *object* whose values all share
- * a schema, which Laravel's vocabulary has no word for. The recovering integration states that value schema
- * outright and ships it as JSON on the parameter, since rule parameters are strings. `type: object` is set
- * unconditionally, the rule only ever coming from a recovered map type.
+ * The two words Laravel's rule vocabulary has none of, both synthesised by a recovering integration and
+ * never typed by anybody: `object` says the value is a JSON object, and `additional_properties` says the
+ * same and states the schema its values all share — shipped as JSON on the parameter, since rule
+ * parameters are strings. Either replaces the `array` a Laravel type rule can only have said: `array` is
+ * the one word the vocabulary has for every array shape, so it is the vaguer statement of the same thing
+ * rather than a competing one.
  */
 final class AdditionalPropertiesRuleTransformer implements RuleTransformer
 {
@@ -24,11 +26,17 @@ final class AdditionalPropertiesRuleTransformer implements RuleTransformer
 
     public function handledRuleNames(): array
     {
-        return ['additional_properties'];
+        return ['object', 'additional_properties'];
     }
 
     public function apply(ValidationRule $rule, ValidationField $field, SchemaContext $context): void
     {
+        if ($rule->name === 'object') {
+            $field->setType('object');
+
+            return;
+        }
+
         $json = $rule->parameter();
         if ($json === null) {
             return;

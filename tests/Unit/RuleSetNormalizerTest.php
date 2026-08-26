@@ -47,15 +47,38 @@ it('keeps a conditionally prohibited field, which is legitimately sendable', fun
     expect(normalizedNames(['legacy' => ['string', $rule]]))->toBe(['legacy' => ['string', $rule]]);
 })->with(['prohibited_if', 'prohibited_unless', 'prohibits']);
 
-it('drops the array rule from a field a named child proves is an object', function (string $arrayRule): void {
+it('replaces the array rule with `object` on a field a named child proves is an object', function (string $arrayRule): void {
+    // Dropping the word left the field with no type word at all, so every type-aware rule after it —
+    // `min`/`max`/`size` — read an untyped field and published string-length bounds on an object.
     expect(normalizedNames([
-        'metadata' => ['nullable', $arrayRule],
+        'metadata' => ['nullable', $arrayRule, 'max'],
         'metadata.retention' => ['string'],
     ]))->toBe([
-        'metadata' => ['nullable'],
+        'metadata' => ['nullable', 'object', 'max'],
         'metadata.retention' => ['string'],
     ]);
 })->with(['array', 'list']);
+
+it('leaves one object word on a field that stated the array word twice', function (): void {
+    // A real pair: recovery synthesises `array` and an override restates `list`. Two `object` words
+    // would be the same rule applied twice.
+    expect(normalizedNames([
+        'metadata' => ['array', 'list'],
+        'metadata.retention' => ['string'],
+    ]))->toBe([
+        'metadata' => ['object'],
+        'metadata.retention' => ['string'],
+    ]);
+});
+
+it('reads a purely numeric field key as the path it is', function (): void {
+    // Such a key is an INT in a PHP array, and every path read here wants a string — uncast, the
+    // normalizer raises a TypeError under strict_types rather than answering at all.
+    expect(normalizedNames(['0' => ['array'], '0.mode' => ['string']]))
+        ->toBe(['0' => ['object'], '0.mode' => ['string']])
+        ->and(normalizedNames(['0' => ['prohibited'], '0.mode' => ['string'], 'name' => ['string']]))
+        ->toBe(['name' => ['string']]);
+});
 
 it('keeps the array rule when the only child is a wildcard, which IS an array', function (): void {
     expect(normalizedNames([
@@ -93,4 +116,19 @@ it('turns the clashing array-plus-child pair into a coherent object schema', fun
             'type' => 'object',
             'properties' => ['mode' => ['type' => 'string']],
         ]);
+});
+
+it('bounds an object a named child proves by its keys, not by its length', function (): void {
+    // `max:2` on an array-or-object value counts elements in Laravel, so `maxLength` here is a bound
+    // no validator applies. The object word the normalizer leaves behind is what the size rule reads.
+    $set = new RuleSet([
+        'metadata' => [ValidationRule::of('array'), ValidationRule::of('max', ['2'])],
+        'metadata.mode' => [ValidationRule::of('string')],
+    ]);
+
+    expect(validationSchema($set, schemaConverter())['properties']['metadata'])->toBe([
+        'type' => 'object',
+        'maxProperties' => 2,
+        'properties' => ['mode' => ['type' => 'string']],
+    ]);
 });

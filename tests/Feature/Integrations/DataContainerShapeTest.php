@@ -28,6 +28,7 @@ use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Core\TypeGrammar\TypeStringParser;
 use Docuccino\Laravel\Integrations\SpatieData\DataRequestExtension;
 use Docuccino\Laravel\Integrations\SpatieData\DataValidationRules;
+use Docuccino\Laravel\Integrations\Support\RuleParsing;
 use Docuccino\Laravel\Integrations\Validation\ValidationIntegration;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ContainerShapeController;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ContainerShapeData;
@@ -65,19 +66,23 @@ function containerProperty(string $name, DType $type, bool $withConverter = true
 }
 
 /**
- * A `rules()` override, as the RuleSet the extension hands the builder.
+ * A `rules()` override, as the RuleSet the extension hands the builder. Tokens are read the way a real
+ * override's are, so a row can state `max:100`.
  *
- * @param  array<string, list<string>>  $fields  rule NAMES per field key
+ * @param  array<string, list<string>>  $fields  rule TOKENS per field key
  */
 function containerOverride(array $fields): RuleSet
 {
     return new RuleSet(array_map(
-        static fn (array $names): array => array_map(
-            static fn (string $name): ValidationRule => ValidationRule::of($name),
-            $names,
-        ),
+        static fn (array $tokens): array => array_map(RuleParsing::token(...), $tokens),
         $fields,
     ));
+}
+
+/** `array<string, array<string, mixed>>` — a map whose values are themselves objects. */
+function mapOfMaps(): MapT
+{
+    return new MapT(ScalarT::string(), new MapT(ScalarT::string(), new UnknownT('mixed')));
 }
 
 it('documents every recovered container shape', function (string $property, DType $type, array $expected): void {
@@ -228,11 +233,6 @@ it('lets an override that states a shape of its own replace the recovered map ou
         ['settings' => ['array'], 'settings.mode' => ['required', 'string']],
         ['type' => 'object', 'properties' => ['mode' => ['type' => 'string']], 'required' => ['mode']],
     ],
-    // A `.*` child says the override means a JSON ARRAY; re-attaching object-ness would contradict it.
-    'wildcard child' => [
-        ['settings' => ['array'], 'settings.*' => ['string']],
-        ['type' => 'array', 'items' => ['type' => 'string']],
-    ],
     // An override naming another type has replaced the property's shape, not restated it.
     'another type' => [['settings' => ['string']], ['type' => 'string']],
     // Every other word the shape check composes: each one beside `array` NARROWS it — `list` to a JSON
@@ -241,9 +241,15 @@ it('lets an override that states a shape of its own replace the recovered map ou
     'array + list' => [['settings' => ['array', 'list']], ['type' => 'array']],
     'array + file' => [['settings' => ['array', 'file']], ['type' => 'string', 'format' => 'binary']],
     'array + image' => [['settings' => ['array', 'image']], ['type' => 'string', 'format' => 'binary', 'description' => 'An image file.']],
-    // No type word at all: the override dropped the type the way it drops one for a scalar property too.
-    'no type rule' => [['settings' => ['sometimes']], []],
 ]);
+
+it('keeps a recovered map an object when a rules() override names no type at all', function (): void {
+    // An override stating nothing but a presence word contradicts nothing, so the recovered
+    // `array<string, V>` is still all the information there is — the reading the class docblock gives
+    // both carriers, and the opposite of the cells above, where the override named a shape of its own.
+    expect(containerProperty('settings', new MapT(ScalarT::string(), ScalarT::int()), override: containerOverride(['settings' => ['sometimes']])))
+        ->toBe(['type' => 'object', 'additionalProperties' => ['type' => 'integer']]);
+});
 
 it('leaves a recovered list and shape alone under the same override', function (string $property, DType $type, array $expected): void {
     // The other half of the asymmetry: these state their structure on child KEYS, which an override
@@ -259,6 +265,154 @@ it('leaves a recovered list and shape alone under the same override', function (
         'required' => ['width'],
     ]],
 ]);
+
+/**
+ * The container matrix: {recovered map, recovered list, nothing recovered} × {a `.*` override, none} ×
+ * {a `rules()` override on the field, none}. Three facts per cell — which container keyword the field
+ * publishes, where the `.*` constraints landed, and which size keyword the bound chose — because the
+ * defect this pins was all three at once: a coarse rule token displacing the declared container.
+ *
+ * The rule that makes the map cells come out this way: `field.*` applies to every VALUE whatever the
+ * keys are, so it carries no information about key type and never decides list-vs-map. The declared type
+ * decides the container; `.*` constrains the value — `items` for a list, `additionalProperties` for a map.
+ */
+it('lets the declared container survive every rule vocabulary combination', function (string $property, DType $type, ?RuleSet $override, array $expected): void {
+    expect(containerProperty($property, $type, override: $override))->toBe($expected);
+})->with([
+    // ── A recovered map. Its values are themselves maps, so the `.*` cells exercise the same rule one
+    // level down: `array` on a value the type says is an object is the vaguer statement of the same thing.
+    'map' => ['theme', mapOfMaps(), null, [
+        'type' => 'object',
+        'additionalProperties' => ['type' => 'object', 'additionalProperties' => []],
+    ]],
+    'map + field override' => ['theme', mapOfMaps(), containerOverride(['theme' => ['nullable', 'array', 'max:100']]), [
+        'type' => ['object', 'null'],
+        'additionalProperties' => ['type' => 'object', 'additionalProperties' => []],
+        'maxProperties' => 100,
+    ]],
+    'map + `.*` override' => ['theme', mapOfMaps(), containerOverride(['theme.*' => ['array', 'max:500']]), [
+        'type' => 'object',
+        'additionalProperties' => ['type' => 'object', 'maxProperties' => 500],
+    ]],
+    'map + field and `.*` override' => ['theme', mapOfMaps(), containerOverride([
+        'theme' => ['nullable', 'array', 'max:100'],
+        'theme.*' => ['array', 'max:500'],
+    ]), [
+        'type' => ['object', 'null'],
+        'additionalProperties' => ['type' => 'object', 'maxProperties' => 500],
+        'maxProperties' => 100,
+    ]],
+
+    // ── A recovered list. Nothing here may move: the container it declares and the rule word an override
+    // restates agree already, so the size keyword counts items and the `.*` constraints stay in `items`.
+    'list' => ['tags', new ListT(ScalarT::string()), null, [
+        'type' => 'array',
+        'items' => ['type' => 'string'],
+    ]],
+    'list + field override' => ['tags', new ListT(ScalarT::string()), containerOverride(['tags' => ['array', 'max:100']]), [
+        'type' => 'array',
+        'maxItems' => 100,
+        'items' => ['type' => 'string'],
+    ]],
+    'list + `.*` override' => ['tags', new ListT(ScalarT::string()), containerOverride(['tags.*' => ['string', 'max:9']]), [
+        'type' => 'array',
+        'items' => ['type' => 'string', 'maxLength' => 9, 'example' => 'example'],
+    ]],
+    'list + field and `.*` override' => ['tags', new ListT(ScalarT::string()), containerOverride([
+        'tags' => ['array', 'max:100'],
+        'tags.*' => ['string', 'max:9'],
+    ]), [
+        'type' => 'array',
+        'maxItems' => 100,
+        'items' => ['type' => 'string', 'maxLength' => 9, 'example' => 'example'],
+    ]],
+
+    // ── Nothing recovered. The negative the whole rule rests on: with no declared container to survive,
+    // the `array` token IS all the information there is, and a JSON array is what it has to publish.
+    'no recovered type' => ['counters', new UnknownT('mixed'), null, []],
+    'no recovered type + field override' => ['counters', new UnknownT('mixed'), containerOverride(['counters' => ['array', 'max:100']]), [
+        'type' => 'array',
+        'maxItems' => 100,
+    ]],
+    'no recovered type + `.*` override' => ['counters', new UnknownT('mixed'), containerOverride(['counters.*' => ['string', 'max:9']]), [
+        'type' => 'array',
+        'items' => ['type' => 'string', 'maxLength' => 9, 'example' => 'example'],
+    ]],
+    'no recovered type + field and `.*` override' => ['counters', new UnknownT('mixed'), containerOverride([
+        'counters' => ['array', 'max:100'],
+        'counters.*' => ['string', 'max:9'],
+    ]), [
+        'type' => 'array',
+        'maxItems' => 100,
+        'items' => ['type' => 'string', 'maxLength' => 9, 'example' => 'example'],
+    ]],
+]);
+
+it('lets a `.*` override restate a map\'s values without restating its keys', function (): void {
+    // The `.*` rules replace what inference said the values were — that is what an override does — while
+    // the container they sit in is still the declared type's to state.
+    expect(containerProperty('settings', new MapT(ScalarT::string(), ScalarT::int()), override: containerOverride([
+        'settings' => ['array'],
+        'settings.*' => ['string'],
+    ])))->toBe(['type' => 'object', 'additionalProperties' => ['type' => 'string']]);
+});
+
+it('reads what the value schema says before trading a `.*` override\'s array word', function (DType $type, array $names, array $expected): void {
+    // The plain case is the matrix cell above. These are the two edges of the same test: a value schema
+    // saying `object` in a type LIST still says it, and a `.*` override stating more than `array` has
+    // replaced the value shape, so there is nothing of the type's left to trade.
+    expect(containerProperty('theme', $type, override: containerOverride([
+        'theme' => ['array'],
+        'theme.*' => $names,
+    ])))->toBe($expected);
+})->with([
+    'nullable object values' => [
+        new MapT(ScalarT::string(), UnionT::of([new MapT(ScalarT::string(), new UnknownT('mixed')), new NullT])),
+        ['array'],
+        ['type' => 'object', 'additionalProperties' => ['type' => 'object']],
+    ],
+    'array + list' => [
+        mapOfMaps(),
+        ['array', 'list'],
+        ['type' => 'object', 'additionalProperties' => ['type' => 'array']],
+    ],
+]);
+
+it('keeps a map and a list side by side under one rules() override', function (): void {
+    // Both halves in one override, which is how one arrives: the map's container survives a restated
+    // `array`, and the list's does not have to survive anything — the two answers come off the same rule
+    // set, so neither may borrow the other's container.
+    $metadata = new ClassMetadata(ContainerShapeData::class, [
+        new PropertyMetadata('theme', UnionT::of([mapOfMaps(), new NullT])),
+        new PropertyMetadata('tags', new ListT(ScalarT::string())),
+    ]);
+    $context = schemaConverter();
+
+    $ruleSet = (new DataValidationRules)->build(
+        ContainerShapeData::class,
+        $metadata,
+        new NullTypeEngine,
+        containerOverride([
+            'theme' => ['nullable', 'array', 'max:100'],
+            'theme.*' => ['array', 'max:500'],
+            'tags' => ['array'],
+            'tags.*' => ['required', 'string', 'uuid'],
+        ]),
+        $context,
+    );
+
+    expect(validationSchema($ruleSet, $context)['properties'])->toBe([
+        'theme' => [
+            'type' => ['object', 'null'],
+            'additionalProperties' => ['type' => 'object', 'maxProperties' => 500],
+            'maxProperties' => 100,
+        ],
+        'tags' => [
+            'type' => 'array',
+            'items' => ['type' => 'string', 'format' => 'uuid', 'example' => '3fa85f64-5717-4562-b3fc-2c963f66afa6'],
+        ],
+    ]);
+});
 
 it('degrades a map to the bare array rule when no converter is available', function (): void {
     // The value schema is the type→schema chain's answer, so without one the map falls back to the only

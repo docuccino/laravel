@@ -11,10 +11,13 @@ use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
  * `before`, `before_or_equal`, `after`, `after_or_equal`. The bound is a runtime relationship OpenAPI can't
- * express, so it becomes a description — and, being outside the schema, it also withdraws the
- * synthesized example: nothing constant is provably on its legal side. A `date`/`date-time` format is only emitted when the target is
- * itself a parseable date or date keyword; a bare field reference like `after:start_date` is described but
- * left unformatted, since that field could be anything.
+ * express, so it becomes a description — and, being outside the schema, it also withdraws the synthesized
+ * example: nothing constant is provably on its legal side.
+ *
+ * The format is read off the TARGET, so it is a guess about the field and claimed only where nothing
+ * better has spoken ({@see ValidationField::mayClaim()}): a bare field reference like `after:start_date`
+ * says nothing at all, and a field whose own pattern was stated (or whose format was withdrawn as
+ * undescribable) keeps what that rule decided.
  */
 final class DateComparisonRuleTransformer implements RuleTransformer
 {
@@ -41,7 +44,7 @@ final class DateComparisonRuleTransformer implements RuleTransformer
             $field->setType('string');
         }
 
-        if ($this->isDateTarget($target) && ! $field->has('format')) {
+        if ($this->isDateTarget($target) && $field->mayClaim('format')) {
             $field->set('format', $this->hasTime($target) ? 'date-time' : 'date');
         }
 

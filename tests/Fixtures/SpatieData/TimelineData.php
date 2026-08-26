@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Tests\Fixtures\SpatieData;
 
 use Carbon\CarbonImmutable;
+use Spatie\LaravelData\Attributes\Validation\Date;
+use Spatie\LaravelData\Attributes\Validation\Nullable;
 use Spatie\LaravelData\Attributes\WithCast;
 use Spatie\LaravelData\Casts\DateTimeInterfaceCast;
 use Spatie\LaravelData\Data;
+use Spatie\LaravelData\Optional;
 
 /**
  * The in-process twin of the fixture app's `App\Data\TimelineData`: nullable timestamps, one of them
- * carrying the `format: 'U'` cast, and a non-null control. Only ever reflected — the mapper's guards
+ * carrying the `format: 'U'` cast, a non-null control, and the request-side `#[Date]` union. Only ever reflected — the mapper's guards
  * reflect the FQCN they are handed, so the cast attribute has to be readable here.
  */
 final class TimelineData extends Data
@@ -21,5 +24,7 @@ final class TimelineData extends Data
         #[WithCast(DateTimeInterfaceCast::class, format: 'U')]
         public readonly ?CarbonImmutable $expiresAt,
         public readonly CarbonImmutable $createdAt,
+        #[Nullable, Date]
+        public readonly Optional|CarbonImmutable|null $expectedUpdatedAt = new Optional,
     ) {}
 }

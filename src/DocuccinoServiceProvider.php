@@ -55,7 +55,9 @@ use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderConfigDigestContribu
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParametersExtension;
 use Docuccino\Laravel\Integrations\SpatieData\DataClassReflector;
 use Docuccino\Laravel\Integrations\SpatieData\DataSchema;
+use Docuccino\Laravel\Integrations\SpatieData\DataValidationRules;
 use Docuccino\Laravel\Integrations\SpatieData\WrapResolver;
+use Docuccino\Laravel\Integrations\Support\DateWireFormat;
 use Docuccino\Laravel\Pipeline\BuildFingerprint;
 use Docuccino\Laravel\Pipeline\DocumentBuilder;
 use Docuccino\Laravel\Pipeline\DocumentGenerator;
@@ -371,12 +373,19 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
         });
 
         $this->app->bind(DataSchema::class, function (Application $app): DataSchema {
-            $format = config('data.date_format');
-
             return new DataSchema(
                 reflector: $app->make(DataClassReflector::class),
-                dateFormat: is_string($format) && $format !== '' ? $format : 'Y-m-d\TH:i:sP',
+                dateFormat: self::dataDateFormat(),
                 wrap: new WrapResolver(self::stringConfig('data.wrap')),
+            );
+        });
+
+        // The request side is handed the SAME `data.date_format`, so a DateTimeInterface property
+        // documents one wire format in both directions.
+        $this->app->bind(DataValidationRules::class, function (Application $app): DataValidationRules {
+            return new DataValidationRules(
+                reflector: $app->make(DataClassReflector::class),
+                dateFormat: self::dataDateFormat(),
             );
         });
 
@@ -431,6 +440,12 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
         } catch (Throwable) {
             return QueryBuilderConfig::majorOf(null);
         }
+    }
+
+    /** The app's spatie-data date format, or the package's own default where it is unset. */
+    private static function dataDateFormat(): string
+    {
+        return self::stringConfig('data.date_format') ?? DateWireFormat::DEFAULT_FORMAT;
     }
 
     /** A non-empty string config value, or null when unset/blank. */

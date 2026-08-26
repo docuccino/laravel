@@ -19,7 +19,8 @@ use Throwable;
  * Collects the Docuccino attributes declared on a route's action: method-level first, then the
  * controller class and its parents nearest-first (the {@see AttributeSet} preserves this
  * most-specific-first order, so a child's declaration beats the base controller's — the same
- * nearest-wins walk `#[ErrorComponent]` gets on an exception hierarchy). Only
+ * nearest-wins walk `#[ErrorComponent]` gets on an exception hierarchy) — and marks the class walk's
+ * declarations INHERITED, so a reader can tell what the author wrote on the action itself. Only
  * `Docuccino\Attributes\*` instances are materialised; foreign attributes are ignored, and one that
  * fails to instantiate is skipped and handed to `$onUnreadable` as the `attribute.unreadable`
  * diagnostic this class is the single mint for.
@@ -56,7 +57,7 @@ final class AttributeCollector
         $class = $action->controllerClass;
         if ($class !== null && class_exists($class)) {
             for ($reflection = new ReflectionClass($class); $reflection !== false; $reflection = $reflection->getParentClass()) {
-                $this->addFrom($set, $reflection, $reflection->getName(), $onUnreadable, $routeSignature);
+                $this->addFrom($set, $reflection, $reflection->getName(), $onUnreadable, $routeSignature, inherited: true);
             }
         }
 
@@ -83,7 +84,7 @@ final class AttributeCollector
      * @param  ReflectionClass<object>|ReflectionFunctionAbstract  $reflection
      * @param  Closure(Diagnostic): void|null  $onUnreadable
      */
-    private function addFrom(AttributeSet $set, ReflectionClass|ReflectionFunctionAbstract $reflection, string $site, ?Closure $onUnreadable, ?string $routeSignature): void
+    private function addFrom(AttributeSet $set, ReflectionClass|ReflectionFunctionAbstract $reflection, string $site, ?Closure $onUnreadable, ?string $routeSignature, bool $inherited = false): void
     {
         foreach ($reflection->getAttributes() as $attribute) {
             if (! str_starts_with($attribute->getName(), self::NAMESPACE_PREFIX)) {
@@ -91,7 +92,7 @@ final class AttributeCollector
             }
 
             try {
-                $set->add($attribute->newInstance());
+                $set->add($attribute->newInstance(), $inherited);
             } catch (Throwable $cause) {
                 $onUnreadable?->__invoke($this->unreadable($attribute->getName(), $site, $cause, $routeSignature));
             }

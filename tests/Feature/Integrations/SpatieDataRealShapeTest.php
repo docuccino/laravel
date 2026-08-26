@@ -245,8 +245,28 @@ it('omits a request property for a field the API prohibits outright', function (
     $override = tracedOverride('app/Data/UpdateNodeData.php', 'App\\Data\\UpdateNodeData');
     $schema = realRequestSchema(UpdateNodeData::class, $metadata, $override);
 
-    expect(array_keys($schema['properties']))->toBe(['name', 'metadata', 'position'])
+    expect(array_keys($schema['properties']))->toBe(['name', 'metadata', 'position', 'theme'])
         ->and($schema)->not->toHaveKey('required');
+})->group('fixture');
+
+it('keeps a recovered map an object through an override that restates it and bounds its values', function (): void {
+    // The headline of the container work, against real recovery rather than a hand-built MapT. The engine
+    // reads `array<string, array<string, mixed>>` off the constructor @param; the override then says
+    // `array` — Laravel's one word for every array shape — and bounds each value through `theme.*`.
+    // Neither statement can say the keys are strings, so neither may take the container away from the
+    // type that does. `.*` applies to each value whatever the keys are, which is why it decides nothing
+    // about key type.
+    $metadata = realMetadataAs('App\Data\UpdateNodeData', UpdateNodeData::class);
+    $override = tracedOverride('app/Data/UpdateNodeData.php', 'App\Data\UpdateNodeData');
+
+    expect(realRequestSchema(UpdateNodeData::class, $metadata, $override)['properties']['theme'])->toBe([
+        'type' => 'object',
+        // The `theme.*` constraints land on the value slot an object has, never on a dead `items`.
+        'additionalProperties' => ['type' => 'object', 'maxProperties' => 50],
+        // `max:20` on an object counts its keys, so the bound is a property count, not a string length —
+        // and the same reading applies one level down, to the values `theme.*` bounds.
+        'maxProperties' => 20,
+    ]);
 })->group('fixture');
 
 it('documents a positional tuple as an array, never as an object with numeric property names', function (): void {
@@ -288,8 +308,10 @@ it('keeps a recovered container through a rules() override that only restates `a
     // The real-source half of the same story: `array` is the ONE word the rule vocabulary has for every
     // array shape, so an override stating it restates what the constructor `@param` already recovered
     // rather than replacing it — and `{"type": "array"}` for a JSON object is wrong, not merely vague.
-    // `metadata` proves it survives a size-only custom rule sitting alongside; `touched_fields` is the
-    // half that already worked, its item field riding on a key of its own.
+    // `metadata` proves it survives a size-only custom rule sitting alongside — and that the bound the
+    // rule states counts the object's KEYS, since Laravel sizes an array-or-object by its entries and a
+    // length keyword on one is a bound no validator applies. `touched_fields` is the half that already
+    // worked, its item field riding on a key of its own.
     $metadata = realMetadataAs('App\\Data\\ActionPreviewData', ActionPreviewData::class);
     $override = tracedOverride('app/Data/ActionPreviewData.php', 'App\\Data\\ActionPreviewData');
     $schema = realRequestSchema(ActionPreviewData::class, $metadata, $override);
@@ -302,7 +324,7 @@ it('keeps a recovered container through a rules() override that only restates `a
     'array<string, mixed>|null' => ['metadata', [
         'type' => 'object',
         'additionalProperties' => [],
-        'maxLength' => 65536,
+        'maxProperties' => 65536,
         'description' => 'At most 64 KiB once encoded.',
     ]],
     'list<string>' => ['touched_fields', ['type' => 'array', 'items' => ['type' => 'string']]],
@@ -348,6 +370,40 @@ it('attaches a #[Mock] hint to the real recovered shape, following a #[MapName] 
         ->and($component['properties']['permissions']['x-docuccino'])->toBe(['mock' => ['faker' => 'numberBetween:1,9']])
         // …and everything unnamed is byte-identical to what the untouched twin publishes.
         ->and($component['properties']['forms'])->not->toHaveKey('x-docuccino');
+})->group('fixture');
+
+it('reads a date property\'s wire shape off the type the real engine recovered', function (): void {
+    // The request-side twin of the response assertion below. Everything the date ladder decides turns on
+    // recognising a DateTimeInterface inside whatever union the ENGINE hands back — `?CarbonImmutable`, and
+    // `Optional|CarbonImmutable|null` with the marker stripped — and that recognition is the half a
+    // hand-built type cannot prove. The rules say `nullable|date`, whose one word covers everything
+    // non-relative `strtotime` parses; the property says which of those the app actually serialises.
+    $metadata = realMetadataAs('App\Data\TimelineData', TimelineData::class);
+    $context = schemaConverter();
+    $schema = validationSchema(
+        (new DataValidationRules(dateFormat: 'Y-m-d\TH:i:sP'))
+            ->build(TimelineData::class, $metadata, new NullTypeEngine, null, $context),
+        $context,
+    );
+
+    $properties = $schema['properties'];
+
+    // The reported shape: a `#[Date]` rule over a partial-update union publishes the type's format, not
+    // the rule's coarser reading of it — and the same format the response side publishes.
+    // Prose is matched on later, by RecoveredRequest — this harness stops at the rule set, so the shape
+    // asserted here is exactly what the ladder decided and nothing else.
+    expect($properties['expectedUpdatedAt'])->toBe([
+        'type' => ['string', 'null'],
+        'format' => 'date-time',
+        'example' => '2024-01-01T00:00:00+00:00',
+    ])
+        // A nullable date-time with no date rule at all: the request used to say nothing here.
+        ->and($properties['publishedAt']['type'])->toBe(['string', 'null'])
+        ->and($properties['publishedAt']['format'])->toBe('date-time')
+        // The `format: 'U'` cast is an integer on both sides, and the note says so once.
+        ->and($properties['expiresAt']['type'])->toBe(['integer', 'null'])
+        ->and($properties['expiresAt'])->not->toHaveKey('format')
+        ->and($properties['createdAt']['format'])->toBe('date-time');
 })->group('fixture');
 
 it('keeps the null on a nullable timestamp the real engine reports as a union', function (): void {

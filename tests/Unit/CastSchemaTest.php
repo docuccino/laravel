@@ -50,9 +50,11 @@ it('maps a datetime:FORMAT to an honest format claim', function (string $cast, a
     // Default and ISO date-time forms.
     'default datetime' => ['datetime', ['type' => 'string', 'format' => 'date-time']],
     'ISO atom' => ['datetime:Y-m-d\\TH:i:sP', ['type' => 'string', 'format' => 'date-time']],
-    'space-separated ISO' => ['datetime:Y-m-d H:i:s', ['type' => 'string', 'format' => 'date-time']],
+    'Carbon JSON form' => ['datetime:Y-m-d\\TH:i:s.u\\Z', ['type' => 'string', 'format' => 'date-time']],
     'date-only' => ['datetime:Y-m-d', ['type' => 'string', 'format' => 'date']],
-    // A bespoke non-ISO format is neither date nor date-time: a plain string with the format noted.
+    // `date-time` is RFC 3339, which wants the `T` and an offset — a space-separated value has neither, so
+    // it is a described string like any other format no keyword names.
+    'space-separated' => ['datetime:Y-m-d H:i:s', ['type' => 'string', 'description' => 'Serialized using the date format "Y-m-d H:i:s".']],
     'custom format' => ['datetime:d/m/Y', ['type' => 'string', 'description' => 'Serialized using the date format "d/m/Y".']],
 ]);
 

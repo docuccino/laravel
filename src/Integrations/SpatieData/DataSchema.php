@@ -21,6 +21,7 @@ use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\DType\DType;
 use Docuccino\Core\Inference\DType\NullT;
 use Docuccino\Core\Inference\DType\UnionT;
+use Docuccino\Laravel\Integrations\Support\DateWireFormat;
 use Docuccino\Laravel\Integrations\Support\PageComponent;
 use Docuccino\Laravel\Integrations\Support\PaginationParts;
 use Docuccino\Laravel\Integrations\Support\SpatieDataEnvelope;
@@ -49,13 +50,14 @@ use Docuccino\Laravel\Integrations\Support\SpatieDataEnvelope;
 final class DataSchema implements TypeToSchema
 {
     /**
-     * @param  string  $dateFormat  the app's `data.date_format` (a PHP date() format), used to decide
-     *                              a `DateTimeInterface` property's OAS `format` (date vs date-time)
+     * @param  string  $dateFormat  the app's `data.date_format` (a PHP date() format), read through
+     *                              {@see DateWireFormat} — the same reading the request side gives it,
+     *                              so a `DateTimeInterface` property documents one format both ways
      */
     public function __construct(
         private readonly DataClassReflector $reflector = new DataClassReflector,
         private readonly ComponentHoist $hoist = new ComponentHoist,
-        private readonly string $dateFormat = 'Y-m-d\TH:i:sP',
+        private readonly string $dateFormat = DateWireFormat::DEFAULT_FORMAT,
         private readonly WrapResolver $wrap = new WrapResolver,
     ) {}
 
@@ -180,10 +182,10 @@ final class DataSchema implements TypeToSchema
         }
 
         // Only the `U` cast format changes the wire TYPE (integer timestamp); every other explicit
-        // format still renders as a date/date-time string.
-        $serialized = $this->reflector->dateTimeCastFormat($fqcn, $property) === 'U'
-            ? ['type' => 'integer', 'description' => 'Unix timestamp (seconds).']
-            : ['type' => 'string', 'format' => $this->dateFormatToOas()];
+        // format still renders as a string, shaped by the one date policy.
+        $serialized = $this->reflector->dateTimeCastFormat($fqcn, $property) === DateWireFormat::UNIX
+            ? ['type' => 'integer', 'description' => DateWireFormat::TIMESTAMP_NOTE]
+            : DateWireFormat::serializedSchema($this->dateFormat);
 
         return $this->withDateTime($clean, $serialized, $context);
     }
@@ -225,8 +227,11 @@ final class DataSchema implements TypeToSchema
         return SchemaUnion::of($members, $clean->containsNull(), $context->representation()->nullable);
     }
 
-    /** Whether the marker-stripped type is, or unions in, a `DateTimeInterface`. */
-    private static function hasDateTime(DType $clean): bool
+    /**
+     * Whether the marker-stripped type is, or unions in, a `DateTimeInterface`. Public because the
+     * request side asks the same question of the same type, and two answers would be two documents.
+     */
+    public static function hasDateTime(DType $clean): bool
     {
         if ($clean instanceof ClassT) {
             return DataClassReflector::isDateTime($clean->fqcn);
@@ -241,12 +246,6 @@ final class DataSchema implements TypeToSchema
         }
 
         return false;
-    }
-
-    /** date-only `data.date_format` → `date`; a format bearing time/zone tokens → `date-time`. */
-    private function dateFormatToOas(): string
-    {
-        return preg_match('/[GHhisuveTPOaA]/', $this->dateFormat) === 1 ? 'date-time' : 'date';
     }
 
     private function collection(ClassT $type, SchemaContext $context): SchemaResult

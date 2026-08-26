@@ -13,6 +13,7 @@ use Illuminate\Routing\Router;
 use Workbench\App\Http\Controllers\ConsumerProseController;
 use Workbench\App\Http\Controllers\DescribedController;
 use Workbench\App\Http\Controllers\DescriptionEscapeController;
+use Workbench\App\Http\Controllers\SharedBodyProseController;
 
 /**
  * The prose an API consumer reads, and how an author says it without rewriting the docblock the next
@@ -249,11 +250,15 @@ it('serves a warm build exactly what a cold one would, prose and diagnostics bot
             $router->get('api/attributed', [ConsumerProseController::class, 'attributed']);
             $router->get('api/absent', [ConsumerProseController::class, 'absentFile']);
             $router->get('api/empty', [ConsumerProseController::class, 'empty']);
+            $router->post('api/described-body', [ConsumerProseController::class, 'describedBody']);
+            $router->post('api/bodyless-body-prose', [ConsumerProseController::class, 'bodylessBodyProse']);
         },
         static function (Router $router): void {
             $router->get('api/attributed', [ConsumerProseController::class, 'attributed']);
             $router->get('api/absent', [ConsumerProseController::class, 'absentFile']);
             $router->get('api/empty', [ConsumerProseController::class, 'empty']);
+            $router->post('api/described-body', [ConsumerProseController::class, 'describedBody']);
+            $router->post('api/bodyless-body-prose', [ConsumerProseController::class, 'bodylessBodyProse']);
             $router->get('api/tagged', [ConsumerProseController::class, 'tagged']);
         },
     );
@@ -261,5 +266,132 @@ it('serves a warm build exactly what a cold one would, prose and diagnostics bot
     // …and it really did replay them, rather than both builds being equally silent.
     expect(diagnosticsCoded($warm->diagnostics, 'description-file.missing'))->not->toBeEmpty()
         ->and(diagnosticsCoded($warm->diagnostics, 'attribute.description-unusable'))->not->toBeEmpty()
-        ->and($warm->document->toArray()['paths']['/api/attributed']['get']['summary'])->toBe('Create an invoice');
+        ->and($warm->document->toArray()['paths']['/api/attributed']['get']['summary'])->toBe('Create an invoice')
+        // The body prose is reassembled on a warm hit, and the complaint about the one with no body to
+        // sit on is replayed with it.
+        ->and($warm->document->toArray()['paths']['/api/described-body']['post']['requestBody']['description'])
+        ->toBe('Send every field: a widget is replaced wholesale rather than merged.')
+        ->and(array_filter(
+            diagnosticsCoded($warm->diagnostics, 'attribute.description-unusable'),
+            static fn (object $d): bool => str_contains($d->message, 'this operation documents none'),
+        ))->not->toBeEmpty();
+});
+
+/*
+ * The request body's own prose. `requestBody.description` is a different fact from the schema's
+ * description: the schema says what the type IS and every operation sharing the component reads it,
+ * while this says how THIS operation wants the body filled in. `#[Description(request: true)]` is the
+ * only thing that writes it, and it has to survive whichever producer assembled the body.
+ */
+it('writes #[Description(request: true)] onto the operation request body', function (): void {
+    $result = describeRoutes(function (Router $router): void {
+        $router->post('api/described-body', [ConsumerProseController::class, 'describedBody']);
+    });
+
+    $body = $result['paths']['/api/described-body']['post']['requestBody'];
+
+    expect($body['description'])->toBe('Send every field: a widget is replaced wholesale rather than merged.')
+        // On the body, not on the shared component: the component is the type, which other operations read.
+        ->and($body['content']['multipart/form-data']['schema'])->toBe(['$ref' => '#/components/schemas/StoreWidgetRequest'])
+        ->and(diagnosticsCoded($result['diagnostics'], 'attribute.description-unusable'))->toBe([]);
+});
+
+it('keeps the operation description and the body description apart on one action', function (): void {
+    $result = describeRoutes(function (Router $router): void {
+        $router->post('api/described-body', [ConsumerProseController::class, 'describedBody']);
+    });
+
+    $operation = $result['paths']['/api/described-body']['post'];
+
+    // Neither declaration takes the other's slot, and neither is duplicated into it.
+    expect($operation['description'])->toBe('Creates a widget from the whole submitted body.')
+        ->and($operation['requestBody']['description'])->toBe('Send every field: a widget is replaced wholesale rather than merged.');
+});
+
+// The attribute layer is where #[BodyParameter] writes the whole body too, in an earlier phase — so a
+// description contesting that guarded field would be shadowed and lost. It rides on the body instead.
+it('survives a body #[BodyParameter] assembled at its own layer', function (): void {
+    $result = describeRoutes(function (Router $router): void {
+        $router->post('api/attribute-body', [ConsumerProseController::class, 'describedAttributeBody']);
+    });
+
+    $body = $result['paths']['/api/attribute-body']['post']['requestBody'];
+
+    expect($body['description'])->toBe('One field, and the whole widget is voided.')
+        ->and($body['content']['application/json']['schema']['properties'])->toHaveKey('reason');
+});
+
+it('loads an in-tree #[Description(file:, request: true)] into the body description', function (): void {
+    $absolute = base_path('docuccino-body-prose.md');
+    file_put_contents($absolute, "Fill in every field.\n\nThe widget is replaced wholesale.\n");
+
+    try {
+        $result = describeRoutes(function (Router $router): void {
+            $router->post('api/described-body-file', [ConsumerProseController::class, 'describedBodyFromFile']);
+        });
+    } finally {
+        @unlink($absolute);
+    }
+
+    expect($result['paths']['/api/described-body-file']['post']['requestBody']['description'])
+        ->toBe("Fill in every field.\n\nThe widget is replaced wholesale.");
+});
+
+it('says so when a #[Description(request: true)] has no request body to describe', function (): void {
+    $result = describeRoutes(function (Router $router): void {
+        $router->post('api/bodyless-body-prose', [ConsumerProseController::class, 'bodylessBodyProse']);
+    });
+
+    $operation = $result['paths']['/api/bodyless-body-prose']['post'];
+    $unusable = diagnosticsCoded($result['diagnostics'], 'attribute.description-unusable');
+
+    expect($operation)->not->toHaveKey('requestBody')
+        // It describes the body, so it never falls back to describing the operation.
+        ->and($operation['description'] ?? null)->toBeNull()
+        ->and($unusable)->not->toBeEmpty()
+        ->and($unusable[0]->severity)->toBe(Severity::Warning)
+        ->and($unusable[0]->message)->toContain('this operation documents none');
+});
+
+// A read verb turns recovered rules into query parameters rather than a body, so the same declaration
+// on a GET has nothing to describe — and says so, rather than inventing a body for the prose to sit on.
+it('reports rather than conjuring a body when the verb makes the rules query parameters', function (): void {
+    $result = describeRoutes(function (Router $router): void {
+        $router->get('api/described-body', [ConsumerProseController::class, 'describedBody']);
+    });
+
+    $operation = $result['paths']['/api/described-body']['get'];
+    $names = array_column($operation['parameters'], 'name');
+
+    expect($operation)->not->toHaveKey('requestBody')
+        ->and($names)->toContain('name')
+        // The operation's own #[Description] is unaffected by its sibling being undeliverable.
+        ->and($operation['description'])->toBe('Creates a widget from the whole submitted body.')
+        ->and(diagnosticsCoded($result['diagnostics'], 'attribute.description-unusable'))->not->toBeEmpty();
+});
+
+it('documents nothing and says which declaration when the request form names both text and a file', function (): void {
+    $result = describeRoutes(function (Router $router): void {
+        $router->post('api/contradictory-body', [ConsumerProseController::class, 'contradictoryBody']);
+    });
+
+    $unusable = diagnosticsCoded($result['diagnostics'], 'attribute.description-unusable');
+
+    expect($result['paths']['/api/contradictory-body']['post']['requestBody']['description'] ?? null)->toBeNull()
+        ->and($unusable)->not->toBeEmpty()
+        ->and($unusable[0]->message)->toContain('A #[Description(request: true)] here carries both `text:` and `file:`');
+});
+
+// A declaration on the CONTROLLER covers every action under it, so it lands on the bodies that exist —
+// and the actions with no body are not each told about a mistake they are not the place to fix.
+it('spreads a controller-level body description over the actions that have a body', function (): void {
+    $result = describeRoutes(function (Router $router): void {
+        $router->post('api/shared-body', [SharedBodyProseController::class, 'stored']);
+        $router->post('api/shared-bodyless', [SharedBodyProseController::class, 'bodyless']);
+    });
+
+    expect($result['paths']['/api/shared-body']['post']['requestBody']['description'])
+        ->toBe('Send the whole widget; every action here replaces rather than merges.')
+        ->and($result['paths']['/api/shared-bodyless']['post'])->not->toHaveKey('requestBody')
+        ->and(diagnosticsCoded($result['diagnostics'], 'attribute.description-unusable'))->toBe([]);
 });

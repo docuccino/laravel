@@ -13,6 +13,10 @@ use Docuccino\Core\Extensions\Validation\ValidationRule;
  * Base-type rules → a JSON Schema `type` (plus `format` for the string-shaped ones): `string`,
  * `integer`, `numeric`, `boolean`, `array`, `email`, `uuid`, `date`. Runs before the constraint
  * transformers so type-aware rules (`min`/`max`) can read the resolved type.
+ *
+ * The format is a reading of intent — `date` is one word for everything non-relative `strtotime` parses —
+ * so it is claimed only where nothing better has spoken ({@see ValidationField::mayClaim()}): a rule that
+ * stated the real wire pattern, or withdrew a format nothing describes, has spoken.
  */
 final class TypeRuleTransformer implements RuleTransformer
 {
@@ -50,7 +54,7 @@ final class TypeRuleTransformer implements RuleTransformer
         $mapping = self::TYPES[$rule->name];
 
         $field->setType($mapping['type']);
-        if (isset($mapping['format']) && ! $field->has('format')) {
+        if (isset($mapping['format']) && $field->mayClaim('format')) {
             $field->set('format', $mapping['format']);
         }
     }

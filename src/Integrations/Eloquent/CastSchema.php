@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\Eloquent;
 
+use Docuccino\Laravel\Integrations\Support\DateWireFormat;
+
 /**
  * Maps an Eloquent `$casts` entry to the JSON Schema fragment it serialises to: datetime casts get a
  * `date-time`/`date` format honouring a `datetime:FORMAT` parameter, native casts fix a type,
@@ -89,9 +91,10 @@ final class CastSchema
     }
 
     /**
-     * A `datetime` cast honouring its `datetime:FORMAT` parameter. ISO forms with a time are `date-time`,
-     * the ISO date-only form is `date`, and a bespoke format is a plain string with the format noted in
-     * the description — better than a `format` claim that would be wrong.
+     * A `datetime` cast honouring its `datetime:FORMAT` parameter, read through the one date policy
+     * ({@see DateWireFormat}): an ISO form claims the `format` its values satisfy, and a bespoke one is a
+     * plain string with the format noted in the description — better than a `format` claim that would be
+     * wrong. An unparameterised cast serialises through the model's own `serializeDate`, which is ISO.
      *
      * @return array<string, mixed>
      */
@@ -101,15 +104,7 @@ final class CastSchema
             return ['type' => 'string', 'format' => 'date-time'];
         }
 
-        if (in_array($format, ['Y-m-d\\TH:i:sP', 'Y-m-d\\TH:i:s.uP', 'Y-m-d H:i:s', 'c'], true)) {
-            return ['type' => 'string', 'format' => 'date-time'];
-        }
-
-        if ($format === 'Y-m-d') {
-            return ['type' => 'string', 'format' => 'date'];
-        }
-
-        return ['type' => 'string', 'description' => sprintf('Serialized using the date format "%s".', $format)];
+        return DateWireFormat::serializedSchema($format);
     }
 
     /** Whether a cast value names an enum. */
