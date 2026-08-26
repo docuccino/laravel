@@ -95,7 +95,7 @@ final class JsonResourceSchema implements TypeToSchema
     /** Wraps a root resource under its `data` key; nested or `withoutWrapping()` results pass through. */
     private function wrapTopLevel(SchemaResult $result, ?string $itemFqcn, SchemaContext $context): SchemaResult
     {
-        if ($context->depth() !== 1) {
+        if (! $context->atRoot()) {
             return $result;
         }
 

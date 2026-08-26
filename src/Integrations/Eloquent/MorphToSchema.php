@@ -50,7 +50,7 @@ final class MorphToSchema implements TypeToSchema
         $mapping = [];
         $allMapped = true;
         foreach ($models as $model) {
-            $ref = $context->convert($model);
+            $ref = $context->convertMember($model);
             $variants[] = $ref;
 
             $alias = $this->morphAlias($model->fqcn);

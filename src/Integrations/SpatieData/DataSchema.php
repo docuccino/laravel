@@ -41,8 +41,9 @@ use Docuccino\Laravel\Integrations\Support\SpatieDataEnvelope;
  *   items key IS the wrap key; it never picks up a second outer wrap. That envelope hoists to a
  *   shared component of its own ({@see PageComponent}), one per Data class and kind.
  *
- * Wrapping otherwise applies only at the response root ({@see SchemaContext::depth()} === 1), from
- * {@see WrapResolver} — so a nested Data property's shared `$ref` stays wrap-free.
+ * Wrapping otherwise applies only at the response root ({@see SchemaContext::atRoot()}), from
+ * {@see WrapResolver} — so a nested Data property's shared `$ref` stays wrap-free. A root union is
+ * still the root on every arm, so each arm carries the envelope its own class resolves.
  */
 #[ExtensionOrder(priority: Priorities::EARLY)]
 final class DataSchema implements TypeToSchema
@@ -80,7 +81,7 @@ final class DataSchema implements TypeToSchema
     /** Wraps a root Data object under its wrap key; nested or unwrapped results pass through. */
     private function wrapRoot(SchemaResult $result, string $fqcn, SchemaContext $context): SchemaResult
     {
-        if ($context->depth() !== 1) {
+        if (! $context->atRoot()) {
             return $result;
         }
 
@@ -218,7 +219,7 @@ final class DataSchema implements TypeToSchema
                 continue;
             }
 
-            $members[] = $context->convert($member);
+            $members[] = $context->convertMember($member);
         }
 
         return SchemaUnion::of($members, $clean->containsNull(), $context->representation()->nullable);
@@ -281,7 +282,7 @@ final class DataSchema implements TypeToSchema
 
         // A plain DataCollection is a bare array, wrapped only at the response root.
         $schema = ['type' => 'array', 'items' => $items];
-        $key = $context->depth() === 1 ? $this->wrap->key(null) : null;
+        $key = $context->atRoot() ? $this->wrap->key(null) : null;
         if ($key !== null) {
             $schema = ['type' => 'object', 'properties' => [$key => $schema], 'required' => [$key]];
         }

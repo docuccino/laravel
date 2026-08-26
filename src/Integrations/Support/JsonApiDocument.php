@@ -81,7 +81,7 @@ final class JsonApiDocument
 
         // Only the response root gets the envelope; a collection item or nested relationship stays bare
         // so its enclosing resource applies the single `data` wrap. Mirrors JsonResourceSchema.
-        if ($context->depth() !== 1) {
+        if (! $context->atRoot()) {
             return $object;
         }
 
