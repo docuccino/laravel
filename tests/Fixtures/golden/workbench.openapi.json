@@ -1153,12 +1153,19 @@
             "type": "integer"
           },
           "metadata": {
+            "description": "Whatever the publishing system stored alongside the article.",
             "type": "object",
-            "additionalProperties": {}
+            "additionalProperties": {},
+            "example": {
+              "source": "syndication",
+              "wordCount": 1200
+            }
           },
           "overrides": {
+            "description": "Per-article rendering overrides.",
             "type": "object",
-            "additionalProperties": {}
+            "additionalProperties": {},
+            "example": {}
           },
           "secret": {
             "type": "string"

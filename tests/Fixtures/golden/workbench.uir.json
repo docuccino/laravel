@@ -3337,12 +3337,19 @@
             "type": "integer"
           },
           "metadata": {
+            "description": "Whatever the publishing system stored alongside the article.",
             "type": "object",
-            "additionalProperties": {}
+            "additionalProperties": {},
+            "example": {
+              "source": "syndication",
+              "wordCount": 1200
+            }
           },
           "overrides": {
+            "description": "Per-article rendering overrides.",
             "type": "object",
-            "additionalProperties": {}
+            "additionalProperties": {},
+            "example": {}
           },
           "secret": {
             "type": "string"
@@ -3778,7 +3785,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "5f2fa7f04d876587d654542b680caee47345866b9fdf48bc1e55e33f72a81989",
-      "contentHash": "02f2cbcffffb612b595382feae7d293eb303b21cd810d1303c2e23fe05d31a64"
+      "contentHash": "a3ebf0b7126c47ae38ec374becc13a2c26373846e6fdabfc6c720592eb31c159"
     },
     "generator": {
       "name": "docuccino/laravel",

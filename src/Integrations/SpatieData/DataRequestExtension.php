@@ -12,6 +12,7 @@ use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
 use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Docuccino\Core\Extensions\Validation\RecoveredRequest;
+use Docuccino\Core\Inference\ClassMetadata;
 use Docuccino\Core\Inference\ClassRef;
 use Docuccino\Laravel\Integrations\FormRequest\RulesFromClass;
 use Docuccino\Laravel\Integrations\Validation\RuleOrdering;
@@ -73,7 +74,25 @@ final class DataRequestExtension implements OperationExtension
             return;
         }
 
-        $this->request->apply($operation, $context, $result, 'spatie-data', $fqcn);
+        $this->request->apply($operation, $context, $result, 'spatie-data', $fqcn, $this->inputKeys($fqcn, $metadata));
+    }
+
+    /**
+     * PHP property name → the key the request accepts it under, for the declarations a property carries
+     * ({@see RecoveredRequest::apply()}). `#[MapInputName]`/`#[MapName]` renames a field on the way IN,
+     * and an input name is not the output name the response side maps by — a class mapped
+     * `snake_case` in and `camelCase` out has two different maps, so each side asks for its own.
+     *
+     * @return array<string, string>
+     */
+    private function inputKeys(string $fqcn, ClassMetadata $metadata): array
+    {
+        $keys = [];
+        foreach ($metadata->properties as $property) {
+            $keys[$property->name] = $this->rules->reflector()->inputName($fqcn, $property->name);
+        }
+
+        return $keys;
     }
 
     /**
