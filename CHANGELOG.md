@@ -7,6 +7,12 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.10.3
+
+### Bug fixes
+
+- follow a remapped property to the key the request accepts ([#246](https://github.com/docuccino/docuccino/pull/246))
+
 ## v0.10.2
 
 ### Bug fixes
