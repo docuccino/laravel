@@ -88,7 +88,9 @@ final class DiffCommand extends Command
 
         $verdict = $this->option('enforce') ? $this->enforce($builder, $key, $changeset, $old, $new) : null;
 
-        $this->render($key, $changeset, $verdict);
+        if (! $this->render($key, $changeset, $verdict)) {
+            return self::FAILURE;
+        }
 
         return $verdict !== null && ! $verdict->satisfied ? self::FAILURE : self::SUCCESS;
     }
@@ -188,7 +190,8 @@ final class DiffCommand extends Command
         return Hydrate::stringOr($document->info['version'] ?? null, '');
     }
 
-    private function render(string $key, Changeset $changeset, ?PolicyVerdict $verdict): void
+    /** False when the payload could not be rendered at all, which the caller reports as a failed run. */
+    private function render(string $key, Changeset $changeset, ?PolicyVerdict $verdict): bool
     {
         if ($this->option('format') === 'json') {
             $payload = ['document' => $key] + $changeset->toArray();
@@ -196,18 +199,33 @@ final class DiffCommand extends Command
                 $payload['policy'] = $verdict->toArray();
             }
 
+            $encoded = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+            // The payload carries document data, so a value JSON cannot spell — a string that is not
+            // valid UTF-8, an `INF` — reaches here. An empty line is the one answer a CI gate cannot
+            // read as anything: it parses as neither a changeset nor a failure.
+            if ($encoded === false) {
+                $this->error(TerminalText::of(sprintf(
+                    'The changeset for "%s" could not be encoded as JSON: %s. Run without --format=json to read it.',
+                    $key,
+                    json_last_error_msg(),
+                )));
+
+                return false;
+            }
+
             // Raw, because this half is machine-readable: `line()` writes at OUTPUT_NORMAL, where the
             // formatter reads `<…>` in an artifact-derived name as markup and drops it — still valid JSON,
             // and no longer the data a CI gate is deciding on.
-            $this->output->writeln((string) json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), OutputInterface::OUTPUT_RAW);
+            $this->output->writeln($encoded, OutputInterface::OUTPUT_RAW);
 
-            return;
+            return true;
         }
 
         $this->output->write(TerminalText::markupOnly($this->renderer->render($changeset)));
 
         if ($verdict === null) {
-            return;
+            return true;
         }
 
         if ($verdict->satisfied) {
@@ -216,5 +234,7 @@ final class DiffCommand extends Command
             $suffix = $verdict->requiredVersion !== null ? sprintf(' (require ≥ %s)', $verdict->requiredVersion) : '';
             $this->error(TerminalText::markupOnly(sprintf('Versioning policy "%s" violated: %s%s', $verdict->policy, $verdict->message, $suffix)));
         }
+
+        return true;
     }
 }

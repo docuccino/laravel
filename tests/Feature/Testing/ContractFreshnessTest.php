@@ -49,7 +49,9 @@ it('accepts an artifact exported at a different provenance level, which is not s
 
 it('names the stale file and what changed in it', function (): void {
     $build = ApiContract::build();
-    $document = json_decode($build->canonicalEmission($build->config()->exportTargets()[0]), true);
+    // Through the shared reader: an associative decode reads `{}` back as `[]`, so the artifact this
+    // writes would differ from the document in an EXAMPLE as well as in the summary under test.
+    $document = JsonValue::decode($build->canonicalEmission($build->config()->exportTargets()[0]));
     $document['paths']['/api/forms']['get']['summary'] = 'A summary nobody wrote.';
     file_put_contents($this->artifact, (string) json_encode($document, JSON_PRETTY_PRINT));
 
@@ -70,8 +72,9 @@ it('names the stale file and what changed in it', function (): void {
 
 it('says the contract is unchanged when only the bytes differ', function (): void {
     $build = ApiContract::build();
-    $document = json_decode($build->canonicalEmission($build->config()->exportTargets()[0]), true);
-    // Re-serialised with different whitespace: the same document, different bytes.
+    $document = JsonValue::decode($build->canonicalEmission($build->config()->exportTargets()[0]));
+    // Re-serialised with different whitespace: the same document, different bytes. Read through the
+    // shared reader, or the round trip flattens every `{}` and the document is not the same one.
     file_put_contents($this->artifact, (string) json_encode($document, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
     try {

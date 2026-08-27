@@ -10,7 +10,6 @@ use Docuccino\Core\Contract\Examples\ExampleAudit;
 use Docuccino\Core\Diff\Changeset;
 use Docuccino\Core\Diff\DocumentDiffer;
 use Docuccino\Core\Diff\IncomparableDocumentsException;
-use Docuccino\Core\Document\UirDocument;
 use Docuccino\Core\Emit\Formats;
 use Docuccino\Core\Extensions\Context\ExportTarget;
 use Docuccino\Core\Support\PlainText;
@@ -122,7 +121,7 @@ trait AssertsApiContract
         $new = $build->fresh();
 
         try {
-            $changeset = (new DocumentDiffer)->diff(UirDocument::fromArray($old->document()), $new);
+            $changeset = (new DocumentDiffer)->diff($old->comparable(), $new);
         } catch (IncomparableDocumentsException $exception) {
             Assert::fail($exception->getMessage());
         }
@@ -195,7 +194,7 @@ trait AssertsApiContract
         $new = $build->fresh();
 
         try {
-            $changeset = (new DocumentDiffer)->diff(UirDocument::fromArray($old->document()), $new);
+            $changeset = (new DocumentDiffer)->diff($old->comparable(), $new);
         } catch (IncomparableDocumentsException) {
             return [null, null, null];
         }

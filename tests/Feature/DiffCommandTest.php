@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Docuccino\Core\Emit\UirEmitter;
+use Docuccino\Core\Support\JsonValue;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Process;
 
@@ -14,8 +15,11 @@ function writeArtifact(?callable $mutate = null): string
 {
     $document = generateDocument()->document;
 
+    // Through the shared reader, as the command itself reads an old artifact: an associative decode
+    // flattens every `{}` to `[]`, which is a real difference in an example and would have every
+    // self-diff here reporting one.
     /** @var array<string, mixed> $uir */
-    $uir = json_decode((new UirEmitter)->emit($document), true, flags: JSON_THROW_ON_ERROR);
+    $uir = JsonValue::decode((new UirEmitter)->emit($document));
 
     if ($mutate !== null) {
         $uir = $mutate($uir);
@@ -39,6 +43,27 @@ function withExtraOperation(array $uir): array
         'responses' => ['200' => ['description' => 'OK']],
     ]];
     $uir['paths'] = $paths;
+
+    return $uir;
+}
+
+/**
+ * Rewrites a component schema's `description` in the OLD artifact: an annotation edit and nothing else,
+ * at a pointer the fresh document still declares.
+ *
+ * @param  array<string, mixed>  $uir
+ * @return array<string, mixed>
+ */
+function withEditedSchemaDescription(array $uir): array
+{
+    $components = is_array($uir['components'] ?? null) ? $uir['components'] : [];
+    $schemas = is_array($components['schemas'] ?? null) ? $components['schemas'] : [];
+    $article = is_array($schemas['Article'] ?? null) ? $schemas['Article'] : [];
+
+    $article['description'] = 'A description only the committed artifact carries.';
+    $schemas['Article'] = $article;
+    $components['schemas'] = $schemas;
+    $uir['components'] = $components;
 
     return $uir;
 }
@@ -330,4 +355,64 @@ it('rejects a git ref that starts with a dash', function (): void {
     $this->artisan('docuccino:diff', ['old' => 'docs/openapi.json', '--against' => '--upload-pack=evil'])
         ->expectsOutputToContain('must not start with')
         ->assertFailed();
+});
+
+it('passes enforcement for an annotation-only change, and still fails once a real break joins it', function (): void {
+    bindStubEngine();
+    config()->set('docuccino.documents.default.versioning', 'semver');
+
+    $old = writeArtifact(withEditedSchemaDescription(...));
+
+    expect(Artisan::call('docuccino:diff', ['old' => $old, '--enforce' => true]))->toBe(0);
+
+    // Visible, and under NON-BREAKING: a reviewer asking what moved is still told.
+    expect(Artisan::output())->toContain('(0 breaking)')
+        ->toContain('NON-BREAKING')
+        ->toContain('schema.annotation-changed')
+        ->toContain('satisfied');
+
+    @unlink($old);
+
+    // The same annotation edit plus one operation the current document no longer answers.
+    $both = writeArtifact(fn (array $uir): array => withExtraOperation(withEditedSchemaDescription($uir)));
+
+    expect(Artisan::call('docuccino:diff', ['old' => $both, '--enforce' => true]))->toBe(1);
+
+    expect(Artisan::output())->toContain('(1 breaking)')
+        ->toContain('operation.removed')
+        ->toContain('schema.annotation-changed');
+
+    @unlink($both);
+});
+
+it('reports a payload it could not encode rather than printing an empty line', function (): void {
+    // JSON has no bound on a number literal, so `1e999` parses without complaint and lands as a PHP
+    // `INF` — which `json_encode` then refuses. The value reaches `--format=json` because a change
+    // carries what moved, and an empty line is the one answer a CI gate cannot read: it parses as
+    // neither a changeset nor a failure.
+    bindStubEngine();
+
+    $old = writeArtifact(function (array $uir): array {
+        $components = is_array($uir['components'] ?? null) ? $uir['components'] : [];
+        $schemas = is_array($components['schemas'] ?? null) ? $components['schemas'] : [];
+        $article = is_array($schemas['Article'] ?? null) ? $schemas['Article'] : [];
+
+        $article['enum'] = ['__overflow__'];
+        $schemas['Article'] = $article;
+        $components['schemas'] = $schemas;
+        $uir['components'] = $components;
+
+        return $uir;
+    });
+
+    // Written as text: the literal cannot survive `json_encode` on the way in either.
+    $text = (string) file_get_contents($old);
+    expect($text)->toContain('"__overflow__"');
+    file_put_contents($old, str_replace('"__overflow__"', '1e999', $text));
+
+    $this->artisan('docuccino:diff', ['old' => $old, '--format' => 'json'])
+        ->expectsOutputToContain('could not be encoded as JSON')
+        ->assertFailed();
+
+    @unlink($old);
 });
