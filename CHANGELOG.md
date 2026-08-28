@@ -11,24 +11,16 @@ the [repository](https://github.com/docuccino/docuccino) git log.
 
 ### Breaking changes
 
-- let a response-header declaration say nothing about what it did not write
-  - a `#[ResponseHeader]` that omits `type` no longer publishes `schema: {type: string}` over a type another layer proved, and no longer replaces the description, the promise or the sibling headers it did not name — a document in that position gains the recovered type and loses the stated `string`. `Docuccino\Attributes\ResponseHeader::$required` is `?bool` rather than `bool` and defaults to `null` rather than `false`; code reading that property into a `bool` must widen.
-- publish only the model keys a response actually carries
+- let a response-header declaration say nothing about what it did not write ([#287](https://github.com/docuccino/docuccino/pull/287))
+  - `Exchange::$headers` is `array<string, list<string>>`; `Exchange::header()` returns a list. Callers reading a single string must take the first element.
+- publish only the model keys a response actually carries ([#285](https://github.com/docuccino/docuccino/pull/285))
   - an Eloquent model schema stops publishing keys the server does not return — an append or a `$with` relation named in `$hidden` or absent from a `$visible` allow-list, a name written in both lists, and the framework's own `exists`, `timestamps`, `incrementing`, `preventsLazyLoading`, `wasRecentlyCreated` and `usesUniqueIds` properties. A client generated from the new document loses fields it was never receiving, and a diff against a previously published document reports those keys as removals.
 
 ### Bug fixes
 
-- withhold a #[PathParameter] the route template has no segment for
-- report an #[InDocs] key that names no configured document
-- read a body declaration only where a body is written
-- credit an ignore exactly where a response was really dropped
-- escape the two values the ignore-location report quotes
-- report an ignore that dropped nothing instead of accepting it silently
-- keep a requirement a body declaration says nothing about
-- silence the container notice only where a declaration settles it
-- credit a webhook delivery for what the check proved
-- read a field's children as paths rather than as a string prefix
-- let a nested body declaration reach the key it names
+- report an author-supplied name that matched nothing instead of dropping it silently ([#283](https://github.com/docuccino/docuccino/pull/283))
+- credit a webhook delivery for what the check proved ([#277](https://github.com/docuccino/docuccino/pull/277))
+- let a nested body declaration reach the key it names ([#276](https://github.com/docuccino/docuccino/pull/276))
 
 ## v0.11.0
 
