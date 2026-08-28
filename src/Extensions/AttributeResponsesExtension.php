@@ -193,6 +193,11 @@ final class AttributeResponsesExtension implements OperationExtension
             if ($header->description !== null) {
                 $entry['description'] = $header->description;
             }
+            // Written only when true: `required` defaults to false in OAS, so writing it either way
+            // would add a member to every header the attribute has ever documented and say nothing.
+            if ($header->required) {
+                $entry['required'] = true;
+            }
 
             $headers = $byStatus[$status] ?? [];
             $headers[$header->name] = $entry;

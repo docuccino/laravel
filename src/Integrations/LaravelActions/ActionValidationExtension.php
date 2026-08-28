@@ -39,7 +39,10 @@ final class ActionValidationExtension implements OperationExtension
             return;
         }
 
-        $result = $context->validation()->convert($this->ordering->order($this->normalizer->normalize($rules)), $context->converter());
+        $normalized = $this->normalizer->normalize($rules);
+        RuleSetNormalizer::report($normalized, $context);
+
+        $result = $context->validation()->convert($this->ordering->order($normalized), $context->converter());
         if ($result->isEmpty()) {
             return;
         }

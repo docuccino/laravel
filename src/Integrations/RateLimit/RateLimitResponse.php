@@ -18,6 +18,12 @@ namespace Docuccino\Laravel\Integrations\RateLimit;
  *
  * The `{message}` body is only the fallback: the extension prefers whatever the error-response chain
  * documents for a throttle exception, so an app with its own error shape doesn't get a contradictory 429.
+ *
+ * All four are `required`. ThrottleRequests builds the 429 through one branchless path — `buildException()`
+ * asks `getHeaders()` with a non-null retry-after and no response to compare against, so the limit pair and
+ * the retry pair are both always written — and Laravel's handler renders an HttpException with the headers
+ * it carries. A header the server always sends and the document calls optional is a contract weaker than
+ * the server's, and a generated client cannot type it non-optional.
  */
 final class RateLimitResponse
 {
@@ -31,18 +37,22 @@ final class RateLimitResponse
             'headers' => [
                 'Retry-After' => [
                     'description' => 'Seconds to wait before making another request.',
+                    'required' => true,
                     'schema' => ['type' => 'integer'],
                 ],
                 'X-RateLimit-Limit' => [
                     'description' => 'The maximum number of requests permitted in the current window.',
+                    'required' => true,
                     'schema' => ['type' => 'integer'],
                 ],
                 'X-RateLimit-Remaining' => [
                     'description' => 'The number of requests remaining in the current window.',
+                    'required' => true,
                     'schema' => ['type' => 'integer'],
                 ],
                 'X-RateLimit-Reset' => [
                     'description' => 'Unix timestamp (seconds, UTC) at which the current rate limit window resets.',
+                    'required' => true,
                     'schema' => ['type' => 'integer'],
                 ],
             ],

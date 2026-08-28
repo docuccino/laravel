@@ -29,6 +29,9 @@ final class RuleOrdering
         'string' => 10, 'integer' => 10, 'int' => 10, 'numeric' => 10, 'boolean' => 10,
         'bool' => 10, 'array' => 10, 'email' => 10, 'uuid' => 10, 'ulid' => 10, 'url' => 10,
         'ip' => 10, 'date' => 10, 'date_format' => 10, 'json' => 10, 'list' => 10,
+        // The word a bare `array` becomes where nothing decided the container: a type word like the rest
+        // of this band, and read by the same constraint rules below.
+        'array_or_object' => 10,
         'accepted' => 10, 'accepted_if' => 10, 'declined' => 10, 'declined_if' => 10,
         // Straight after the type rules, all three: `object` and `additional_properties` REPLACE the
         // `array` one for a recovered object or map, `date_wire` replaces the `date` one's format for a

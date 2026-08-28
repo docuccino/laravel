@@ -50,15 +50,18 @@ final class AnnotationRuleTransformer implements RuleTransformer
 
     /**
      * A stated example, read as the type the constraint rules settled — {@see RuleOrdering} puts the
-     * annotations last so that type is final by the time this runs. One that does not read as it
-     * publishes nothing and says so, rather than a coercion's `0` for `n/a`.
+     * annotations last so that type is final by the time this runs. Every word of that type: a field the
+     * rules left as either container carries several, and reading against one of them would drop an
+     * example the other accepts. One that does not read as any publishes nothing and says so, rather
+     * than a coercion's `0` for `n/a`.
      */
     private function exemplify(ValidationField $field, string $value, SchemaContext $context): void
     {
-        $example = TypedExample::of($value, $field->type());
+        $types = $field->types();
+        $example = TypedExample::of($value, $types);
 
         if ($example === null) {
-            $context->diagnostic(TypedExample::untypable('field "'.$field->path().'"', $value, $field->type()));
+            $context->diagnostic(TypedExample::untypable('field "'.$field->path().'"', $value, $types));
 
             return;
         }

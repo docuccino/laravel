@@ -770,6 +770,14 @@ final class DataValidationRules
         return $values === [] ? null : ValidationRule::of('enum', $values, $type->fqcn);
     }
 
+    /**
+     * The rule word for a recovered type. A container type says which container it is — `list` for proven
+     * sequential keys, `object` for a string-keyed map — rather than the `array` the vocabulary uses for
+     * both: stating `array` here would hand the rule chain an open question this recovery had already
+     * answered, and a shape contributing no child path to answer it with (a positional tuple, a map whose
+     * values nothing could describe) would be widened to "array or object" on the way out. Only a keyed
+     * array SHAPE stays `array`, because the child paths it contributes settle it.
+     */
     private static function typeRule(DType $type): ?string
     {
         $type = self::unwrapNull($type);
@@ -783,11 +791,15 @@ final class DataValidationRules
             };
         }
 
-        if ($type instanceof ListT || $type instanceof MapT || $type instanceof ArrayShapeT) {
-            return 'array';
+        if ($type instanceof ListT) {
+            return 'list';
         }
 
-        return null;
+        if ($type instanceof ArrayShapeT) {
+            return $type->isList ? 'list' : 'array';
+        }
+
+        return $type instanceof MapT ? 'object' : null;
     }
 
     /** The sole non-null member of a nullable union, else the type itself. */

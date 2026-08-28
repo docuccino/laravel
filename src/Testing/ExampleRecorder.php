@@ -30,20 +30,27 @@ use JsonException;
  * code" stays exactly as true as it was: the execution is your test suite's, which is where it already
  * lived.
  *
- * Three rules do the curating, and each of them is about the recording being a function of the
+ * Recording is opt-in at each assertion, and `recordAs:` is how it is asked for. Checking an exchange
+ * and publishing it as documentation are two decisions with opposite ideal coverage: a suite should
+ * check as many exchanges as it can, because that is how a contract defect is found, and publish ONE
+ * deliberately chosen response per operation, because that is documentation. Tied together, the second
+ * one is made by whichever test happened to answer with the best-ranking body — which is how a
+ * generated fixture becomes the illustration of an endpoint. So an assertion that names no scenario
+ * checks and records nothing.
+ *
+ * Four rules do the curating, and each of them is about the recording being a function of the
  * responses rather than of the run:
  *
+ * - only an exchange the caller NAMED is recorded, so what a document shows is chosen rather than won;
  * - only an exchange whose RESPONSE half was checked and passed is recorded, so a body that
  *   contradicts its own schema can never become the illustration of it;
- * - among the many responses a suite produces for one status, the published one is the best
+ * - among the responses a suite records under one name, the published one is the best
  *   ({@see RecordedExample::outranks()}) and never the first, so reordering tests moves nothing;
  * - a committed body is left alone while its SHAPE is unchanged, so a timestamp or an autoincrement
  *   key in a payload cannot make the artifact churn on every re-record.
  *
- * A test that set a scenario up can say which one it was — `assertValidResponse(recordAs: 'empty-cart')`
- * — and those publish together as a named `examples` map. The name is always the caller's: deriving one
- * from the test's own name would make renaming a test rename a published example, which is a contract
- * change nobody asked for.
+ * The name is always the caller's: deriving one from the test's own name would make renaming a test
+ * rename a published example, which is a contract change nobody asked for.
  *
  * Credentials are replaced on the way out ({@see ExampleRedaction}), before anything reaches disk.
  */
@@ -69,13 +76,26 @@ final class ExampleRecorder implements ContractObserver
     public function observed(ObservedExchange $exchange): void
     {
         $operationId = $exchange->operationId();
-        $name = $exchange->recordAs ?? '';
+        $name = $exchange->recordAs;
 
-        if ($name !== '' && ! RecordedExample::isLegalName($name)) {
+        // A name is a call-site literal, so it is answered where it was written — before anything else
+        // here, so a typo is reported by the exchange that wrote it rather than by whichever build
+        // eventually reads the file.
+        if ($name !== null && ! RecordedExample::isLegalName($name)) {
             throw UnrecordableRun::badName($name);
         }
 
         if ($operationId === null) {
+            return;
+        }
+
+        // Where the recordings go is wiring, and wiring is wrong for a whole suite or for none of it.
+        // Resolved for every exchange this recorder could have published rather than only for the named
+        // ones, so a recorder pointed at nowhere still says so in the suite that has not named a
+        // scenario yet — which is every suite, the first time.
+        $this->store();
+
+        if ($name === null) {
             return;
         }
 

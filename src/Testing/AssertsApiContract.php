@@ -28,7 +28,8 @@ use Symfony\Component\HttpFoundation\Response;
  * usually is.
  *
  * `ApiContract::registerMacros()` puts the three exchange assertions on `TestResponse` too, if you
- * prefer `$this->getJson(…)->assertValidResponse()` to wrapping the call.
+ * prefer `$this->getJson(…)->assertValidResponse()` to wrapping the call. {@see assertValidWebhook()}
+ * has no response to hang off, so it stays a method.
  */
 trait AssertsApiContract
 {
@@ -48,9 +49,10 @@ trait AssertsApiContract
     /**
      * The response matches the schema the contract documents for its status and media type.
      *
-     * `recordAs:` names the scenario this test set up — `recordAs: 'empty-cart'` — so that a suite
-     * with the recorder on publishes it as that entry of the operation's `examples` map rather than
-     * competing with every other response for the one unnamed slot. Ignored when nothing is recording.
+     * `recordAs:` names the scenario this test set up — `recordAs: 'empty-cart'` — and naming it is
+     * what asks for it to be PUBLISHED, as that entry of the operation's `examples` map. Checking is
+     * every exchange's business; publishing is a choice, so an assertion that names nothing checks the
+     * response and records none of it. Ignored when nothing is recording.
      *
      * @param  TestResponse<Response>  $response
      * @return TestResponse<Response>
@@ -63,7 +65,8 @@ trait AssertsApiContract
     }
 
     /**
-     * Both halves at once. `recordAs:` names the scenario, as on {@see assertValidResponse()}.
+     * Both halves at once. `recordAs:` names the scenario to publish, as on {@see assertValidResponse()},
+     * and nothing is recorded without it.
      *
      * @param  TestResponse<Response>  $response
      * @return TestResponse<Response>
@@ -73,6 +76,22 @@ trait AssertsApiContract
         ApiContract::assertExchange($response, true, true, $recordAs);
 
         return $response;
+    }
+
+    /**
+     * The payload your application dispatches for a documented webhook satisfies the schema the
+     * document publishes for it.
+     *
+     * The outbound half of the contract, which no HTTP test can reach: `$payload` is whatever the code
+     * holds at the moment it delivers — the event object, a Data object, an array, JSON text — and it is
+     * held to the webhook's documented body exactly as a request body is.
+     *
+     * `method:` names one of the methods a webhook is published under, and is only needed for a name
+     * published under more than one.
+     */
+    public function assertValidWebhook(string $name, mixed $payload, ?string $method = null): void
+    {
+        ApiContract::assertWebhook($name, $payload, $method);
     }
 
     /**

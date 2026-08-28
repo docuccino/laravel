@@ -132,7 +132,8 @@ it('defers on a type it does not support', function (): void {
 it('documents a redirect as a 3xx with a Location header and no body', function (): void {
     // Laravel's RedirectResponse defaults to 302 but takes any 3xx, and nothing at the return site
     // states which — so the OAS range key is what the code proves. The Location header is not a guess:
-    // every redirect response sets it.
+    // every redirect response sets it — Symfony's RedirectResponse refuses an empty URL and writes the
+    // header in its constructor — which is why it is published as `required` rather than as a maybe.
     [$responses, $document] = documentForReturn(
         new ClassT(FrameworkClasses::REDIRECT_RESPONSE),
         [FrameworkClasses::REDIRECT_RESPONSE => responseObjectMetadata(FrameworkClasses::REDIRECT_RESPONSE)],
@@ -143,6 +144,7 @@ it('documents a redirect as a 3xx with a Location header and no body', function 
         ->and($responses['3XX']['headers'])->toBe([
             'Location' => [
                 'description' => 'The URL to follow.',
+                'required' => true,
                 'schema' => ['type' => 'string', 'format' => 'uri-reference'],
             ],
         ])

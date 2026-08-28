@@ -2,14 +2,21 @@
 
 declare(strict_types=1);
 
+use Docuccino\Core\Extensions\Context\AttributeSet;
+use Docuccino\Core\Extensions\Context\DocumentConfig;
+use Docuccino\Core\Extensions\Context\RouteContext;
+use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Extensions\Validation\RuleSet;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
+use Docuccino\Core\Inference\ActionRef;
+use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
 
 /**
- * The two cross-field facts a per-field rule transformer cannot see: a field the API prohibits outright,
- * and a field whose dotted child key proves it is an object rather than the array its own rule claims.
- * Both are settled on the rule set, before the chain runs.
+ * The cross-field facts a per-field rule transformer cannot see: a field the API prohibits outright, and
+ * what a field's CHILD keys say about the container its own `array` word cannot decide — a named key
+ * proves an object, no key at all proves nothing and leaves both open. All settled on the rule set,
+ * before the chain runs.
  */
 
 /**
@@ -131,4 +138,112 @@ it('bounds an object a named child proves by its keys, not by its length', funct
         'maxProperties' => 2,
         'properties' => ['mode' => ['type' => 'string']],
     ]);
+});
+
+/**
+ * The container matrix at the rule-name level: what each combination of child keys and container words
+ * leaves the field stating. `array` is the one word Laravel has for both containers, so every row is the
+ * same question — what else in the rule set answers it.
+ */
+it('decides a container from the child keys, and says so when they cannot', function (array $fields, array $expected): void {
+    expect(normalizedNames($fields))->toBe($expected);
+})->with([
+    // Nothing under the field: a JSON array and a JSON object both pass these rules.
+    'bare array' => [
+        ['meta' => ['sometimes', 'nullable', 'array']],
+        ['meta' => ['sometimes', 'nullable', 'array_or_object']],
+    ],
+    // `*` constrains every value whatever the keys are, so it decides nothing about key type — but it IS
+    // a statement about what is inside, which is what the widening is for the absence of.
+    'array with a `*` child' => [
+        ['meta' => ['array'], 'meta.*' => ['uuid']],
+        ['meta' => ['array'], 'meta.*' => ['uuid']],
+    ],
+    'array with named children' => [
+        ['meta' => ['array'], 'meta.mode' => ['string']],
+        ['meta' => ['object'], 'meta.mode' => ['string']],
+    ],
+    'array with both' => [
+        ['meta' => ['array'], 'meta.*' => ['uuid'], 'meta.mode' => ['string']],
+        ['meta' => ['object'], 'meta.*' => ['uuid'], 'meta.mode' => ['string']],
+    ],
+    // A dotted parent is decided by its own children, and the leaf by its own — one undecided field
+    // beside a decided sibling is exactly the shape a partial-update body arrives in.
+    'nested dotted parents' => [
+        ['meta' => ['array'], 'meta.overrides' => ['array'], 'meta.options' => ['array'], 'meta.options.*' => ['uuid']],
+        ['meta' => ['object'], 'meta.overrides' => ['array_or_object'], 'meta.options' => ['array'], 'meta.options.*' => ['uuid']],
+    ],
+    // A word that settles the container on its own leaves nothing open, whether the author wrote it
+    // (`list`) or a recovery synthesised it from a type.
+    'array beside `list`' => [['meta' => ['array', 'list']], ['meta' => ['array', 'list']]],
+    'array beside `object`' => [['meta' => ['array', 'object']], ['meta' => ['array', 'object']]],
+    'array beside `additional_properties`' => [
+        ['meta' => ['array', 'additional_properties']],
+        ['meta' => ['array', 'additional_properties']],
+    ],
+    // A field merely PREFIXED by another's name is a different field, not a child of it — the same
+    // distinction the prohibited pass draws, and getting it wrong would read `meta` as decided.
+    'a longer field name is not a child' => [
+        ['meta' => ['array'], 'metadata.mode' => ['string']],
+        ['meta' => ['array_or_object'], 'metadata.mode' => ['string']],
+    ],
+    // No container word at all is a different field entirely; nothing here is a container question.
+    'no array word' => [['name' => ['required', 'string']], ['name' => ['required', 'string']]],
+]);
+
+it('publishes both containers, and bounds both, for a field the rules leave open', function (): void {
+    // The reported defect: `type: array` is not vague about a free-form map, it is wrong about one, and
+    // a contract check on the endpoint fails against it. Laravel counts the entries of either container,
+    // so the one bound is owed to each — a `maxLength` would apply to neither.
+    $set = new RuleSet([
+        'meta' => [ValidationRule::of('nullable'), ValidationRule::of('array'), ValidationRule::of('max', ['5'])],
+    ]);
+
+    expect(validationSchema($set, schemaConverter())['properties']['meta'])->toBe([
+        'type' => ['array', 'object', 'null'],
+        'maxItems' => 5,
+        'maxProperties' => 5,
+    ]);
+});
+
+/** @return list<string> */
+function undecidedMessages(array $fields): array
+{
+    $set = (new RuleSetNormalizer)->normalize(new RuleSet(array_map(
+        static fn (array $names): array => array_map(static fn (string $name): ValidationRule => ValidationRule::of($name), $names),
+        $fields,
+    )));
+
+    $context = new RouteContext(
+        route: new RouteDescriptor(['POST'], 'api/nodes'),
+        actionRef: new ActionRef('', 'App\\C', 'store'),
+        attributes: new AttributeSet,
+        engine: new StubTypeEngine,
+        document: new DocumentConfig('default', []),
+    );
+
+    RuleSetNormalizer::report($set, $context);
+
+    return array_values(array_map(
+        static fn ($d): string => $d->code.': '.$d->message,
+        $context->components->diagnostics(),
+    ));
+}
+
+it('reports the field whose container it could not decide, and only that field', function (): void {
+    // The widening is true, so this is an info — but a silent widening is a document the author never
+    // learns is wider than their endpoint. The decided siblings say nothing: a notice that fired on the
+    // idiomatic `tags`/`tags.*` pair would train everybody to ignore the channel.
+    $messages = undecidedMessages([
+        'meta' => ['array'],
+        'tags' => ['array'],
+        'tags.*' => ['string'],
+        'address' => ['array'],
+        'address.city' => ['string'],
+    ]);
+
+    expect($messages)->toHaveCount(1)
+        ->and($messages[0])->toStartWith('validation.container-undecided: ')
+        ->and($messages[0])->toContain('"meta"')
+        ->and($messages[0])->toContain('documented as either');
 });

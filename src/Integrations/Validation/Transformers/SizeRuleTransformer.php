@@ -19,6 +19,10 @@ use Docuccino\Core\Extensions\Validation\ValidationRule;
  * field is decides between two keyword pairs that mean the same thing to it and different things to a
  * validator reading the document. A length keyword on either is a bound nothing applies.
  *
+ * A field the rules left as EITHER container therefore earns both pairs. Each keyword is inert against
+ * the type it does not belong to, so the two together say what the one rule states — whichever container
+ * the request turns out to carry, the count is bounded.
+ *
  * On a file field these bounds are kilobytes, not string length, so `file|max:2048` must not become
  * `maxLength: 2048`. OpenAPI has no file-size keyword, so it becomes a description note instead.
  */
@@ -44,14 +48,14 @@ final class SizeRuleTransformer implements RuleTransformer
             return;
         }
 
-        [$minKeyword, $maxKeyword] = $this->keywords($field->type());
-
-        match ($rule->name) {
-            'min' => $this->write($field, $minKeyword, $rule->parameter()),
-            'max' => $this->write($field, $maxKeyword, $rule->parameter()),
-            'size' => $this->size($field, $minKeyword, $maxKeyword, $rule->parameter()),
-            default => $this->between($field, $minKeyword, $maxKeyword, $rule),
-        };
+        foreach ($this->keywords($field->types()) as [$minKeyword, $maxKeyword]) {
+            match ($rule->name) {
+                'min' => $this->write($field, $minKeyword, $rule->parameter()),
+                'max' => $this->write($field, $maxKeyword, $rule->parameter()),
+                'size' => $this->size($field, $minKeyword, $maxKeyword, $rule->parameter()),
+                default => $this->between($field, $minKeyword, $maxKeyword, $rule),
+            };
+        }
     }
 
     /** A description note in KB rather than a wrong length keyword. Non-numeric parameters are skipped. */
@@ -75,16 +79,25 @@ final class SizeRuleTransformer implements RuleTransformer
     }
 
     /**
-     * @return array{0: string, 1: string}
+     * The min/max keyword pair per type the field carries — several where several are true of it, and the
+     * string-length fallback where nothing typed it, matching Laravel's coercion.
+     *
+     * @param  list<string>  $types
+     * @return non-empty-list<array{0: string, 1: string}>
      */
-    private function keywords(?string $type): array
+    private function keywords(array $types): array
     {
-        return match ($type) {
-            'integer', 'number' => ['minimum', 'maximum'],
-            'array' => ['minItems', 'maxItems'],
-            'object' => ['minProperties', 'maxProperties'],
-            default => ['minLength', 'maxLength'],
-        };
+        $pairs = [];
+        foreach ($types as $type) {
+            $pairs[] = match ($type) {
+                'integer', 'number' => ['minimum', 'maximum'],
+                'array' => ['minItems', 'maxItems'],
+                'object' => ['minProperties', 'maxProperties'],
+                default => ['minLength', 'maxLength'],
+            };
+        }
+
+        return $pairs === [] ? [['minLength', 'maxLength']] : $pairs;
     }
 
     private function between(ValidationField $field, string $minKeyword, string $maxKeyword, ValidationRule $rule): void

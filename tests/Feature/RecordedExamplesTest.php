@@ -164,8 +164,11 @@ it('reports, and refuses to publish, a recording that still holds a credential',
 
     $media = recordedDocument($this->recordings)['paths']['/api/forms']['get']['responses']['200']['content']['application/json'];
 
+    // The unnamed notice rides along because the fixture is a file from before recording became
+    // opt-in, which is exactly the file a credential survives in — nothing has re-recorded it.
     expect($media)->not->toHaveKey('example')
-        ->and(recordedDiagnosticCodes($this->recordings))->toBe(['examples.recording-unsafe']);
+        ->and(recordedDiagnosticCodes($this->recordings))
+        ->toBe(['examples.recording-unsafe', 'examples.recording-unnamed']);
 });
 
 it('says a configured directory holds nothing yet', function (): void {

@@ -2,16 +2,22 @@
 
 declare(strict_types=1);
 
+use Docuccino\Core\Contract\CheckResult;
 use Docuccino\Core\Contract\Coverage\CoverageLog;
 use Docuccino\Core\Contract\Coverage\CoverageMerge;
 use Docuccino\Core\Contract\Coverage\CoverageReport;
+use Docuccino\Core\Contract\Outcome;
+use Docuccino\Core\Contract\Violation;
 use Docuccino\Laravel\Testing\ApiContract;
 use Docuccino\Laravel\Testing\CoverageRecorder;
+use Docuccino\Laravel\Testing\ObservedExchange;
 use Docuccino\Laravel\Testing\ParallelRun;
+use PHPUnit\Framework\AssertionFailedError;
 
 /*
  * Contract coverage: what a process records, what it writes down, and — the whole point of writing it
- * down — that N workers' logs merge to exactly what one process would have said.
+ * down — that N workers' logs merge to exactly what one process would have said. What gets recorded is
+ * the documented RESPONSE, because that is what the contract promises a client.
  */
 beforeEach(function (): void {
     $this->root = coverageFixtureDir('recorder');
@@ -24,34 +30,107 @@ afterEach(function (): void {
     ApiContract::reset();
 });
 
-it('records the operations the run exercised, by id', function (): void {
+it('records the responses the run exercised, by operation id and status', function (): void {
     ApiContract::assertions()->assertValidResponse(contractResponse('GET', '/api/forms', body: '[]'));
 
     $exercised = ApiContract::coverage()->exercised();
 
     expect($exercised)->toHaveCount(1)
-        ->and($exercised[0])->toStartWith('op:v1:')
-        ->and(ApiContract::index()->operation($exercised[0])?->label())->toBe('GET /api/forms');
+        ->and($exercised[0])->toEndWith('@200');
+
+    $parsed = CoverageLog::parse($exercised[0]);
+
+    expect(ApiContract::index()->operation((string) $parsed['id'])?->label())->toBe('GET /api/forms');
 });
 
-it('records an operation once however many times the suite hits it', function (): void {
+it('records a response once however many times the suite hits it', function (): void {
     ApiContract::assertions()->assertValidResponse(contractResponse('GET', '/api/forms', body: '[]'));
     ApiContract::assertions()->assertValidExchange(contractResponse('GET', '/api/forms', body: '[]'));
 
     expect(ApiContract::coverage()->exercised())->toHaveCount(1);
 });
 
-it('reports what the run never touched, in the document’s own order', function (): void {
+it('credits a request-only assertion with the operation and with no response of it', function (): void {
+    // assertValidRequest() checks nothing that came back, so crediting a response would be the
+    // too-generous number the whole report exists to stop.
+    ApiContract::assertions()->assertValidRequest(contractResponse('GET', '/api/forms', body: '[]'));
+
+    $exercised = ApiContract::coverage()->exercised();
+
+    expect($exercised)->toHaveCount(1)
+        ->and($exercised[0])->not->toContain('@')
+        ->and(ApiContract::index()->operation($exercised[0])?->label())->toBe('GET /api/forms');
+
+    $report = ApiContract::report();
+
+    expect($report->exercisedOperations())->toBe(1)
+        ->and($report->exercisedResponses())->toBe(0);
+});
+
+it('credits no response for an assertion that failed', function (): void {
+    // The number reads generous exactly where it must not: the body violated the schema, the test went
+    // red, and the response the suite has just DISPROVED would have counted as exercised.
+    try {
+        ApiContract::assertions()->assertValidResponse(contractResponse('GET', '/api/forms', body: '{}'));
+    } catch (AssertionFailedError) {
+        // The point is what the recorder did with what it saw.
+    }
+
+    $exercised = ApiContract::coverage()->exercised();
+    $report = ApiContract::report();
+
+    expect($exercised)->toHaveCount(1)
+        ->and($exercised[0])->not->toContain('@')
+        ->and($report->exercisedResponses())->toBe(0)
+        ->and($report->exercisedOperations())->toBe(1);
+});
+
+it('credits a response from what the check proved, not from the status it answered', function (?Outcome $outcome, ?string $credited): void {
+    $operation = ApiContract::index()->match('GET', '/api/forms');
+    $response = contractResponse('GET', '/api/forms', body: '[]');
+    $request = $response->baseRequest;
+
+    $recorder = new CoverageRecorder;
+    $recorder->observed(new ObservedExchange(
+        operation: $operation,
+        exchange: ApiContract::exchangeFor($request, $response),
+        request: $request,
+        response: $response,
+        result: new CheckResult($operation, null, $outcome),
+    ));
+
+    expect($recorder->exercised())->toBe([$operation->id.$credited]);
+})->with([
+    // Every shape an Outcome comes in, and what each one honestly proves about the response.
+    'a response the schema accepted' => [Outcome::passed(), '@200'],
+    // A note is the CONTRACT saying it cannot be checked — a text/csv body, a media type with no
+    // schema. No assertion a suite could write closes that, so refusing the credit would leave the
+    // endpoint permanently uncoverable and a 100% floor out of reach for a defect in the document.
+    'a response nothing could check' => [Outcome::passed('the response body is text/csv, which JSON Schema cannot check'), '@200'],
+    'a response that disagreed' => [Outcome::failed([Violation::ofExchange('nope')]), ''],
+    'a half that never ran' => [null, ''],
+]);
+
+it('reports the responses the run never touched, in the document’s own order', function (): void {
     ApiContract::assertions()->assertValidResponse(contractResponse('GET', '/api/forms', body: '[]'));
 
     $report = ApiContract::report();
     $missing = array_map(static fn ($row): string => $row->label, $report->missing());
 
-    expect($report->exercisedCount())->toBe(1)
-        ->and($report->total())->toBeGreaterThan(1)
-        ->and($missing)->not->toContain('GET /api/forms')
+    expect($report->exercisedResponses())->toBe(1)
+        ->and($report->exercisedOperations())->toBe(1)
+        ->and($report->totalResponses())->toBeGreaterThan($report->totalOperations())
         ->and($missing)->toContain('POST /api/widgets')
         ->and($missing)->toBe(array_values(array_unique($missing)));
+
+    // The operation whose 200 was just proved is still listed, because its documented error responses
+    // are promises nothing in this run kept.
+    $forms = array_values(array_filter($report->rows, static fn ($row): bool => $row->label === 'GET /api/forms'));
+
+    expect($forms)->toHaveCount(1)
+        ->and($forms[0]->exercised)->toBeTrue()
+        ->and(array_map(static fn ($response): ?string => $response->status, $forms[0]->unexercised()))
+        ->not->toContain('200');
 });
 
 it('writes nothing until a bootstrap asks it to', function (): void {
@@ -63,7 +142,7 @@ it('writes nothing until a bootstrap asks it to', function (): void {
         ->and(CoverageLog::scan($this->root)->files)->toBe([]);
 });
 
-it('logs what this process exercised, once per id, where the bootstrap said', function (): void {
+it('logs what this process exercised, once per entry, where the bootstrap said', function (): void {
     ApiContract::recordCoverage($this->root);
 
     ApiContract::assertions()->assertValidResponse(contractResponse('GET', '/api/forms', body: '[]'));
@@ -74,7 +153,7 @@ it('logs what this process exercised, once per id, where the bootstrap said', fu
 
     expect($path)->toStartWith($this->root.'/')
         ->and(substr_count((string) file_get_contents((string) $path), "\n"))->toBe(2)
-        ->and(CoverageMerge::of([$this->root])->ids)->toBe(ApiContract::coverage()->exercised());
+        ->and(CoverageMerge::of([$this->root])->entries)->toBe(ApiContract::coverage()->exercised());
 });
 
 it('names its log after the worker the runner says it is', function (): void {
@@ -110,7 +189,7 @@ it('merges N workers into exactly what one process would have said, in any order
 
     $solo = (new CoverageRecorder)->logTo($this->root.'/single');
     foreach ($exercised as $id) {
-        $solo->record($id);
+        $solo->record($id, 200);
     }
 
     // Two of the three met the same operation, and one met its share out of document order: both are
@@ -126,21 +205,21 @@ it('merges N workers into exactly what one process would have said, in any order
         $worker = (new CoverageRecorder)->logTo($this->root.'/worker-'.$token);
 
         foreach ($share as $id) {
-            $worker->record($id);
+            $worker->record($id, 200);
         }
 
         $directories[] = $this->root.'/worker-'.$token;
     }
 
-    $expected = CoverageReport::of(ApiContract::index(), CoverageMerge::of([$this->root.'/single'])->ids);
+    $expected = CoverageReport::of(ApiContract::index(), CoverageMerge::of([$this->root.'/single'])->entries);
     $orders = permutationsOf($directories);
 
     expect($orders)->toHaveCount(6)
-        ->and($expected->exercisedCount())->toBe(6);
+        ->and($expected->exercisedOperations())->toBe(6);
 
     foreach ($orders as $order) {
         $merge = CoverageMerge::of($order);
-        $report = CoverageReport::of(ApiContract::index(), $merge->ids);
+        $report = CoverageReport::of(ApiContract::index(), $merge->entries);
 
         expect($merge->complete())->toBeTrue()
             ->and($merge->files)->toHaveCount(3)
@@ -156,23 +235,29 @@ it('forgets what it recorded when the suite resets', function (): void {
     ApiContract::coverage()->forget();
     expect(ApiContract::coverage()->exercised())->toBe([]);
 
-    ApiContract::coverage()->record('op:v1:zzzzzzzzzzzzzzzz');
-    ApiContract::coverage()->record('op:v1:aaaaaaaaaaaaaaaa');
-    expect(ApiContract::coverage()->exercised())->toBe(['op:v1:aaaaaaaaaaaaaaaa', 'op:v1:zzzzzzzzzzzzzzzz']);
+    ApiContract::coverage()->record('op:v1:zzzzzzzzzzzzzzzz', 404);
+    ApiContract::coverage()->record('op:v1:aaaaaaaaaaaaaaaa', 200);
+    expect(ApiContract::coverage()->exercised())->toBe(['op:v1:aaaaaaaaaaaaaaaa@200', 'op:v1:zzzzzzzzzzzzzzzz@404']);
 });
 
 it('drops a recorded string that is not an operation id rather than writing it down', function (): void {
-    // record() is public, and a log line is held to the id shape when it is read back — so a stray
+    // record() is public, and a log line is held to the entry shape when it is read back — so a stray
     // string reaching the log would condemn the whole file its process wrote. Nothing is lost: an id
     // that is not an operation's matches no operation in the report either.
     ApiContract::recordCoverage($this->root);
 
-    ApiContract::coverage()->record('GET /api/forms');
-    ApiContract::coverage()->record('op:v1:aaaa');
-    ApiContract::coverage()->record('sch:v1:aaaaaaaaaaaaaaaa');
+    ApiContract::coverage()->record('GET /api/forms', 200);
+    ApiContract::coverage()->record('op:v1:aaaa', 200);
+    ApiContract::coverage()->record('sch:v1:aaaaaaaaaaaaaaaa', 200);
 
     expect(ApiContract::coverage()->exercised())->toBe([])
         ->and(CoverageLog::scan($this->root)->files)->toBe([]);
+});
+
+it('widens a status the log cannot carry to the operation, rather than losing the run', function (): void {
+    ApiContract::coverage()->record('op:v1:aaaaaaaaaaaaaaaa', 0);
+
+    expect(ApiContract::coverage()->exercised())->toBe(['op:v1:aaaaaaaaaaaaaaaa']);
 });
 
 it('detects a parallel runner and which worker it is', function (): void {

@@ -69,6 +69,8 @@ final class DataRequestExtension implements OperationExtension
             return;
         }
 
+        RuleSetNormalizer::report($ruleSet, $context);
+
         $result = $validation->convert($this->ordering->order($ruleSet), $converter);
         if ($result->isEmpty()) {
             return;

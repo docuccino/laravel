@@ -11,7 +11,9 @@ use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
  * `confirmed` documents the implicit `{field}_confirmation` partner, mirroring the field's type and
- * required flag. Runs after the type transformers so there's a resolved type to copy.
+ * required flag. Runs after the type transformers so there's a resolved type to copy — every word of it,
+ * since a field the rules left as either container has more than one, and a partner validated by the same
+ * rule accepts exactly what the field does.
  */
 final class ConfirmedRuleTransformer implements RuleTransformer
 {
@@ -28,7 +30,8 @@ final class ConfirmedRuleTransformer implements RuleTransformer
     public function apply(ValidationRule $rule, ValidationField $field, SchemaContext $context): void
     {
         $confirmation = $field->sibling('_confirmation');
-        $confirmation->setType($field->type() ?? 'string');
+        $types = $field->types();
+        $confirmation->setTypes($types === [] ? ['string'] : $types);
 
         if ($field->isRequired()) {
             $confirmation->markRequired();

@@ -79,6 +79,46 @@ it('fails an exchange the document describes no operation for', function (): voi
     throw new RuntimeException('the assertion should have failed');
 });
 
+/*
+ * A pass that could not read what the document published says so, on the channel a developer running the
+ * suite actually sees. A note nobody is told is how a suite comes to believe it has contract coverage it
+ * does not have — and the docs promise these notes exist.
+ *
+ * The artifact here is a real build with one media type edited, deliberately: Docuccino's own producer
+ * publishes a JSON schema for every response it writes, so the population an inbound note fires against
+ * is a hand-written or imported document, and that is what this stands in for.
+ */
+it('warns the developer that an exchange passed having proved less than it looks like', function (): void {
+    $path = workbenchContract();
+    $document = json_decode((string) file_get_contents($path), true);
+
+    $content = $document['paths']['/api/forms']['get']['responses']['200']['content'];
+    expect($content)->toHaveKey('application/json');
+
+    $document['paths']['/api/forms']['get']['responses']['200']['content'] = ['text/csv' => $content['application/json']];
+    file_put_contents($path, (string) json_encode($document));
+    ApiContract::using($path);
+
+    $warnings = warningsRaisedBy(static function (): void {
+        ApiContract::assertions()->assertValidResponse(
+            contractResponse('GET', '/api/forms', body: "id,title\n1,Intake\n", headers: ['Content-Type' => 'text/csv']),
+        );
+    });
+
+    expect($warnings)->toBe([
+        'GET /api/forms passed, but part of the contract was not checked: '.
+        'the response body is text/csv, which JSON Schema cannot check.',
+    ]);
+});
+
+it('says nothing at all about an exchange it checked in full', function (): void {
+    workbenchContract();
+
+    expect(warningsRaisedBy(static function (): void {
+        ApiContract::assertions()->assertValidExchange(contractResponse('GET', '/api/forms', body: '[{"id":1,"title":"Intake"}]'));
+    }))->toBe([]);
+});
+
 it('checks the request, the response, or both, as asked', function (): void {
     workbenchContract();
 
@@ -222,4 +262,103 @@ it('falls back to whatever the document does write when it writes no uir', funct
     ]);
 
     expect(ApiContract::artifactPath())->toEndWith('/docs/openapi-3.1.json');
+});
+
+/*
+ * The rate-limit integration documents a `429` with `Retry-After` and the `X-RateLimit-*` trio. Those
+ * header claims used to be published and never held to anything; these three pin the whole path — the
+ * real workbench build, the real emitter, the real assertion.
+ */
+it('passes a 429 whose rate-limit headers say what the document says they say', function (): void {
+    workbenchContract();
+
+    $response = contractResponse('GET', '/api/rate-limited', status: 429, body: '{"message":"Too Many Attempts."}', headers: [
+        'Content-Type' => 'application/json',
+        'Retry-After' => '30',
+        'X-RateLimit-Limit' => '60',
+        'X-RateLimit-Remaining' => '0',
+        'X-RateLimit-Reset' => '1735689600',
+    ]);
+
+    expect(ApiContract::assertions()->assertValidResponse($response))->toBe($response);
+});
+
+it('fails a 429 whose rate-limit header is not the type the document publishes', function (): void {
+    workbenchContract();
+
+    try {
+        ApiContract::assertions()->assertValidResponse(contractResponse('GET', '/api/rate-limited', status: 429, body: '{"message":"Too Many Attempts."}', headers: [
+            'Content-Type' => 'application/json',
+            'Retry-After' => 'in a bit',
+            'X-RateLimit-Limit' => '60',
+            'X-RateLimit-Remaining' => '0',
+            'X-RateLimit-Reset' => '1735689600',
+        ]));
+    } catch (AssertionFailedError $failure) {
+        expect($failure->getMessage())
+            ->toContain('the response header Retry-After')
+            ->toContain('must match the type: integer')
+            ->toContain('/responses/429/headers/Retry-After/schema')
+            ->toContain('from     integration:rate-limit (integration)');
+
+        return;
+    }
+
+    throw new RuntimeException('the assertion should have failed');
+});
+
+/*
+ * The integration publishes all four as `required`, because ThrottleRequests sends all four. This is the
+ * only place the required-header branch is exercised against a document the product really generated —
+ * every other proof of it stands on a hand-written contract, which cannot show that anything Docuccino
+ * emits ever reaches it.
+ */
+it('fails a 429 that omits a rate-limit header the document marks required', function (): void {
+    workbenchContract();
+
+    try {
+        ApiContract::assertions()->assertValidResponse(contractResponse('GET', '/api/rate-limited', status: 429, body: '{"message":"Too Many Attempts."}', headers: [
+            'Content-Type' => 'application/json',
+            'X-RateLimit-Limit' => '60',
+        ]));
+    } catch (AssertionFailedError $failure) {
+        expect($failure->getMessage())
+            ->toContain('the response header Retry-After')
+            ->toContain('is documented as required, but the response did not send it')
+            ->toContain('/responses/429/headers/Retry-After')
+            ->toContain('from     integration:rate-limit (integration)')
+            // Every absent one is named, not just the first — three headers went missing here.
+            ->toContain('the response header X-RateLimit-Remaining')
+            ->toContain('the response header X-RateLimit-Reset');
+
+        return;
+    }
+
+    throw new RuntimeException('the assertion should have failed');
+});
+
+it('reduces the response headers Laravel sent, repeats and all, to the neutral exchange', function (): void {
+    $response = contractResponse('GET', '/api/forms', headers: [
+        'Content-Type' => 'application/json',
+        'X-Chunk' => ['1', '2'],
+    ]);
+
+    $exchange = ApiContract::exchangeFor($response->baseRequest, $response);
+
+    expect($exchange->responseHeader('x-chunk'))->toBe(['1', '2'])
+        ->and($exchange->responseHeader('Content-Type'))->toBe(['application/json'])
+        ->and($exchange->responseHeader('X-Nothing'))->toBe([]);
+});
+
+it('keeps a repeated REQUEST header to its first value, which is what a parameter is', function (): void {
+    // Both halves read the same header bag; they differ only in what a documented thing can be. A
+    // response header is checked once per value it sent, and an `in: header` parameter has one value.
+    $response = contractResponse('GET', '/api/forms');
+    $request = $response->baseRequest;
+    $request->headers->set('X-Trace', ['first', 'second'], false);
+
+    $exchange = ApiContract::exchangeFor($request, $response);
+
+    expect($exchange->header('x-trace'))->toBe('first')
+        ->and($exchange->header('X-Nothing'))->toBeNull();
 });

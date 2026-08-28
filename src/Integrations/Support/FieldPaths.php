@@ -11,7 +11,8 @@ namespace Docuccino\Laravel\Integrations\Support;
  *
  * The distinction that matters is NAMED child versus `*`: a named key proves the field is an object,
  * whereas Laravel applies a `field.*` rule to every value whatever the keys are, so a `*` child says
- * nothing about key type and never decides list-vs-map.
+ * nothing about key type and never decides list-vs-map. A field with NO child key of either kind is a
+ * third answer again: nothing states what is inside it, so nothing states which container it is.
  */
 final class FieldPaths
 {
@@ -29,6 +30,25 @@ final class FieldPaths
             // a path — the same reason FieldNode casts its property names.
             $other = (string) $key;
             if ($other !== $field && str_starts_with($other, $prefix) && ! str_starts_with(substr($other, strlen($prefix)), '*')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether any of these keys is a child of the field at all, named or `*` — `tags.*` and
+     * `address.city` both count. False means no rule anywhere describes what is inside the field.
+     *
+     * @param  list<array-key>  $keys  as `array_keys()` hands them over
+     */
+    public static function hasAnyChild(string $field, array $keys): bool
+    {
+        $prefix = $field.'.';
+        foreach ($keys as $key) {
+            $other = (string) $key;
+            if ($other !== $field && str_starts_with($other, $prefix)) {
                 return true;
             }
         }

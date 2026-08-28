@@ -2390,24 +2390,28 @@
             "headers": {
               "Retry-After": {
                 "description": "Seconds to wait before making another request.",
+                "required": true,
                 "schema": {
                   "type": "integer"
                 }
               },
               "X-RateLimit-Limit": {
                 "description": "The maximum number of requests permitted in the current window.",
+                "required": true,
                 "schema": {
                   "type": "integer"
                 }
               },
               "X-RateLimit-Remaining": {
                 "description": "The number of requests remaining in the current window.",
+                "required": true,
                 "schema": {
                   "type": "integer"
                 }
               },
               "X-RateLimit-Reset": {
                 "description": "Unix timestamp (seconds, UTC) at which the current rate limit window resets.",
+                "required": true,
                 "schema": {
                   "type": "integer"
                 }
@@ -3737,7 +3741,7 @@
     "document": {
       "id": "doc:pointer-list",
       "configHash": "c2031d269636acf4896f5dd1727aa5058a1a0ea6e4bdc311db55e098ce7d1d7e",
-      "contentHash": "79a2b979c04c7d56839d277c2554e75233d1ca5f087fdc293f55f64c63dc0077"
+      "contentHash": "122bbcf8ba902c0492819d796f832bfb734450e1dbd676631d3b66466f79ccc2"
     },
     "generator": {
       "name": "docuccino/laravel",

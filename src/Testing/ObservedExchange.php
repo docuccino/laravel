@@ -24,7 +24,8 @@ final readonly class ObservedExchange
     /**
      * @param  TestResponse<Response>  $response
      * @param  string|null  $recordAs  what the test called this scenario, when it said — the one thing
-     *                                 here the assertion did not work out for itself
+     *                                 here the assertion did not work out for itself, and the whole of
+     *                                 what asks for the response to be published
      */
     public function __construct(
         public ContractOperation $operation,

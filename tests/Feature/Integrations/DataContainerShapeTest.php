@@ -159,7 +159,9 @@ it('documents every recovered container shape', function (string $property, DTyp
         'properties' => ['meta' => []],
         'required' => ['meta'],
     ]],
-    // …and a positional shape, whose members differ per index, keeps the bare array rule.
+    // …and a positional shape, whose members differ per index, contributes no child path at all — so it
+    // states `list`, the word that means a JSON array outright, rather than leaving `array` to be read as
+    // the open question it is everywhere else.
     'array{0: int, 1: string}' => ['box', new ArrayShapeT([
         new ArrayShapeField(0, ScalarT::int()),
         new ArrayShapeField(1, ScalarT::string()),
@@ -328,11 +330,14 @@ it('lets the declared container survive every rule vocabulary combination', func
     ]],
 
     // ── Nothing recovered. The negative the whole rule rests on: with no declared container to survive,
-    // the `array` token IS all the information there is, and a JSON array is what it has to publish.
+    // the `array` token IS all the information there is — and on its own it does not say WHICH container,
+    // so the field publishes both and the bound is owed to each of them. The `.*` cells below have a
+    // child key to read instead, which is what puts them back on one container.
     'no recovered type' => ['counters', new UnknownT('mixed'), null, []],
     'no recovered type + field override' => ['counters', new UnknownT('mixed'), containerOverride(['counters' => ['array', 'max:100']]), [
-        'type' => 'array',
+        'type' => ['array', 'object'],
         'maxItems' => 100,
+        'maxProperties' => 100,
     ]],
     'no recovered type + `.*` override' => ['counters', new UnknownT('mixed'), containerOverride(['counters.*' => ['string', 'max:9']]), [
         'type' => 'array',
@@ -414,11 +419,13 @@ it('keeps a map and a list side by side under one rules() override', function ()
     ]);
 });
 
-it('degrades a map to the bare array rule when no converter is available', function (): void {
-    // The value schema is the type→schema chain's answer, so without one the map falls back to the only
-    // word the rule vocabulary has. Nothing else about the field changes.
+it('keeps a map an object when no converter is available to describe its values', function (): void {
+    // The value schema is the type→schema chain's answer, so without one the map loses its values — but
+    // not its container: `array<string, V>` is a JSON object whether or not anything can say what V is.
+    // Publishing `type: array` here would be the one degradation that makes the field WRONG rather than
+    // vague, and every legal request fail against it.
     expect(containerProperty('settings', new MapT(ScalarT::string(), ScalarT::string()), withConverter: false))
-        ->toBe(['type' => 'array']);
+        ->toBe(['type' => 'object']);
 });
 
 it('reaches the request body through the extension itself', function (): void {

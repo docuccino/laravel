@@ -63,6 +63,12 @@ it('supports a multi-scheme AND requirement', function (): void {
     $router->get('api/protected', [FormController::class, 'index'])->middleware('auth');
 
     $document = stubDocumentArray(function (array $raw): array {
+        // Both schemes are catalogued: a requirement naming one that isn't is an invalid document, and
+        // its own report ({@see SecurityAuditTest}).
+        $raw['security']['schemes'] = [
+            'bearer' => ['type' => 'http', 'scheme' => 'bearer'],
+            'apiKey' => ['type' => 'apiKey', 'in' => 'header', 'name' => 'X-API-Key'],
+        ];
         $raw['security']['default'] = [['bearer' => [], 'apiKey' => []]];
 
         return $raw;

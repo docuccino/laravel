@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use Docuccino\Core\Examples\ExampleRecording;
 use Docuccino\Core\Examples\ExampleRedaction;
+use Docuccino\Core\Examples\RecordedExample;
 use Docuccino\Core\Examples\RecordingStore;
 use Docuccino\Core\Examples\UnlockableRecording;
 use Docuccino\Laravel\Testing\ApiContract;
@@ -12,7 +14,9 @@ use PHPUnit\Framework\AssertionFailedError;
 
 /*
  * The recorder hangs off the contract-assertion seam, so these run the real assertions against a real
- * build of the workbench and then read what landed on disk. The runner's own parallel markers are
+ * build of the workbench and then read what landed on disk. Recording is opt-in per assertion, so
+ * almost every one of these names a scenario: an assertion that names none records nothing, which is
+ * its own test rather than the background of all the others. The runner's own parallel markers are
  * cleared and put back for the same reason the coverage suite clears them: every test here would
  * otherwise take the refusal branch.
  */
@@ -49,6 +53,18 @@ afterEach(function (): void {
     ApiContract::reset();
 });
 
+/** The stable id of the workbench operation these record against. */
+function formsRecordingId(): string
+{
+    $id = json_decode((string) file_get_contents(ApiContract::artifactPath()), true);
+    $id = $id['paths']['/api/forms']['get']['x-docuccino']['id'] ?? null;
+
+    expect($id)->toBeString();
+
+    /** @var string $id */
+    return $id;
+}
+
 /**
  * @return array<string, mixed>|null
  */
@@ -71,6 +87,7 @@ it('records a response the contract agreed with, filed under the operation id', 
 
     ApiContract::assertions()->assertValidResponse(
         contractResponse('GET', '/api/forms', body: '[{"id":1,"title":"Intake"}]'),
+        recordAs: 'listed',
     );
 
     $recording = recordedFile($this->recordings);
@@ -82,6 +99,7 @@ it('records a response the contract agreed with, filed under the operation id', 
         ->and($recording['responses'])->toBe([[
             'status' => '200',
             'mediaType' => 'application/json',
+            'name' => 'listed',
             'body' => [['id' => 1, 'title' => 'Intake']],
         ]]);
 
@@ -95,6 +113,7 @@ it('records nothing from an exchange that disagreed with the contract', function
 
     expect(fn () => ApiContract::assertions()->assertValidResponse(
         contractResponse('GET', '/api/forms', body: '{"data":[]}'),
+        recordAs: 'listed',
     ))->toThrow(AssertionFailedError::class);
 
     expect(recordedFile($this->recordings))->toBeNull();
@@ -104,11 +123,39 @@ it('records nothing when only the request half was checked', function (): void {
     workbenchContract();
     ApiContract::record($this->recordings);
 
+    // assertValidRequest takes no name at all: it proves nothing about what came back, so there is
+    // nothing there for a caller to ask to publish.
     ApiContract::assertions()->assertValidRequest(
         contractResponse('GET', '/api/forms', body: '[{"id":1,"title":"Intake"}]'),
     );
 
     expect(recordedFile($this->recordings))->toBeNull();
+});
+
+it('records nothing from an assertion that named no scenario', function (): void {
+    workbenchContract();
+    ApiContract::record($this->recordings);
+
+    // The assertion a suite is full of: it checks the response against the documented schema and says
+    // nothing about whether that response is the one a reader should be shown. Publishing is the
+    // caller's choice, and this caller did not make it.
+    ApiContract::assertions()->assertValidResponse(
+        contractResponse('GET', '/api/forms', body: '[{"id":1,"title":"Intake"}]'),
+    );
+
+    expect(recordedFile($this->recordings))->toBeNull();
+});
+
+it('refuses an empty name rather than reading it as no name at all', function (): void {
+    workbenchContract();
+    ApiContract::record($this->recordings);
+
+    // `recordAs: ''` is a caller asking to publish under a name a document could not carry — the
+    // opposite of a caller who asked for nothing.
+    expect(fn () => ApiContract::assertions()->assertValidResponse(
+        contractResponse('GET', '/api/forms', body: '[]'),
+        recordAs: '',
+    ))->toThrow(UnrecordableRun::class, 'is not a name a recorded example can carry');
 });
 
 it('records nothing from a body that is not JSON', function (string $mediaType, string $body): void {
@@ -118,6 +165,7 @@ it('records nothing from a body that is not JSON', function (string $mediaType, 
     try {
         ApiContract::assertions()->assertValidResponse(
             contractResponse('GET', '/api/forms', body: $body, headers: ['Content-Type' => $mediaType]),
+            recordAs: 'listed',
         );
     } catch (AssertionFailedError) {
         // The point is what reached disk, not whether the workbench documents that media type.
@@ -135,7 +183,7 @@ it('records nothing from an empty body', function (): void {
     ApiContract::record($this->recordings);
 
     try {
-        ApiContract::assertions()->assertValidResponse(contractResponse('GET', '/api/forms', body: ''));
+        ApiContract::assertions()->assertValidResponse(contractResponse('GET', '/api/forms', body: ''), recordAs: 'listed');
     } catch (AssertionFailedError) {
         // Same again: an empty body has no example in it either way.
     }
@@ -153,7 +201,10 @@ it('publishes the response that shows the most of the contract, whichever ran fi
     ];
 
     foreach ($order as $which) {
-        ApiContract::assertions()->assertValidResponse(contractResponse('GET', '/api/forms', body: $bodies[$which]));
+        ApiContract::assertions()->assertValidResponse(
+            contractResponse('GET', '/api/forms', body: $bodies[$which]),
+            recordAs: 'listed',
+        );
     }
 
     expect(recordedFile($this->recordings)['responses'][0]['body'])->toBe([['id' => 1, 'title' => 'Intake']]);
@@ -170,7 +221,7 @@ it('takes the credentials out before anything reaches disk', function (): void {
         'GET',
         '/api/forms',
         body: '[{"id":1,"title":"Intake","api_token":"live-secret-value"}]',
-    ));
+    ), recordAs: 'listed');
 
     $written = (string) file_get_contents($this->recordings.'/'.(new RecordingStore($this->recordings))->fileNames()[0]);
 
@@ -184,6 +235,7 @@ it('leaves the committed file byte-identical when only the values moved', functi
     ApiContract::record($this->recordings);
     ApiContract::assertions()->assertValidResponse(
         contractResponse('GET', '/api/forms', body: '[{"id":1,"title":"Intake"}]'),
+        recordAs: 'listed',
     );
 
     $path = $this->recordings.'/'.(new RecordingStore($this->recordings))->fileNames()[0];
@@ -195,6 +247,7 @@ it('leaves the committed file byte-identical when only the values moved', functi
     ApiContract::record($this->recordings);
     ApiContract::assertions()->assertValidResponse(
         contractResponse('GET', '/api/forms', body: '[{"id":9001,"title":"Something else entirely"}]'),
+        recordAs: 'listed',
     );
 
     expect(file_get_contents($path))->toBe($first)
@@ -205,7 +258,7 @@ it('rewrites the committed file when the shape really did move', function (): vo
     workbenchContract();
 
     ApiContract::record($this->recordings);
-    ApiContract::assertions()->assertValidResponse(contractResponse('GET', '/api/forms', body: '[]'));
+    ApiContract::assertions()->assertValidResponse(contractResponse('GET', '/api/forms', body: '[]'), recordAs: 'listed');
 
     $path = $this->recordings.'/'.(new RecordingStore($this->recordings))->fileNames()[0];
     $first = (string) file_get_contents($path);
@@ -215,6 +268,7 @@ it('rewrites the committed file when the shape really did move', function (): vo
     ApiContract::record($this->recordings);
     ApiContract::assertions()->assertValidResponse(
         contractResponse('GET', '/api/forms', body: '[{"id":1,"title":"Intake"}]'),
+        recordAs: 'listed',
     );
 
     expect(file_get_contents($path))->not->toBe($first)
@@ -232,6 +286,7 @@ it('records from inside a parallel run, where coverage refuses to answer', funct
         ApiContract::record($this->recordings);
         ApiContract::assertions()->assertValidResponse(
             contractResponse('GET', '/api/forms', body: '[{"id":1,"title":"Intake"}]'),
+            recordAs: 'listed',
         );
     } finally {
         putenv('TEST_TOKEN');
@@ -241,6 +296,7 @@ it('records from inside a parallel run, where coverage refuses to answer', funct
     expect(recordedFile($this->recordings)['responses'])->toBe([[
         'status' => '200',
         'mediaType' => 'application/json',
+        'name' => 'listed',
         'body' => [['id' => 1, 'title' => 'Intake']],
     ]]);
 });
@@ -278,20 +334,41 @@ it('records a scenario under the name the test gave it', function (): void {
     ]);
 });
 
-it('keeps the best body per name, and only the named ones once a name is in play', function (): void {
+it('keeps the best body of the ones sharing a name', function (): void {
     workbenchContract();
     ApiContract::record($this->recordings);
 
-    // The plain assertions a suite is already full of, and one scenario somebody named.
-    ApiContract::assertions()->assertValidResponse(contractResponse('GET', '/api/forms', body: '[{"id":1,"title":"Intake"}]'));
     ApiContract::assertions()->assertValidResponse(contractResponse('GET', '/api/forms', body: '[]'), recordAs: 'listed');
     ApiContract::assertions()->assertValidResponse(
         contractResponse('GET', '/api/forms', body: '[{"id":2,"title":"Other"}]'),
         recordAs: 'listed',
     );
 
-    // Naming one scenario names them all: OpenAPI carries `example` or `examples` and never both, so
-    // the file keeps nothing it could not publish.
+    expect(recordedFile($this->recordings)['responses'])->toBe([
+        ['status' => '200', 'mediaType' => 'application/json', 'name' => 'listed', 'body' => [['id' => 2, 'title' => 'Other']]],
+    ]);
+});
+
+it('replaces the unnamed body a suite recorded before naming was how you asked', function (): void {
+    workbenchContract();
+
+    // What a suite that upgraded arrives with: a committed body from back when every checked response
+    // competed for the one unnamed slot. It is read and published, and nothing re-records it — until an
+    // assertion names the scenario, and then the named body takes the slot over.
+    (new RecordingStore($this->recordings))->put(ExampleRecording::of(
+        formsRecordingId(),
+        'GET /api/forms',
+        [RecordedExample::of('200', 'application/json', [['id' => 1, 'title' => 'Intake']])],
+    ));
+
+    ApiContract::record($this->recordings);
+    ApiContract::assertions()->assertValidResponse(
+        contractResponse('GET', '/api/forms', body: '[{"id":2,"title":"Other"}]'),
+        recordAs: 'listed',
+    );
+
+    // OpenAPI carries `example` or `examples` and never both, so the file keeps nothing it could not
+    // publish.
     expect(recordedFile($this->recordings)['responses'])->toBe([
         ['status' => '200', 'mediaType' => 'application/json', 'name' => 'listed', 'body' => [['id' => 2, 'title' => 'Other']]],
     ]);
@@ -325,10 +402,13 @@ it('takes the credentials out of a named recording too', function (): void {
         ->and($written)->toContain('"name": "one-form"');
 });
 
-it('says where to put recordings when the document does not', function (): void {
+it('says where to put recordings when the document does not, before anything has been named', function (): void {
     workbenchContract();
     ApiContract::record();
 
+    // The unnamed assertion is the point. A recorder pointed at nowhere is a mistake in a bootstrap,
+    // and it is wrong for the whole suite — so it is answered by the first exchange the recorder could
+    // have published, not held back until somebody gets round to naming one.
     expect(fn () => ApiContract::assertions()->assertValidResponse(
         contractResponse('GET', '/api/forms', body: '[]'),
     ))->toThrow(UnrecordableRun::class, "'examples' => ['recordings' => 'docs/recordings']");
@@ -345,6 +425,7 @@ it('records nothing for an artifact that carries no identities', function (): vo
 
     ApiContract::assertions()->assertValidResponse(
         contractResponse('GET', '/api/forms', body: '[{"id":1,"title":"Intake"}]'),
+        recordAs: 'listed',
     );
 
     expect(recordedFile($this->recordings))->toBeNull();

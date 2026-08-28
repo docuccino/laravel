@@ -60,10 +60,17 @@ final class InferredResponsesExtension implements OperationExtension
      */
     private const REDIRECT_STATUS = '3XX';
 
-    /** Every redirect sets `Location`; that much the response class itself proves. */
+    /**
+     * Every redirect sets `Location`; that much the response class itself proves. `required`, because a
+     * redirect cannot exist without it — Symfony's RedirectResponse refuses an empty URL and sets the
+     * header from it in the constructor — so the return TYPE alone carries the claim and no call site has
+     * to be recovered for it to hold, which is why this one is strict and the `Content-Disposition` of
+     * {@see dispositionHeader()} is not.
+     */
     private const LOCATION_HEADER = [
         'Location' => [
             'description' => 'The URL to follow.',
+            'required' => true,
             'schema' => ['type' => 'string', 'format' => 'uri-reference'],
         ],
     ];
@@ -444,6 +451,11 @@ final class InferredResponsesExtension implements OperationExtension
      * agree: an action that both downloads and displays sets the header on one path and not the other, so
      * documenting either would be a claim about the wrong one. The example is only as specific as the
      * filename recovered — a header with no name behind it gets none.
+     *
+     * Not `required`, unlike {@see LOCATION_HEADER}: unanimity is computed over the calls that were
+     * RECOVERED, and a call whose arguments would not fold is skipped rather than counted as a
+     * disagreement. So "every path I could read sets it" is the honest claim, and "the server always
+     * sends it" is one step further than the evidence goes.
      *
      * @param  list<FileResponseCall>  $calls
      * @return ?array<string, mixed>
