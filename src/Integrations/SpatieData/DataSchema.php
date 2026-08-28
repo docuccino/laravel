@@ -45,10 +45,18 @@ use Docuccino\Laravel\Integrations\Support\SpatieDataEnvelope;
  * Wrapping otherwise applies only at the response root ({@see SchemaContext::atRoot()}), from
  * {@see WrapResolver} — so a nested Data property's shared `$ref` stays wrap-free. A root union is
  * still the root on every arm, so each arm carries the envelope its own class resolves.
+ *
+ * That root-only rule is a decision about the DOCUMENT, not a claim about the runtime: spatie unwraps
+ * a nested single Data object but re-wraps a nested COLLECTION, so a global `data.wrap` puts one on
+ * the wire that this schema does not describe. The shape is not modelled because a `#[WithTransformer]`
+ * replaces serialisation and cannot be read statically — a component is shared, and one caller's
+ * envelope would travel to every other. {@see NestedCollectionWrap} tells the author instead.
  */
 #[ExtensionOrder(priority: Priorities::EARLY)]
 final class DataSchema implements TypeToSchema
 {
+    private readonly NestedCollectionWrap $nestedWrap;
+
     /**
      * @param  string  $dateFormat  the app's `data.date_format` (a PHP date() format), read through
      *                              {@see DateWireFormat} — the same reading the request side gives it,
@@ -59,7 +67,9 @@ final class DataSchema implements TypeToSchema
         private readonly ComponentHoist $hoist = new ComponentHoist,
         private readonly string $dateFormat = DateWireFormat::DEFAULT_FORMAT,
         private readonly WrapResolver $wrap = new WrapResolver,
-    ) {}
+    ) {
+        $this->nestedWrap = new NestedCollectionWrap($this->reflector, $this->wrap);
+    }
 
     public function supports(DType $type): bool
     {
@@ -172,6 +182,11 @@ final class DataSchema implements TypeToSchema
      */
     private function propertySchema(string $fqcn, string $property, DType $clean, SchemaContext $context): array
     {
+        $wrapped = $this->nestedWrap->diagnose($fqcn, $property, $clean);
+        if ($wrapped !== null) {
+            $context->diagnostic($wrapped);
+        }
+
         $item = $this->reflector->dataCollectionOf($fqcn, $property);
         if ($item !== null) {
             return ['type' => 'array', 'items' => $context->convert(new ClassT($item))];
@@ -279,7 +294,9 @@ final class DataSchema implements TypeToSchema
             return new SchemaResult($reference ?? $schema, 0.9);
         }
 
-        // A plain DataCollection is a bare array, wrapped only at the response root.
+        // A plain DataCollection is published as a bare array. At runtime spatie wraps a nested one
+        // under the global `data.wrap`; that divergence is reported by {@see NestedCollectionWrap}
+        // rather than modelled, for the reason on the class docblock.
         $schema = ['type' => 'array', 'items' => $items];
         $key = $context->atRoot() ? $this->wrap->key(null) : null;
         if ($key !== null) {

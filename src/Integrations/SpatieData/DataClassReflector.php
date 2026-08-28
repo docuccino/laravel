@@ -10,8 +10,12 @@ use Docuccino\Core\Extensions\Schema\EnumReflection;
 use Docuccino\Core\Extensions\Schema\SchemaIdentity;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\DType\DType;
+use Docuccino\Core\Inference\DType\ListT;
+use Docuccino\Core\Inference\DType\MapT;
+use Docuccino\Core\Inference\DType\UnionT;
 use Docuccino\Core\Support\Fqcn;
 use Illuminate\Support\Str;
+use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionIntersectionType;
 use ReflectionNamedType;
@@ -102,6 +106,8 @@ final class DataClassReflector
     private const WITH_CAST = 'Spatie\\LaravelData\\Attributes\\WithCast';
 
     private const DATETIME_CAST = 'Spatie\\LaravelData\\Casts\\DateTimeInterfaceCast';
+
+    private const WITH_TRANSFORMER = 'Spatie\\LaravelData\\Attributes\\WithTransformer';
 
     private const DATA_COLLECTION_OF = 'Spatie\\LaravelData\\Attributes\\DataCollectionOf';
 
@@ -291,7 +297,7 @@ final class DataClassReflector
 
     /**
      * Laravel rule tokens recovered from a property's spatie validation attributes, read via
-     * {@see \ReflectionAttribute::getArguments()} — the attribute is never instantiated, so no spatie
+     * {@see ReflectionAttribute::getArguments()} — the attribute is never instantiated, so no spatie
      * rule logic runs. {@see DataValidationRules} feeds them through the shared validation chain.
      *
      * @return list<string>
@@ -689,7 +695,7 @@ final class DataClassReflector
     /**
      * The first map attribute's raw value — either a literal key or a mapper FQCN.
      *
-     * @param  list<\ReflectionAttribute<object>>  $attributes
+     * @param  list<ReflectionAttribute<object>>  $attributes
      */
     private function mapValue(array $attributes, string $directional): ?string
     {
@@ -743,6 +749,52 @@ final class DataClassReflector
             'upper' => Str::upper($property),
             default => null,
         };
+    }
+
+    /**
+     * The Data item of a SIMPLE nested collection, or null where the property is not one.
+     *
+     * Simple is the whole point: a paginated collection carries `meta` and `links` beside its items and
+     * {@see DataSchema} already publishes that envelope, so it is not a nested-wrap question at all.
+     * {@see DataValidationRules::nestedData()} asks a related but different one — it descends for
+     * request rules and has no reason to exclude a paginated shape.
+     */
+    public function nestedCollectionItem(string $fqcn, string $property, DType $clean): ?string
+    {
+        foreach ($clean instanceof UnionT ? $clean->members : [$clean] as $member) {
+            // A collectable names its kind on the type, whatever the attribute says about its items.
+            if ($member instanceof ClassT && self::isDataCollection($member->fqcn) && $this->collectionKind($member->fqcn) !== 'simple') {
+                return null;
+            }
+        }
+
+        $declared = $this->dataCollectionOf($fqcn, $property);
+        if ($declared !== null && self::isData($declared)) {
+            return $declared;
+        }
+
+        foreach ($clean instanceof UnionT ? $clean->members : [$clean] as $member) {
+            $item = match (true) {
+                $member instanceof ListT, $member instanceof MapT => $member->value,
+                $member instanceof ClassT && self::isDataCollection($member->fqcn) => self::collectionValueType($member),
+                default => null,
+            };
+
+            if ($item instanceof ClassT && self::isData($item->fqcn)) {
+                return $item->fqcn;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Whether the property carries any `#[WithTransformer]`. Which transformer it is never matters —
+     * one replaces serialisation outright, so the declared shape stops predicting the wire.
+     */
+    public function isPropertyTransformed(string $fqcn, string $property): bool
+    {
+        return $this->property($fqcn, $property)?->getAttributes(self::WITH_TRANSFORMER, ReflectionAttribute::IS_INSTANCEOF) !== [];
     }
 
     private function property(string $fqcn, string $property): ?ReflectionProperty

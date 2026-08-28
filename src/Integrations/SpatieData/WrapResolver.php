@@ -29,7 +29,9 @@ use ReflectionMethod;
  * when the override arrives through one. The base `Data` class doesn't define `defaultWrap()`, so
  * `method_exists` being true already means a real override. Answers are memoised per FQCN, since a document
  * asks for the same class once per operation that returns it. {@see DataSchema} applies the key at the
- * response root only.
+ * response root only — deliberately, since a nested Data property publishes a shared `$ref` that must
+ * not carry one caller's envelope. Spatie itself does wrap a nested COLLECTION, which is a divergence
+ * {@see NestedCollectionWrap} reports rather than one this class resolves.
  */
 final class WrapResolver
 {
@@ -43,6 +45,18 @@ final class WrapResolver
     private array $parsed = [];
 
     public function __construct(private readonly ?string $globalWrap = null) {}
+
+    /**
+     * The global `config('data.wrap')` alone, ignoring any class override.
+     *
+     * This is the key spatie puts a NESTED collection under: it resolves that envelope from the global
+     * config, so an item class's own `defaultWrap()` does not change it. {@see key()} is the root's
+     * question and answers the class first.
+     */
+    public function globalKey(): ?string
+    {
+        return $this->globalWrap;
+    }
 
     /**
      * The wrap key, or null when unwrapped. Pass null for a collection — it has no single owning class,
