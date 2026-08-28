@@ -109,7 +109,7 @@ final readonly class WebhookOperationBuilder
         ?Source $source,
         array &$diagnostics,
     ): void {
-        $type = $this->types->parse($webhook->payload, $imports);
+        $type = $this->types->parseDeclared($webhook->payload, $imports);
 
         if ($type instanceof UnknownT) {
             $diagnostics[] = new Diagnostic(
@@ -159,7 +159,7 @@ final readonly class WebhookOperationBuilder
                 continue;
             }
 
-            $schema = $converter->toSchema($this->types->parse($declared->type, $imports))->schema;
+            $schema = $converter->toSchema($this->types->parseDeclared($declared->type, $imports))->schema;
             $response->content($declared->mediaType ?? Response::DEFAULT_MEDIA_TYPE)->declareShape($schema, $attribute);
         }
     }

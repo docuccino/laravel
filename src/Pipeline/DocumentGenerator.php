@@ -36,6 +36,7 @@ use Docuccino\Laravel\Registry\ConfigDiagnostics;
 use Docuccino\Laravel\Registry\DefaultExtensions;
 use Docuccino\Laravel\Registry\ExtensionRegistry;
 use Docuccino\Laravel\Registry\IntegrationToggles;
+use Docuccino\Laravel\Routing\LaravelRouteResolver;
 use Docuccino\Laravel\Routing\OasPath;
 use Docuccino\Laravel\Routing\RouteContextBuilder;
 use Docuccino\Laravel\Webhooks\WebhookCollector;
@@ -120,7 +121,7 @@ final class DocumentGenerator
         $extensionClasses = $resolved->cacheSignature();
 
         $fragments = [];
-        foreach ($this->descriptors($resolved, $document) as $descriptor) {
+        foreach ($this->descriptors($resolved, $document, $bag) as $descriptor) {
             if ($descriptor->fallback) {
                 $bag->add(self::fallbackOmitted($descriptor));
 
@@ -251,7 +252,7 @@ final class DocumentGenerator
      *
      * @return list<RouteDescriptor>
      */
-    private function descriptors(ResolvedExtensions $resolved, DocumentConfig $document): array
+    private function descriptors(ResolvedExtensions $resolved, DocumentConfig $document, DiagnosticCollector $bag): array
     {
         $descriptors = [];
         foreach ($resolved->routeResolvers as $resolver) {
@@ -260,6 +261,12 @@ final class DocumentGenerator
                 // routes' order exactly as it was.
                 $key = $descriptor->primaryMethod().' '.$descriptor->uri."\0".($descriptor->domain ?? '');
                 $descriptors[$key] ??= $descriptor;
+            }
+
+            // A route the built-in resolver EXCLUDED leaves nothing downstream to report on, so what it
+            // could not say for itself is drained here — after its walk, which the loop above completes.
+            if ($resolver instanceof LaravelRouteResolver) {
+                $bag->addAll($resolver->takeDiagnostics());
             }
         }
 

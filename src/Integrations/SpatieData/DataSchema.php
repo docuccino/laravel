@@ -13,6 +13,7 @@ use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Docuccino\Core\Extensions\Schema\DocumentedExamples;
 use Docuccino\Core\Extensions\Schema\MockHints;
 use Docuccino\Core\Extensions\Schema\PropertyAnnotations;
+use Docuccino\Core\Extensions\Schema\SchemaIdentity;
 use Docuccino\Core\Extensions\Schema\SchemaResult;
 use Docuccino\Core\Extensions\Schema\SchemaUnion;
 use Docuccino\Core\Inference\ClassMetadata;
@@ -132,7 +133,12 @@ final class DataSchema implements TypeToSchema
             $properties = [];
             $required = [];
             $keys = [];
+            // Every name the deny-list was weighed against, the hidden ones included — a Data class hides
+            // by the PROPERTY's name, so this is the property list and not the mapped keys below.
+            $considered = [];
             foreach ($metadata->properties as $property) {
+                $considered[] = $property->name;
+
                 if (in_array($property->name, $facts['hidden'], true) || $this->reflector->isPropertyHidden($fqcn, $property->name)) {
                     continue;
                 }
@@ -156,6 +162,10 @@ final class DataSchema implements TypeToSchema
                 if (! $this->reflector->isPropertyOptional($fqcn, $property->name)) {
                     $required[] = $key;
                 }
+            }
+
+            foreach (SchemaIdentity::unmatchedHidden($fqcn, $considered) as $diagnostic) {
+                $context->diagnostic($diagnostic);
             }
 
             $object = ['type' => 'object', 'properties' => $properties];

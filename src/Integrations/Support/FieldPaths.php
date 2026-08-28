@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\Support;
 
+use Docuccino\Core\Extensions\Validation\FieldPath;
+
 /**
  * What a recovered rule set's dotted field keys say about a field's container. One definition, because
  * two readers ask it: the normalizer, deciding whether a field's `array` word survives, and the Data
@@ -13,6 +15,9 @@ namespace Docuccino\Laravel\Integrations\Support;
  * whereas Laravel applies a `field.*` rule to every value whatever the keys are, so a `*` child says
  * nothing about key type and never decides list-vs-map. A field with NO child key of either kind is a
  * third answer again: nothing states what is inside it, so nothing states which container it is.
+ *
+ * Both questions are answered through {@see FieldPath}, which owns the grammar these keys are written
+ * in — a string prefix would read `\.` as two segments and `a\` as an ancestor of the field `a.b`.
  */
 final class FieldPaths
 {
@@ -24,12 +29,18 @@ final class FieldPaths
      */
     public static function hasNamedChild(string $field, array $keys): bool
     {
-        $prefix = $field.'.';
+        $depth = count(FieldPath::segments($field));
+
         foreach ($keys as $key) {
             // A purely numeric field key reaches PHP as an INT array key, so cast before reading it as
             // a path — the same reason FieldNode casts its property names.
             $other = (string) $key;
-            if ($other !== $field && str_starts_with($other, $prefix) && ! str_starts_with(substr($other, strlen($prefix)), '*')) {
+            if ($other === $field || ! FieldPath::isAtOrUnder($other, $field)) {
+                continue;
+            }
+
+            $segments = FieldPath::segments($other);
+            if (count($segments) > $depth && $segments[$depth] !== '*') {
                 return true;
             }
         }
@@ -45,10 +56,9 @@ final class FieldPaths
      */
     public static function hasAnyChild(string $field, array $keys): bool
     {
-        $prefix = $field.'.';
         foreach ($keys as $key) {
             $other = (string) $key;
-            if ($other !== $field && str_starts_with($other, $prefix)) {
+            if ($other !== $field && FieldPath::isAtOrUnder($other, $field)) {
                 return true;
             }
         }

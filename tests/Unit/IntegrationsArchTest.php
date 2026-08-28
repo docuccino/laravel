@@ -55,6 +55,11 @@ arch('built-in integrations consume only the public extension surface')
         // response side, validation on the request side — must read `false` identically, or whichever
         // one rolls its own publishes a string against `type: boolean`.
         'Docuccino\Core\Extensions\Schema\TypedExample',
+        // Same exemption, same reason as EnumDecoration: the ONE reading of a body field path, escapes
+        // included. A body is assembled from validation keys and patched by attributes that name one, so
+        // an integration folding an escaped dot its own way is how a field whose name holds one and a
+        // nested pair of fields start being told apart differently on each side of the build.
+        'Docuccino\Core\Extensions\Validation\FieldPath',
         'Docuccino\Core\Extensions\Validation\RecoveredRequest',
         'Docuccino\Core\Extensions\Validation\ResponseDraftApplier',
         'Docuccino\Core\Extensions\Validation\RuleSet',
@@ -90,6 +95,12 @@ arch('built-in integrations consume only the public extension surface')
         // becoming a path parameter) must answer exactly what a response body would, and allow-listing
         // the table is how that stays true — a private copy is how the two drift apart.
         'Docuccino\Core\Extensions\BuiltIn\JsonTypes',
+        // Same exemption, same reason as FieldPath above: the ONE reading of a hand-written type string.
+        // An attribute's `type:` is folded into a schema by an extension, and the notice that stands
+        // down when a declaration has settled a container has to ask that same fold what the type
+        // resolves to — a guard recognising fewer spellings than the fold it protects is a hole, not a
+        // conservative default.
+        'Docuccino\Core\TypeGrammar\TypeStringParser',
         // Same shape of exemption, same reason: a constants-and-pure-predicates class naming the
         // framework classes the adapter matches by string. Its consumers span both sides of the
         // Extensions/Integrations line (the response guard needs the same list the JsonResponse

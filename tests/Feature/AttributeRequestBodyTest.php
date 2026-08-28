@@ -13,6 +13,8 @@ use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
 use Docuccino\Core\Extensions\ResolvedExtensions;
+use Docuccino\Core\Extensions\Validation\RuleSet;
+use Docuccino\Core\Extensions\Validation\ValidationRule;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Inference\NullTypeEngine;
 use Docuccino\Core\Patch\Contribution;
@@ -21,6 +23,7 @@ use Docuccino\Laravel\Extensions\AttributeRequestBodyExtension;
 use Docuccino\Laravel\Integrations\FormRequest\ValidationRequestExtension;
 use Docuccino\Laravel\Integrations\LaravelActions\ActionValidationExtension;
 use Docuccino\Laravel\Integrations\SpatieData\DataRequestExtension;
+use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
 use Docuccino\Laravel\Registry\DefaultExtensions;
 use Docuccino\Laravel\Registry\ExtensionRegistry;
 
@@ -336,8 +339,9 @@ it('applies a parent declaration before a child one, whichever order they were w
     ], null, $diagnostics);
 
     expect($body['content']['application/json']['schema']['properties']['meta'])->toBe([
-        'description' => 'Extra metadata.',
         'type' => 'object',
+        'additionalProperties' => [],
+        'description' => 'Extra metadata.',
         'properties' => ['validation_overrides' => ['type' => 'string']],
     ])->and($diagnostics)->toBe([]);
 });
@@ -360,6 +364,302 @@ it('lets a declared object parent rescue a path a recovered scalar would have re
 
     expect($body['content']['application/json']['schema']['properties']['meta'])->toBe([
         'type' => 'object',
+        'additionalProperties' => [],
         'properties' => ['validation_overrides' => ['type' => 'string']],
     ])->and($diagnostics)->toBe([]);
+});
+
+/**
+ * The path grammar end to end, one row per shape the name can take. A declaration either lands or is
+ * refused by name — the row asserting the diagnostic code is what says "silently nothing" is not a third
+ * outcome, and the schema beside it is what says the landing put the property where the name pointed.
+ */
+it('lands, or refuses by name, every shape a field path can take', function (array $seeded, string $name, array $expected, array $codes): void {
+    $seed = $seeded === [] ? null : function (OperationDraft $operation) use ($seeded): void {
+        $operation->set('requestBody', ['content' => ['application/json' => ['schema' => [
+            'type' => 'object',
+            'properties' => $seeded,
+        ]]]], Contribution::integration('form-request'));
+    };
+
+    $diagnostics = [];
+    $body = runBodyParameters([new BodyParameter(name: $name, type: 'string', description: 'D')], $seed, $diagnostics);
+
+    expect($body['content']['application/json']['schema']['properties'])->toBe($expected)
+        ->and(array_map(static fn (Diagnostic $d): string => $d->code, $diagnostics))->toBe($codes);
+})->with(function (): array {
+    $declared = ['type' => 'string', 'description' => 'D'];
+
+    return [
+        'a plain name is a top-level property' => [
+            [], 'nickname', ['nickname' => $declared], [],
+        ],
+        'one level descends into the property it names' => [
+            [], 'meta.locale', ['meta' => ['type' => 'object', 'properties' => ['locale' => $declared]]], [],
+        ],
+        'a deep path builds every level it names' => [
+            [], 'a.b.c.d',
+            ['a' => ['type' => 'object', 'properties' => ['b' => ['type' => 'object', 'properties' => [
+                'c' => ['type' => 'object', 'properties' => ['d' => $declared]],
+            ]]]]],
+            [],
+        ],
+        'an intermediate that does not exist is created beside the ones that do' => [
+            ['meta' => ['type' => 'object', 'properties' => ['locale' => ['type' => 'string']]]],
+            'meta.scoring.scores',
+            ['meta' => ['type' => 'object', 'properties' => [
+                'locale' => ['type' => 'string'],
+                'scoring' => ['type' => 'object', 'properties' => ['scores' => $declared]],
+            ]]],
+            [],
+        ],
+        // Laravel's one word for both containers reaches the body as a union nobody decided. Naming a
+        // key inside it decides it, at a layer that outranks the one that left it open.
+        'an undecided container is settled by the key named inside it' => [
+            ['meta' => ['type' => ['array', 'object']]],
+            'meta.scoring',
+            ['meta' => ['type' => 'object', 'properties' => ['scoring' => $declared]]],
+            [],
+        ],
+        // …and only that question is settled: the server still takes a null, and a document saying
+        // otherwise marks a working request invalid.
+        'settling the container keeps the null the field admits' => [
+            ['meta' => ['type' => ['array', 'object', 'null']]],
+            'meta.scoring',
+            ['meta' => ['type' => ['object', 'null'], 'properties' => ['scoring' => $declared]]],
+            [],
+        ],
+        'a wildcard settles the container the other way and keeps the null too' => [
+            ['lines' => ['type' => ['array', 'object', 'null']]],
+            'lines.*.quantity',
+            ['lines' => ['type' => ['array', 'null'], 'items' => ['type' => 'object', 'properties' => ['quantity' => $declared]]]],
+            [],
+        ],
+        'a scalar parent is refused and left as it was' => [
+            ['meta' => ['type' => 'string']],
+            'meta.locale',
+            ['meta' => ['type' => 'string']],
+            ['attribute.body-parameter-parent'],
+        ],
+        'a composition parent is refused and left as it was' => [
+            ['meta' => ['allOf' => [['type' => 'object']]]],
+            'meta.locale',
+            ['meta' => ['allOf' => [['type' => 'object']]]],
+            ['attribute.body-parameter-parent'],
+        ],
+        'a $ref parent is refused, since every other use would inherit the property' => [
+            ['meta' => ['$ref' => '#/components/schemas/Meta']],
+            'meta.locale',
+            ['meta' => ['$ref' => '#/components/schemas/Meta']],
+            ['attribute.body-parameter-parent'],
+        ],
+        'an escaped dot names one field rather than descending' => [
+            [], 'meta\.raw', ['meta.raw' => $declared], [],
+        ],
+        'a malformed path is refused by name' => [
+            [], 'meta..raw', [], ['attribute.body-parameter-name'],
+        ],
+    ];
+});
+
+/**
+ * The other half of settling the container: the field the rules left open stops being reported as open,
+ * because the document no longer says "either". A note asking for rules that would say what a
+ * declaration has already said fires exactly where nothing can be done.
+ *
+ * The rows below the first few are the other half of THAT: a declaration that names the field and
+ * decides nothing about it, or names no field at all, leaves the question open — and standing the note
+ * down for one of those would leave the reader wider than the rules left them, with nothing said.
+ */
+it('stops reporting a container as undecided only for a declaration that settles it', function (?BodyParameter $declared, array $reported): void {
+    $rules = new RuleSet([
+        'meta' => [ValidationRule::of('array')],
+        'other' => [ValidationRule::of('array')],
+    ]);
+
+    $context = new RouteContext(
+        route: new RouteDescriptor(['POST'], 'api/things'),
+        actionRef: new ActionRef('', null, 'store'),
+        attributes: new AttributeSet($declared === null ? [] : [$declared]),
+        engine: new NullTypeEngine,
+        document: new DocumentConfig('default', []),
+        extensions: new ResolvedExtensions,
+    );
+
+    RuleSetNormalizer::report((new RuleSetNormalizer)->normalize($rules), $context);
+
+    $fields = array_map(
+        static fn (Diagnostic $d): string => (string) preg_replace('/^Validation field "([^"]+)".*$/', '$1', $d->message),
+        $context->components->diagnostics(),
+    );
+
+    expect($fields)->toBe($reported);
+})->with([
+    'nothing declared leaves both open' => [null, ['meta', 'other']],
+    'a key inside one settles that one' => [new BodyParameter(name: 'meta.scoring'), ['other']],
+    'a key deep inside one settles it too' => [new BodyParameter(name: 'meta.scoring.scores'), ['other']],
+    'a wildcard element settles it as a list' => [new BodyParameter(name: 'meta.*'), ['other']],
+    // Naming the field says what the field IS, so what it says has to be read: with no `type` the
+    // attribute's own default publishes a string, which is not "either" any more.
+    'naming the field with no type at all settles it as the string it publishes' => [new BodyParameter(name: 'meta'), ['other']],
+    'naming the field with a shape settles it' => [new BodyParameter(name: 'meta', type: 'list<string>'), ['other']],
+    // The word for a free-form map: the answer for a field with no keys to enumerate, and the reason
+    // the notice points at this attribute at all.
+    'naming the field as an object settles it' => [new BodyParameter(name: 'meta', type: 'object'), ['other']],
+    // …and the words that decide nothing. `array` is the very word the question is about, and a type
+    // that resolves to no shape publishes the empty schema — wider than the "either" the note names,
+    // with the note gone. The read is the write's own parser, so the two agree on what a shape is.
+    'naming the field as an array settles nothing, being the word the question is about' => [new BodyParameter(name: 'meta', type: 'array'), ['meta', 'other']],
+    'naming the field as mixed settles nothing either' => [new BodyParameter(name: 'meta', type: 'mixed'), ['meta', 'other']],
+    // A path with an empty segment names no field, is reported as that mistake, and documents nothing
+    // — so there is nothing for it to have settled.
+    'a trailing dot names no field, so it settles nothing' => [new BodyParameter(name: 'meta.'), ['meta', 'other']],
+    'a doubled dot names no field either' => [new BodyParameter(name: 'meta..scoring'), ['meta', 'other']],
+    'a sibling field settles neither' => [new BodyParameter(name: 'unrelated.key'), ['meta', 'other']],
+    // The escape is why this is a path comparison and not a string prefix: `meta\.scoring` is one
+    // field whose own name holds a dot, and it says nothing about what `meta` is.
+    'a field whose name holds a dot settles neither' => [new BodyParameter(name: 'meta\.scoring'), ['meta', 'other']],
+]);
+
+/**
+ * `required` is the recovered body's, not the declaration's. The attribute's own `required` defaults to
+ * `false` and an author cannot spell the difference between that default and a written `false`, so a
+ * declaration that came to document a TYPE must not read as one that came to make a field optional —
+ * a consumer's generated client would build requests the server rejects.
+ */
+it('leaves a recovered required list alone, at any depth, when a declaration says nothing about it', function (): void {
+    $seed = function (OperationDraft $operation): void {
+        $operation->set('requestBody', [
+            'required' => true,
+            'content' => ['application/json' => ['schema' => [
+                'type' => 'object',
+                'properties' => [
+                    'title' => ['type' => 'string'],
+                    'meta' => ['type' => 'object', 'properties' => [
+                        'scoring' => [
+                            'type' => 'object',
+                            'properties' => ['scores' => ['type' => 'array'], 'other' => ['type' => 'string']],
+                            'required' => ['scores', 'other'],
+                        ],
+                    ]],
+                ],
+                'required' => ['title'],
+            ]]],
+        ], Contribution::integration('form-request'));
+    };
+
+    $diagnostics = [];
+    $body = runBodyParameters([
+        new BodyParameter(name: 'title', type: 'int'),
+        new BodyParameter(name: 'meta.scoring.scores', type: 'object'),
+    ], $seed, $diagnostics);
+
+    $schema = $body['content']['application/json']['schema'];
+    $scoring = $schema['properties']['meta']['properties']['scoring'];
+
+    // Both the field the declaration documented and the sibling beside it keep the requirement the
+    // rules recovered, in the order they were recovered in.
+    expect($scoring['required'])->toBe(['scores', 'other'])
+        ->and($schema['required'])->toBe(['title'])
+        // …and the declaration did land: this is the same write, not a write that stopped happening.
+        ->and($scoring['properties']['scores'])->toBe(['type' => 'object', 'additionalProperties' => []])
+        ->and($diagnostics)->toBe([]);
+});
+
+it('stands the note down only where a body declaration can reach the field', function (string $verb, array $reported): void {
+    // `report()` runs ahead of the verb branch, and a read verb sends the recovered rules to QUERY
+    // parameters instead of a body ({@see RecoveredRequest}). A #[BodyParameter] reaches a request body
+    // and nothing else, so on a GET it settles nothing about the query parameter the rules produced —
+    // and standing the notice down for it would leave that parameter wider than the rules left it with
+    // nothing said, which is the exact case the consult exists to avoid.
+    $rules = new RuleSet([
+        'meta' => [ValidationRule::of('array')],
+        'other' => [ValidationRule::of('array')],
+    ]);
+
+    $context = new RouteContext(
+        route: new RouteDescriptor([strtoupper($verb)], 'api/things'),
+        actionRef: new ActionRef('', null, 'index'),
+        attributes: new AttributeSet([new BodyParameter(name: 'meta.scoring')]),
+        engine: new NullTypeEngine,
+        document: new DocumentConfig('default', []),
+        extensions: new ResolvedExtensions,
+    );
+
+    RuleSetNormalizer::report((new RuleSetNormalizer)->normalize($rules), $context);
+
+    $fields = array_map(
+        static fn (Diagnostic $d): string => (string) preg_replace('/^Validation field "([^"]+)".*$/', '$1', $d->message),
+        $context->components->diagnostics(),
+    );
+
+    expect($fields)->toBe($reported);
+})->with([
+    // The verbs whose recovered rules become a body: the declaration reaches the field and settles it.
+    'post' => ['post', ['other']],
+    'put' => ['put', ['other']],
+    'patch' => ['patch', ['other']],
+    // …and the verbs whose rules become query parameters, where it reaches nothing.
+    'get' => ['get', ['meta', 'other']],
+    'head' => ['head', ['meta', 'other']],
+]);
+
+it('takes a written `required: false` off the list, at any depth, and leaves the siblings', function (): void {
+    // The other half of "says nothing about it": the declaration now has a way to say `optional`, and a
+    // declaration outranks the rules it patches. Widening is the direction that costs a consumer
+    // nothing — a request the server accepts stays valid — where the narrow reading marks one invalid.
+    $seed = function (OperationDraft $operation): void {
+        $operation->set('requestBody', [
+            'required' => true,
+            'content' => ['application/json' => ['schema' => [
+                'type' => 'object',
+                'properties' => [
+                    'title' => ['type' => 'string'],
+                    'meta' => ['type' => 'object', 'properties' => [
+                        'scoring' => [
+                            'type' => 'object',
+                            'properties' => ['scores' => ['type' => 'array'], 'other' => ['type' => 'string']],
+                            'required' => ['scores', 'other'],
+                        ],
+                    ]],
+                ],
+                'required' => ['title', 'meta'],
+            ]]],
+        ], Contribution::integration('form-request'));
+    };
+
+    $diagnostics = [];
+    $body = runBodyParameters([
+        new BodyParameter(name: 'title', type: 'string', required: false),
+        new BodyParameter(name: 'meta.scoring.scores', type: 'object', required: false),
+    ], $seed, $diagnostics);
+
+    $schema = $body['content']['application/json']['schema'];
+
+    expect($schema['required'])->toBe(['meta'])
+        ->and($schema['properties']['meta']['properties']['scoring']['required'])->toBe(['other'])
+        // The body itself is still required — the rules said so, and one optional property is not a
+        // statement about whether the request carries a body at all.
+        ->and($body['required'])->toBeTrue()
+        ->and($diagnostics)->toBe([]);
+});
+
+it('empties a required list a declaration takes the last name off', function (): void {
+    // The keyword goes rather than being published as `[]`, which OAS forbids and a consumer's
+    // generator reads as a schema with a required member it cannot name.
+    $seed = function (OperationDraft $operation): void {
+        $operation->set('requestBody', [
+            'content' => ['application/json' => ['schema' => [
+                'type' => 'object',
+                'properties' => ['title' => ['type' => 'string']],
+                'required' => ['title'],
+            ]]],
+        ], Contribution::integration('form-request'));
+    };
+
+    $body = runBodyParameters([new BodyParameter(name: 'title', required: false)], $seed);
+    $schema = $body['content']['application/json']['schema'];
+
+    expect($schema)->not->toHaveKey('required')
+        ->and($body)->not->toHaveKey('required');
 });

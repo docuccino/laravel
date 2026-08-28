@@ -48,6 +48,9 @@ use Throwable;
  *
  * {@see EloquentModelReflector} facts then refine the set. Points worth knowing:
  *
+ * - `$visible`/`$hidden`/`#[Hidden]` gate EVERY key published — columns, appends and eager-loaded
+ *   relations alike — through the one reading in {@see serialises()}, because Laravel filters all
+ *   three through the same `getArrayableItems()`.
  * - `$casts` pin a column's shape ({@see CastSchema}); an enum cast goes through the Enum path, an
  *   `AsEnumCollection:Enum` is an array of that enum's values, and a custom `CastsAttributes` caster
  *   is typed by its `get()` return type.
@@ -94,12 +97,14 @@ final class ModelSchema implements TypeToSchema
             // Enum-cast files are recorded later, as each cast resolves in castSchema().
             $context->dependsOn(...$metadata->dependencyFiles);
 
-            $hidden = [...$facts['hidden'], ...$facts['classHidden']];
-
             $properties = [];
             $required = [];
+            // Reflection reports the framework's own public properties ($exists, $timestamps, …) beside
+            // the docblock columns, and every model inherits all of them; none is an attribute, so none
+            // is ever in a response ({@see EloquentModelReflector::frameworkProperties()}).
+            $bookkeeping = EloquentModelReflector::frameworkProperties();
             foreach ($metadata->properties as $property) {
-                if (! self::isColumnVisible($property->name, $facts['visible'], $hidden)) {
+                if (in_array($property->name, $bookkeeping, true) || ! self::serialises($property->name, $facts)) {
                     continue;
                 }
 
@@ -117,7 +122,7 @@ final class ModelSchema implements TypeToSchema
             // Columns the engine didn't surface but the model evidences. Docblock/native columns above
             // are more authoritative, so an already-present name is left alone.
             foreach ($this->floorColumns($facts) as $column) {
-                if (isset($properties[$column]) || ! self::isColumnVisible($column, $facts['visible'], $hidden)) {
+                if (isset($properties[$column]) || ! self::serialises($column, $facts)) {
                     continue;
                 }
 
@@ -130,7 +135,7 @@ final class ModelSchema implements TypeToSchema
 
             // created_at/updated_at/deleted_at — always present on a persisted model, so required.
             foreach ($this->frameworkColumns($facts, $context) as [$name, $schema]) {
-                if (isset($properties[$name]) || ! self::isColumnVisible($name, $facts['visible'], $hidden)) {
+                if (isset($properties[$name]) || ! self::serialises($name, $facts)) {
                     continue;
                 }
                 $properties[$name] = $schema;
@@ -154,7 +159,7 @@ final class ModelSchema implements TypeToSchema
 
             // Appends stay permissive unless a cast pins the shape or the accessor pass below types it.
             foreach ($facts['appends'] as $append) {
-                if (isset($properties[$append])) {
+                if (isset($properties[$append]) || ! self::serialises($append, $facts)) {
                     continue;
                 }
                 $properties[$append] = $this->castSchema($append, $facts, $context) ?? [];
@@ -226,6 +231,11 @@ final class ModelSchema implements TypeToSchema
      * comes from the relation method's return type (`HasMany<Comment>` → `Comment`); an unresolvable
      * one gets an info diagnostic rather than a guess.
      *
+     * A relation is judged by the name it is LOADED under, not the key it serialises as:
+     * `relationsToArray()` filters `$this->relations` through {@see serialises()}'s reading and only
+     * then snake-cases the surviving keys, so `$hidden = ['latestPost']` hides the relation and
+     * `['latest_post']` hides nothing.
+     *
      * @param  ModelFacts  $facts
      * @param  array<string, array<string, mixed>>  $properties
      * @param  list<string>  $required
@@ -243,7 +253,7 @@ final class ModelSchema implements TypeToSchema
 
         foreach ($facts['with'] as $relation) {
             $key = Str::snake($relation);
-            if (isset($properties[$key])) {
+            if (isset($properties[$key]) || ! self::serialises($relation, $facts)) {
                 continue;
             }
 
@@ -515,12 +525,21 @@ final class ModelSchema implements TypeToSchema
     }
 
     /**
-     * @param  list<string>  $visible
-     * @param  list<string>  $hidden
+     * Whether the server would put this key in the response — the ONE visibility reading, which every
+     * key the schema publishes goes through, whatever contributed it: a column, an append, an
+     * eager-loaded relation. Laravel runs all three through `HasAttributes::getArrayableItems()`, which
+     * intersects with `$visible` when that list is set and subtracts `$hidden` AFTER — so a name in both
+     * lists is hidden, and the allow-list never puts back what the deny-list removed. A class-level
+     * `#[Hidden]` name subtracts alongside `$hidden`.
+     *
+     * @param  ModelFacts  $facts
      */
-    private static function isColumnVisible(string $column, array $visible, array $hidden): bool
+    private static function serialises(string $key, array $facts): bool
     {
-        // $visible is an allow-list when set; otherwise everything not in $hidden is visible.
-        return $visible !== [] ? in_array($column, $visible, true) : ! in_array($column, $hidden, true);
+        if ($facts['visible'] !== [] && ! in_array($key, $facts['visible'], true)) {
+            return false;
+        }
+
+        return ! in_array($key, $facts['hidden'], true) && ! in_array($key, $facts['classHidden'], true);
     }
 }

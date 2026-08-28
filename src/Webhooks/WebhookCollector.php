@@ -19,6 +19,7 @@ use Docuccino\Core\Support\ConfinedPath;
 use Docuccino\Core\Support\PlainText;
 use Docuccino\Core\TypeGrammar\DocBlockReader;
 use Docuccino\Laravel\Routing\AttributeCollector;
+use Docuccino\Laravel\Support\UnknownDocumentPins;
 use ReflectionClass;
 
 /**
@@ -91,12 +92,18 @@ final readonly class WebhookCollector
         $diagnostics = [];
         $declarations = [];
 
+        // Held for the walk rather than per class: an `#[InDocs]` key nobody configured is one mistake
+        // however many webhook classes carry it ({@see UnknownDocumentPins}).
+        $pins = new UnknownDocumentPins;
+
         foreach (WebhookClasses::in($dir) as $class) {
-            $declaration = $this->declare($class, $document, $diagnostics);
+            $declaration = $this->declare($class, $document, $diagnostics, $pins);
             if ($declaration !== null) {
                 $declarations[] = $declaration;
             }
         }
+
+        $diagnostics = [...$diagnostics, ...$pins->take()];
 
         return [$this->deduped($declarations, $diagnostics), $diagnostics];
     }
@@ -105,7 +112,7 @@ final readonly class WebhookCollector
      * @param  class-string  $class
      * @param  list<Diagnostic>  $diagnostics
      */
-    private function declare(string $class, DocumentConfig $document, array &$diagnostics): ?WebhookDeclaration
+    private function declare(string $class, DocumentConfig $document, array &$diagnostics, UnknownDocumentPins $pins): ?WebhookDeclaration
     {
         $reflection = new ReflectionClass($class);
 
@@ -116,8 +123,12 @@ final readonly class WebhookCollector
         }
 
         $inDocs = $attributes->first(InDocs::class);
-        if ($inDocs !== null && ! in_array($document->key, $inDocs->documents, true)) {
-            return null;
+        if ($inDocs !== null) {
+            $pins->record($inDocs, $class);
+
+            if (! in_array($document->key, $inDocs->documents, true)) {
+                return null;
+            }
         }
 
         $name = trim($webhook->name);

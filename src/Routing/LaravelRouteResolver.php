@@ -6,9 +6,11 @@ namespace Docuccino\Laravel\Routing;
 
 use Docuccino\Attributes\ExcludeFromDocs;
 use Docuccino\Attributes\InDocs;
+use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Extensions\Contracts\RouteResolver;
+use Docuccino\Laravel\Support\UnknownDocumentPins;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Str;
@@ -20,6 +22,10 @@ use Illuminate\Support\Str;
  *
  * A `Route::fallback()` is described and yielded like any other route — the document's own filters get
  * their say first — carrying the flag the generator omits and reports it on.
+ *
+ * An `#[InDocs]` key naming no configured document is recorded while filtering and drained by the
+ * generator ({@see takeDiagnostics()}): the exclusion it causes leaves no trace in the document, so
+ * nothing downstream could ever notice it.
  */
 final class LaravelRouteResolver implements RouteResolver
 {
@@ -30,7 +36,20 @@ final class LaravelRouteResolver implements RouteResolver
         private readonly ResolvedRouteIndex $index = new ResolvedRouteIndex,
         // Supplied by the service provider with base_path('vendor'); null disables vendor exclusion.
         private readonly ?VendorRoutePolicy $vendorPolicy = null,
+        private readonly UnknownDocumentPins $pins = new UnknownDocumentPins,
     ) {}
+
+    /**
+     * What the walk found and could not say for itself: the `#[InDocs]` keys naming no configured
+     * document, whose only effect is a route that is not there ({@see UnknownDocumentPins}). Drained by
+     * the generator once the walk is complete.
+     *
+     * @return list<Diagnostic>
+     */
+    public function takeDiagnostics(): array
+    {
+        return $this->pins->take();
+    }
 
     public function resolve(DocumentConfig $document): iterable
     {
@@ -46,7 +65,7 @@ final class LaravelRouteResolver implements RouteResolver
 
             // Reflect once; the builder reuses this via the shared index.
             $reflected = $this->reflector->forRoute($route);
-            if (! $this->passesAttributes($reflected, $document)) {
+            if (! $this->passesAttributes($reflected, $descriptor, $document)) {
                 continue;
             }
 
@@ -183,7 +202,7 @@ final class LaravelRouteResolver implements RouteResolver
         return $this->vendorPolicy->excludesVendorRoute($controllerFile, $document->includeVendor);
     }
 
-    private function passesAttributes(?ReflectedAction $reflected, DocumentConfig $document): bool
+    private function passesAttributes(?ReflectedAction $reflected, RouteDescriptor $descriptor, DocumentConfig $document): bool
     {
         if ($reflected === null) {
             return true; // unreflectable actions still surface (as skeletons) downstream
@@ -196,11 +215,13 @@ final class LaravelRouteResolver implements RouteResolver
         }
 
         $inDocs = $attributes->first(InDocs::class);
-        if ($inDocs !== null && ! in_array($document->key, $inDocs->documents, true)) {
-            return false;
+        if ($inDocs === null) {
+            return true;
         }
 
-        return true;
+        $this->pins->record($inDocs, $descriptor->signature());
+
+        return in_array($document->key, $inDocs->documents, true);
     }
 
     /**

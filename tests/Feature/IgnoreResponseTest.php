@@ -2,20 +2,38 @@
 
 declare(strict_types=1);
 
+use Docuccino\Attributes\IgnoreResponse;
+use Docuccino\Attributes\ResponseHeader;
 use Docuccino\Core\Diagnostics\Diagnostic;
+use Docuccino\Core\Diagnostics\Severity;
+use Docuccino\Core\Draft\OperationDraft;
+use Docuccino\Core\Extensions\Context\AttributeSet;
+use Docuccino\Core\Extensions\Context\DocumentConfig;
+use Docuccino\Core\Extensions\Context\RouteContext;
+use Docuccino\Core\Extensions\Context\RouteDescriptor;
+use Docuccino\Core\Extensions\Contracts\OperationExtension;
+use Docuccino\Core\Extensions\Contracts\OperationPhase;
+use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
+use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Inference\ActionAnalysis;
+use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Inference\DType\ArrayShapeField;
 use Docuccino\Core\Inference\DType\ArrayShapeT;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\DType\LiteralT;
 use Docuccino\Core\Inference\DType\ScalarT;
+use Docuccino\Core\Inference\NullTypeEngine;
 use Docuccino\Core\Inference\ReturnSite;
 use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Inference\ThrowConfidence;
 use Docuccino\Core\Inference\ThrowDisposition;
 use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Inference\TypeEngine;
+use Docuccino\Core\Patch\Contribution;
 use Docuccino\Core\Pipeline\GenerationResult;
+use Docuccino\Laravel\Extensions\AttributeResponsesExtension;
+use Docuccino\Laravel\Facades\Docuccino;
+use Docuccino\Laravel\Support\IgnoredResponses;
 use Docuccino\Laravel\Tests\Fixtures\LaravelActions\IgnoredAuthorizeAction;
 use Docuccino\Laravel\Tests\Fixtures\LaravelActions\IgnoredHtmlAction;
 use Docuccino\Laravel\Tests\Support\TraceScript;
@@ -67,12 +85,15 @@ function ignoreResponseEngine(): TypeEngine
             ),
             $controller.'throttled' => new ActionAnalysis(returns: [new ReturnSite($inline, $location)]),
             $controller.'created' => new ActionAnalysis(returns: [new ReturnSite($resource, $location)]),
+            $controller.'uncreated' => new ActionAnalysis(returns: [new ReturnSite($resource, $location)]),
             $controller.'paginated' => new ActionAnalysis(returns: [new ReturnSite($collection, $location)]),
             $controller.'jsonPaginated' => new ActionAnalysis(returns: [new ReturnSite($collection, $location)]),
             $controller.'queried' => new ActionAnalysis(returns: [new ReturnSite($collection, $location)]),
             $controller.'implicit' => new ActionAnalysis(returns: [new ReturnSite($inline, $location)]),
             $controller.'contradicted' => new ActionAnalysis(returns: [new ReturnSite($inline, $location)]),
             $controller.'declaredError' => new ActionAnalysis(returns: [new ReturnSite($inline, $location)]),
+            $controller.'stale' => new ActionAnalysis(returns: [new ReturnSite($inline, $location)]),
+            $controller.'repeated' => new ActionAnalysis(returns: [new ReturnSite($inline, $location)]),
             $controller.'redirect' => new ActionAnalysis(
                 returns: [new ReturnSite(new ClassT('Illuminate\\Http\\RedirectResponse'), $location)],
             ),
@@ -117,6 +138,8 @@ function ignoreResponseDocument(array $only = []): GenerationResult
         'implicit' => ['get', 'api/ignored-responses/implicit/{form}', [$controller, 'implicit']],
         'contradicted' => ['get', 'api/ignored-responses/contradicted', [$controller, 'contradicted']],
         'declaredError' => ['get', 'api/ignored-responses/declared-error', [$controller, 'declaredError']],
+        'stale' => ['get', 'api/ignored-responses/stale', [$controller, 'stale']],
+        'repeated' => ['get', 'api/ignored-responses/repeated', [$controller, 'repeated']],
         'redirect' => ['get', 'api/ignored-responses/redirect', [$controller, 'redirect']],
         'html' => ['get', 'api/ignored-responses/html', IgnoredHtmlAction::class],
         'authorize' => ['post', 'api/ignored-responses/authorize', IgnoredAuthorizeAction::class],
@@ -318,10 +341,63 @@ it('reads the attribute the same on a warm build as on a cold one', function ():
         ->and(ignoreResponseOrphans($document))->toBe([]);
 });
 
-it('says nothing about an ignore whose status matches nothing', function (): void {
-    // The class-level `#[IgnoreResponse(status: 418)]` matches nothing on any of these actions, which is
-    // how a class-level ignore is ordinarily written — one status some of a controller's actions answer
-    // with. A finding here would fire on every action that was never wrong, so there is none.
+/*
+ * A subtraction leaves no evidence: a status nothing would have written and a status the ignore dropped
+ * produce the same operation, so a declaration that matched nothing looks exactly like one that worked.
+ * It is also never asked about — the attribute is consulted per producer, as each response is about to
+ * be written — so only the end of the route's build can tell the two apart.
+ */
+
+/**
+ * The `attribute.ignore-response-unmatched` reports one route raised.
+ *
+ * @return list<Diagnostic>
+ */
+function ignoreResponseUnmatched(GenerationResult $result, string $path): array
+{
+    return array_values(array_filter(
+        $result->diagnostics,
+        static fn (Diagnostic $diagnostic): bool => $diagnostic->code === 'attribute.ignore-response-unmatched'
+            && $diagnostic->routeSignature !== null
+            && str_contains($diagnostic->routeSignature, ltrim($path, '/')),
+    ));
+}
+
+it('reports an ignore whose status nothing would have written, and names the statuses it does document', function (string $path, int $reports, array $quotes): void {
+    $result = ignoreResponseDocument();
+    $found = ignoreResponseUnmatched($result, $path);
+
+    expect($found)->toHaveCount($reports);
+
+    foreach ($found as $diagnostic) {
+        expect($diagnostic->severity)->toBe(Severity::Warning);
+    }
+
+    foreach ($quotes as $quote) {
+        expect($found[0]->message)->toContain($quote);
+    }
+})->with([
+    // The remedy: the status the author wrote, beside the statuses the operation publishes.
+    'a status nothing answers with' => ['/api/ignored-responses/stale', 1, ['status: 419', 'It documents 200']],
+    // One mistake written twice is one mistake.
+    'the same declaration twice' => ['/api/ignored-responses/repeated', 1, ['status: 599']],
+    // A member of a range the operation publishes WHOLE. Nothing was dropped and nothing was retired, so
+    // the declaration did nothing — and naming `3XX` is what tells the author why.
+    'a member of a documented range' => ['/api/ignored-responses/redirect', 1, ['status: 302', 'It documents 3XX']],
+    // Every producer below: a status that was really dropped is silent.
+    'a status inference wrote' => ['/api/ignored-responses/inferred', 0, []],
+    'a status a throw wrote' => ['/api/ignored-responses/signalled', 0, []],
+    'a status middleware wrote' => ['/api/ignored-responses/throttled', 0, []],
+    // The mapper rolls its whole mapping back when the status is dropped; the DROP must survive that
+    // rollback, or the one path where an ignore does the most work reads as having done none.
+    'a status a rolled-back mapping wrote' => ['/api/ignored-responses/implicit/{form}', 0, []],
+]);
+
+it('says nothing about a class-level ignore no action answers with', function (): void {
+    // The class-level `#[IgnoreResponse(status: 418)]` matches nothing on ANY of these actions, and that
+    // is how a class-level ignore is ordinarily written — one status some of a controller's actions
+    // answer with. Reporting it per route would fire on every action that was never wrong, so only a
+    // declaration written on the action itself is reported.
     $result = ignoreResponseDocument();
 
     $mentions = array_values(array_filter(
@@ -329,7 +405,109 @@ it('says nothing about an ignore whose status matches nothing', function (): voi
         static fn (Diagnostic $diagnostic): bool => str_contains($diagnostic->message, '418'),
     ));
 
-    // Anti-vacuity: the build did raise diagnostics, so an empty haystack is not what proves this.
-    expect($result->diagnostics)->not->toBeEmpty()
+    // Anti-vacuity: the build did raise this code elsewhere, so an empty haystack is not what proves it.
+    expect(ignoreResponseUnmatched($result, '/api/ignored-responses/stale'))->not->toBeEmpty()
         ->and($mentions)->toBe([]);
+});
+
+it('reports nothing where every declaration matched', function (): void {
+    // The whole build's count, so a code that started firing on the working rows fails here rather than
+    // passing every row's own assertion.
+    $reports = array_values(array_filter(
+        ignoreResponseDocument()->diagnostics,
+        static fn (Diagnostic $diagnostic): bool => $diagnostic->code === 'attribute.ignore-response-unmatched',
+    ));
+
+    expect($reports)->toHaveCount(3);
+});
+
+it('credits an ignore whose response a producer outside this package wrote', function (): void {
+    // The backstop the class docblock names: every built-in producer CONSULTS the attribute, so the
+    // sweep that removes a response after the fact only ever fires for a producer this package does not
+    // own. A removal that recorded nothing left the pass above reporting the one declaration that had
+    // just done the most work — and telling the author to delete it, which republishes the response.
+    $foreign = new #[ExtensionOrder(priority: Priorities::FIRST)] class implements OperationExtension
+    {
+        public function phase(): OperationPhase
+        {
+            return OperationPhase::Responses;
+        }
+
+        public function handle(OperationDraft $operation, RouteContext $context): void
+        {
+            $operation->response('451')
+                ->setDescription('Unavailable For Legal Reasons', Contribution::integration('third-party'));
+        }
+    };
+
+    Docuccino::extend($foreign);
+
+    $controller = IgnoredResponsesController::class;
+    $result = localityBuild(
+        static function (Router $router) use ($controller): void {
+            $router->get('api/ignored-responses/foreign', [$controller, 'foreign']);
+            $router->get('api/ignored-responses/companion', [$controller, 'companion']);
+        },
+        ignoreResponseEngine(...),
+    );
+
+    $document = $result->document->toArray();
+
+    // Anti-vacuity: the same extension writes the 451 on the companion, which drops nothing — so a
+    // build where the extension never ran fails here rather than agreeing that nothing was dropped.
+    expect(ignoreResponseStatuses($document, 'get', '/api/ignored-responses/companion'))->toContain('451')
+        ->and(ignoreResponseStatuses($document, 'get', '/api/ignored-responses/foreign'))->not->toContain('451')
+        ->and(ignoreResponseUnmatched($result, '/api/ignored-responses/foreign'))->toBe([]);
+});
+
+it('reports the ignore a re-home that never happens would have needed', function (): void {
+    // The api-resources re-home only fires for a resource wrapped around a fresh `create()`. Consulting
+    // the attribute ABOVE that check credits the declaration on every single-resource action that
+    // happens to carry one — a speculative call site, and the warning it silences is the reader's only
+    // evidence that the declaration reaches nothing.
+    $controller = IgnoredResponsesController::class;
+    $result = localityBuild(
+        static function (Router $router) use ($controller): void {
+            $router->get('api/ignored-responses/uncreated', [$controller, 'uncreated']);
+        },
+        ignoreResponseEngine(...),
+    );
+
+    $found = ignoreResponseUnmatched($result, '/api/ignored-responses/uncreated');
+
+    expect($found)->toHaveCount(1)
+        ->and($found[0]->message)->toContain('status: 201')
+        // The 200 the re-home would have taken away is still there, which is what makes the 201 a
+        // status nothing would have written rather than one something declined to write.
+        ->and(ignoreResponseStatuses($result->document->toArray(), 'get', '/api/ignored-responses/uncreated'))
+        ->toBe(['200']);
+});
+
+it('credits the ignore that drops a status a #[ResponseHeader] alone would have published', function (): void {
+    // Naming a header AT a status is a statement that the status exists, so the header attribute is a
+    // producer in its own right and the consult beside it is not speculative — the 500 dropped here is
+    // one that would really have been written. Both halves are pinned: with the declaration the status
+    // is gone AND the drop is on the record, so the pass that reads that record stays silent.
+    $attributes = static fn (array $set): RouteContext => new RouteContext(
+        route: new RouteDescriptor(['GET'], 'api/forms'),
+        actionRef: new ActionRef('', 'App\\C', 'index'),
+        attributes: new AttributeSet($set),
+        engine: new NullTypeEngine,
+        document: new DocumentConfig('default', []),
+    );
+
+    $header = new ResponseHeader(name: 'X-Trace', status: 500);
+
+    $published = new OperationDraft;
+    (new AttributeResponsesExtension)->handle($published, $attributes([$header]));
+
+    $dropped = new OperationDraft;
+    $context = $attributes([$header, new IgnoreResponse(status: 500)]);
+    (new AttributeResponsesExtension)->handle($dropped, $context);
+
+    // Anti-vacuity first: the header attribute really does publish the status on its own.
+    expect($published->responseStatuses())->toBe(['500'])
+        ->and($dropped->responseStatuses())->toBe([])
+        ->and($context->notes()->all()[IgnoredResponses::MATCHED_CHANNEL][IgnoredResponses::MATCHED_KEY] ?? [])
+        ->toBe(['500']);
 });

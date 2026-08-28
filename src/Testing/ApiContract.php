@@ -256,12 +256,6 @@ final class ApiContract
 
         $webhook = $candidates[0];
 
-        // Recorded here, before the check, exactly as notify() is: a delivery that disagrees is still one
-        // the suite asserted about.
-        if ($webhook->id !== null) {
-            self::coverage()->record($webhook->id);
-        }
-
         try {
             $json = WebhookPayload::json($payload);
         } catch (JsonException $exception) {
@@ -276,6 +270,17 @@ final class ApiContract
 
         if (! $outcome->ok()) {
             Assert::fail(ContractMessages::delivery($webhook, $outcome));
+        }
+
+        // Credited only here, on the rule {@see CoverageRecorder::observed()} states in full for the
+        // inbound half: what the check PROVED, never that a test asserted about it. A payload that
+        // violated the documented body — or would not encode, which fails above before there is an
+        // outcome to read — has disproved the delivery. A pass carrying a NOTE counts, for the reason
+        // given there: a body documented under no media type, or under several, is a gap in the
+        // DOCUMENT that no assertion could close. Ahead of the note, so a suite that turns warnings
+        // into failures still records what it proved.
+        if ($webhook->id !== null) {
+            self::coverage()->record($webhook->id);
         }
 
         self::warn(ContractMessages::uncheckedDelivery($webhook, $outcome));
@@ -331,7 +336,7 @@ final class ApiContract
             path: $request->getPathInfo(),
             status: $base->getStatusCode(),
             query: $query,
-            headers: self::headers($request->headers),
+            headers: self::headerValues($request->headers),
             cookies: self::strings($request->cookies->all()),
             requestBody: $request->getContent(),
             requestContentType: $request->headers->get('Content-Type'),
@@ -347,9 +352,13 @@ final class ApiContract
     }
 
     /**
-     * Every value sent under each header name. A list per name rather than one string: a message may
-     * send `Set-Cookie` more than once, and the contract check holds each value it sent to the
-     * documented schema.
+     * Every value sent under each header name, for whichever half is asking — a `HeaderBag` is the same
+     * bag on both sides, and both halves of the neutral {@see Exchange} model the same list.
+     *
+     * A list per name rather than one string: a message may send `Set-Cookie`, `Accept` or a proxy's
+     * `X-Forwarded-For` more than once, and the contract check holds each value it sent to the
+     * documented schema. Keeping the first alone was how a second value that violated the schema went
+     * unlooked at, on the half nobody had rewritten yet.
      *
      * @return array<string, non-empty-list<string>>
      */
@@ -419,20 +428,6 @@ final class ApiContract
         throw new RuntimeException(
             'Docuccino cannot tell which request produced this response. Assert on the TestResponse a '.
             'test-suite call returned ($this->getJson(…)), which carries its own request.'
-        );
-    }
-
-    /**
-     * The first value under each name — what a request parameter documented `in: header` is checked
-     * against, since a parameter has one value.
-     *
-     * @return array<string, string>
-     */
-    private static function headers(HeaderBag $headers): array
-    {
-        return array_map(
-            static fn (array $values): string => $values[0],
-            self::headerValues($headers),
         );
     }
 

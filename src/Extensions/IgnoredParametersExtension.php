@@ -8,11 +8,14 @@ use Docuccino\Attributes\IgnoreParam;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Draft\OperationDraft;
+use Docuccino\Core\Draft\ParameterDraft;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
 use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
+use Docuccino\Core\Support\PlainText;
+use Docuccino\Laravel\Support\UnmatchedDeclaration;
 
 /**
  * Applies `#[IgnoreParam]`. It is the only subtractive parameter pass, so it runs in Finalize, after
@@ -40,10 +43,66 @@ final class IgnoredParametersExtension implements OperationExtension
 
     public function handle(OperationDraft $operation, RouteContext $context): void
     {
+        // Which declarations matched is decided against the parameters standing BEFORE any removal, so
+        // two that name one parameter — a controller's and the action's own, or one spelling `in:` and
+        // one leaving it off — both count as having done their job. Judging the second against what the
+        // first left would report it as reaching nothing, which is the opposite of true.
+        $present = $operation->parameterKeys();
+
+        /** @var list<IgnoreParam> $unmatched */
+        $unmatched = [];
+
         foreach ($context->attributes->all(IgnoreParam::class) as $ignore) {
-            foreach ($this->locations($context, $ignore) as $location) {
+            // Asked once: it reports an `in:` that names no location, and asking twice would say so twice.
+            $locations = $this->locations($context, $ignore);
+            $matched = false;
+
+            foreach ($locations as $location) {
+                $matched = $matched || in_array(ParameterDraft::keyFor($location, $ignore->name), $present, true);
                 $operation->removeParameter($location, $ignore->name);
             }
+
+            // An `in:` naming no location has already been reported as exactly that; adding "and the
+            // name matched nothing" would ask the author to fix the half that was fine.
+            if (! $matched && $locations !== []) {
+                $unmatched[] = $ignore;
+            }
+        }
+
+        $this->reportUnmatched($context, $unmatched, $operation->parameterKeys());
+    }
+
+    /**
+     * The declarations that dropped nothing, reported for the action's own only — {@see UnmatchedDeclaration}
+     * states why an inherited one is silent. `$published` is what the operation is left with, which is
+     * what the reader can go and compare their spelling against.
+     *
+     * @param  list<IgnoreParam>  $unmatched
+     * @param  list<string>  $published
+     */
+    private function reportUnmatched(RouteContext $context, array $unmatched, array $published): void
+    {
+        $direct = $context->attributes->direct(IgnoreParam::class);
+
+        // Deduped: two identical declarations on one action are one mistake, and saying it twice would
+        // make the reader look for a second one.
+        $reported = [];
+
+        foreach ($unmatched as $ignore) {
+            $written = ParameterDraft::keyFor($ignore->in ?? '*', $ignore->name);
+
+            if (! in_array($ignore, $direct, true) || in_array($written, $reported, true)) {
+                continue;
+            }
+
+            $reported[] = $written;
+
+            $context->components->addDiagnostic(UnmatchedDeclaration::parameter(
+                $ignore,
+                $published,
+                $context->actionSource(),
+                $context->route->signature(),
+            ));
         }
     }
 
@@ -53,7 +112,9 @@ final class IgnoredParametersExtension implements OperationExtension
      * tool can understand is not worth making the author look up.
      *
      * A value that names no location at all is the other thing: it dropped nothing, and it cannot be read
-     * as any of four words, so it is reported rather than guessed at.
+     * as any of four words, so it is reported rather than guessed at — quoting both of the author's
+     * values through {@see PlainText}, the way its sibling report does, because a diagnostic message is
+     * also emitted into `x-docuccino.diagnostics` and read back out of there by something else.
      *
      * @return list<string>
      */
@@ -73,8 +134,8 @@ final class IgnoredParametersExtension implements OperationExtension
             code: 'attribute.ignore-param-location',
             message: sprintf(
                 '#[IgnoreParam(name: "%s", in: "%s")] names no parameter location, so nothing was dropped.',
-                $ignore->name,
-                $ignore->in,
+                PlainText::of($ignore->name),
+                PlainText::of($ignore->in),
             ),
             source: $context->actionSource(),
             routeSignature: $context->route->signature(),

@@ -25,10 +25,12 @@ use Docuccino\Laravel\Support\IgnoredResponses;
  * Exactly what a discarded mapping leaves behind, at the seam that discards it.
  *
  * `mapThrow()` asks a mapper what the response WOULD be so it can read the status the mapper landed on,
- * then throws the answer away when the route drops that status. Three kinds of thing get written on the
+ * then throws the answer away when the route drops that status. Four kinds of thing get written on the
  * way, and each has its own answer: components and their diagnostics go back (they describe a body nobody
- * will see), route notes go back with them (same fact, another road into the document), and dependency
- * files stay (the answer is a function of them, dropped or not).
+ * will see), the mapper's route notes go back with them (same fact, another road into the document),
+ * dependency files stay (the answer is a function of them, dropped or not), and the record that the
+ * ignore DROPPED something is re-written on the far side of the rollback — that one is a fact about the
+ * declaration, not about the body, and the pass that reports an ignore which dropped nothing reads it.
  */
 
 /** A mapper that writes one of each kind and answers at $status. */
@@ -89,7 +91,7 @@ function rollbackThrow(): ThrownException
     );
 }
 
-it('leaves nothing behind when the route drops the status the mapper landed on', function (): void {
+it('leaves nothing of the discarded mapping behind, bar the record that it was dropped', function (): void {
     $context = rollbackContext('409');
 
     expect(IgnoredResponses::mapThrow($context, rollbackThrow()))->toBeNull()
@@ -97,10 +99,14 @@ it('leaves nothing behind when the route drops the status the mapper landed on',
         ->and($context->components->schemas())->toBe([])
         // …and says nothing about a body nobody will see.
         ->and($context->components->diagnostics())->toBe([])
-        // The note is the same kind of fact by another road: it rides the route's fragment into a
-        // document-level summary, so left standing it asks the author to fix a response the document does
-        // not publish — a diagnostic firing exactly where there is nothing to do.
-        ->and($context->notes()->all())->toBe([]);
+        // The mapper's note is the same kind of fact by another road: it rides the route's fragment into
+        // a document-level summary, so left standing it asks the author to fix a response the document
+        // does not publish — a diagnostic firing exactly where there is nothing to do. What survives is
+        // only the drop record, which is what stops this — the path where the ignore does the most work —
+        // reading afterwards as an ignore that did none.
+        ->and($context->notes()->all())->toBe([
+            IgnoredResponses::MATCHED_CHANNEL => [IgnoredResponses::MATCHED_KEY => ['409']],
+        ]);
 });
 
 it('keeps the files the discarded mapping read', function (): void {
@@ -147,7 +153,10 @@ it('reads the ignore off the mapped status and not off the throw', function (): 
     );
 
     expect(IgnoredResponses::mapThrow($context, rollbackThrow()))->toBeNull()
-        ->and($context->notes()->all())->toBe([]);
+        // Recorded at the MAPPED status too, for the same reason it is read there.
+        ->and($context->notes()->all())->toBe([
+            IgnoredResponses::MATCHED_CHANNEL => [IgnoredResponses::MATCHED_KEY => ['404']],
+        ]);
 });
 
 it('answers null with nothing to roll back when no mapper claims the throw', function (): void {

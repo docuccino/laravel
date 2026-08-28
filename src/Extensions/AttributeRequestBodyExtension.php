@@ -37,6 +37,13 @@ use Docuccino\Core\TypeGrammar\TypeStringParser;
  * composition, or a `$ref` to a shared component — which every other operation using that component
  * would inherit the new property from — nothing is written and the refusal is reported.
  *
+ * Naming a key inside a container also SETTLES what that container is. Laravel has one word for both
+ * array shapes, so a bare `array` rule leaves a field a JSON array or a JSON object and the document
+ * says both; an author naming a key inside it has answered the question, and a declaration outranks the
+ * inference and the integration that left it open, which stops raising `validation.container-undecided`
+ * for it. What it settles is only that question — `null` survives the descent, because a field the
+ * server takes as null does not stop being one for having a key documented inside it.
+ *
  * `requestBody` is ONE guarded field every producer writes whole, so a merge can only keep what it can
  * already read: this runs LATE in the Request phase, behind every recoverer that writes a body at the
  * integration layer (FormRequest/inline rules, spatie-Data, laravel-actions, and a third-party
@@ -72,9 +79,10 @@ final class AttributeRequestBodyExtension implements OperationExtension
 
         foreach ($this->shallowestFirst($bodyParameters) as $attribute) {
             // A field the server insists on is a body the server insists on, however deep the field
-            // sits — and only the top level of `required` is on the root schema to say so.
+            // sits — and only the top level of `required` is on the root schema to say so. A written
+            // `required: false` says nothing about the body: the request still carries one.
             $documented = $this->apply($schema, $attribute, $context);
-            $bodyRequired = $bodyRequired || ($documented && $attribute->required);
+            $bodyRequired = $bodyRequired || ($documented && $attribute->required === true);
         }
 
         $operation->set('requestBody', $this->assembleBody($mediaType, $schema, $bodyRequired), Contribution::attribute($context->actionSource()));
@@ -157,7 +165,7 @@ final class AttributeRequestBodyExtension implements OperationExtension
     private function property(BodyParameter $attribute, RouteContext $context): array
     {
         $property = $attribute->type !== null
-            ? $context->converter()->toSchema($this->types->parse($attribute->type))->schema
+            ? $context->converter()->toSchema($this->types->parseDeclared($attribute->type))->schema
             : ['type' => 'string'];
 
         // After the type keywords, so an explicit format wins over one the type string implied.
@@ -185,7 +193,7 @@ final class AttributeRequestBodyExtension implements OperationExtension
      * @param  list<string>  $walked  the segments already descended through, for the refusal
      * @return BodyPathRefusal|null
      */
-    private function write(array &$node, array $segments, array $property, bool $required, array $walked): ?array
+    private function write(array &$node, array $segments, array $property, ?bool $required, array $walked): ?array
     {
         $segment = $segments[0];
         $rest = array_slice($segments, 1);
@@ -213,7 +221,7 @@ final class AttributeRequestBodyExtension implements OperationExtension
                 }
             }
 
-            $node['type'] = 'array';
+            $node['type'] = self::settledTo($node, 'array');
             $node['items'] = $child;
 
             return null;
@@ -232,14 +240,14 @@ final class AttributeRequestBodyExtension implements OperationExtension
             }
 
             $properties[$segment] = $child;
-            $node['type'] = 'object';
+            $node['type'] = self::settledTo($node, 'object');
             $node['properties'] = $properties;
 
             return null;
         }
 
         $properties[$segment] = $property;
-        $node['type'] = 'object';
+        $node['type'] = self::settledTo($node, 'object');
         $node['properties'] = $properties;
 
         $existing = is_array($node['required'] ?? null)
@@ -254,6 +262,31 @@ final class AttributeRequestBodyExtension implements OperationExtension
         }
 
         return null;
+    }
+
+    /**
+     * The container's `type` once a declaration has said which container it is. A member the rules could
+     * not decide between arrives here as `["array", "object"]` — Laravel has one word for both — and a
+     * declaration naming a key inside it settles that, an attribute outranking the inference and the
+     * integration that left it open. It settles ONLY that question: every other word stays, because
+     * `null` is not an answer to "array or object" and dropping it would tell a consumer their `null` is
+     * invalid when the server takes it.
+     *
+     * @param  array<string, mixed>  $node
+     * @return string|list<string>
+     */
+    private static function settledTo(array $node, string $kind): string|array
+    {
+        $declared = $node['type'] ?? null;
+
+        // The kind first, then everything the declaration says nothing about. Both container words drop
+        // out of the tail — the kind is back at the head, and its rival is the half now answered.
+        $others = array_values(array_filter(
+            array_filter(is_array($declared) ? $declared : [$declared], 'is_string'),
+            static fn (string $type): bool => $type !== 'array' && $type !== 'object',
+        ));
+
+        return $others === [] ? $kind : [$kind, ...$others];
     }
 
     /**
@@ -349,19 +382,31 @@ final class AttributeRequestBodyExtension implements OperationExtension
     }
 
     /**
-     * Adds or drops a name in the `required` list, order-stable and duplicate-free.
+     * The `required` list once one declaration has had its say about `$name`, order-stable and
+     * duplicate-free.
+     *
+     * The absent argument arrives as `null` and changes nothing: a declaration written to document a
+     * TYPE says nothing about whether the server insists on the field, and reading it as "optional"
+     * would quietly de-require what the recovered rules proved — a contract a consumer's generated
+     * client can build a rejected request from. A written `false` is the opposite: the author's own
+     * statement at a layer that outranks the recovery, and it is applied. Both directions can be wrong,
+     * and they are not equally wrong — an over-wide body costs a consumer a field they need not have
+     * sent, while an over-narrow one marks a request the server accepts as invalid.
      *
      * @param  list<string>  $required
      * @return list<string>
      */
-    private function withRequired(array $required, string $name, bool $isRequired): array
+    private function withRequired(array $required, string $name, ?bool $isRequired): array
     {
-        $required = array_values(array_filter($required, static fn (string $entry): bool => $entry !== $name));
-        if ($isRequired) {
-            $required[] = $name;
+        if ($isRequired === null) {
+            return $required;
         }
 
-        return $required;
+        if (! $isRequired) {
+            return array_values(array_filter($required, static fn (string $each): bool => $each !== $name));
+        }
+
+        return in_array($name, $required, true) ? $required : [...$required, $name];
     }
 
     /**

@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\Validation;
 
+use Docuccino\Attributes\BodyParameter;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\RuleTransformer;
+use Docuccino\Core\Extensions\Validation\FieldPath;
+use Docuccino\Core\Extensions\Validation\RecoveredRequest;
 use Docuccino\Core\Extensions\Validation\RuleSet;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
+use Docuccino\Core\Inference\DType\UnknownT;
+use Docuccino\Core\TypeGrammar\TypeStringParser;
 use Docuccino\Laravel\Integrations\Support\FieldPaths;
 use Docuccino\Laravel\Integrations\Validation\Transformers\SizeRuleTransformer;
 
@@ -70,10 +75,37 @@ final class RuleSetNormalizer
      * Say out loud what the trade above could not decide: one info per field whose container the rules
      * left open, so the widening reaches the author rather than degrading quietly. Every recovery
      * integration calls this with the set it just normalized.
+     *
+     * Rules are not the only way to answer it. A `#[BodyParameter]` that SETTLES the field — see
+     * {@see settles()} for what that takes — says what the container is at a layer that outranks this
+     * one, so the document will not say "either" and asking for rules that would say it again is a note
+     * fired where nothing can be done. A declaration that settles nothing is not one of those, and
+     * standing the note down for it would leave the field wider than the rules left it with nothing said.
+     *
+     * Only where a body is written at all: this runs ahead of the verb branch, and a read verb sends the
+     * same rules to QUERY parameters ({@see RecoveredRequest::documentsBody()}), which a declaration
+     * about the body cannot reach. Reading the declarations there would stand the note down for a
+     * parameter nothing had answered the question for.
      */
     public static function report(RuleSet $normalized, RouteContext $context): void
     {
-        foreach (self::undecidedFields($normalized) as $field) {
+        $undecided = self::undecidedFields($normalized);
+        if ($undecided === []) {
+            return;
+        }
+
+        $declared = RecoveredRequest::documentsBody($context)
+            ? $context->attributes->all(BodyParameter::class)
+            : [];
+        $types = new TypeStringParser;
+
+        foreach ($undecided as $field) {
+            foreach ($declared as $attribute) {
+                if (self::settles($attribute, $field, $types)) {
+                    continue 2;
+                }
+            }
+
             $context->components->addDiagnostic(new Diagnostic(
                 severity: Severity::Info,
                 code: 'validation.container-undecided',
@@ -82,12 +114,40 @@ final class RuleSetNormalizer
                     $field,
                 ),
                 help: sprintf(
-                    'Add "%1$s.*" rules for a list, or dotted "%1$s.<key>" rules for an object, and the document states the one the endpoint means.',
+                    'Add "%1$s.*" rules for a list, or dotted "%1$s.<key>" rules for an object, and the document states the one the endpoint means. A #[BodyParameter] naming a key inside "%1$s", or naming it with a type of its own, answers it too — the one for a free-form map with no keys to enumerate.',
                     $field,
                 ),
                 routeSignature: $context->route->signature(),
             ));
         }
+    }
+
+    /**
+     * Whether one declaration answers the container question for `$field` — asked of the declaration
+     * rather than of its name, since a name is only where a declaration points. A path naming something
+     * strictly INSIDE the field settles it by existing: a key proves an object, a `*` proves a list. A
+     * path naming the field ITSELF settles it only as far as its type does, read by the parser that will
+     * do the writing, because a guard recognising fewer spellings than the fold it protects is a hole —
+     * `array` and `mixed` resolve to no shape and publish the empty schema, which decides neither
+     * container, while no type at all publishes the attribute's own default of `string`. A path with an
+     * empty segment names no field and documents nothing, so there is nothing for it to have settled.
+     *
+     * A well-formed path the body then turns out not to be able to carry — a scalar, a composition or a
+     * `$ref` parent — still stands the note down: this runs during recovery, with no body yet to ask, and
+     * the refusal is reported where it happens, against the declaration itself, where a second note
+     * asking for rules would name the wrong remedy for the same mistake.
+     */
+    private static function settles(BodyParameter $attribute, string $field, TypeStringParser $types): bool
+    {
+        if (! FieldPath::isWellFormed($attribute->name) || ! FieldPath::isAtOrUnder($attribute->name, $field)) {
+            return false;
+        }
+
+        if (count(FieldPath::segments($attribute->name)) > count(FieldPath::segments($field))) {
+            return true;
+        }
+
+        return $attribute->type === null || ! $types->parseDeclared($attribute->type) instanceof UnknownT;
     }
 
     /**

@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\Eloquent;
 
-use Docuccino\Attributes\Hidden as DocuccinoHidden;
 use Docuccino\Core\Extensions\BuiltIn\JsonTypes;
+use Docuccino\Core\Extensions\Schema\SchemaIdentity;
 use Docuccino\Core\Inference\ClassMetadata;
 use Docuccino\Core\Inference\DType\DType;
 use Docuccino\Core\Inference\DType\NullT;
 use Docuccino\Core\Inference\DType\ScalarT;
 use Docuccino\Core\Inference\DType\UnionT;
 use ReflectionClass;
+use ReflectionProperty;
 
 /**
  * Reads the presentation facts a model declares — `$visible`/`$hidden`/`$appends`, `$casts`, a
@@ -34,10 +35,44 @@ final class EloquentModelReflector
 
     private const SERIALIZE_DATE = 'serializeDate';
 
+    /** @var list<string>|null the framework's own public properties, read once per process. */
+    private static ?array $frameworkProperties = null;
+
     /** A concrete Eloquent model — the schema mapper's trigger. */
     public static function isModel(string $fqcn): bool
     {
         return $fqcn !== self::MODEL && is_a($fqcn, self::MODEL, true);
+    }
+
+    /**
+     * The public instance properties EVERY model inherits from the framework — `$exists`, `$timestamps`,
+     * `$incrementing` and the rest. None is ever serialised: `attributesToArray()` reads
+     * `$this->attributes`, the appends and the relations, and a declared PHP property is in none of the
+     * three. Reflection reports them alongside a model's `@property` column tags, so the schema mapper
+     * has to know them by name to keep them out of the document.
+     *
+     * Read off the resolved Laravel's own base class rather than listed here, so the set is the
+     * installed version's. Matched by NAME and not by declaring class, because `public $timestamps =
+     * false` on the model itself is idiomatic and is still the framework's flag rather than a column.
+     *
+     * @return list<string>
+     */
+    public static function frameworkProperties(): array
+    {
+        if (self::$frameworkProperties !== null) {
+            return self::$frameworkProperties;
+        }
+
+        $names = [];
+        if (class_exists(self::MODEL)) {
+            foreach ((new ReflectionClass(self::MODEL))->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
+                if (! $property->isStatic()) {
+                    $names[] = $property->getName();
+                }
+            }
+        }
+
+        return self::$frameworkProperties = $names;
     }
 
     /**
@@ -163,11 +198,6 @@ final class EloquentModelReflector
         $reflection = new ReflectionClass($fqcn);
         $defaults = $reflection->getDefaultProperties();
 
-        $classHidden = [];
-        foreach ($reflection->getAttributes(DocuccinoHidden::class) as $attribute) {
-            $classHidden = [...$classHidden, ...$attribute->newInstance()->properties];
-        }
-
         $traits = self::traits($fqcn);
 
         // $casts merged with the casts() method (Laravel 11+), the method winning on a key conflict —
@@ -180,7 +210,9 @@ final class EloquentModelReflector
             'visible' => self::stringList($defaults['visible'] ?? []),
             'appends' => self::stringList($defaults['appends'] ?? []),
             'casts' => $casts,
-            'classHidden' => $classHidden,
+            // Read through the one owner of the deny-list, not off reflection again: a second reader is
+            // free to disagree with the one that reports an unmatched name ({@see SchemaIdentity}).
+            'classHidden' => SchemaIdentity::hidden($fqcn),
             'fillable' => self::stringList($defaults['fillable'] ?? []),
             'dates' => self::stringList($defaults['dates'] ?? []),
             // `$with` relations are eager-loaded on every query, so they serialise on every response.

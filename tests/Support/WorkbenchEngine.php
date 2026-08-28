@@ -229,6 +229,15 @@ final class WorkbenchEngine
                     returns: [new ReturnSite(UnionT::of([new ClassT(self::WIDGET_MODEL), new ClassT(self::GADGET_MODEL)]), $location)],
                 ),
 
+                // Two model responses the visibility lists decide the published keys of: a deny-list
+                // reaching an append and an eager load, and an allow-list narrowed by a deny-list.
+                self::CONTROLLER.'showStrongbox' => new ActionAnalysis(
+                    returns: [new ReturnSite(new ClassT(self::STRONGBOX_MODEL), $location)],
+                ),
+                self::CONTROLLER.'showShowcase' => new ActionAnalysis(
+                    returns: [new ReturnSite(new ClassT(self::SHOWCASE_MODEL), $location)],
+                ),
+
                 // A success 200 plus a renderable exception the inferred-handler tier documents as 402.
                 self::CONTROLLER.'checkout' => new ActionAnalysis(
                     returns: [new ReturnSite($jsonResponse(new ArrayShapeT([new ArrayShapeField('ok', ScalarT::bool())]), 200), $location)],
@@ -297,6 +306,25 @@ final class WorkbenchEngine
                     new PropertyMetadata('id', ScalarT::int()),
                     new PropertyMetadata('label', ScalarT::string()),
                 ]),
+                self::STRONGBOX_MODEL => new ClassMetadata(self::STRONGBOX_MODEL, [
+                    new PropertyMetadata('id', ScalarT::int()),
+                    new PropertyMetadata('label', ScalarT::string()),
+                    new PropertyMetadata('combination', ScalarT::string()),
+                ]),
+                self::SHOWCASE_MODEL => new ClassMetadata(self::SHOWCASE_MODEL, [
+                    new PropertyMetadata('id', ScalarT::int()),
+                    new PropertyMetadata('name', ScalarT::string()),
+                    new PropertyMetadata('tally', ScalarT::string()),
+                ]),
+                // The two models Strongbox's surviving eager loads resolve to.
+                self::POST_MODEL => new ClassMetadata(self::POST_MODEL, [
+                    new PropertyMetadata('id', ScalarT::int()),
+                    new PropertyMetadata('title', ScalarT::string()),
+                ]),
+                self::MERCHANT_MODEL => new ClassMetadata(self::MERCHANT_MODEL, [
+                    new PropertyMetadata('id', ScalarT::int()),
+                    new PropertyMetadata('name', ScalarT::string()),
+                ]),
                 ...$classOverrides,
             ],
             callables: [
@@ -310,6 +338,33 @@ final class WorkbenchEngine
                         new ArrayShapeField('title', new LiteralT('Payment Required')),
                         new ArrayShapeField('status', new LiteralT(402)),
                     ]), 402), $location)],
+                ),
+                // Strongbox's appended accessors and its `$with` relations. The two the deny-list
+                // removes are scripted alongside the survivors, so a schema that published them would
+                // publish a typed key rather than an empty one.
+                self::STRONGBOX_MODEL.'::getDisplayNameAttribute' => new ActionAnalysis(
+                    returns: [new ReturnSite(ScalarT::string(), $location)],
+                ),
+                self::STRONGBOX_MODEL.'::getInternalNoteAttribute' => new ActionAnalysis(
+                    returns: [new ReturnSite(ScalarT::string(), $location)],
+                ),
+                self::STRONGBOX_MODEL.'::getPublicNoteAttribute' => new ActionAnalysis(
+                    returns: [new ReturnSite(ScalarT::string(), $location)],
+                ),
+                self::STRONGBOX_MODEL.'::auditTrail' => new ActionAnalysis(
+                    returns: [new ReturnSite(new ClassT('Illuminate\\Database\\Eloquent\\Relations\\HasMany', [new ClassT(self::POST_MODEL)]), $location)],
+                ),
+                self::STRONGBOX_MODEL.'::strongRoom' => new ActionAnalysis(
+                    returns: [new ReturnSite(new ClassT('Illuminate\\Database\\Eloquent\\Relations\\HasMany', [new ClassT(self::POST_MODEL)]), $location)],
+                ),
+                self::STRONGBOX_MODEL.'::keeper' => new ActionAnalysis(
+                    returns: [new ReturnSite(new ClassT('Illuminate\\Database\\Eloquent\\Relations\\BelongsTo', [new ClassT(self::MERCHANT_MODEL)]), $location)],
+                ),
+                self::SHOWCASE_MODEL.'::getBadgeAttribute' => new ActionAnalysis(
+                    returns: [new ReturnSite(ScalarT::string(), $location)],
+                ),
+                self::SHOWCASE_MODEL.'::getRankingAttribute' => new ActionAnalysis(
+                    returns: [new ReturnSite(ScalarT::string(), $location)],
                 ),
                 ...$callables,
             ],
@@ -331,6 +386,14 @@ final class WorkbenchEngine
     private const WIDGET_MODEL = 'Docuccino\\Laravel\\Tests\\Fixtures\\Eloquent\\Widget';
 
     private const GADGET_MODEL = 'Docuccino\\Laravel\\Tests\\Fixtures\\Eloquent\\Gadget';
+
+    private const STRONGBOX_MODEL = 'Docuccino\\Laravel\\Tests\\Fixtures\\Eloquent\\Strongbox';
+
+    private const SHOWCASE_MODEL = 'Docuccino\\Laravel\\Tests\\Fixtures\\Eloquent\\Showcase';
+
+    private const POST_MODEL = 'Docuccino\\Laravel\\Tests\\Fixtures\\Eloquent\\Post';
+
+    private const MERCHANT_MODEL = 'Docuccino\\Laravel\\Tests\\Fixtures\\Eloquent\\Merchant';
 
     private const LEDGER_MODEL = 'Workbench\\App\\Models\\Ledger';
 

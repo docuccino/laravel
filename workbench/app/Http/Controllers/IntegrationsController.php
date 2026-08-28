@@ -7,6 +7,8 @@ namespace Workbench\App\Http\Controllers;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ArticleJsonApiResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ArticleResource;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Gadget;
+use Docuccino\Laravel\Tests\Fixtures\Eloquent\Showcase;
+use Docuccino\Laravel\Tests\Fixtures\Eloquent\Strongbox;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Widget;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ArticleData;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
@@ -90,6 +92,18 @@ final class IntegrationsController
 
     /** Throws a renderable exception whose render() defines a 402 — documented by the inferred tier. */
     public function checkout(): JsonResponse
+    {
+        throw new RuntimeException(__METHOD__.' is documented, not dispatched');
+    }
+
+    /** A model whose deny-list also reaches its appends and its eager-loaded relations. */
+    public function showStrongbox(string $id): Strongbox
+    {
+        throw new RuntimeException(__METHOD__.' is documented, not dispatched');
+    }
+
+    /** A model whose allow-list is narrowed further by a deny-list naming one of the same keys. */
+    public function showShowcase(string $id): Showcase
     {
         throw new RuntimeException(__METHOD__.' is documented, not dispatched');
     }

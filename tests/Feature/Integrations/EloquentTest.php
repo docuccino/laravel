@@ -33,6 +33,8 @@ use Docuccino\Laravel\Tests\Fixtures\Eloquent\Ledger;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Merchant;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Persona;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Post;
+use Docuccino\Laravel\Tests\Fixtures\Eloquent\Showcase;
+use Docuccino\Laravel\Tests\Fixtures\Eloquent\Strongbox;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Vault;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Waybill;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Widget;
@@ -99,6 +101,16 @@ function eloquentEngine(): StubTypeEngine
             new PropertyMetadata('id', ScalarT::int()),
             new PropertyMetadata('title', ScalarT::string()),
         ]),
+        Strongbox::class => new ClassMetadata(Strongbox::class, [
+            new PropertyMetadata('id', ScalarT::int()),
+            new PropertyMetadata('label', ScalarT::string()),
+            new PropertyMetadata('combination', ScalarT::string()),
+        ]),
+        Showcase::class => new ClassMetadata(Showcase::class, [
+            new PropertyMetadata('id', ScalarT::int()),
+            new PropertyMetadata('name', ScalarT::string()),
+            new PropertyMetadata('tally', ScalarT::string()),
+        ]),
     ], callables: (static function (): array {
         // Accessor / custom-caster / relation return types scripted so the in-process mapper test drives
         // the same shapes the real engine recovers; the recovery half is proven out-of-process in
@@ -112,6 +124,13 @@ function eloquentEngine(): StubTypeEngine
             CustomCaster::class.'::get' => $returning(ScalarT::string()),
             Boutique::class.'::posts' => $returning(new ClassT('Illuminate\\Database\\Eloquent\\Relations\\HasMany', [new ClassT(Post::class)])),
             Boutique::class.'::owner' => $returning(new ClassT('Illuminate\\Database\\Eloquent\\Relations\\BelongsTo', [new ClassT(Merchant::class)])),
+            Strongbox::class.'::getPublicNoteAttribute' => $returning(ScalarT::string()),
+            Strongbox::class.'::getInternalNoteAttribute' => $returning(ScalarT::string()),
+            Strongbox::class.'::auditTrail' => $returning(new ClassT('Illuminate\\Database\\Eloquent\\Relations\\HasMany', [new ClassT(Post::class)])),
+            Strongbox::class.'::strongRoom' => $returning(new ClassT('Illuminate\\Database\\Eloquent\\Relations\\HasMany', [new ClassT(Post::class)])),
+            Strongbox::class.'::keeper' => $returning(new ClassT('Illuminate\\Database\\Eloquent\\Relations\\BelongsTo', [new ClassT(Merchant::class)])),
+            Showcase::class.'::getBadgeAttribute' => $returning(ScalarT::string()),
+            Showcase::class.'::getRankingAttribute' => $returning(ScalarT::string()),
         ];
     })());
 }
@@ -253,11 +272,82 @@ it('reads the casts() method (Laravel 11+) and applies its casts to columns', fu
         ->and($registry->schemas()['WidgetStatus']['enum'])->toBe(['draft', 'published', 'archived']);
 });
 
-it('applies a $visible allow-list', function (): void {
-    $gadget = modelSchema(new ClassT(Gadget::class))['Gadget'];
+/*
+ * Every key the schema publishes goes through the one visibility reading the server uses. Laravel
+ * filters columns, appends AND relations through `HasAttributes::getArrayableItems()`, so a name it
+ * removes is a name the response never carries — whichever source contributed the key. A key published
+ * past that reading is a field a generated client waits for and never receives, and, where the name was
+ * deliberately hidden, a secret named in a public artifact.
+ */
+it('publishes only the keys the runtime serialises, whatever contributed them', function (string $fqcn, string $component, array $expected): void {
+    expect(array_keys(modelSchema(new ClassT($fqcn))[$component]['properties']))->toBe($expected);
+})->with([
+    'a hidden column, one named by a class-level #[Hidden], and an append neither list touches' => [
+        Widget::class, 'Widget', ['id', 'name', 'created_at', 'is_active', 'status', 'meta', 'updated_at', 'display_name'],
+    ],
+    // audit_trail is gone because `auditTrail` is in $hidden; strong_room stays because `strong_room`
+    // is the SERIALISED spelling and the filter runs before relationsToArray() snake-cases the key.
+    'a hidden append, a hidden eager-loaded relation, and the ones that survive both' => [
+        Strongbox::class, 'Strongbox', ['id', 'label', 'public_note', 'strong_room', 'keeper'],
+    ],
+    'an allow-list with no deny-list beside it' => [Gadget::class, 'Gadget', ['id', 'name']],
+    // `name` is in both lists: getArrayableItems() subtracts $hidden AFTER intersecting $visible, so
+    // the deny-list wins. `ranking` is an append outside the allow-list, which never serialises either.
+    'an allow-list narrowed further by a deny-list' => [Showcase::class, 'Showcase', ['id', 'badge']],
+    // `nickname` is an Attribute accessor with no column and no $appends entry, so nothing serialises
+    // it — addMutatedAttributesToArray() only mutates keys the attribute array already has.
+    'an accessor that is neither a column nor an append' => [
+        Boutique::class, 'Boutique', ['id', 'sku', 'options', 'tags', 'kinds', 'secret', 'full_label', 'posts', 'owner'],
+    ],
+]);
 
-    expect(array_keys($gadget['properties']))->toBe(['id', 'name'])
-        ->and($gadget['properties'])->not->toHaveKey('secret');
+/*
+ * The same class of defect from the other end: a model declares no PHP property for a column, but it
+ * INHERITS six public ones from Illuminate\Database\Eloquent\Model, and class metadata reports them
+ * beside the `@property` column tags (checked against the real ClassMetadataFactory, which returns
+ * timestamps/incrementing/preventsLazyLoading/exists/wasRecentlyCreated/usesUniqueIds for every model).
+ * `attributesToArray()` serialises none of them — it reads `$this->attributes`, the appends and the
+ * relations, and a declared property is in none of the three — so publishing them promises a client six
+ * booleans that never arrive, on every model in the document.
+ */
+it('never publishes the framework bookkeeping properties reported beside a model\'s columns', function (): void {
+    $components = new ComponentRegistry;
+    $engine = new StubTypeEngine(classes: [
+        Post::class => new ClassMetadata(Post::class, [
+            new PropertyMetadata('timestamps', ScalarT::bool()),
+            new PropertyMetadata('incrementing', ScalarT::bool()),
+            new PropertyMetadata('preventsLazyLoading', ScalarT::bool()),
+            new PropertyMetadata('exists', ScalarT::bool()),
+            new PropertyMetadata('wasRecentlyCreated', ScalarT::bool()),
+            new PropertyMetadata('usesUniqueIds', ScalarT::bool()),
+            new PropertyMetadata('id', ScalarT::int()),
+            new PropertyMetadata('title', ScalarT::string()),
+        ]),
+    ]);
+
+    (new SchemaConverter([new ModelSchema, ...DefaultTypeMappers::all()], $engine, $components))->toSchema(new ClassT(Post::class));
+
+    expect(array_keys($components->schemas()['Post']['properties']))->toBe(['id', 'title']);
+});
+
+it('reads the bookkeeping names off the resolved Laravel rather than a list of its own', function (): void {
+    // The names above are dropped because the framework declares them, so the reading has to keep
+    // finding them: a reader that silently stopped matching would publish them all again.
+    expect(EloquentModelReflector::frameworkProperties())
+        ->toContain('timestamps', 'incrementing', 'preventsLazyLoading', 'exists', 'wasRecentlyCreated', 'usesUniqueIds')
+        // A model's own columns are magic, so nothing else about this set should be growing quietly.
+        ->and(count(EloquentModelReflector::frameworkProperties()))->toBeLessThan(12);
+});
+
+it('keeps a withheld key out of `required` as well, and types the append that survives', function (): void {
+    $strongbox = modelSchema(new ClassT(Strongbox::class))['Strongbox'];
+
+    // A key the response never carries cannot be one a client may rely on being there.
+    expect($strongbox['required'])->toBe(['id', 'label', 'strong_room', 'keeper'])
+        // The surviving append is still typed by its accessor, and the surviving relations still nest.
+        ->and($strongbox['properties']['public_note'])->toBe(['type' => 'string'])
+        ->and($strongbox['properties']['strong_room'])->toBe(['type' => 'array', 'items' => ['$ref' => '#/components/schemas/Post']])
+        ->and($strongbox['properties']['keeper'])->toBe(['anyOf' => [['$ref' => '#/components/schemas/Merchant'], ['type' => 'null']]]);
 });
 
 it('reflects model facts without instantiating', function (): void {

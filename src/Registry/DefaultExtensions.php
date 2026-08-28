@@ -33,6 +33,7 @@ use Docuccino\Laravel\Extensions\PathParametersExtension;
 use Docuccino\Laravel\Extensions\RecordedExamplesExtension;
 use Docuccino\Laravel\Extensions\RouteServersExtension;
 use Docuccino\Laravel\Extensions\SecurityExtension;
+use Docuccino\Laravel\Extensions\UnmatchedIgnoredResponsesExtension;
 use Docuccino\Laravel\Extensions\ViewMediaType;
 use Docuccino\Laravel\Extensions\ViewTypeToSchema;
 use Docuccino\Laravel\Integrations\FormRequest\ValidationRequestExtension;
@@ -92,6 +93,9 @@ final class DefaultExtensions
             DeclaredErrorComponentsExtension::class,
             // Finalize: every response, parameter and request body a #[Example] could name now exists.
             AttributeExamplesExtension::class,
+            // Finalize, LAST: #[IgnoreResponse] is consulted per producer, so the end of the route's
+            // build is the first place that can tell a declaration was never asked about at all.
+            UnmatchedIgnoredResponsesExtension::class,
             RouteServersExtension::class,
             // A rendered view answers text/html; the built-in resolver sits in the same gated chain the
             // integrations' media-type matchers do.

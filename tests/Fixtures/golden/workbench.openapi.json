@@ -873,6 +873,66 @@
         }
       }
     },
+    "/api/showcases/{id}": {
+      "get": {
+        "summary": "A model whose allow-list is narrowed further by a deny-list naming one of the same keys.",
+        "tags": [
+          "Integrations"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Showcase"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/strongboxes/{id}": {
+      "get": {
+        "summary": "A model whose deny-list also reaches its appends and its eager-loaded relations.",
+        "tags": [
+          "Integrations"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Strongbox"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/tickets": {
       "post": {
         "tags": [
@@ -1001,7 +1061,6 @@
             "name": "dry_run",
             "in": "query",
             "description": "Validate without persisting.",
-            "required": false,
             "schema": {
               "type": "boolean"
             }
@@ -1304,6 +1363,21 @@
           "id"
         ]
       },
+      "Merchant": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
       "NotFound": {
         "type": "object",
         "properties": {
@@ -1379,6 +1453,35 @@
           }
         }
       },
+      "Post": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ]
+      },
+      "Showcase": {
+        "type": "object",
+        "properties": {
+          "badge": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
       "StoreWidgetRequest": {
         "type": "object",
         "properties": {
@@ -1413,6 +1516,42 @@
           "name",
           "quantity",
           "role"
+        ]
+      },
+      "Strongbox": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "keeper": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Merchant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "public_note": {
+            "type": "string"
+          },
+          "strong_room": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Post"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "strong_room",
+          "keeper"
         ]
       },
       "UnprocessableEntity": {

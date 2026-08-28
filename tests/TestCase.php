@@ -92,5 +92,11 @@ abstract class TestCase extends Orchestra
         // documents.
         $router->get('api/attachments/{id}', [IntegrationsController::class, 'showAttachment']);
         $router->post('api/checkout', [IntegrationsController::class, 'checkout']);
+
+        // Two model responses whose published keys are decided by the visibility lists rather than by
+        // the column set: a deny-list reaching an append and an eager load, and an allow-list a
+        // deny-list narrows further.
+        $router->get('api/strongboxes/{id}', [IntegrationsController::class, 'showStrongbox']);
+        $router->get('api/showcases/{id}', [IntegrationsController::class, 'showShowcase']);
     }
 }

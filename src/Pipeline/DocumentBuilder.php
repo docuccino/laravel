@@ -18,6 +18,7 @@ use Docuccino\Core\Provenance\RootRelativeSourcePathResolver;
 use Docuccino\Core\Support\ConfinedPath;
 use Docuccino\Core\Support\Hydrate;
 use Docuccino\Core\Support\PlainText;
+use Docuccino\Laravel\Config\ConfiguredDocuments;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
 use Docuccino\Laravel\Engine\EngineNeon;
 use Docuccino\Laravel\Engine\EnginePackage;
@@ -43,6 +44,7 @@ final class DocumentBuilder
         private readonly DocumentGenerator $generator,
         private readonly string $basePath,
         private readonly EnginePackage $engine = new EnginePackage,
+        private readonly ConfiguredDocuments $documents = new ConfiguredDocuments,
     ) {}
 
     /**
@@ -52,20 +54,17 @@ final class DocumentBuilder
      */
     public function documentKeys(): array
     {
-        return array_map(
-            static fn (int|string $key): string => (string) $key,
-            array_keys($this->documents()),
-        );
+        return $this->documents->keys();
     }
 
     public function hasDocument(string $key): bool
     {
-        return is_array($this->documents()[$key] ?? null);
+        return $this->documents->has($key);
     }
 
     public function config(string $key): DocumentConfig
     {
-        return $this->configs->make($key, Hydrate::map($this->documents()[$key] ?? null), $this->onRouteError());
+        return $this->configs->make($key, $this->documents->raw($key), $this->onRouteError());
     }
 
     /** Overlay-parse warnings are folded in alongside the pipeline's own diagnostics. */
@@ -289,17 +288,6 @@ final class DocumentBuilder
             ),
             help: 'Generate from the project root in an environment the application boots in — the analyzer boots it the way an artisan command does — and check the engine package and its analyzer are installed at a supported version. Set DOCUCCINO_ENGINE=null to document without inference and silence this.',
         )];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function documents(): array
-    {
-        /** @var array<string, mixed> $documents */
-        $documents = (array) config('docuccino.documents', []);
-
-        return $documents;
     }
 
     private function onRouteError(): string

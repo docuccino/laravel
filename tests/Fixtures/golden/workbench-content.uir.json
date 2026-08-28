@@ -163,7 +163,7 @@
               ],
               "source": {
                 "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                "line": 32,
+                "line": 34,
                 "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::listArticleResources"
               }
             },
@@ -244,7 +244,7 @@
               ],
               "source": {
                 "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                "line": 38,
+                "line": 40,
                 "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::showArticleResource"
               }
             },
@@ -355,7 +355,7 @@
               ],
               "source": {
                 "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                "line": 26,
+                "line": 28,
                 "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::storeArticle"
               }
             },
@@ -374,7 +374,7 @@
               ],
               "source": {
                 "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                "line": 26,
+                "line": 28,
                 "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::storeArticle"
               }
             }
@@ -442,7 +442,7 @@
                   ],
                   "source": {
                     "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                    "line": 26,
+                    "line": 28,
                     "symbol": "implicit:validated-request"
                   }
                 }
@@ -469,7 +469,7 @@
               ],
               "source": {
                 "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                "line": 86,
+                "line": 88,
                 "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::showAttachment"
               }
             },
@@ -602,7 +602,7 @@
               ],
               "source": {
                 "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                "line": 92,
+                "line": 94,
                 "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::checkout"
               }
             },
@@ -676,7 +676,7 @@
                   ],
                   "source": {
                     "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                    "line": 92,
+                    "line": 94,
                     "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::checkout"
                   }
                 }
@@ -698,7 +698,7 @@
                         ],
                         "source": {
                           "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                          "line": 92,
+                          "line": 94,
                           "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::checkout"
                         }
                       }
@@ -749,7 +749,7 @@
               ],
               "source": {
                 "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                "line": 56,
+                "line": 58,
                 "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::storeCreatedArticle"
               }
             },
@@ -779,7 +779,7 @@
                   ],
                   "source": {
                     "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                    "line": 56,
+                    "line": 58,
                     "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::storeCreatedArticle"
                   }
                 }
@@ -801,7 +801,7 @@
                         ],
                         "source": {
                           "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                          "line": 56,
+                          "line": 58,
                           "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::storeCreatedArticle"
                         }
                       }
@@ -1233,7 +1233,7 @@
               ],
               "source": {
                 "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                "line": 50,
+                "line": 52,
                 "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::listJsonPaginatedArticles"
               }
             },
@@ -1264,7 +1264,7 @@
                   ],
                   "source": {
                     "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                    "line": 50,
+                    "line": 52,
                     "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::listJsonPaginatedArticles"
                   }
                 }
@@ -1287,7 +1287,7 @@
                     ],
                     "source": {
                       "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                      "line": 50,
+                      "line": 52,
                       "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::listJsonPaginatedArticles"
                     }
                   }
@@ -1311,7 +1311,7 @@
                   ],
                   "source": {
                     "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                    "line": 50,
+                    "line": 52,
                     "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::listJsonPaginatedArticles"
                   }
                 }
@@ -1335,7 +1335,7 @@
                     ],
                     "source": {
                       "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                      "line": 50,
+                      "line": 52,
                       "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::listJsonPaginatedArticles"
                     }
                   }
@@ -1379,7 +1379,7 @@
                         ],
                         "source": {
                           "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                          "line": 50,
+                          "line": 52,
                           "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::listJsonPaginatedArticles"
                         },
                         "overrode": [
@@ -1432,7 +1432,7 @@
               ],
               "source": {
                 "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                "line": 62,
+                "line": 64,
                 "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::showJsonApiArticle"
               }
             },
@@ -1496,7 +1496,7 @@
                   ],
                   "source": {
                     "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                    "line": 62,
+                    "line": 64,
                     "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::showJsonApiArticle"
                   }
                 }
@@ -1520,7 +1520,7 @@
                     ],
                     "source": {
                       "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                      "line": 62,
+                      "line": 64,
                       "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::showJsonApiArticle"
                     }
                   }
@@ -1545,7 +1545,7 @@
                   ],
                   "source": {
                     "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                    "line": 62,
+                    "line": 64,
                     "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::showJsonApiArticle"
                   }
                 }
@@ -1566,7 +1566,7 @@
                     ],
                     "source": {
                       "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                      "line": 62,
+                      "line": 64,
                       "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::showJsonApiArticle"
                     }
                   }
@@ -1962,7 +1962,7 @@
               ],
               "source": {
                 "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                "line": 68,
+                "line": 70,
                 "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::showWidget"
               }
             },
@@ -2061,7 +2061,7 @@
               ],
               "source": {
                 "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                "line": 74,
+                "line": 76,
                 "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::destroyWidget"
               }
             },
@@ -2244,7 +2244,7 @@
               ],
               "source": {
                 "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                "line": 44,
+                "line": 46,
                 "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::listPaginatedArticles"
               }
             },
@@ -2275,7 +2275,7 @@
                   ],
                   "source": {
                     "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                    "line": 44,
+                    "line": 46,
                     "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::listPaginatedArticles"
                   }
                 }
@@ -2298,7 +2298,7 @@
                     ],
                     "source": {
                       "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                      "line": 44,
+                      "line": 46,
                       "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::listPaginatedArticles"
                     }
                   }
@@ -2341,7 +2341,7 @@
                         ],
                         "source": {
                           "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                          "line": 44,
+                          "line": 46,
                           "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::listPaginatedArticles"
                         },
                         "overrode": [
@@ -2559,7 +2559,7 @@
               ],
               "source": {
                 "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                "line": 80,
+                "line": 82,
                 "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::storeReport"
               }
             },
@@ -2662,6 +2662,208 @@
                   "required": [
                     "status"
                   ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/showcases/{id}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:jjfyfjsdzhnwladu",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/IntegrationsController.php",
+                "line": 106,
+                "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::showShowcase"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            }
+          ]
+        },
+        "summary": "A model whose allow-list is narrowed further by a deny-list naming one of the same keys.",
+        "tags": [
+          "Integrations"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:66ss33c2324bgsf4",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:fq6rcijyxy4wikhh",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/Showcase"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/strongboxes/{id}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:togbbietkatlm4zm",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/IntegrationsController.php",
+                "line": 100,
+                "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::showStrongbox"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            }
+          ]
+        },
+        "summary": "A model whose deny-list also reaches its appends and its eager-loaded relations.",
+        "tags": [
+          "Integrations"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:expurh3qprp5fwib",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:5eb6janbhjwhzrnq",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/Strongbox"
                 }
               }
             }
@@ -3106,8 +3308,7 @@
                   "producer": "attribute",
                   "layer": "attribute",
                   "fields": [
-                    "description",
-                    "required"
+                    "description"
                   ],
                   "source": {
                     "file": "workbench/app/Http/Controllers/WidgetController.php",
@@ -3120,7 +3321,6 @@
             "name": "dry_run",
             "in": "query",
             "description": "Validate without persisting.",
-            "required": false,
             "schema": {
               "x-docuccino": {
                 "provenance": [
@@ -3509,6 +3709,24 @@
           "id"
         ]
       },
+      "Merchant": {
+        "x-docuccino": {
+          "id": "sch:v1:lmqotfbrhwethvli"
+        },
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
       "NotFound": {
         "x-docuccino": {
           "id": "sch:v1:bvvuacym2wsq7ebk"
@@ -3593,6 +3811,41 @@
           }
         }
       },
+      "Post": {
+        "x-docuccino": {
+          "id": "sch:v1:sd7f3hxeyhdikuj4"
+        },
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ]
+      },
+      "Showcase": {
+        "x-docuccino": {
+          "id": "sch:v1:fmd7ij2nnosztizs"
+        },
+        "type": "object",
+        "properties": {
+          "badge": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
       "StoreWidgetRequest": {
         "x-docuccino": {
           "id": "sch:v1:zh4wul5w3rfncvua"
@@ -3630,6 +3883,45 @@
           "name",
           "quantity",
           "role"
+        ]
+      },
+      "Strongbox": {
+        "x-docuccino": {
+          "id": "sch:v1:zv3e2n3smxouiumg"
+        },
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "keeper": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Merchant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "public_note": {
+            "type": "string"
+          },
+          "strong_room": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Post"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "strong_room",
+          "keeper"
         ]
       },
       "UnprocessableEntity": {
@@ -3789,7 +4081,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "d74edbb0d3229a32fdc9eaa557e0099b3d6453491fbb44b517a56c9103a569b7",
-      "contentHash": "98d09fa429f7a9a3d1245c85b34328963d5460e9afb0bbee23d43b48f5efa85a"
+      "contentHash": "c9e2571400368bf7039ebff140e2a2a666e8e22ac0cfba1bf07c86aa6080ef2f"
     },
     "generator": {
       "name": "docuccino/laravel",

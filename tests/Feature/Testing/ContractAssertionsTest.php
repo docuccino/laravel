@@ -350,15 +350,20 @@ it('reduces the response headers Laravel sent, repeats and all, to the neutral e
         ->and($exchange->responseHeader('X-Nothing'))->toBe([]);
 });
 
-it('keeps a repeated REQUEST header to its first value, which is what a parameter is', function (): void {
-    // Both halves read the same header bag; they differ only in what a documented thing can be. A
-    // response header is checked once per value it sent, and an `in: header` parameter has one value.
+it('reduces the request headers Laravel sent, repeats and all, to the neutral exchange', function (): void {
+    // Both halves read the same `HeaderBag`, which models a list on both sides — so keeping the first
+    // value of a request header threw away something the framework had. It is reachable: `$_SERVER`
+    // collapses a repeat into one comma list, but appending to the bag does not, and middleware
+    // appends to the very request object the assertions read back.
     $response = contractResponse('GET', '/api/forms');
     $request = $response->baseRequest;
-    $request->headers->set('X-Trace', ['first', 'second'], false);
+    $request->headers->set('X-Trace', 'first');
+    $request->headers->set('X-Trace', 'second', false);
 
     $exchange = ApiContract::exchangeFor($request, $response);
 
-    expect($exchange->header('x-trace'))->toBe('first')
-        ->and($exchange->header('X-Nothing'))->toBeNull();
+    // The premise, pinned: without it this would pass over a bag that never held two values.
+    expect($request->headers->all('X-Trace'))->toBe(['first', 'second'])
+        ->and($exchange->header('x-trace'))->toBe(['first', 'second'])
+        ->and($exchange->header('X-Nothing'))->toBe([]);
 });

@@ -34,8 +34,14 @@ final class IgnoredParamsController
         throw new RuntimeException(__METHOD__.' is documented, not dispatched');
     }
 
-    /** A paginated resource collection whose `page` key the last parameter extension writes. */
+    /**
+     * A paginated resource collection whose `page` key the last parameter extension writes — named twice,
+     * once in every location and once in the one it is in. Both did their job: which declarations matched
+     * is decided against what stood before ANY of them removed anything, or the second would report the
+     * parameter the first had just taken away as one that was never there.
+     */
     #[IgnoreParam(name: 'page')]
+    #[IgnoreParam(name: 'page', in: 'query')]
     public function paged(): AnonymousResourceCollection
     {
         throw new RuntimeException(__METHOD__.' is documented, not dispatched');
@@ -66,6 +72,31 @@ final class IgnoredParamsController
     /** An `in:` that is not a parameter location at all. */
     #[IgnoreParam(name: 'X-Trace', in: 'body')]
     public function nowhere(): JsonResponse
+    {
+        throw new RuntimeException(__METHOD__.' is documented, not dispatched');
+    }
+
+    /**
+     * The parameter this once named is documented as `trace_id`; the ignore still spells the name it had
+     * before the rename, so it drops nothing and the field the author meant to hide is published.
+     */
+    #[IgnoreParam(name: 'trace', in: 'query')]
+    public function renamed(SearchFormsRequest $request): JsonResponse
+    {
+        throw new RuntimeException(__METHOD__.' is documented, not dispatched');
+    }
+
+    /** The same declaration written twice, naming nothing — one mistake, and one report of it. */
+    #[IgnoreParam(name: 'gone', in: 'query')]
+    #[IgnoreParam(name: 'gone', in: 'query')]
+    public function repeated(): JsonResponse
+    {
+        throw new RuntimeException(__METHOD__.' is documented, not dispatched');
+    }
+
+    /** A name with nothing in it, which no parameter in any location can carry. */
+    #[IgnoreParam(name: '')]
+    public function nameless(): JsonResponse
     {
         throw new RuntimeException(__METHOD__.' is documented, not dispatched');
     }

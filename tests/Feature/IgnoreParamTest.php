@@ -2,17 +2,26 @@
 
 declare(strict_types=1);
 
+use Docuccino\Attributes\IgnoreParam;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
+use Docuccino\Core\Draft\OperationDraft;
+use Docuccino\Core\Extensions\Context\AttributeSet;
+use Docuccino\Core\Extensions\Context\DocumentConfig;
+use Docuccino\Core\Extensions\Context\RouteContext;
+use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Inference\ActionAnalysis;
+use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Inference\DType\ArrayShapeField;
 use Docuccino\Core\Inference\DType\ArrayShapeT;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\DType\LiteralT;
+use Docuccino\Core\Inference\NullTypeEngine;
 use Docuccino\Core\Inference\ReturnSite;
 use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Pipeline\GenerationResult;
+use Docuccino\Laravel\Extensions\IgnoredParametersExtension;
 use Docuccino\Laravel\Tests\Support\TraceScript;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Illuminate\Routing\Router;
@@ -59,6 +68,9 @@ function ignoreParamDocument(): GenerationResult
     $router->get('api/ignored/miscased', [IgnoredParamsController::class, 'miscased']);
     $router->get('api/ignored/nowhere', [IgnoredParamsController::class, 'nowhere']);
     $router->get('api/ignored/contradicted', [IgnoredParamsController::class, 'contradicted']);
+    $router->get('api/ignored/renamed', [IgnoredParamsController::class, 'renamed']);
+    $router->get('api/ignored/repeated', [IgnoredParamsController::class, 'repeated']);
+    $router->get('api/ignored/nameless', [IgnoredParamsController::class, 'nameless']);
 
     return generateDocument();
 }
@@ -124,22 +136,6 @@ it('keeps an ignored parameter out of the document, whichever producer writes it
     ],
 ]);
 
-it('says nothing about an ignore whose name matches no parameter', function (): void {
-    // The class-level `#[IgnoreParam(name: 'per_page')]` matches nothing on any of these actions, which
-    // is how a class-level ignore is ordinarily written — one key some of a controller's actions page by.
-    // A finding here would fire on every action that was never wrong, so there is none.
-    $result = ignoreParamDocument();
-
-    $mentions = array_values(array_filter(
-        $result->diagnostics,
-        static fn (Diagnostic $diagnostic): bool => str_contains($diagnostic->message, 'per_page'),
-    ));
-
-    // Anti-vacuity: the build did raise diagnostics, so an empty haystack is not what proves this.
-    expect($result->diagnostics)->not->toBeEmpty()
-        ->and($mentions)->toBe([]);
-});
-
 it('reads an `in:` in whatever case it was written', function (): void {
     $parameters = ignoreParamParameters(ignoreParamDocument(), '/api/ignored/miscased');
 
@@ -163,4 +159,115 @@ it('reports an `in:` that names no parameter location, and drops nothing for it'
         ->and($reports[0]->help)->toContain('cookie, header, path or query')
         // Nothing was dropped, which is what the report says.
         ->and(ignoreParamParameters($result, '/api/ignored/nowhere'))->toContain(['header', 'X-Trace']);
+});
+
+/*
+ * A subtraction leaves no evidence: a parameter that was never documented and one the ignore removed
+ * produce the same operation, so a name that matched nothing looks exactly like a name that worked and
+ * the author goes on believing the field is hidden. Every row below is one shape of "matched nothing",
+ * against the one shape that matched.
+ */
+
+/**
+ * The `attribute.ignore-param-unmatched` reports one route raised, in the order they were raised.
+ *
+ * @return list<Diagnostic>
+ */
+function ignoreParamUnmatched(GenerationResult $result, string $path): array
+{
+    return array_values(array_filter(
+        $result->diagnostics,
+        static fn (Diagnostic $diagnostic): bool => $diagnostic->code === 'attribute.ignore-param-unmatched'
+            && $diagnostic->routeSignature !== null
+            && str_contains($diagnostic->routeSignature, ltrim($path, '/')),
+    ));
+}
+
+it('reports an ignore whose name matches no parameter, and names what the operation does document', function (string $path, int $reports, array $quotes): void {
+    $result = ignoreParamDocument();
+    $found = ignoreParamUnmatched($result, $path);
+
+    expect($found)->toHaveCount($reports);
+
+    foreach ($found as $diagnostic) {
+        expect($diagnostic->severity)->toBe(Severity::Warning);
+    }
+
+    foreach ($quotes as $quote) {
+        expect($found[0]->message)->toContain($quote);
+    }
+})->with([
+    // The remedy: the name the author wrote, beside the name the document publishes. `trace` was
+    // `trace_id` before the rename, and the message puts the two a character apart.
+    'a name renamed out from under it' => ['/api/ignored/renamed', 1, ['"trace"', 'query:trace_id', 'query:search']],
+    // One mistake written twice is one mistake. A second report would send the reader looking for a
+    // second declaration.
+    'the same declaration twice' => ['/api/ignored/repeated', 1, ['"gone"']],
+    // A name with nothing in it matches nothing in any of the four locations.
+    'an empty name' => ['/api/ignored/nameless', 1, ['#[IgnoreParam(name: "")]']],
+    // The `in:` is the mistake and it has already been reported as that; saying the name matched
+    // nothing too would ask the author to fix the half that was fine.
+    'an `in:` that names no location' => ['/api/ignored/nowhere', 0, []],
+    // Every row of the dataset above this one: a name that matched is silent.
+    'a name that matched' => ['/api/ignored/search', 0, []],
+    'a path segment that matched' => ['/api/ignored/forms/{form}', 0, []],
+    // Two declarations naming ONE parameter, in two spellings that do not dedupe. Both matched, because
+    // both are judged against what stood before either removed anything.
+    'the same parameter named twice, two ways' => ['/api/ignored/paged', 0, []],
+    // A class-level declaration the action opts into: it matched here, so it is silent here.
+    'a class-level parameter an action drops' => ['/api/ignored/bare', 0, []],
+]);
+
+it('says nothing about a class-level ignore an action never documented the name for', function (): void {
+    // The class-level `#[IgnoreParam(name: 'per_page')]` matches nothing on ANY of these actions, and
+    // that is how a class-level ignore is ordinarily written — one key some of a controller's actions
+    // page by. Reporting it per route would fire on every action that was never wrong, so only a
+    // declaration written on the action itself is reported.
+    $result = ignoreParamDocument();
+
+    $mentions = array_values(array_filter(
+        $result->diagnostics,
+        static fn (Diagnostic $diagnostic): bool => str_contains($diagnostic->message, 'per_page'),
+    ));
+
+    // Anti-vacuity: the build did raise this code elsewhere, so an empty haystack is not what proves it.
+    expect(ignoreParamUnmatched($result, '/api/ignored/renamed'))->not->toBeEmpty()
+        ->and($mentions)->toBe([]);
+});
+
+it('reports nothing where every declaration matched', function (): void {
+    // The whole build's count, so a code that started firing on the working rows fails here rather than
+    // passing every row's own assertion.
+    $reports = array_values(array_filter(
+        ignoreParamDocument()->diagnostics,
+        static fn (Diagnostic $diagnostic): bool => $diagnostic->code === 'attribute.ignore-param-unmatched',
+    ));
+
+    expect($reports)->toHaveCount(3);
+});
+
+it('escapes the two values it did not write into the location report', function (): void {
+    // The name and the `in:` are the author's, but a diagnostic message is not only printed: it reaches
+    // `x-docuccino.diagnostics` in the emitted document, where a `jq -r` re-arms an escape sequence that
+    // survived as bytes. The sibling report next door already puts both through `PlainText`.
+    $context = new RouteContext(
+        route: new RouteDescriptor(['GET'], 'api/forms'),
+        actionRef: new ActionRef('', 'App\\C', 'index'),
+        attributes: new AttributeSet([new IgnoreParam(name: "X-Trace\x1b[31m", in: "bo\x07dy")]),
+        engine: new NullTypeEngine,
+        document: new DocumentConfig('default', []),
+    );
+
+    (new IgnoredParametersExtension)->handle(new OperationDraft, $context);
+
+    $reports = array_values(array_filter(
+        $context->components->diagnostics(),
+        static fn (Diagnostic $diagnostic): bool => $diagnostic->code === 'attribute.ignore-param-location',
+    ));
+
+    expect($reports)->toHaveCount(1)
+        ->and($reports[0]->message)->not->toContain("\x1b")
+        ->and($reports[0]->message)->not->toContain("\x07")
+        ->and($reports[0]->message)->toContain('\x1B')
+        ->and($reports[0]->message)->toContain('\x07');
 });

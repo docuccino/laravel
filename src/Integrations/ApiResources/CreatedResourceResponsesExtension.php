@@ -38,17 +38,22 @@ final class CreatedResourceResponsesExtension implements OperationExtension
     public function handle(OperationDraft $operation, RouteContext $context): void
     {
         $resource = $this->singleResourceReturn($context);
-        if ($resource === null
-            || ! $operation->hasResponse('200')
-            || $operation->hasResponse('201')
-            || IgnoredResponses::drops($context, '201')
-        ) {
+        if ($resource === null || ! $operation->hasResponse('200') || $operation->hasResponse('201')) {
             return;
         }
 
         $visitor = new CreatedResourceVisitor;
         $context->trace($visitor);
         if (! $visitor->created) {
+            return;
+        }
+
+        // Below the check, not above it: consulting the attribute is a producer saying "I am about to
+        // write this", and the record it leaves is read as exactly that. Asking earlier would credit
+        // the declaration on every single-resource action that carries one, whether or not the re-home
+        // was ever going to happen — and the credit silences the report that this one dropped nothing.
+        // The trace it now runs first is the price of asking the question truthfully.
+        if (IgnoredResponses::drops($context, '201')) {
             return;
         }
 

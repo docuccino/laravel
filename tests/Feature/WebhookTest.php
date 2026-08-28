@@ -19,6 +19,7 @@ use Docuccino\Laravel\Tests\Fixtures\Webhooks\Collision\BetaClaim;
 use Docuccino\Laravel\Tests\Fixtures\Webhooks\Locality\Anchor\Anchor;
 use Docuccino\Laravel\Tests\Fixtures\Webhooks\Locality\Neighbour\Neighbour;
 use Docuccino\Laravel\Tests\Fixtures\Webhooks\Malformed\Reported;
+use Docuccino\Laravel\Tests\Fixtures\Webhooks\Pinned\InternalOnly;
 use Docuccino\Laravel\Tests\Support\ThrowingTypeEngine;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 
@@ -195,9 +196,31 @@ it('settles two classes claiming one webhook name on the pair, not on which was 
 it('pins a webhook to the documents #[InDocs] names', function (): void {
     bindStubEngine();
 
-    $document = generateDocument(withWebhooksIn('tests/Fixtures/Webhooks/Pinned'))->document->toArray();
+    // The document the pin names has to EXIST for this to be a test of pinning: with `internal`
+    // unconfigured the webhook would be absent because the key names nothing, which is a different fact
+    // and now has a diagnostic of its own.
+    config()->set('docuccino.documents.internal', ['info' => ['title' => 'Internal', 'version' => '1.0.0']]);
 
-    expect(array_keys($document['webhooks']))->toBe(['pinned.everywhere']);
+    $result = generateDocument(withWebhooksIn('tests/Fixtures/Webhooks/Pinned'));
+
+    expect(array_keys($result->document->toArray()['webhooks']))->toBe(['pinned.everywhere'])
+        ->and(diagnosticsCoded($result->diagnostics, 'attribute.in-docs-unknown'))->toBe([]);
+});
+
+it('reports a webhook pinned to a document nobody configured, naming the class', function (): void {
+    bindStubEngine();
+
+    // No `internal` document this time: the webhook is in none of them, and the only evidence is a
+    // `webhooks` map that is one entry short — which reads exactly like a webhook somebody meant to
+    // keep out.
+    $result = generateDocument(withWebhooksIn('tests/Fixtures/Webhooks/Pinned'));
+    $reported = diagnosticsCoded($result->diagnostics, 'attribute.in-docs-unknown');
+
+    expect(array_keys($result->document->toArray()['webhooks']))->toBe(['pinned.everywhere'])
+        ->and($reported)->toHaveCount(1)
+        ->and($reported[0]->message)->toContain('"internal"')
+        // A webhook has no route signature, so the class is what sends the reader to the declaration.
+        ->and($reported[0]->message)->toContain(InternalOnly::class);
 });
 
 it('identifies a webhook operation the way the differ expects to find it', function (): void {
