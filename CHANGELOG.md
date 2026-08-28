@@ -7,6 +7,16 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.11.0
+
+### Features
+
+- report a nested data collection that will be wrapped ([#265](https://github.com/docuccino/docuccino/pull/265))
+
+### Bug fixes
+
+- mark the response headers the framework always sends as required ([#263](https://github.com/docuccino/docuccino/pull/263))
+
 ## v0.10.4
 
 ### Bug fixes
