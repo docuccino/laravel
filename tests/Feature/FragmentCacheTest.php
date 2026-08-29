@@ -516,12 +516,47 @@ it('invalidates a fragment when one of its dependency files is REMOVED', functio
 it('keys fragments per route so distinct routes never collide', function (): void {
     $cache = new FragmentCache(true, sys_get_temp_dir(), 't', 's', 'v');
 
-    $forms = $cache->key('GET /api/forms', 'cfg', ['Ext@1.0']);
-    $widgets = $cache->key('POST /api/widgets', 'cfg', ['Ext@1.0']);
-    $formsOtherExt = $cache->key('GET /api/forms', 'cfg', ['Ext@2.0']);
+    $forms = $cache->key('GET /api/forms', 'doc:default', 'cfg', ['Ext@1.0']);
+    $widgets = $cache->key('POST /api/widgets', 'doc:default', 'cfg', ['Ext@1.0']);
+    $formsOtherExt = $cache->key('GET /api/forms', 'doc:default', 'cfg', ['Ext@2.0']);
 
     expect($forms)->not->toBe($widgets)
         ->and($forms)->not->toBe($formsOtherExt);
+});
+
+it('keys fragments per document so one shaping config under two documents never collides', function (): void {
+    $cache = new FragmentCache(true, sys_get_temp_dir(), 't', 's', 'v');
+
+    // Same route, same extensions, same configHash — and still two different documents, because a
+    // fragment carries ids minted from the document id.
+    expect($cache->key('GET /api/forms', 'doc:public', 'cfg', ['Ext@1.0']))
+        ->not->toBe($cache->key('GET /api/forms', 'doc:public-yaml', 'cfg', ['Ext@1.0']));
+});
+
+it('serves each document its own identities when two documents shape alike', function (): void {
+    bindStubEngine();
+
+    // Two documents whose shaping config is identical: they differ only in where the artifact lands,
+    // which `configHash` excludes on purpose. Their operations are still different nodes — every id is
+    // minted from the document id — so neither may be served the other's fragments.
+    /** @var array<string, mixed> $base */
+    $base = config('docuccino.documents.default');
+    config()->set('docuccino.documents', [
+        'public' => [...$base, 'export' => ['targets' => [['format' => 'json', 'path' => 'docs/openapi.json']]]],
+        'public-yaml' => [...$base, 'export' => ['targets' => [['format' => 'yaml', 'path' => 'docs/openapi.yaml']]]],
+    ]);
+
+    // Cold: `public-yaml` alone in a store of its own.
+    fragmentCacheDir('fragments');
+    $cold = generateDocument(key: 'public-yaml');
+
+    // Warm: an empty store that `public` fills first, then `public-yaml` reads.
+    fragmentCacheDir('fragments');
+    generateDocument(key: 'public');
+    $warm = generateDocument(key: 'public-yaml');
+
+    expect((new UirEmitter)->emit($warm->document))->toBe((new UirEmitter)->emit($cold->document))
+        ->and(diagnosticRecords($warm->diagnostics))->toBe(diagnosticRecords($cold->diagnostics));
 });
 
 it('round-trips a fragment through the store, notes and all', function (): void {

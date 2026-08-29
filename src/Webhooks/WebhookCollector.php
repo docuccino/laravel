@@ -19,6 +19,7 @@ use Docuccino\Core\Support\ConfinedPath;
 use Docuccino\Core\Support\PlainText;
 use Docuccino\Core\TypeGrammar\DocBlockReader;
 use Docuccino\Laravel\Routing\AttributeCollector;
+use Docuccino\Laravel\Support\DeclaredClasses;
 use Docuccino\Laravel\Support\UnknownDocumentPins;
 use ReflectionClass;
 
@@ -84,7 +85,7 @@ final readonly class WebhookCollector
             return [[], [new Diagnostic(
                 severity: Severity::Warning,
                 code: 'webhook.dir-missing',
-                message: sprintf('The configured webhook directory "%s" does not exist.', $configured),
+                message: sprintf('The configured webhook directory "%s" does not exist.', PlainText::of($configured)),
                 help: 'Create it or unset documents.*.webhooks.dir.',
             )]];
         }
@@ -96,7 +97,7 @@ final readonly class WebhookCollector
         // however many webhook classes carry it ({@see UnknownDocumentPins}).
         $pins = new UnknownDocumentPins;
 
-        foreach (WebhookClasses::in($dir) as $class) {
+        foreach (DeclaredClasses::in($dir) as $class) {
             $declaration = $this->declare($class, $document, $diagnostics, $pins);
             if ($declaration !== null) {
                 $declarations[] = $declaration;
@@ -136,7 +137,7 @@ final readonly class WebhookCollector
             $diagnostics[] = new Diagnostic(
                 severity: Severity::Warning,
                 code: 'webhook.name-invalid',
-                message: sprintf('%s carries a #[Webhook] with no name, so it is not in the document — a webhook is published under its name.', $class),
+                message: sprintf('%s carries a #[Webhook] with no name, so it is not in the document — a webhook is published under its name.', PlainText::of($class)),
                 help: 'Give the attribute the name the receiving endpoint is documented under, e.g. #[Webhook(\'invoice.paid\')].',
             );
 
@@ -148,7 +149,7 @@ final readonly class WebhookCollector
             $diagnostics[] = new Diagnostic(
                 severity: Severity::Warning,
                 code: 'webhook.method-unknown',
-                message: sprintf('The webhook "%s" asks for the method "%s", which OpenAPI has no path-item member for; it is documented as POST.', $name, $webhook->method),
+                message: sprintf('The webhook "%s" asks for the method "%s", which OpenAPI has no path-item member for; it is documented as POST.', PlainText::of($name), PlainText::of($webhook->method)),
                 help: sprintf('Use one of %s.', implode(', ', PathItem::METHODS)),
             );
             $method = 'post';
@@ -205,11 +206,11 @@ final readonly class WebhookCollector
                 code: 'webhook.name-collision',
                 message: sprintf(
                     'The webhook "%s" is claimed by both %s and %s for %s; %s is the one in the document.',
-                    $declaration->name,
-                    $winner->class,
-                    $loser->class,
-                    strtoupper($declaration->method),
-                    $winner->class,
+                    PlainText::of($declaration->name),
+                    PlainText::of($winner->class),
+                    PlainText::of($loser->class),
+                    strtoupper(PlainText::of($declaration->method)),
+                    PlainText::of($winner->class),
                 ),
                 routeSignature: $declaration->signature(),
                 help: 'Give one of them a name of its own — a webhook name is the contract a consumer subscribes to.',

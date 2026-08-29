@@ -24,10 +24,11 @@ use SplFileInfo;
  * else would be a second opinion about what a build depends on, and the two would drift.
  *
  * The rest is what invalidates every operation rather than one: config, route definitions, the
- * narrative content tree, overlay files, the webhook directory, the lock file the build fingerprint
- * digests, and the engine's own PHPStan config. Those are watched as ROOTS rather than as files, so a
- * route file, a content page or a webhook class that did not exist when the session started still
- * registers as a change — until a thing has a fragment behind it, the operation half cannot see it.
+ * narrative content tree, overlay files, the webhook and version-change directories, the lock file the
+ * build fingerprint digests, and the engine's own PHPStan config. Those are watched as ROOTS rather
+ * than as files, so a route file, a content page or a webhook class that did not exist when the session
+ * started still registers as a change — until a thing has a fragment behind it, the operation half
+ * cannot see it.
  *
  * Export targets are subtracted from all of it. A build writes those, so watching them would see its
  * own output and rebuild forever.
@@ -89,6 +90,11 @@ final readonly class WatchSet
             $webhooks = $config->webhooksDir();
             if ($webhooks !== null && $webhooks !== '') {
                 $roots[] = Paths::absolute($webhooks, $this->basePath);
+            }
+
+            $changes = $config->apiVersionChangesDir();
+            if ($changes !== null && $changes !== '') {
+                $roots[] = Paths::absolute($changes, $this->basePath);
             }
 
             foreach ($config->overlays as $pattern) {

@@ -10,10 +10,10 @@ use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Extensions\Contracts\RouteResolver;
+use Docuccino\Core\Support\Glob;
 use Docuccino\Laravel\Support\UnknownDocumentPins;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
-use Illuminate\Support\Str;
 
 /**
  * The built-in {@see RouteResolver}: turns the Laravel router into {@see RouteDescriptor}s (design
@@ -225,16 +225,14 @@ final class LaravelRouteResolver implements RouteResolver
     }
 
     /**
+     * The include/exclude wildcards, read by the grammar the whole product reads a wildcard by. It was
+     * `Str::is` and still means exactly that — {@see Glob} is that grammar written where core can reach
+     * it, so a version change's operation scope globs the way a route filter does.
+     *
      * @param  list<string>  $patterns
      */
     private function matchesAny(string $path, array $patterns): bool
     {
-        foreach ($patterns as $pattern) {
-            if (Str::is($pattern, $path)) {
-                return true;
-            }
-        }
-
-        return false;
+        return Glob::matchesAny($patterns, $path);
     }
 }

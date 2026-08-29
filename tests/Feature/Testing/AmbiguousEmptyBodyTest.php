@@ -16,7 +16,7 @@ use PHPUnit\Framework\AssertionFailedError;
  */
 
 afterEach(function (): void {
-    @unlink(sys_get_temp_dir().'/docuccino-contract-'.getmypid().'.uir.json');
+    @unlink(workbenchContractPath());
     ApiContract::reset();
 });
 

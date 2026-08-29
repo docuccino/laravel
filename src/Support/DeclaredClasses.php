@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Docuccino\Laravel\Webhooks;
+namespace Docuccino\Laravel\Support;
 
 use FilesystemIterator;
 use RecursiveDirectoryIterator;
@@ -11,7 +11,9 @@ use SplFileInfo;
 
 /**
  * The classes declared in the `*.php` files under a directory, read from the source rather than from
- * an autoloader, so a file the app never loads is still discovered.
+ * an autoloader, so a file the app never loads is still discovered. Both directory-scanning
+ * declarations use it — `#[Webhook]` classes and API version changes — which is why it is named for
+ * what it finds rather than for either caller.
  *
  * Files are visited in sorted order and the answer is sorted by FQCN, so nothing downstream can
  * inherit the filesystem's enumeration order. Tokenising is the whole job — `Foo::class` and
@@ -19,7 +21,7 @@ use SplFileInfo;
  *
  * @internal
  */
-final class WebhookClasses
+final class DeclaredClasses
 {
     /**
      * @return list<class-string> declared classes that are loadable, sorted

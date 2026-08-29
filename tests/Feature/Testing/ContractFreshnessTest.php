@@ -186,5 +186,5 @@ it('fails an example that disagrees with the schema beside it', function (): voi
 
     throw new RuntimeException('the example assertion should have failed');
 })->after(function (): void {
-    @unlink(sys_get_temp_dir().'/docuccino-contract-'.getmypid().'.uir.json');
+    @unlink(workbenchContractPath());
 });

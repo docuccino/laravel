@@ -8,6 +8,7 @@ use Docuccino\Core\Extensions\Context\RepresentationPolicy;
 use Docuccino\Core\Extensions\Schema\EnumDecoration;
 use Docuccino\Laravel\Integrations\Support\PaginatorPageParameter;
 use Docuccino\Laravel\Integrations\Support\QueryParameterSpec;
+use Docuccino\Laravel\Support\ListValueNames;
 
 /**
  * Turns recovered {@see QueryBuilderFacts} into query-parameter specs. The facts themselves are

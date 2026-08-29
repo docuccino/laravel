@@ -31,6 +31,17 @@ return [
 
         'default' => [
 
+            // Declares that this document IS an API version: the one below is `info.version`, every
+            // operation publishes the header a client pins a version with, and every change declared
+            // under `changes.dir` that shipped AFTER this version is applied in reverse to derive the
+            // older shape. Absent means the document is not a version at all.
+            // 'api_version' => [
+            //     // Where the #[ApiVersionChange] classes live, relative to the base path.
+            //     'changes' => ['dir' => 'app/Api/Versions'],
+            //     // The request header the version enum is published on.
+            //     'header' => 'X-Api-Version',
+            // ],
+
             // The OpenAPI `info` object. Any other OAS info field (contact, license…) passes through.
             'info' => [
                 'title' => 'API Documentation',
@@ -147,7 +158,8 @@ return [
                 // ],
             ],
 
-            // The policy `docuccino:diff --enforce` holds a changeset to.
+            // The policy `docuccino:diff --enforce` holds a changeset to. It also names the order two
+            // versions are in, which is the order an `api_version` document applies its changes in.
             'versioning' => 'none', // none | semver | date
 
             // Per-integration switches and knobs. Every integration is on as soon as its package is

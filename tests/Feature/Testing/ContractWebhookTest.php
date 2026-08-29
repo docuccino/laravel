@@ -18,7 +18,7 @@ use Workbench\App\Webhooks\FormSubmitted;
  */
 
 afterEach(function (): void {
-    @unlink(sys_get_temp_dir().'/docuccino-contract-'.getmypid().'.uir.json');
+    @unlink(workbenchContractPath());
     ApiContract::reset();
 });
 
@@ -297,7 +297,7 @@ it('says a 3.0 artifact cannot carry webhooks rather than that the webhook is un
     workbenchWebhookContract();
 
     // The same build, downlevelled: 3.0 defines no `webhooks` member, so every one of them was dropped.
-    $path = sys_get_temp_dir().'/docuccino-contract-'.getmypid().'.uir.json';
+    $path = workbenchContractPath();
     file_put_contents($path, (new OpenApi30DownlevelEmitter)->emit(generateDocument(static function (array $raw): array {
         $raw['webhooks'] = ['dir' => 'workbench/app/Webhooks'];
 

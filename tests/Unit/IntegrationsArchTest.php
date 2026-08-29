@@ -131,6 +131,12 @@ arch('built-in integrations consume only the public extension surface')
         // extension may not import an integration, so the statement lives under Laravel\Support. This
         // widening was signed off by the maintainer; allow-list entries are never added without that.
         'Docuccino\Laravel\Support\ErrorComponentDiagnostic',
+        // And again: the ONE minting of SDK member names for a published enum's values. The QB
+        // allow-lists and the set of API versions a request may pin are both enums of strings no
+        // generator could name a constant after, and a second minting is how one of them starts
+        // renaming a neighbour when a value is added. Versioning may not import an integration, so the
+        // rule lives under Laravel\Support rather than being written twice.
+        'Docuccino\Laravel\Support\ListValueNames',
     ]);
 
 arch('built-in integrations never reach into core internals or adapter wiring')
@@ -161,6 +167,6 @@ arch('adapter built-in extensions never reach into integrations')
     ->expect('Docuccino\Laravel\Extensions')
     ->not->toUse('Docuccino\Laravel\Integrations');
 
-arch('routing, pipeline and support wiring never reach into integrations')
-    ->expect(['Docuccino\Laravel\Routing', 'Docuccino\Laravel\Pipeline', 'Docuccino\Laravel\Support'])
+arch('routing, pipeline, versioning and support wiring never reach into integrations')
+    ->expect(['Docuccino\Laravel\Routing', 'Docuccino\Laravel\Pipeline', 'Docuccino\Laravel\Support', 'Docuccino\Laravel\Versioning'])
     ->not->toUse('Docuccino\Laravel\Integrations');

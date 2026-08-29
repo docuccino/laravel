@@ -113,12 +113,27 @@ it('watches nothing for a configured path no filesystem call can accept', functi
     config()->set('docuccino.documents.default.overlays', ["resources\0/overlays/*.yaml"]);
     config()->set('docuccino.documents.default.content.dir', "resources\0/docs");
     config()->set('docuccino.documents.default.webhooks.dir', "app\0/Webhooks");
+    config()->set('docuccino.documents.default.api_version.changes.dir', "app\0/Api/Versions");
 
     $roots = $this->watched->documentRoots(['default']);
 
     expect($roots)->toContain($this->fixture->path('config'))
         ->and(array_filter($roots, static fn (string $root): bool => str_contains($root, "\0")))->toBe([])
         ->and($this->watched->snapshot($roots))->toBeArray();
+});
+
+it('adds the version-changes directory, so a change written mid-session registers', function (): void {
+    mkdir($this->fixture->path('app/Api/Versions'), 0755, true);
+    config()->set('docuccino.documents.default.api_version.changes.dir', 'app/Api/Versions');
+
+    $roots = $this->watched->documentRoots(['default']);
+    expect($roots)->toContain($this->fixture->path('app/Api/Versions'));
+
+    $before = $this->watched->snapshot($roots);
+    file_put_contents($this->fixture->path('app/Api/Versions/TotalReplacedAmount.php'), '<?php');
+
+    expect(WatchSet::changed($before, $this->watched->snapshot($roots)))
+        ->toBe([$this->fixture->path('app/Api/Versions/TotalReplacedAmount.php')]);
 });
 
 it('adds the webhook directory, and as a directory so a class created mid-session registers', function (): void {

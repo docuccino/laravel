@@ -1,0 +1,17 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Docuccino\Laravel\Tests\Fixtures\Versioning\ScopedNowhere;
+
+use Docuccino\Attributes\Versioning\ApiVersionChange;
+use Docuccino\Attributes\Versioning\AppliesTo;
+use Docuccino\Attributes\Versioning\RenamedResponseField;
+use Workbench\App\Data\FormData;
+
+/** The route this was scoped to has been renamed since, so the scope names nothing any more. */
+#[ApiVersionChange(since: '2026-09-01', description: 'A form publishes `title` where it published `name`.')]
+#[AppliesTo('GET /api/forms-as-they-were-called-then')]
+#[AppliesTo('')]
+#[RenamedResponseField(schema: FormData::class, from: 'name', to: 'title')]
+final class RenamedTitleOnARouteThatMoved {}

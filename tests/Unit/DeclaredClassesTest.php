@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
+use Docuccino\Laravel\Support\DeclaredClasses;
 use Docuccino\Laravel\Tests\Fixtures\Webhooks\Scan\Nested\Deep;
 use Docuccino\Laravel\Tests\Fixtures\Webhooks\Scan\Payload;
-use Docuccino\Laravel\Webhooks\WebhookClasses;
 
 /**
- * The source scan behind webhook discovery. It answers a directory with the classes it declares, and
- * the answer must be a function of what is written there — never of the order the filesystem hands
- * the files over.
+ * The source scan behind both directory-scanning declarations — `#[Webhook]` classes and API version
+ * changes. It answers a directory with the classes it declares, and the answer must be a function of
+ * what is written there — never of the order the filesystem hands the files over.
  */
 beforeEach(function (): void {
-    $this->scanned = WebhookClasses::in(dirname(__DIR__).'/Fixtures/Webhooks/Scan');
+    $this->scanned = DeclaredClasses::in(dirname(__DIR__).'/Fixtures/Webhooks/Scan');
 });
 
 it('answers the classes a directory tree declares, sorted and namespace-qualified', function (): void {

@@ -69,6 +69,7 @@ function documentFrom(array $raw, string $basePath = '/checkout/one'): DocumentC
 
 /** Path-like keys that SHAPE the document, so they are digested by `hash()`. */
 dataset('pathKeys', [
+    'api_version.changes.dir' => ['api_version.changes.dir', 'app/Api/Versions'],
     'content.dir' => ['content.dir', 'resources/docs/api'],
     'coverage.log' => ['coverage.log', 'storage/docuccino/coverage'],
     'examples.recordings' => ['examples.recordings', 'docs/recordings'],
@@ -93,6 +94,7 @@ dataset('destinationKeys', [
 function pathKeyRows(): array
 {
     return [
+        'api_version.changes.dir' => ['api_version.changes.dir', 'app/Api/Versions'],
         'content.dir' => ['content.dir', 'resources/docs/api'],
         'coverage.log' => ['coverage.log', 'storage/docuccino/coverage'],
         'examples.recordings' => ['examples.recordings', 'docs/recordings'],
@@ -112,7 +114,7 @@ it('covers every path-like key this class knows with a dataset row', function ()
     $keys = (array) (new ReflectionClass(ConfigPaths::class))->getConstant('PATH_KEYS');
     $rows = array_values(pathKeyRows());
 
-    expect($keys)->toHaveCount(8);
+    expect($keys)->toHaveCount(9);
 
     foreach (array_keys($keys) as $key) {
         if ($key === 'export.targets') {

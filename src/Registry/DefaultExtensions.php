@@ -44,6 +44,7 @@ use Docuccino\Laravel\Integrations\ProblemDetails\ProblemDetailsIntegration;
 use Docuccino\Laravel\Integrations\Support\AuthConfigDigestContributor;
 use Docuccino\Laravel\Integrations\Validation\ValidationIntegration;
 use Docuccino\Laravel\Routing\LaravelRouteResolver;
+use Docuccino\Laravel\Versioning\ApiVersionTransformer;
 
 /**
  * The built-in extension set, dogfooding the public API: everything here implements only the core
@@ -136,6 +137,10 @@ final class DefaultExtensions
             // The only document transformer that moves a byte, so everything reading the finished
             // document comes after it.
             SharedErrorResponses::class,
+            // Derives the API version this document IS, after the last producer of bytes and before the
+            // lints, so they read what will be emitted. A document declaring no `api_version` is not a
+            // version and this moves nothing.
+            ApiVersionTransformer::class,
             // The document lints. All diagnostics-only, and all pinned to Priorities::LAST so they read
             // what will be emitted — this list's order is not what settles that, the attribute is.
             SensitiveFieldLint::class,

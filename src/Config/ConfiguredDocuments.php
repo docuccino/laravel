@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Config;
 
+use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Support\Hydrate;
+use Docuccino\Core\Versioning\VersionOrder;
 
 /**
  * The `docuccino.documents` bag: which documents this application configures, and the raw entry for
@@ -43,6 +45,33 @@ final class ConfiguredDocuments
             static fn (int|string $key): string => (string) $key,
             array_keys($this->all()),
         );
+    }
+
+    /**
+     * Every version the application configures, sorted — the closed set a version header enumerates, read
+     * off the documents themselves so there is no second list to keep in step with them. A document that
+     * declares `api_version` and states no version of its own contributes nothing: its own build says so.
+     *
+     * Sorted by {@see VersionOrder}, never bytewise: `1.10.0` before `1.9.0` is the reading the whole of
+     * versioning exists to replace, and publishing it in the enum a consumer reads would be that reading
+     * shipped in the artifact.
+     *
+     * @return list<string>
+     */
+    public function apiVersions(): array
+    {
+        $versions = [];
+        foreach ($this->all() as $entry) {
+            // What makes a document a version, and what its version IS, are DocumentConfig's rules; asking
+            // it is what keeps the enum and the document that publishes it saying the same thing.
+            $version = DocumentConfig::statedVersion(Hydrate::map($entry));
+
+            if ($version !== null) {
+                $versions[$version] = true;
+            }
+        }
+
+        return VersionOrder::sorted(array_keys($versions));
     }
 
     /** Whether `$key` names a configured document. */

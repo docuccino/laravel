@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Docuccino\Attributes\Group;
+use Docuccino\Attributes\Versioning\ApiVersionChange;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Laravel\Tests\Fixtures\Attributes\AnonymousThrowController;
 use Docuccino\Laravel\Tests\Fixtures\Attributes\InheritingController;
@@ -107,6 +108,25 @@ it('names a closure route\'s site relatively, since a closure has no name but it
 
     expect($message)->toContain('The #[Group] on tests/Feature/AttributeInheritanceTest.php::{closure} ')
         ->and($message)->not->toContain(dirname(__DIR__, 4));
+});
+
+it('names a sub-namespaced attribute the way the author wrote it', function (): void {
+    // The report has to name something the reader can find in their file. An attribute under
+    // `Docuccino\Attributes\Versioning` is imported and then written short, so the message says
+    // `#[ApiVersionChange]` — spelling the namespace back at them names nothing they typed.
+    [, $diagnostics] = ($this->builtDocument)(static function (Router $router): void {
+        $router->get(
+            'api/zz-attr-versioning-malformed',
+            /* @phpstan-ignore-next-line argument.type — the wrong argument type IS the fixture */
+            #[ApiVersionChange(since: 123, description: 'Not a version.')]
+            static fn (): array => [],
+        );
+    });
+
+    $message = diagnosticsCoded($diagnostics, 'attribute.unreadable')[0]->message ?? '';
+
+    expect($message)->toContain('The #[ApiVersionChange] on ')
+        ->and($message)->not->toContain('Versioning\\ApiVersionChange');
 });
 
 it('reports a malformed CLASS-level attribute, naming the class it was written on', function (): void {

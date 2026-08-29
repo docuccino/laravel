@@ -113,8 +113,10 @@ final class DocumentGenerator
         [$content, $contentDiagnostics] = $this->contentCompiler->compile($document);
         $bag->addAll($contentDiagnostics);
 
-        // Document config, booted-app facts and the build environment the engine runs in: the three
-        // document-level inputs every route's fragment-cache key carries.
+        // Document config, booted-app facts and the build environment the engine runs in: three of the
+        // document-level inputs every route's fragment-cache key carries. The fourth is $documentId,
+        // which the key takes separately — a fragment holds ids minted from it, and two documents can
+        // legitimately hash their shaping config alike ({@see FragmentCache::key()}).
         $configHash = $document->hash()
             .'|env:'.$this->environmentDigest($resolved)
             .'|build:'.$this->fingerprint->digest($engine);
@@ -306,7 +308,7 @@ final class DocumentGenerator
 
         // The method is part of the cache key: GET query vs POST body are different fragments with
         // different operation identities.
-        $cacheKey = $this->cache->key($descriptor->cacheSignature().'|'.$method, $configHash, $extensionClasses);
+        $cacheKey = $this->cache->key($descriptor->cacheSignature().'|'.$method, $documentId, $configHash, $extensionClasses);
         $cached = $this->cache->get($cacheKey);
         if ($cached !== null) {
             // Warm hit: restore components without waking the type engine (design §10).
@@ -383,7 +385,7 @@ final class DocumentGenerator
         string $configHash,
         array $extensionClasses,
     ): ?OperationFragment {
-        $cacheKey = $this->cache->key($webhook->cacheSignature(), $configHash, $extensionClasses);
+        $cacheKey = $this->cache->key($webhook->cacheSignature(), $documentId, $configHash, $extensionClasses);
         $cached = $this->cache->get($cacheKey);
         if ($cached !== null) {
             return $this->restoreComponents($cached, $components);

@@ -10,7 +10,7 @@ use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\AssertionFailedError;
 
 afterEach(function (): void {
-    @unlink(sys_get_temp_dir().'/docuccino-contract-'.getmypid().'.uir.json');
+    @unlink(workbenchContractPath());
     ApiContract::reset();
 });
 
@@ -234,7 +234,7 @@ it('says how to produce an artifact that is not there', function (): void {
 });
 
 it('says so when the artifact is not a JSON document', function (): void {
-    $path = sys_get_temp_dir().'/docuccino-contract-'.getmypid().'.uir.json';
+    $path = workbenchContractPath();
     file_put_contents($path, 'not json at all');
     ApiContract::using($path);
 

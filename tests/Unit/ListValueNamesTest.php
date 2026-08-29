@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Docuccino\Laravel\Integrations\QueryBuilder\ListValueNames;
+use Docuccino\Laravel\Support\ListValueNames;
 
 /**
  * Dataset coverage over the SDK member-name minting: every shape a sort/include value takes, the

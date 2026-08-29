@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Docuccino\Laravel\Integrations\QueryBuilder;
+namespace Docuccino\Laravel\Support;
 
 /**
- * Mints the SDK member names for a sort/include enum's values. A name is a pure function of its
+ * Mints the SDK member names for a published enum's values — a Query Builder sort/include allow-list,
+ * the set of API versions a request may pin. A name is a pure function of its
  * value — `-total` → `TotalDesc`, `friends.pact` → `FriendsPact` — so adding a value never renames
  * a neighbour. Two values whose pretty names collide fall back to a strict spelling that encodes
  * the raw distinction (`FriendsDotPact`), and to a content-derived suffix in the last resort;

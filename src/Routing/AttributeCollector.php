@@ -11,6 +11,7 @@ use Docuccino\Core\Extensions\Context\AttributeSet;
 use Docuccino\Core\Provenance\ClassNames;
 use Docuccino\Core\Provenance\MessagePaths;
 use Docuccino\Core\Provenance\RootRelativeSourcePathResolver;
+use Docuccino\Core\Support\Fqcn;
 use ReflectionClass;
 use ReflectionFunctionAbstract;
 use Throwable;
@@ -107,7 +108,7 @@ final class AttributeCollector
             code: 'attribute.unreadable',
             message: sprintf(
                 'The #[%s] on %s could not be instantiated and was ignored.',
-                substr($attribute, strlen(self::NAMESPACE_PREFIX)),
+                Fqcn::short($attribute),
                 $this->messagePaths->relative($site),
             ),
             routeSignature: $routeSignature,

@@ -130,7 +130,7 @@ final readonly class DocumentConfigFactory
         }
 
         $info['title'] = is_string($info['title'] ?? null) ? $info['title'] : 'API Documentation';
-        $info['version'] = Hydrate::stringOr($info['version'] ?? '1.0.0', '1.0.0');
+        $info['version'] = Hydrate::stringOr($info['version'] ?? DocumentConfig::DEFAULT_VERSION, DocumentConfig::DEFAULT_VERSION);
 
         return $info;
     }
