@@ -46,7 +46,7 @@ final class ValidationRequestExtension implements OperationExtension
         }
 
         $normalized = $this->normalizer->normalize($rules);
-        RuleSetNormalizer::report($normalized, $context);
+        RuleSetNormalizer::report($normalized, $context, $sourceClass);
 
         $result = $context->validation()->convert($this->ordering->order($normalized), $context->converter());
         if ($result->isEmpty()) {

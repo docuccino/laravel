@@ -486,7 +486,7 @@ it('stops reporting a container as undecided only for a declaration that settles
         extensions: new ResolvedExtensions,
     );
 
-    RuleSetNormalizer::report((new RuleSetNormalizer)->normalize($rules), $context);
+    RuleSetNormalizer::report((new RuleSetNormalizer)->normalize($rules), $context, null);
 
     $fields = array_map(
         static fn (Diagnostic $d): string => (string) preg_replace('/^Validation field "([^"]+)".*$/', '$1', $d->message),
@@ -586,7 +586,7 @@ it('stands the note down only where a body declaration can reach the field', fun
         extensions: new ResolvedExtensions,
     );
 
-    RuleSetNormalizer::report((new RuleSetNormalizer)->normalize($rules), $context);
+    RuleSetNormalizer::report((new RuleSetNormalizer)->normalize($rules), $context, null);
 
     $fields = array_map(
         static fn (Diagnostic $d): string => (string) preg_replace('/^Validation field "([^"]+)".*$/', '$1', $d->message),

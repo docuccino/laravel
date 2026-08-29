@@ -11,6 +11,7 @@ use Docuccino\Core\Extensions\BuiltIn\DefaultTypeMappers;
 use Docuccino\Core\Extensions\BuiltIn\EnumSchema;
 use Docuccino\Core\Extensions\BuiltIn\SharedErrorResponses;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
+use Docuccino\Core\Extensions\Schema\UnusableBodyDeclarations;
 use Docuccino\Core\Lint\ExampleSchemaLint;
 use Docuccino\Core\Lint\MissingDescriptionLint;
 use Docuccino\Core\Lint\OperationIdStyleLint;
@@ -146,6 +147,10 @@ final class DefaultExtensions
             UnpinnedRedirectLint::class,
             // Diagnostics-only too: what is wrong with the committed recordings, said once per document.
             RecordedExampleAudit::class,
+            // Both a note collector and a document transformer, so it is ONE registration: a
+            // `#[BodyParameter]` on a request type is unusable at a read verb and load-bearing at a
+            // write one, and only the whole route set can tell which a type has.
+            UnusableBodyDeclarations::class,
         ];
     }
 }

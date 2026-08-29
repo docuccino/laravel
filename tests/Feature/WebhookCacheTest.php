@@ -6,8 +6,10 @@ use Docuccino\Core\Inference\ClassMetadata;
 use Docuccino\Core\Inference\DType\ScalarT;
 use Docuccino\Core\Inference\PropertyMetadata;
 use Docuccino\Core\Inference\TypeEngine;
+use Docuccino\Laravel\Facades\Docuccino;
 use Docuccino\Laravel\Tests\Fixtures\Webhooks\Locality\Anchor\Anchor;
 use Docuccino\Laravel\Tests\Fixtures\Webhooks\Locality\Neighbour\Neighbour;
+use Docuccino\Laravel\Tests\Support\CollectedRouteNotes;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Illuminate\Routing\Router;
 use Workbench\App\Http\Controllers\FormController;
@@ -112,4 +114,50 @@ it('keeps a webhook to itself when an unrelated one is added beside it', functio
     // …and the anchor's node and every component it reaches are byte-identical across the two.
     expect(json_encode([$afterNode, referencedComponents($beside, $afterNode)], JSON_THROW_ON_ERROR))
         ->toBe(json_encode([$beforeNode, referencedComponents($alone, $beforeNode)], JSON_THROW_ON_ERROR));
+});
+
+/**
+ * A webhook travels as a fragment, so everything a fragment carries has to be drained where a webhook is
+ * consumed exactly as it is where a route is. Diagnostics always were; NOTES were not, and the loop that
+ * built webhooks quietly dropped them.
+ *
+ * Nothing writes a note while a webhook is BUILT today — that path has no `RouteContext` and so no note
+ * bag — which is precisely why the drop could not be noticed: a member that is always empty is a member
+ * nothing misses until the first producer arrives. What a cached fragment carries is the shape that does
+ * exist, and it is the one that would have failed silently: the entry is restored whole, notes included,
+ * and a loop that never reads them throws them away on every warm build.
+ */
+it('drains a warm webhook fragment\'s notes into its collector', function (): void {
+    $dir = fragmentCacheDir('warm');
+    config()->set('docuccino.documents.default.webhooks.dir', 'workbench/app/Webhooks');
+    app()->instance(TypeEngine::class, WorkbenchEngine::make());
+
+    // Registered ahead of BOTH builds. The resolved extension set is digested into the fragment-cache
+    // key, so a collector added between them would key the second build differently and make it a cold
+    // one — which would pass this row for the wrong reason.
+    $collector = new CollectedRouteNotes('test.webhook-delivery');
+    Docuccino::extend($collector);
+
+    generateDocument();
+
+    $seeded = 0;
+    foreach (glob($dir.'/*.json') ?: [] as $file) {
+        /** @var array<string, mixed> $entry */
+        $entry = json_decode((string) file_get_contents($file), true, flags: JSON_THROW_ON_ERROR);
+        if (($entry['fragment']['webhook'] ?? false) !== true || ($entry['fragment']['path'] ?? null) !== 'form.submitted') {
+            continue;
+        }
+
+        $entry['fragment']['notes'] = ['test.webhook-delivery' => ['payload' => ['FormSubmitted']]];
+        file_put_contents($file, json_encode($entry, JSON_THROW_ON_ERROR));
+        $seeded++;
+    }
+
+    // A seed that matched no entry would leave the assertion below agreeing with a build that never
+    // restored anything.
+    expect($seeded)->toBe(1);
+
+    generateDocument();
+
+    expect($collector->all())->toBe(['payload' => ['FormSubmitted']]);
 });

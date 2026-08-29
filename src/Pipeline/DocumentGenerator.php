@@ -149,6 +149,12 @@ final class DocumentGenerator
             if ($fragment !== null) {
                 $fragments[] = $fragment;
                 $bag->addAll($fragment->diagnostics);
+                // Everything a fragment carries is drained the same way here as in the route loop
+                // above. A webhook has no RouteContext, so nothing writes a note while one is BUILT
+                // today — but a fragment restored from the cache carries whatever it was stored with,
+                // and a consumer that reads one of an object's members and not the other is where the
+                // next producer's finding goes missing without anything failing.
+                $this->collectNotes($fragment, $resolved);
             }
         }
 
@@ -201,10 +207,11 @@ final class DocumentGenerator
      * back warm alike. That is what makes the summary a document transformer publishes identical either
      * way: nothing writes to a collector while a route builds, so a warm hit is not a missing write.
      *
-     * Called in route order, and each fragment's notes are already sorted, so the aggregate a collector
-     * ends up with is a function of the route set and not of anything's encounter order. Notes for a
-     * channel nothing collects are simply dropped — an integration disabled since the fragment was cached
-     * contributes nothing, which is what disabling it means.
+     * Called for every fragment the document is assembled from — routes in route order, then webhooks in
+     * theirs — and each fragment's notes are already sorted, so the aggregate a collector ends up with is
+     * a function of the fragment set and not of anything's encounter order. Notes for a channel nothing
+     * collects are simply dropped — an integration disabled since the fragment was cached contributes
+     * nothing, which is what disabling it means.
      */
     private function collectNotes(OperationFragment $fragment, ResolvedExtensions $resolved): void
     {

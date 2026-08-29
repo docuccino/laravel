@@ -222,7 +222,9 @@ function undecidedMessages(array $fields): array
         document: new DocumentConfig('default', []),
     );
 
-    RuleSetNormalizer::report($set, $context);
+    // No source class: these rules are an inline `validate()` call's, so the action bag is every
+    // declaration site there is.
+    RuleSetNormalizer::report($set, $context, null);
 
     return array_values(array_map(
         static fn ($d): string => $d->code.': '.$d->message,
@@ -246,4 +248,24 @@ it('reports the field whose container it could not decide, and only that field',
         ->and($messages[0])->toStartWith('validation.container-undecided: ')
         ->and($messages[0])->toContain('"meta"')
         ->and($messages[0])->toContain('documented as either');
+});
+
+/**
+ * One reader for both declaration sites is only worth what stops a caller reading half of it. A caller
+ * that named no source class would weigh the action bag alone and ask for rules a declaration on the
+ * TYPE had already answered — a note fired where nothing can be done, in a published document. So the
+ * argument is required, and this is the call that proves PHP refuses it.
+ */
+it('refuses a caller that says nothing about a source class', function (): void {
+    $context = new RouteContext(
+        route: new RouteDescriptor(['POST'], 'api/nodes'),
+        actionRef: new ActionRef('', 'App\\C', 'store'),
+        attributes: new AttributeSet,
+        engine: new StubTypeEngine,
+        document: new DocumentConfig('default', []),
+    );
+
+    /* @phpstan-ignore-next-line arguments.count — the missing argument IS the test */
+    expect(static fn () => RuleSetNormalizer::report(new RuleSet(['meta' => [ValidationRule::of('array')]]), $context))
+        ->toThrow(ArgumentCountError::class);
 });
