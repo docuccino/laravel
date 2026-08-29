@@ -1,13 +1,18 @@
 {
     "name": "docuccino/laravel",
-    "description": "Laravel adapter for Docuccino: route discovery, extension registry, pipeline and artisan export.",
+    "description": "Generate OpenAPI 3.2 and 3.1 documentation for a Laravel API automatically, from the real types in your code.",
     "type": "library",
     "keywords": [
         "openapi",
+        "openapi-generator",
         "api-documentation",
+        "documentation-generator",
         "laravel",
-        "uir",
+        "laravel-openapi",
+        "api-docs",
+        "rest-api",
         "swagger",
+        "uir",
         "scramble-alternative"
     ],
     "homepage": "https://docuccino.app",
