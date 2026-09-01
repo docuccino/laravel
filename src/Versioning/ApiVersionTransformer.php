@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Versioning;
 
-use Docuccino\Attributes\Versioning\RenamedResponseField;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Document\DocumentGraph;
 use Docuccino\Core\Document\PathItem;
-use Docuccino\Core\Document\RenamedFieldExamples;
 use Docuccino\Core\Extensions\Context\DocumentContext;
 use Docuccino\Core\Extensions\Context\RepresentationPolicy;
 use Docuccino\Core\Extensions\Contracts\DocumentTransformer;
@@ -105,10 +103,12 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
         // The code is the newest version, so an older document is the code with every LATER change
         // undone — newest first, each handing the shape of the version below it to the next.
         foreach ($set->after($version) as $change) {
-            foreach ($change->renames as $rename) {
+            // In the order {@see VerbOrder} settles, which is the whole of what "the author's written
+            // order" comes to once an AttributeSet has answered per type.
+            foreach ($change->verbs as $verb) {
                 $doc = $change->selectors === []
-                    ? $this->applyRename($doc, $rename, $change, $context, $said)
-                    : $this->applyScopedRename($doc, $rename, $change, $context, $said);
+                    ? $this->apply($doc, $verb, $change, $context, $said)
+                    : $this->applyScoped($doc, $verb, $change, $context, $said);
             }
         }
 
@@ -116,45 +116,45 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
     }
 
     /**
-     * Renames one response field back to what versions before the change published, wherever the
-     * document publishes that schema — the hoisted component and any inline copy of it alike, matched
-     * by the schema's own identity rather than by the property name, so a `title` on an unrelated
-     * schema is never touched.
+     * Applies one verb wherever the document publishes the schema it names — the hoisted component and
+     * any inline copy of it alike, matched by the schema's own identity rather than by the property
+     * name, so a `title` on an unrelated schema is never touched.
      *
      * @param  array<string, mixed>  $doc
      * @param  array<string, true>  $said
      * @return array<string, mixed>
      */
-    private function applyRename(array $doc, RenamedResponseField $rename, VersionChange $change, DocumentContext $context, array &$said): array
+    private function apply(array $doc, VersionVerb $verb, VersionChange $change, DocumentContext $context, array &$said): array
     {
-        $id = $this->identity->namedSchemaId(ltrim($rename->schema, '\\'));
+        $id = $verb->identity($this->identity);
 
-        // The examples first, guided by the schemas as the code publishes them: renaming the schema
-        // first would leave the walk looking for a property that has already moved.
-        [$rewritten, $dropped] = RenamedFieldExamples::inDocument($doc, $id, $rename->from, $rename->to);
+        // The examples first, guided by the schemas as the code publishes them: moving a property
+        // first would leave the walk looking for one that has already moved.
+        [$rewritten, $dropped] = $verb->rewriteDocumentExamples($doc, $id, $change);
 
-        $outcome = 'unresolved';
+        $outcome = VerbOutcome::Unresolved;
         $cyclic = false;
+        $published = new PublishedSchemas($rewritten, $this->identity);
 
         // From the members rather than the root: the root's own `x-docuccino` describes the document,
-        // and no schema's identity can be there. Nothing reaches, so nothing expands: an unscoped rename
+        // and no schema's identity can be there. Nothing reaches, so nothing expands: an unscoped verb
         // is the walk with its `$ref` half switched off.
         foreach ($rewritten as $key => $value) {
             if (is_array($value)) {
-                $rewritten[$key] = $this->rewrite($value, $rewritten, $id, $rename, [], [], $outcome, $cyclic);
+                $rewritten[$key] = $this->rewrite($value, $published, $id, $verb, [], [], $outcome, $cyclic);
             }
         }
 
-        $this->reportOutcome($outcome, $rename, $change, $context, $said);
+        $this->reportOutcome($outcome, $verb, $change, $published, $context, $said);
 
-        // A rename nothing could apply leaves every schema at the shape the code publishes, so its
+        // A verb nothing could apply leaves every schema at the shape the code publishes, so its
         // examples belong there too: dropping one for a change that moved nothing costs a reader an
         // example and tells them nothing they were not already told above.
-        if ($outcome !== 'renamed') {
+        if ($outcome !== VerbOutcome::Applied) {
             return $doc;
         }
 
-        $this->reportDrops($dropped, $rename, $change, $context, $said);
+        self::reportAll($context, $dropped, $said);
 
         return $rewritten;
     }
@@ -168,9 +168,9 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
      * @param  array<string, true>  $said
      * @return array<string, mixed>
      */
-    private function applyScopedRename(array $doc, RenamedResponseField $rename, VersionChange $change, DocumentContext $context, array &$said): array
+    private function applyScoped(array $doc, VersionVerb $verb, VersionChange $change, DocumentContext $context, array &$said): array
     {
-        $id = $this->identity->namedSchemaId(ltrim($rename->schema, '\\'));
+        $id = $verb->identity($this->identity);
         $reaches = DocumentGraph::componentsReaching($doc, $id);
 
         $reaching = [];
@@ -187,8 +187,8 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
             // the opposite of narrowing is not an acceptable degradation, so the document is left as
             // the code publishes it and the build says which of the two things is wrong.
             self::reportOnce($context, DocumentGraph::carries($doc, $id)
-                ? self::publishedForNoOperation($change, $rename)
-                : self::schemaUnresolved($change, $rename), $said);
+                ? VerbDiagnostics::publishedForNoOperation($change, $verb)
+                : VerbDiagnostics::schemaUnresolved($change, $verb), $said);
 
             return $doc;
         }
@@ -202,7 +202,7 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
 
         foreach ($change->selectors as $selector) {
             if (! self::namesAny([$selector], $reaching)) {
-                self::reportOnce($context, self::matchesNothing($change, $selector, $rename), $said);
+                self::reportOnce($context, self::matchesNothing($change, $selector, $verb), $said);
             }
         }
 
@@ -211,7 +211,7 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
         }
 
         if (count($matched) === count($reaching)) {
-            return $this->applyRename($doc, $rename, $change, $context, $said);
+            return $this->apply($doc, $verb, $change, $context, $said);
         }
 
         // Two use sites can address ONE node — a path item written as a `$ref` into
@@ -234,13 +234,13 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
                 self::reportOnce($context, self::unforkable($change, sprintf(
                     'the operation "%s" is published through a path item it shares with operations the scope leaves out, so it cannot be given a copy of the schema for %s and was left at the shape the code publishes',
                     PlainText::of($reaching[$index]['signature'] ?? implode('/', $reaching[$index]['keys'])),
-                    PlainText::of($rename->schema),
+                    PlainText::of($verb->schema()),
                 )), $said);
 
                 continue;
             }
 
-            $doc = $this->fork($doc, $reaching[$index], $id, $rename, $reaches, $change, $context, $said);
+            $doc = $this->fork($doc, $reaching[$index], $id, $verb, $reaches, $change, $context, $said);
         }
 
         return $doc;
@@ -349,43 +349,48 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
      * @param  array<string, true>  $said
      * @return array<string, mixed>
      */
-    private function fork(array $doc, array $site, string $id, RenamedResponseField $rename, array $reaches, VersionChange $change, DocumentContext $context, array &$said): array
+    private function fork(array $doc, array $site, string $id, VersionVerb $verb, array $reaches, VersionChange $change, DocumentContext $context, array &$said): array
     {
         $operation = DocumentGraph::at($doc, $site['keys']);
         if (! is_array($operation)) {
             return $doc;
         }
 
-        // As in {@see applyRename()}, and confined to this operation: the rest of the document goes on
+        // As in {@see apply()}, and confined to this operation: the rest of the document goes on
         // publishing the shape the code publishes, and so do the rest of its examples.
-        [$operation, $dropped] = RenamedFieldExamples::inOperation($operation, $doc, $id, $rename->from, $rename->to, $site['keys']);
+        [$operation, $dropped] = $verb->rewriteOperationExamples($operation, $doc, $id, $site['keys'], $change);
 
-        $outcome = 'unresolved';
+        $outcome = VerbOutcome::Unresolved;
         $cyclic = false;
-        $forked = $this->rewrite($operation, $doc, $id, $rename, $reaches, [], $outcome, $cyclic);
+        $published = new PublishedSchemas($doc, $this->identity);
+        $forked = $this->rewrite($operation, $published, $id, $verb, $reaches, [], $outcome, $cyclic);
 
         if ($cyclic) {
-            // A schema that refers to itself cannot be given a private copy: the copy would contain the
-            // shared component again, and the operation would publish the old name at one depth and the
-            // new one at the next. The head shape is at least a shape that exists.
+            // A schema that leads back to itself cannot be given a private copy: the copy would contain
+            // the shared component again, and the operation would publish the older shape at one depth
+            // and today's at the next. The head shape is at least a shape that exists. A schema written
+            // that way is one route in; the other is a verb that PUTS a member back pointing at
+            // something that leads here, which the expansion below meets on its way through the copy
+            // and reports the same way, because it is the same fact.
             self::reportOnce($context, self::unforkable($change, sprintf(
-                'the schema for %s refers to itself, so the operation "%s" cannot be given a copy of it and was left at the shape the code publishes',
-                PlainText::of($rename->schema),
+                'a copy of the schema for %s would point back at the shared component, so the operation "%s" cannot be given one and was left at the shape the code publishes',
+                PlainText::of($verb->schema()),
                 PlainText::of($site['signature'] ?? implode('/', $site['keys'])),
             )), $said);
 
             return $doc;
         }
 
-        if ($outcome !== 'renamed') {
-            $this->reportOutcome($outcome, $rename, $change, $context, $said);
+        if ($outcome !== VerbOutcome::Applied) {
+            $this->reportOutcome($outcome, $verb, $change, $published, $context, $said);
 
             return $doc;
         }
 
         // Said only now: every refusal above leaves the document exactly as it was, examples included,
         // and a report of a drop that never happened is a defect the reader would go looking for.
-        $this->reportDrops($dropped, $rename, $change, $context, $said);
+        self::reportAll($context, $dropped, $said);
+        $this->reportOutcome($outcome, $verb, $change, $published, $context, $said);
 
         // Everything the fork pulled in from `components` is a second node with the component's id on
         // it, and the copy says something different the moment it is renamed. `ContractIndex` resolves
@@ -446,18 +451,17 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
      * instead of another pointer at the shared component. An EMPTY `$reaches` expands nothing, and that
      * is the whole of what an unscoped rename is: the same walk, in place.
      *
-     * `$outcome` is the strongest thing seen: `renamed` beats `taken` beats `absent` beats `unresolved`,
-     * so several copies of one schema report one answer and a document that publishes it nowhere reports
-     * that instead. `$cyclic` says the expansion met a component that contains itself, which is a copy
-     * that cannot be written; it can only be set where something expands.
+     * `$outcome` is the strongest thing {@see VerbOutcome} saw, so several copies of one schema report
+     * one answer and a document that publishes it nowhere reports that instead. `$cyclic` says the
+     * expansion met a component that contains itself, which is a copy that cannot be written; it can
+     * only be set where something expands.
      *
      * @param  array<array-key, mixed>  $node
-     * @param  array<string, mixed>  $doc
      * @param  array<string, bool>  $reaches
      * @param  list<string>  $visited
      * @return array<array-key, mixed>
      */
-    private function rewrite(array $node, array $doc, string $id, RenamedResponseField $rename, array $reaches, array $visited, string &$outcome, bool &$cyclic): array
+    private function rewrite(array $node, PublishedSchemas $published, string $id, VersionVerb $verb, array $reaches, array $visited, VerbOutcome &$outcome, bool &$cyclic): array
     {
         $ref = DocumentGraph::componentRef($node);
         if ($ref !== null && ($reaches[$ref] ?? false)) {
@@ -467,12 +471,12 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
                 return $node;
             }
 
-            $body = DocumentGraph::componentBody($doc, $ref);
+            $body = $published->body($ref);
             if ($body === null) {
                 return $node;
             }
 
-            $expanded = $this->rewrite($body, $doc, $id, $rename, $reaches, [...$visited, $ref], $outcome, $cyclic);
+            $expanded = $this->rewrite($body, $published, $id, $verb, $reaches, [...$visited, $ref], $outcome, $cyclic);
 
             // OAS 3.1 lets a `$ref` carry siblings, and they annotate what they point at, so they win
             // over the body they are written beside.
@@ -483,12 +487,12 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
 
         $docuccino = $node['x-docuccino'] ?? null;
         if (is_array($docuccino) && ($docuccino['id'] ?? null) === $id) {
-            $node = $this->rewriteSchema($node, $rename, $outcome);
+            $node = $verb->apply($node, $published, $outcome);
         }
 
         foreach ($node as $key => $value) {
             if (is_array($value)) {
-                $node[$key] = $this->rewrite($value, $doc, $id, $rename, $reaches, $visited, $outcome, $cyclic);
+                $node[$key] = $this->rewrite($value, $published, $id, $verb, $reaches, $visited, $outcome, $cyclic);
             }
         }
 
@@ -496,159 +500,40 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
     }
 
     /**
-     * @param  array<array-key, mixed>  $schema
-     * @return array<array-key, mixed>
-     */
-    private function rewriteSchema(array $schema, RenamedResponseField $rename, string &$outcome): array
-    {
-        $properties = $schema['properties'] ?? null;
-        if (! is_array($properties) || ! array_key_exists($rename->to, $properties)) {
-            $outcome = $outcome === 'renamed' || $outcome === 'taken' ? $outcome : 'absent';
-
-            return $schema;
-        }
-
-        if (array_key_exists($rename->from, $properties)) {
-            $outcome = $outcome === 'renamed' ? $outcome : 'taken';
-
-            return $schema;
-        }
-
-        // In place, so the property keeps its position and everything it carries — provenance included,
-        // which travels with the node rather than being re-keyed beside it.
-        $renamed = [];
-        foreach ($properties as $name => $value) {
-            $renamed[$name === $rename->to ? $rename->from : $name] = $value;
-        }
-        $schema['properties'] = $renamed;
-
-        // Load-bearing: a required list still naming today's field would mark a body carrying the OLD
-        // name invalid, and a body carrying the new one valid — the exact disagreement a per-version
-        // contract test exists to catch.
-        $required = $schema['required'] ?? null;
-        if (is_array($required)) {
-            $schema['required'] = array_values(array_map(
-                static fn (mixed $name): mixed => $name === $rename->to ? $rename->from : $name,
-                $required,
-            ));
-        }
-
-        $outcome = 'renamed';
-
-        return $schema;
-    }
-
-    /**
-     * What a rename that did not happen has to say for itself. `renamed` says nothing.
+     * What a verb that did not apply has to say for itself. An applied one says nothing.
      *
      * @param  array<string, true>  $said
      */
-    private function reportOutcome(string $outcome, RenamedResponseField $rename, VersionChange $change, DocumentContext $context, array &$said): void
+    private function reportOutcome(VerbOutcome $outcome, VersionVerb $verb, VersionChange $change, PublishedSchemas $published, DocumentContext $context, array &$said): void
     {
-        if ($outcome === 'renamed') {
-            return;
+        $diagnostic = $verb->diagnose($outcome, $change, $published);
+
+        if ($diagnostic !== null) {
+            self::reportOnce($context, $diagnostic, $said);
         }
-
-        if ($outcome === 'taken') {
-            self::reportOnce($context, VersionChangeCollector::unapplicable($change->class, sprintf(
-                'the schema for %s already publishes a field called "%s", so renaming "%s" onto it would collapse two fields into one',
-                PlainText::of($rename->schema),
-                PlainText::of($rename->from),
-                PlainText::of($rename->to),
-            )), $said);
-
-            return;
-        }
-
-        self::reportOnce($context, $outcome === 'absent'
-            ? new Diagnostic(
-                severity: Severity::Warning,
-                code: 'versioning.change-target-missing',
-                message: sprintf(
-                    '%s renames "%s", which the schema for %s no longer publishes, so this version still says what the code says.',
-                    PlainText::of($change->class),
-                    PlainText::of($rename->to),
-                    PlainText::of($rename->schema),
-                ),
-                help: 'Update the change to name the field as it is spelled today, or retire it if the field is gone.',
-            )
-            : self::schemaUnresolved($change, $rename), $said);
     }
 
     /**
-     * The examples this version could not be given, and where they stood. One per site rather than one
-     * per rename: each is a different example, at a different pointer, and a reader fixing one is not
-     * thereby told about the next.
+     * Every report a verb handed back, each said once. The examples a version could not be given come
+     * this way: one per site rather than one per verb, because each is a different example at a
+     * different pointer and a reader fixing one is not thereby told about the next.
      *
-     * @param  list<string>  $dropped
+     * @param  list<Diagnostic>  $diagnostics
      * @param  array<string, true>  $said
      */
-    private function reportDrops(array $dropped, RenamedResponseField $rename, VersionChange $change, DocumentContext $context, array &$said): void
+    private static function reportAll(DocumentContext $context, array $diagnostics, array &$said): void
     {
-        foreach ($dropped as $pointer) {
-            self::reportOnce($context, new Diagnostic(
-                severity: Severity::Warning,
-                code: 'versioning.example-dropped',
-                message: sprintf(
-                    '%s renames "%s" on %s, and the example at %s could not be rewritten to the shape this version publishes, so it was dropped.',
-                    PlainText::of($change->class),
-                    PlainText::of($rename->to),
-                    PlainText::of($rename->schema),
-                    PlainText::of($pointer),
-                ),
-                help: 'A consumer copies an example and sends it back, so one this version\'s schema '
-                    .'rejects is worse than none. The rewrite stops where the schema does not settle on '
-                    .'one shape for the example — a oneOf/anyOf branch, a `$ref` that leads back to '
-                    .'itself, a value that is not the kind of thing the schema describes, or an example '
-                    .'already carrying both names. Pin an example that matches the schema beside it, or '
-                    .'narrow the schema so one shape governs it.',
-            ), $said);
+        foreach ($diagnostics as $diagnostic) {
+            self::reportOnce($context, $diagnostic, $said);
         }
-    }
-
-    /**
-     * A change naming a class this document publishes no schema for. One mint, because the scoped path
-     * refuses on the same fact and a second wording of it would read as a second problem.
-     */
-    private static function schemaUnresolved(VersionChange $change, RenamedResponseField $rename): Diagnostic
-    {
-        return new Diagnostic(
-            severity: Severity::Warning,
-            code: 'versioning.schema-unresolved',
-            message: sprintf(
-                '%s names %s, which this document publishes no schema for, so the change was skipped and this version is left at the current shape.',
-                PlainText::of($change->class),
-                PlainText::of($rename->schema),
-            ),
-            help: 'Name the class whose shape the document actually publishes — a change can only rewrite a schema this document contains.',
-        );
-    }
-
-    /**
-     * A scoped change over a schema this document publishes for no operation at all. The scope decides
-     * nothing, and renaming anyway would rewrite the schema for every operation it was written to leave
-     * out — so nothing is rewritten and this says why.
-     */
-    private static function publishedForNoOperation(VersionChange $change, RenamedResponseField $rename): Diagnostic
-    {
-        return new Diagnostic(
-            severity: Severity::Warning,
-            code: 'versioning.scope-matches-nothing',
-            message: sprintf(
-                '%s is scoped with #[AppliesTo], and this document publishes %s for no operation at all, so the scope names nothing and the change was applied to nothing.',
-                PlainText::of($change->class),
-                PlainText::of($rename->schema),
-            ),
-            help: 'Check the document publishes that schema for the operations you named — a scoped change never renames a schema the scope cannot reach.',
-        );
     }
 
     /**
      * An operation the scope matched that cannot be given a private copy of the schema — the schema
      * contains itself, or the node it is published through is shared with operations the scope leaves
      * out. Its own code, because the remedy is the SCOPE rather than the declaration: nothing about the
-     * change is written wrong, and telling the author to fix `from:`/`to:` sends them to a line that is
-     * already right.
+     * change is written wrong, and telling the author to fix the declaration sends them to a line that
+     * is already right.
      */
     private static function unforkable(VersionChange $change, string $problem): Diagnostic
     {
@@ -666,7 +551,7 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
      * renamed months later silently stops the change applying, and the version's document goes back to
      * saying what the code says without anything having been edited.
      */
-    private static function matchesNothing(VersionChange $change, string $selector, RenamedResponseField $rename): Diagnostic
+    private static function matchesNothing(VersionChange $change, string $selector, VersionVerb $verb): Diagnostic
     {
         return new Diagnostic(
             severity: Severity::Warning,
@@ -675,7 +560,7 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
                 '%s is scoped to "%s", which names no operation this document publishes %s for, so that part of the change applies to nothing.',
                 PlainText::of($change->class),
                 PlainText::of($selector),
-                PlainText::of($rename->schema),
+                PlainText::of($verb->schema()),
             ),
             help: 'Write the operation the way the document names it — `GET /api/things`, an operationId, or either with a `*` — and check the document publishes that schema for it.',
         );

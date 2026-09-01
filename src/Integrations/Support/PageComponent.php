@@ -71,7 +71,7 @@ final class PageComponent
         return $context->reference(
             SchemaIdentity::name($itemFqcn) ?? Fqcn::short($itemFqcn),
             $envelope,
-            (SchemaIdentity::id($itemFqcn) ?? $itemFqcn).'#'.$facet,
+            SchemaIdentity::publishedId($itemFqcn, $facet),
         );
     }
 

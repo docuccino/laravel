@@ -56,3 +56,31 @@ it('publishes the change prose against the version each one shipped in', functio
     expect($schema['enum'])->toBe(['2026-06-01'])
         ->and($schema)->not->toHaveKey('x-enumDescriptions');
 });
+
+/*
+ * The other ordering, one level down: the order the VERBS of a single change apply in.
+ *
+ * It has to be decided somewhere, because an AttributeSet answers per attribute type — so the moment a
+ * change carries two kinds of verb, the order the author wrote them in is gone. `VerbOrder` states the
+ * rule: a rename goes LAST, because every other verb names its field the way the code spells it today
+ * and a rename is the only one that changes what a field is called.
+ *
+ * Executed, not asserted. Swap the two halves of `VerbOrder::read()` and the pair below goes red
+ * together: the document publishes `required: ['id', 'name']` instead of `['id']`, and the build
+ * reports `versioning.change-target-missing` against a declaration that is written perfectly correctly.
+ */
+it('takes the guarantee off the field before the rename re-spells it', function (): void {
+    versioningDiagnostics('tests/Fixtures/Versioning/VerbOrder');
+
+    $schema = generateDocument(key: 'v')->document->toArray()['components']['schemas']['FormData'];
+
+    // `title` lost its guarantee while it was still called `title`, and the rename then took what was
+    // left back to the older spelling. Rename-first, the required verb would have looked for a `title`
+    // that had already become `name`, edited nothing, and left `name` guaranteed.
+    expect(array_keys($schema['properties']))->toBe(['id', 'name', 'publishedAt'])
+        ->and($schema['required'])->toBe(['id']);
+});
+
+it('applies both verbs of one change without complaint, which the other order could not', function (): void {
+    expect(versioningDiagnostics('tests/Fixtures/Versioning/VerbOrder'))->toBe([]);
+});

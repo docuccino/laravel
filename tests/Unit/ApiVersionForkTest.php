@@ -9,6 +9,7 @@ use Docuccino\Core\Extensions\Document\UirDocumentDraft;
 use Docuccino\Core\Identity\IdentityGenerator;
 use Docuccino\Laravel\Versioning\ApiVersionTransformer;
 use Docuccino\Laravel\Versioning\VersionChangeCollector;
+use Workbench\App\Data\FormData;
 use Workbench\App\Data\FormTreeData;
 
 /**
@@ -142,7 +143,7 @@ it('refuses to fork a schema that contains itself, and leaves the operation at t
     // line that is already right.
     expect($codes)->toContain('versioning.scope-unforkable')
         ->and($codes)->not->toContain('versioning.change-invalid')
-        ->and($messages)->toContain('refers to itself')
+        ->and($messages)->toContain('would point back at the shared component')
         ->and($messages)->toContain('GET /api/versioned-trees')
         ->and($helps)->toContain('Drop the #[AppliesTo]')
         // Nothing half-written: both operations still share the component, and it still says `title`.
@@ -163,7 +164,7 @@ it('refuses to fork a schema that contains itself the long way round', function 
 
     expect($codes)->toContain('versioning.scope-unforkable')
         ->and(implode("\n", array_map(static fn (Diagnostic $d): string => $d->message, $diagnostics)))
-        ->toContain('refers to itself')
+        ->toContain('would point back at the shared component')
         // Both operations still share the component, and neither carries a half-expanded copy of it.
         ->and($document['paths']['/api/versioned-trees']['get']['responses']['200']['content']['application/json']['schema'])
         ->toBe(['$ref' => '#/components/schemas/FormTree'])
@@ -303,4 +304,50 @@ it('follows a component chain further than one hop, so an envelope over a page s
         // And everybody else keeps the envelope, whose page still reaches a `FormTree` saying `title`.
         ->and($schema('/api/versioned-trees/archived'))->toBe(['$ref' => '#/components/schemas/Envelope'])
         ->and(array_keys($transformed['components']['schemas']['FormTree']['properties']))->toBe(['id', 'title']);
+});
+
+/*
+ * What a fork keeps rather than expands, and the reason it matters. The walk expands every `$ref` on the
+ * way DOWN to the schema it is copying, because a copy still pointing at the shared component would BE
+ * the shared component. A pointer at something the schema merely HOLDS is a different fact: it leads
+ * nowhere near the forked schema, so it resolves to the shape this version's document publishes for
+ * that component — and left as a pointer it is one more type a generated client can name.
+ *
+ * This is the case the removal verb makes reachable: `#[RemovedResponseField(type: SomeClass::class)]`
+ * writes a `$ref` INTO the copy, after everything on the way down has already been expanded.
+ */
+function treeHoldingAFormDocument(): array
+{
+    $identity = new IdentityGenerator;
+
+    return treeDocument([
+        'FormTree' => [
+            'x-docuccino' => ['id' => $identity->namedSchemaId(FormTreeData::class)],
+            'type' => 'object',
+            'properties' => ['id' => ['type' => 'integer'], 'title' => ['type' => 'string']],
+            'required' => ['id', 'title'],
+        ],
+        'FormData' => [
+            'x-docuccino' => ['id' => $identity->namedSchemaId(FormData::class)],
+            'type' => 'object',
+            'properties' => ['id' => ['type' => 'integer'], 'title' => ['type' => 'string']],
+        ],
+    ]);
+}
+
+it('leaves a pointer at a component the copy merely holds, and forks the rest', function (): void {
+    [$document, $diagnostics] = transformedVersion(treeHoldingAFormDocument(), 'tests/Fixtures/Versioning/RemovedScopedRef');
+
+    $inScope = $document['paths']['/api/versioned-trees']['get']['responses']['200']['content']['application/json']['schema'];
+    $outOfScope = $document['paths']['/api/versioned-trees/archived']['get']['responses']['200']['content']['application/json']['schema'];
+
+    expect(array_map(static fn (Diagnostic $d): string => $d->code, $diagnostics))->toBe([])
+        // The copy is a schema of its own — no `$ref` back at `FormTree` — and the field put back into it
+        // still names `FormData`, which is a component this document publishes and a client can name.
+        ->and($inScope)->not->toHaveKey('$ref')
+        ->and(array_keys($inScope['properties']))->toBe(['form', 'id', 'title'])
+        ->and($inScope['properties']['form'])->toBe(['$ref' => '#/components/schemas/FormData'])
+        // Everybody else is untouched, component included.
+        ->and($outOfScope)->toBe(['$ref' => '#/components/schemas/FormTree'])
+        ->and(array_keys($document['components']['schemas']['FormTree']['properties']))->toBe(['id', 'title']);
 });

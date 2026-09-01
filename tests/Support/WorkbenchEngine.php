@@ -65,6 +65,14 @@ final class WorkbenchEngine
             new PropertyMetadata('publishedAt', UnionT::of([ScalarT::string(), new NullT])),
         ]);
 
+        // A form entry as the engine recovers it: `submittedAt` is a string-or-null, so the schema
+        // publishes it and `required` does not — the OPTIONAL half a version change can move.
+        $formEntryData = new ClassMetadata('Workbench\\App\\Data\\FormEntryData', [
+            new PropertyMetadata('id', ScalarT::int()),
+            new PropertyMetadata('label', ScalarT::string()),
+            new PropertyMetadata('submittedAt', UnionT::of([ScalarT::string(), new NullT])),
+        ]);
+
         $widgetData = new ClassMetadata('Workbench\\App\\Data\\WidgetData', [
             new PropertyMetadata('id', ScalarT::int()),
             new PropertyMetadata('name', ScalarT::string()),
@@ -247,6 +255,7 @@ final class WorkbenchEngine
             ],
             classes: [
                 'Workbench\\App\\Data\\FormData' => $formData,
+                'Workbench\\App\\Data\\FormEntryData' => $formEntryData,
                 // The webhook payload class, as the engine recovers it from promoted properties.
                 'Workbench\\App\\Webhooks\\FormSubmitted' => new ClassMetadata('Workbench\\App\\Webhooks\\FormSubmitted', [
                     new PropertyMetadata('formId', ScalarT::int()),

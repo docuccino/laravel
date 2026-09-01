@@ -6,7 +6,6 @@ namespace Docuccino\Laravel\Versioning;
 
 use Docuccino\Attributes\Versioning\ApiVersionChange;
 use Docuccino\Attributes\Versioning\AppliesTo;
-use Docuccino\Attributes\Versioning\RenamedResponseField;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Extensions\Context\AttributeSet;
@@ -176,28 +175,11 @@ final readonly class VersionChangeCollector
             $selectors[] = $selector;
         }
 
-        $renames = [];
-        foreach ($attributes->all(RenamedResponseField::class) as $rename) {
-            if (trim($rename->from) === '' || trim($rename->to) === '') {
-                $diagnostics[] = self::unapplicable($class, 'one of its #[RenamedResponseField] declarations leaves `from:` or `to:` empty');
-
-                continue;
-            }
-
-            if ($rename->from === $rename->to) {
-                $diagnostics[] = self::unapplicable($class, sprintf('one of its #[RenamedResponseField] declarations renames "%s" to itself', PlainText::of($rename->from)));
-
-                continue;
-            }
-
-            $renames[] = $rename;
-        }
-
         return new VersionChange(
             class: $class,
             since: $since,
             description: trim($declaration->description),
-            renames: $renames,
+            verbs: VerbOrder::read($attributes, $class, $diagnostics),
             selectors: array_values(array_unique($selectors)),
         );
     }
