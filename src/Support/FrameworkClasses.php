@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Support;
 
+use Docuccino\Core\Inference\DType\ClassT;
+use Docuccino\Core\Inference\TypeScope;
+use PhpParser\Node;
+
 /**
  * FQCNs of framework classes referenced by string across the adapter (never `use`d — they may be
  * absent from the analysed app). One home for a string that would otherwise be re-declared per
@@ -11,6 +15,13 @@ namespace Docuccino\Laravel\Support;
  */
 final class FrameworkClasses
 {
+    /**
+     * Illuminate's request. The receiver every trace-time read of request state hangs off — a page-size
+     * query key, a route-name predicate — so the string and the match against it are here rather than
+     * once per reader.
+     */
+    public const REQUEST = 'Illuminate\\Http\\Request';
+
     /** Illuminate's JSON response wrapper — the `JsonResponse<payload>` type integrations unwrap. */
     public const JSON_RESPONSE = 'Illuminate\\Http\\JsonResponse';
 
@@ -67,6 +78,17 @@ final class FrameworkClasses
         self::VIEW_CONTRACT,
         'Illuminate\\View\\View',
     ];
+
+    /**
+     * Whether an expression IS the request, as the scope types it. Subtype-aware, so an application's own
+     * FormRequest answers the same as the base class a reader was written against.
+     */
+    public static function isRequest(Node\Expr $expr, TypeScope $scope): bool
+    {
+        $type = $scope->typeOf($expr);
+
+        return $type instanceof ClassT && is_a($type->fqcn, self::REQUEST, true);
+    }
 
     /** Whether an FQCN names a framework response object rather than a body the API hands back. */
     public static function isResponse(string $fqcn): bool

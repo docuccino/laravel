@@ -504,3 +504,50 @@ it('answers only with what the tiers behind it do not have', function (array $ty
         true,
     ],
 ]);
+
+it('declines rather than filing an ERROR under 200 when nothing anywhere states a status', function (): void {
+    // The exception arrives with no classification of its own — an HttpException subclass whose status the
+    // engine could not read comes in exactly like this — and the render path folded no status either. The
+    // only number left is the 200 default, which would file an error response under success and, on a route
+    // whose success IS a 200, merge an error body into it. So the tier declines and the chain fills in, the
+    // same way it does for a body too dynamic to fold.
+    $symbol = registerRenderCallback(
+        static fn (RuntimeException $e) => response()->json(['title' => 'Nope'], $e->getCode()),
+        RuntimeException::class,
+    );
+
+    $engine = WorkbenchEngine::make(
+        [$symbol => new ActionAnalysis(returns: [new ReturnSite(
+            new ClassT('Illuminate\\Http\\JsonResponse', [
+                new ArrayShapeT([new ArrayShapeField('title', ScalarT::string())]),
+                new UnknownT('status not folded'),
+            ]),
+            new SourceLocation(''),
+        )])],
+        analysisOverrides: [
+            'Workbench\\App\\Http\\Controllers\\FormController::show' => new ActionAnalysis(
+                returns: [new ReturnSite(new ClassT('Workbench\\App\\Data\\FormData'), new SourceLocation(''))],
+                throws: [new ThrownException(RuntimeException::class, null, [], ThrowConfidence::Certain, ThrowDisposition::Signal)],
+            ),
+        ],
+    );
+    app()->instance(TypeEngine::class, $engine);
+
+    $result = generateDocument();
+    $document = $result->document->toArray();
+    $responses = $document['paths']['/api/forms/{form}']['get']['responses'];
+
+    $producers = static fn (string $status): array => array_map(
+        static fn (array $r): string => $r['producer'],
+        $responses[$status]['x-docuccino']['provenance'] ?? [],
+    );
+
+    // The success response is the action's own and nothing else's, and the error is documented by a later
+    // tier under the status that tier classifies it as.
+    expect($producers('200'))->not->toContain('integration:inferred-handler')
+        ->and($responses)->toHaveKey('500')
+        ->and($producers('500'))->not->toContain('integration:inferred-handler');
+
+    $codes = array_map(static fn ($d): string => $d->code, $result->diagnostics);
+    expect($codes)->toContain('inferred-handler.too-dynamic');
+});

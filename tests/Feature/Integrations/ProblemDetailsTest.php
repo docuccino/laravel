@@ -13,8 +13,11 @@ use Docuccino\Core\Inference\ThrowConfidence;
 use Docuccino\Core\Inference\ThrowDisposition;
 use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
+use Docuccino\Laravel\Exceptions\DefaultExceptionToResponse;
 use Docuccino\Laravel\Integrations\ProblemDetails\ProblemDetailsExceptionToResponse;
 use Docuccino\Laravel\Integrations\ProblemDetails\ProblemDetailsSchema;
+use Docuccino\Laravel\Registry\DefaultExtensions;
+use Docuccino\Laravel\Registry\ExtensionRegistry;
 
 /**
  * The RFC 9457 Problem Details preset (design §6): config-activated, every framework exception maps
@@ -92,11 +95,67 @@ it('documents a bare HttpException under a per-status problem response', functio
         ->and($components->responses())->toHaveKey('Problem409');
 });
 
-it('declines a bare HttpException with no folded status', function (): void {
+it('keeps an HttpException whose status did not fold inside the preset, at the unplaced status', function (): void {
+    // Declining would not make the document say the status is unknown — the terminal fallback publishes
+    // the error at the same key regardless. All it would change is the body, to a plain {message} in a
+    // document whose every other error is problem+json. So the preset keeps it.
     $mapper = new ProblemDetailsExceptionToResponse;
+    $components = new ComponentRegistry;
     $throw = problemThrow('Symfony\\Component\\HttpKernel\\Exception\\HttpException', null);
 
-    expect($mapper->supports($throw, problemContext()))->toBeFalse();
+    expect($mapper->supports($throw, problemContext()))->toBeTrue();
+    $response = $mapper->toResponse($throw, problemContext(), $components);
+
+    expect($response?->status)->toBe('500')
+        ->and($response?->freeze()->ref)->toBe('#/components/responses/Problem500')
+        ->and($components->responses()['Problem500']['content'])->toHaveKey('application/problem+json');
+});
+
+it('keys an error nothing could read a status off the same way in both tiers that publish it', function (): void {
+    // Two sites answer "what status does an error with none of its own go under". The rule is stated here
+    // rather than read back off the constant, because a guard that asks the code for its own answer agrees
+    // with whatever the code says — and two tiers keying one error differently publishes two responses
+    // where the server sends one.
+    $throw = problemThrow('Symfony\\Component\\HttpKernel\\Exception\\HttpException', null);
+
+    $preset = (new ProblemDetailsExceptionToResponse)->toResponse($throw, problemContext(), new ComponentRegistry);
+    $fallback = (new DefaultExceptionToResponse)->toResponse($throw, problemContext(), new ComponentRegistry);
+
+    expect($preset?->status)->toBe('500')
+        ->and($fallback->status)->toBe('500');
+});
+
+it('leaves an unreadable HTTP error on the preset rather than letting the fallback answer for it', function (): void {
+    // The whole chain, first-supports-wins: nothing downstream of the preset may claim this error, or the
+    // operation publishes a plain body in a problem-details document.
+    $resolved = app(ExtensionRegistry::class)->resolve(app(), DefaultExtensions::all(new DocumentConfig('default', [])), []);
+    $context = problemContext();
+    $throw = problemThrow('Symfony\\Component\\HttpKernel\\Exception\\HttpException', null);
+
+    $winner = null;
+    foreach ($resolved->exceptionToResponse as $mapper) {
+        if ($mapper->supports($throw, $context)) {
+            $winner = $mapper;
+            break;
+        }
+    }
+
+    expect($winner)->toBeInstanceOf(ProblemDetailsExceptionToResponse::class);
+
+    // …and with no preset active it is the fallback's, under the same status and its own plain body.
+    $plain = problemContext('default');
+    $winner = null;
+    foreach ($resolved->exceptionToResponse as $mapper) {
+        if ($mapper->supports($throw, $plain)) {
+            $winner = $mapper;
+            break;
+        }
+    }
+
+    expect($winner)->toBeInstanceOf(DefaultExceptionToResponse::class);
+    $draft = $winner->toResponse($throw, $plain, new ComponentRegistry);
+    expect($draft->status)->toBe('500')
+        ->and($draft->freeze()->content)->toHaveKey('application/json');
 });
 
 it('stays inert unless the document opts into the preset', function (): void {

@@ -9,6 +9,7 @@ use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\LocalWrites;
 use Docuccino\Core\Inference\TypeScope;
+use Docuccino\Laravel\Support\FrameworkClasses;
 use PhpParser\Node;
 use ReflectionMethod;
 use Throwable;
@@ -48,9 +49,6 @@ use Throwable;
  */
 final class RequestPageSizeReader
 {
-    /** A page size is only ever read off the request. */
-    private const REQUEST = 'Illuminate\\Http\\Request';
-
     /**
      * Request accessors naming one query key in argument 0 with its fallback in argument 1. `integer()`
      * casts and the others do not, but the value-flow rule above is what proves a read IS the size, so
@@ -482,7 +480,7 @@ final class RequestPageSizeReader
             return null;
         }
 
-        if (! $this->receiverIsRequest($call->var, $scope)) {
+        if (! FrameworkClasses::isRequest($call->var, $scope)) {
             return null;
         }
 
@@ -490,13 +488,6 @@ final class RequestPageSizeReader
         $default = $fallback !== null && $fallback->isScalar() && is_int($fallback->scalar) ? $fallback->scalar : null;
 
         return new RequestPageSizeKey($key->scalar, $default);
-    }
-
-    private function receiverIsRequest(Node\Expr $receiver, TypeScope $scope): bool
-    {
-        $type = $scope->typeOf($receiver);
-
-        return $type instanceof ClassT && is_a($type->fqcn, self::REQUEST, true);
     }
 
     /** The `Class::method` a call dispatches to, as far as the scope can name it. */

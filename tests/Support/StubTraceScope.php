@@ -134,11 +134,21 @@ final class StubTraceScope implements FoldsCallReturns, TypeScope
             return ConstValue::scalar(ltrim($expr->class->toString(), '\\'));
         }
 
-        // A non-`::class` class constant folds to the member NAME, mirroring the real engine's enum-case
-        // handling (`FilterOperator::EQUAL` → `'EQUAL'`) — the QB operator filter keys on it. The stub's
-        // controlled snippets only reference enum cases here, so this needs no enum_exists probe.
-        if ($expr instanceof Node\Expr\ClassConstFetch && $expr->name instanceof Node\Identifier) {
-            return ConstValue::scalar($expr->name->toString());
+        // A non-`::class` class constant, and the real engine answers two different things for it: an
+        // enum case folds to the case NAME (`FilterOperator::EQUAL` → `'EQUAL'`, which the QB operator
+        // filter keys on), and anything else falls through to PHPStan, which folds it to its VALUE
+        // (`Response::HTTP_CREATED` → `201`). A stub answering the name for both would prove readers
+        // against a shape they never see. A constant the snippet's class doesn't really declare keeps the
+        // name, since there is no value to read.
+        if ($expr instanceof Node\Expr\ClassConstFetch
+            && $expr->class instanceof Node\Name
+            && $expr->name instanceof Node\Identifier
+        ) {
+            $class = ltrim($expr->class->toString(), '\\');
+            $name = $expr->name->toString();
+            $value = ! enum_exists($class) && defined($class.'::'.$name) ? constant($class.'::'.$name) : null;
+
+            return ConstValue::scalar(is_scalar($value) ? $value : $name);
         }
 
         if ($expr instanceof Node\Expr\StaticCall && $expr->class instanceof Node\Name && $expr->name instanceof Node\Identifier) {

@@ -12,13 +12,26 @@ use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Extensions\Schema\ComponentRegistry;
 use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Patch\Contribution;
+use Docuccino\Laravel\Integrations\Support\FrameworkExceptionTable;
 
 /**
  * The RFC 9457 Problem Details preset (design §6 chain), activated by
  * `error_responses => 'problem-details'`. Maps framework exceptions to reusable
  * `application/problem+json` responses that all build on one shared `ProblemDetails` schema component and
  * hoist to shared `#/components/responses/Problem*`, so many operations reference one response. A bare
- * `HttpException` with a resolved status hint gets a per-status `Problem{status}`.
+ * `HttpException` gets a per-status `Problem{status}`.
+ *
+ * That covers an `HttpException` whose status nothing could read, and deliberately: the preset does not
+ * know the status, but declining would not make the document say so. The error is published either way —
+ * the terminal fallback catches everything — so the only thing declining changes is the BODY, and it
+ * changes it to plain `{message}` in a document whose every other error is `application/problem+json`.
+ * A generated client then carries two error types for one contract, and the wrong one is the operation
+ * nobody could read a status off. So the body is the preset's, keyed at
+ * {@see FrameworkExceptionTable::UNPLACED_STATUS} — the same key the fallback would have used, and the
+ * only claim here that is not the preset's own. The author is told separately, by the analyser's
+ * `inference.http-exception-status-unread` notice; a status invented to look precise is what the
+ * document must not do, and publishing the honest body under the key the document was going to use
+ * anyway is not that.
  *
  * Ordered EARLY: ahead of the framework-defaults tier and the fallback, behind only the inferred-handler
  * tier — an active preset defines the error contract, but a real app handler still wins. Self-gated, so
@@ -39,8 +52,7 @@ final class ProblemDetailsExceptionToResponse implements ExceptionToResponse
             return true;
         }
 
-        // A bare HttpException is documentable only when its status folded to a constant.
-        return is_a($exception->exceptionFqcn, self::HTTP_EXCEPTION, true) && $exception->httpStatusHint !== null;
+        return is_a($exception->exceptionFqcn, self::HTTP_EXCEPTION, true);
     }
 
     public function producer(): string
@@ -66,11 +78,13 @@ final class ProblemDetailsExceptionToResponse implements ExceptionToResponse
             return $this->refResponse($entry['status'], $ref);
         }
 
-        if (is_a($exception->exceptionFqcn, self::HTTP_EXCEPTION, true) && $exception->httpStatusHint !== null) {
-            $status = $exception->httpStatusHint;
-            $ref = $components->referenceResponse('Problem'.$status, ProblemDetailsSchema::dynamicResponse($status, $problemRef));
+        if (is_a($exception->exceptionFqcn, self::HTTP_EXCEPTION, true)) {
+            $status = $exception->httpStatusHint === null
+                ? FrameworkExceptionTable::UNPLACED_STATUS
+                : (string) $exception->httpStatusHint;
+            $ref = $components->referenceResponse('Problem'.$status, ProblemDetailsSchema::dynamicResponse((int) $status, $problemRef));
 
-            return $this->refResponse((string) $status, $ref);
+            return $this->refResponse($status, $ref);
         }
 
         return null;

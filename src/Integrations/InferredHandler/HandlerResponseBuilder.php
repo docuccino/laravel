@@ -31,7 +31,8 @@ use Docuccino\Laravel\Support\FrameworkClasses;
  * Required members that didn't fold are filled with type-derived placeholders (and the real status) so the
  * example is a valid instance of the schema beside it — see {@see example()} for why that fill is confined
  * to examples and nothing else. A status that didn't fold falls back to the one the body itself states, and
- * only then to the exception's own status hint ({@see foldStatus()}).
+ * only then to the exception's own status hint; with none of the three, the tier declines rather than write
+ * a number nothing stated ({@see foldStatus()}).
  *
  * A payload that didn't fold ({@see UnknownT}, or no shape recovered at all) has no body to document, and
  * an error response with no `content` states that the error returns nothing — so the tier answers only
@@ -72,6 +73,10 @@ final class HandlerResponseBuilder
             $statusArg = $type->typeArgs[1] ?? null;
 
             $status = self::foldStatus($statusArg, $payload, $members, $statusHint);
+            if ($status === null) {
+                return null;
+            }
+
             $draft = new ResponseDraft($status);
 
             // Nothing recovered: no body, and a status the throw already carried. Answering anyway would
@@ -80,6 +85,12 @@ final class HandlerResponseBuilder
             // body is asked ({@see ExceptionToResponse}: null defers). So the tier declines, exactly as its
             // own contract says it does for a body too dynamic to fold, and the deferral log turns it into
             // one `inferred-handler.too-dynamic` diagnostic naming the callback.
+            //
+            // The same reasoning is why {@see foldStatus()} declines above rather than answering: with no
+            // status folded on either side and none on the throw — an HttpException subclass whose own is
+            // unreadable arrives exactly so — the only number left to write is 200, which would file an
+            // ERROR under success. A later tier still knows the exception's classification, and no status
+            // at all beats the wrong one.
             //
             // A status HTTP forbids a body on is no failure — there, no content is the truth. Neither is a
             // status this tier FOLDED itself: that is a fact no later tier has (they classify the exception
@@ -166,9 +177,12 @@ final class HandlerResponseBuilder
     }
 
     /**
+     * The status this response is documented under, or null when nothing states one — neither side of the
+     * render path folded, and the throw arrived without a classification of its own.
+     *
      * @param  array<string, DType>  $members
      */
-    private static function foldStatus(mixed $statusArg, ?DType $payload, array $members, ?int $statusHint): string
+    private static function foldStatus(mixed $statusArg, ?DType $payload, array $members, ?int $statusHint): ?string
     {
         if ($statusArg instanceof LiteralT && is_int($statusArg->value)) {
             return (string) $statusArg->value;
@@ -184,8 +198,9 @@ final class HandlerResponseBuilder
             return (string) $stated;
         }
 
-        // Nothing folded either side — prefer the exception's own classification to 200.
-        return (string) ($statusHint ?? 200);
+        // Nothing folded either side — the exception's own classification is all that is left, and where
+        // the throw carried none there is no honest number to write ({@see build()}).
+        return $statusHint === null ? null : (string) $statusHint;
     }
 
     /**

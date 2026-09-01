@@ -57,6 +57,57 @@ it('recovers a constant status from a Data calculateResponseStatus() override', 
         ->and($type->value)->toBe(201);
 })->group('fixture');
 
+it('narrows a route-name conditional status override to the status each route takes', function (): void {
+    // The whole fold on the real engine: PHPStan folds the override's return type to `200|201` and the
+    // trace reads the ternary off the AST, so the create route publishes 201 and every other route
+    // publishes 200 — where before, all of them published both and a GET carried a 201 the server can
+    // never send. Three spellings in one invocation, because a PHPStan container costs more to boot than
+    // the analyses behind it.
+    $result = FixtureRunner::dataResponseStatuses(
+        'app/Data/ConditionalThingData.php',
+        'App\\Data\\ConditionalThingData',
+        'App\\Data\\GuardedThingData',
+        'App\\Data\\FlaggedThingData',
+    );
+
+    $ternary = $result['statuses']['App\\Data\\ConditionalThingData'];
+    expect($ternary['things.store'])->toBe([201])
+        ->and($ternary['things.publish'])->toBe([200])
+        ->and($ternary['things.show'])->toBe([200])
+        // Route::named() answers false before it looks at a pattern when the route has no name.
+        ->and($ternary['unnamed'])->toBe([200])
+        // A narrowed status is not a degradation, so nothing is reported.
+        ->and($result['diagnostics']['App\\Data\\ConditionalThingData'])->toBe([]);
+
+    // No dependency-file row here: on the real engine the analysis AND the trace each report the override's
+    // own file, so removing either recording leaves such an assertion green and it can only fail if both
+    // go. Where the trace is the ONLY source — the stub row in DataRouteConditionalStatusTest, whose
+    // scripted analysis carries no files at all — it fails as soon as the trace stops recording.
+})->group('fixture');
+
+it('keeps the whole union for a route decision written with two returns', function (): void {
+    // The count the narrowing gates on is the count the ANALYSER's walk hands over, not the one a plain
+    // parse would — so both shapes that carry a second `return` are measured against the real Tracer.
+    // A guard clause is the same decision spelled the other way and is deliberately outside the boundary;
+    // an unreachable branch above the ternary is the case where PHPStan could have handed the fold one
+    // return where the source has two, which would narrow a body it must not. It hands over both, and
+    // its return-type fold keeps the unreachable arm too, so the two halves agree and nothing narrows.
+    $result = FixtureRunner::dataResponseStatuses(
+        'app/Data/ConditionalThingData.php',
+        'App\\Data\\GuardedThingData',
+        'App\\Data\\FlaggedThingData',
+    );
+
+    foreach (['things.store', 'things.publish', 'things.show', 'unnamed'] as $route) {
+        expect($result['statuses']['App\\Data\\GuardedThingData'][$route])->toBe([200, 201])
+            ->and($result['statuses']['App\\Data\\FlaggedThingData'][$route])->toBe([200, 201, 202]);
+    }
+
+    // Publishing the union is the honest answer here, not a degradation, so neither reports anything.
+    expect($result['diagnostics']['App\\Data\\GuardedThingData'])->toBe([])
+        ->and($result['diagnostics']['App\\Data\\FlaggedThingData'])->toBe([]);
+})->group('fixture');
+
 it('recovers an API resource toArray shape as a constant array shape', function (): void {
     // UserResource::toArray (@mixin User) → array{id, name, email, role, badge}; the last two are
     // conditional fields.

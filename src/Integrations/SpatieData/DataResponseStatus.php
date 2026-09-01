@@ -20,8 +20,9 @@ use ReflectionClass;
  * `201 Created` for a POST, `200 OK` for anything else. The override's return types come from the engine,
  * which folds plain ints, class constants (`Response::HTTP_CREATED`) and enum constants to int literals.
  * Several folded literals (a `$x ? 201 : 200`, or multiple return sites) are each documented with the same
- * body, matching runtime truth. A computed status leaves the default 200 and earns an info diagnostic —
- * nothing is executed and nothing is guessed.
+ * body — unless the choice between them is one this route already settles, which
+ * {@see RouteConditionalStatus} narrows to the single status the route takes. A computed status leaves the
+ * default 200 and earns an info diagnostic — nothing is executed and nothing is guessed.
  *
  * Only a real override counts: the inherited trait method reports the vendor trait's file, so comparing
  * files against the Data class's own tells the two apart.
@@ -70,7 +71,9 @@ final class DataResponseStatus implements ResponseStatusResolver
         if ($foldable && $statuses !== []) {
             sort($statuses);
 
-            return $statuses;
+            // One status is already right. Several are both true only where the route itself doesn't
+            // settle the choice, and {@see RouteConditionalStatus} is what asks whether it does.
+            return count($statuses) === 1 ? $statuses : self::narrowToRoute($context, $file, $fqcn, $line, $statuses);
         }
 
         $context->components->addDiagnostic(new Diagnostic(
@@ -81,6 +84,29 @@ final class DataResponseStatus implements ResponseStatusResolver
         ));
 
         return [];
+    }
+
+    /**
+     * The one status THIS route takes, when the override reduces to a route-name decision
+     * ({@see RouteConditionalStatus}); the folded set unchanged for every other shape, including one that
+     * genuinely answers two statuses on a fact the build cannot see.
+     *
+     * The narrowed status must be one the return-type fold also saw. The two read the same override
+     * through different grammars — the engine off the return type, the trace off the AST — so a status
+     * only one of them recovered means they were not reading the same code, and the union is the honest
+     * answer.
+     *
+     * @param  list<int>  $statuses
+     * @return list<int>
+     */
+    private static function narrowToRoute(RouteContext $context, string $file, string $fqcn, int $line, array $statuses): array
+    {
+        $fold = new RouteConditionalStatus;
+        $context->traceFrom(new ActionRef($file, $fqcn, self::METHOD, $line), $fold);
+
+        $status = $fold->statusFor($context->route->name);
+
+        return $status !== null && in_array($status, $statuses, true) ? [$status] : $statuses;
     }
 
     /**

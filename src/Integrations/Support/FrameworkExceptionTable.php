@@ -16,6 +16,16 @@ namespace Docuccino\Laravel\Integrations\Support;
 final class FrameworkExceptionTable
 {
     /**
+     * The status an error carrying no readable status of its own is published under. It is not a claim
+     * about the exception — nothing read one — but a key the document cannot do without, since a response
+     * is addressed by status and there is no other key to give it. Shared because more than one tier
+     * reaches for it (the terminal fallback, and the Problem Details preset for an `HttpException` whose
+     * status did not fold), and two tiers keying one error differently would publish two responses where
+     * the server sends one.
+     */
+    public const UNPLACED_STATUS = '500';
+
+    /**
      * Base exception FQCN → its HTTP status and whether it carries a field-keyed `errors` map (the
      * validation shape). Matched subtype-aware, so a subclass inherits its base's mapping.
      *

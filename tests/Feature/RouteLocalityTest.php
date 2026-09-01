@@ -7,8 +7,10 @@ use Docuccino\Laravel\Tests\Fixtures\ComponentNames\SsoController;
 use Docuccino\Laravel\Tests\Fixtures\Pagination\PagesController;
 use Docuccino\Laravel\Tests\Fixtures\RouteBindings\BindingController;
 use Docuccino\Laravel\Tests\Fixtures\SharedErrors\ErrorsController;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\RouteStatusController;
 use Docuccino\Laravel\Tests\Fixtures\TagNames\Admin\ReportController as AdminReportController;
 use Docuccino\Laravel\Tests\Fixtures\TagNames\Api\ReportController as ApiReportController;
+use Docuccino\Laravel\Tests\Support\ConditionalStatusEngine;
 use Docuccino\Laravel\Tests\Support\LocalityEngine;
 use Docuccino\Laravel\Tests\Support\PaginationEngine;
 use Illuminate\Routing\Router;
@@ -187,6 +189,15 @@ it('does not move a route it did not touch', function (callable $baseline, calla
         static fn (Router $r) => $r->get('api/aaa-scope-admin', [ApiReportController::class, 'index'])->middleware('scope:admin'),
         'GET /api/zz-scope-read',
         null,
+    ],
+    // A route-name status fold reads THIS route's name and nothing else. The arriving route's name
+    // matches the pattern the read route's Data class tests, so a fold memoised per Data class — rather
+    // than answered per route — would hand the read endpoint the create endpoint's 201.
+    'a route whose name matches the pattern a shared Data class tests' => [
+        static fn (Router $r) => $r->get('api/zz-cond-read', [RouteStatusController::class, 'show'])->name('cond.show'),
+        static fn (Router $r) => $r->post('api/aaa-cond-create', [RouteStatusController::class, 'store'])->name('cond.things.store'),
+        'GET /api/zz-cond-read',
+        ConditionalStatusEngine::factory(),
     ],
 ]);
 
