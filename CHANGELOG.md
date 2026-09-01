@@ -7,6 +7,30 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.13.1
+
+### Features
+
+- scope a scaffolded change only where the application forked the shape ([#346](https://github.com/docuccino/docuccino/pull/346))
+- write a version change beside the module that owns the shape ([#345](https://github.com/docuccino/docuccino/pull/345))
+- scaffold version-change classes from the diff the product can already compute ([#342](https://github.com/docuccino/docuccino/pull/342))
+- read version changes from every directory a modular app keeps them in ([#341](https://github.com/docuccino/docuccino/pull/341))
+- put a response field a version removed back into the older document ([#336](https://github.com/docuccino/docuccino/pull/336))
+- declare when a field became required, and in which direction ([#334](https://github.com/docuccino/docuccino/pull/334))
+- scope a version change to chosen operations ([#321](https://github.com/docuccino/docuccino/pull/321))
+- derive a document per API version from declared changes ([#320](https://github.com/docuccino/docuccino/pull/320))
+
+### Bug fixes
+
+- publish one error contract for an HTTP error whose status could not be read ([#351](https://github.com/docuccino/docuccino/pull/351))
+- document the one status a route-name conditional takes on that route ([#349](https://github.com/docuccino/docuccino/pull/349))
+- rewrite an example with the schema a version renames ([#328](https://github.com/docuccino/docuccino/pull/328))
+- refuse to widen a version-change scope, and read a version set as versions ([#323](https://github.com/docuccino/docuccino/pull/323))
+
+### Performance
+
+- declare the API version header once and point every operation at it ([#327](https://github.com/docuccino/docuccino/pull/327))
+
 ## v0.12.0
 
 ### Breaking changes
