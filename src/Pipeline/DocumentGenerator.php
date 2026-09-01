@@ -181,7 +181,7 @@ final class DocumentGenerator
             ));
         }
 
-        return new GenerationResult(UirDocument::fromArray($assembly->document), $bag->sorted());
+        return new GenerationResult(UirDocument::fromArray($assembly->document), $bag->sorted(), $assembly->schemaSources);
     }
 
     /**

@@ -10,7 +10,6 @@ use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Extensions\Context\AttributeSet;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
-use Docuccino\Core\Support\ConfinedPath;
 use Docuccino\Core\Support\PlainText;
 use Docuccino\Core\Versioning\VersionOrder;
 use Docuccino\Laravel\Routing\AttributeCollector;
@@ -18,13 +17,15 @@ use Docuccino\Laravel\Support\DeclaredClasses;
 use ReflectionClass;
 
 /**
- * Reads `documents.*.api_version.changes.dir` into the version changes that document derives an older
+ * Reads `documents.*.api_version.changes` into the version changes that document derives an older
  * shape from. Reflection only: an attribute argument is a constant expression the compiler already
  * settled, so nothing here parses, folds or executes a line of the application.
  *
  * The answer is ordered `since` descending then FQCN ascending — the order the changes are APPLIED in,
  * newest first, so each hands the shape of the version below it to the next. Nothing depends on the
- * filesystem's enumeration order.
+ * filesystem's enumeration order, and nothing depends on WHICH configured directory a class came out
+ * of either: a modular application's `modules/Zebra` change sorts against an `app/` one by version and
+ * class name alone, so adding a module cannot reorder anybody else's history.
  *
  * "Descending" is {@see VersionOrder}'s reading of the versions, never `strcmp`: bytewise, `1.10.0`
  * comes before `1.9.0` and a change list quietly applies backwards. The order is the one the document's
@@ -42,36 +43,22 @@ final readonly class VersionChangeCollector
 
     public function collect(DocumentConfig $document): VersionChangeSet
     {
-        $configured = $document->apiVersionChangesDir();
-        if ($configured === null) {
-            return new VersionChangeSet([], null, []);
-        }
+        [$directories, $diagnostics] = ChangeDirectories::resolve($this->basePath, $document);
 
-        $dir = ConfinedPath::configuredDir($this->basePath, $configured);
-        if ($dir === null) {
-            return new VersionChangeSet([], null, [new Diagnostic(
-                severity: Severity::Warning,
-                code: 'versioning.dir-escapes-base',
-                message: sprintf('The version-changes directory "%s" does not name a path inside the application and was ignored.', PlainText::of($configured)),
-            )]);
-        }
-
-        if (! is_dir($dir)) {
-            return new VersionChangeSet([], null, [new Diagnostic(
-                severity: Severity::Warning,
-                code: 'versioning.dir-missing',
-                message: sprintf('The configured version-changes directory "%s" does not exist.', PlainText::of($configured)),
-                help: 'Create it or unset documents.*.api_version.changes.dir.',
-            )]);
-        }
-
-        $diagnostics = [];
         $changes = [];
 
-        foreach (DeclaredClasses::in($dir) as $class) {
-            $change = $this->declare($class, $diagnostics);
-            if ($change !== null) {
-                $changes[] = $change;
+        foreach ($directories as $dir) {
+            // A directory the resolver returned but the filesystem has not got — it has already said
+            // so, and opening one raises out of the iterator rather than reading nothing.
+            if (! is_dir($dir)) {
+                continue;
+            }
+
+            foreach (DeclaredClasses::in($dir) as $class) {
+                $change = $this->declare($class, $diagnostics);
+                if ($change !== null) {
+                    $changes[] = $change;
+                }
             }
         }
 

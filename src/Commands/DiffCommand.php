@@ -13,13 +13,9 @@ use Docuccino\Core\Diff\Policy\VersioningPolicies;
 use Docuccino\Core\Document\UirDocument;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Support\Hydrate;
-use Docuccino\Core\Support\JsonValue;
 use Docuccino\Laravel\Pipeline\DocumentBuilder;
-use Docuccino\Laravel\Support\GitShow;
-use Docuccino\Laravel\Support\Paths;
 use Docuccino\Laravel\Support\TerminalText;
 use Illuminate\Console\Command;
-use JsonException;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
@@ -41,6 +37,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 final class DiffCommand extends Command
 {
     use GuardsEnabled;
+    use ReadsCommittedArtifact;
     use StringOptions;
 
     protected $signature = 'docuccino:diff
@@ -112,70 +109,8 @@ final class DiffCommand extends Command
     private function loadOld(): ?UirDocument
     {
         $path = $this->argument('old');
-        if (! is_string($path) || $path === '') {
-            $this->error('The old artifact path is required.');
 
-            return null;
-        }
-
-        $ref = $this->stringOption('against');
-        $json = $ref !== null ? $this->readFromGit($ref, $path) : $this->readFromDisk($path);
-        if ($json === null) {
-            return null;
-        }
-
-        try {
-            // Through the shared reader: an associative decode reads the old artifact's `{}` back as
-            // `[]`, so a document diffed against itself reported an example changing shape.
-            $decoded = JsonValue::decode($json);
-        } catch (JsonException $exception) {
-            $this->error(sprintf('Could not parse the old artifact as JSON: %s', TerminalText::of($exception->getMessage())));
-
-            return null;
-        }
-
-        // Valid JSON that isn't a document — `null`, a number, a string. Without this the hydrate call
-        // raises a TypeError, which prints a stack trace of absolute paths into a CI log.
-        if (! is_array($decoded)) {
-            $this->error('Could not read the old artifact: its JSON is not an object.');
-
-            return null;
-        }
-
-        /** @var array<string, mixed> $decoded */
-        return UirDocument::fromArray($decoded);
-    }
-
-    private function readFromDisk(string $path): ?string
-    {
-        $absolute = Paths::absolute($path, base_path());
-        $contents = @file_get_contents($absolute);
-
-        if ($contents === false) {
-            $this->error(sprintf('Old artifact not found: %s', TerminalText::of($absolute)));
-
-            return null;
-        }
-
-        return $contents;
-    }
-
-    private function readFromGit(string $ref, string $path): ?string
-    {
-        [$contents, $problem] = GitShow::read($ref, $path);
-
-        if ($contents === null) {
-            // git's own stderr (or the refusal), plus a ref and a path that in CI come from a workflow
-            // variable rather than from someone watching the terminal they steer.
-            $this->error(sprintf(
-                'git show %s:%s failed: %s',
-                TerminalText::of($ref),
-                TerminalText::of($path),
-                TerminalText::of($problem),
-            ));
-        }
-
-        return $contents;
+        return $this->committedArtifact(is_string($path) ? $path : '', $this->stringOption('against'));
     }
 
     private function enforce(DocumentBuilder $builder, string $key, Changeset $changeset, UirDocument $old, UirDocument $new): PolicyVerdict

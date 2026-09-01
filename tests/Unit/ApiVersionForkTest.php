@@ -120,7 +120,7 @@ function transformedVersion(array $document, string $dir): array
     $config = new DocumentConfig(
         key: 'v',
         info: ['title' => 'Trees', 'version' => '2026-06-01'],
-        raw: ['info' => ['version' => '2026-06-01'], 'api_version' => ['changes' => ['dir' => $dir]]],
+        raw: ['info' => ['version' => '2026-06-01'], 'api_version' => ['changes' => [$dir]]],
     );
 
     $draft = new UirDocumentDraft($document);

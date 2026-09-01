@@ -20,7 +20,7 @@ it('is an API version whenever it declares one, whatever the bag holds', functio
     'no bag' => [null, false],
     'a bag that is not a bag' => ['2026-09-01', false],
     'an empty bag' => [[], true],
-    'a bag naming a changes directory' => [['changes' => ['dir' => 'app/Api/Versions']], true],
+    'a bag naming a changes directory' => [['changes' => ['app/Api/Versions']], true],
 ]);
 
 it('states no version until info.version writes one', function (mixed $version): void {
@@ -52,14 +52,25 @@ it('reads the version off info.version, which is the only place it is written', 
         ->and((new DocumentConfig(key: 'v', info: [], raw: ['info' => ['version' => '2026-09-01']]))->apiVersion())->toBeNull();
 });
 
-it('reads the changes directory, and refuses one no filesystem call could hold', function (): void {
-    expect(versionedConfig(['changes' => ['dir' => 'app/Api/Versions']])->apiVersionChangesDir())
-        ->toBe('app/Api/Versions')
-        ->and(versionedConfig([])->apiVersionChangesDir())->toBeNull()
-        ->and(versionedConfig(['changes' => ['dir' => '']])->apiVersionChangesDir())->toBeNull()
-        // A NUL byte reaches no `is_dir()` from here: the same refusal every other configured path gets.
-        ->and(versionedConfig(['changes' => ['dir' => "app\0/Api"]])->apiVersionChangesDir())->toBeNull();
+it('reads every configured changes directory, in the order they are written', function (): void {
+    // A list, and the configured order, because the first entry is where a scaffolded change is
+    // written — sorting here would move that answer around while nothing in config changed.
+    expect(versionedConfig(['changes' => ['modules/Zebra/Api/Versions', 'app/Api/Versions']])->apiVersionChangeDirs())
+        ->toBe(['modules/Zebra/Api/Versions', 'app/Api/Versions']);
 });
+
+it('holds no directory a document names none of, and refuses one no filesystem call could hold', function (mixed $changes): void {
+    expect(versionedConfig(['changes' => $changes])->apiVersionChangeDirs())->toBe([]);
+})->with([
+    'unset' => [null],
+    // The shape `overlays` refuses too: a list is the one spelling, so a bare string reads as nothing.
+    'a string rather than a list' => ['app/Api/Versions'],
+    'an empty list' => [[]],
+    'an empty entry' => [['']],
+    'a non-string entry' => [[false]],
+    // A NUL byte reaches no `is_dir()` from here: the same refusal every other configured path gets.
+    'a NUL byte' => [["app\0/Api"]],
+]);
 
 it('publishes X-Api-Version unless the document names another header', function (mixed $configured, string $header): void {
     expect(versionedConfig(['header' => $configured])->apiVersionHeader())->toBe($header);

@@ -106,7 +106,7 @@ it('derives a version for a document whose version really is 1.0.0', function ()
             'routes' => ['include' => ['api/versioned-forms']],
             'error_responses' => 'none',
             'versioning' => 'semver',
-            'api_version' => ['changes' => ['dir' => 'workbench/app/Api/Versions']],
+            'api_version' => ['changes' => ['workbench/app/Api/Versions']],
         ],
     ]);
 

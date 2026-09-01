@@ -9,6 +9,7 @@ use Docuccino\Laravel\Engine\EngineNeon;
 use Docuccino\Laravel\Pipeline\DocumentBuilder;
 use Docuccino\Laravel\Pipeline\FragmentStore;
 use Docuccino\Laravel\Support\Paths;
+use Docuccino\Laravel\Versioning\ChangeDirectories;
 use FilesystemIterator;
 use RecursiveCallbackFilterIterator;
 use RecursiveDirectoryIterator;
@@ -92,9 +93,10 @@ final readonly class WatchSet
                 $roots[] = Paths::absolute($webhooks, $this->basePath);
             }
 
-            $changes = $config->apiVersionChangesDir();
-            if ($changes !== null && $changes !== '') {
-                $roots[] = Paths::absolute($changes, $this->basePath);
+            // Through the collector's own resolver, globs and confinement included: two readings of one
+            // config key is how a build reads a module's changes that a watch session never notices.
+            foreach (ChangeDirectories::resolve($this->basePath, $config)[0] as $changes) {
+                $roots[] = $changes;
             }
 
             foreach ($config->overlays as $pattern) {

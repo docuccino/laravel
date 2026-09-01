@@ -43,7 +43,7 @@ final class ConfigPaths
      * @var array<string, PathShape>
      */
     private const PATH_KEYS = [
-        'api_version.changes.dir' => PathShape::Single,
+        'api_version.changes' => PathShape::PathList,
         'content.dir' => PathShape::Single,
         // A destination, but a HASHED one: only `export` is lifted out of DocumentConfig::hash(), so a
         // coverage directory named absolutely folds this machine's layout into the emitted configHash

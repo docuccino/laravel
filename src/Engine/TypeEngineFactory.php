@@ -7,6 +7,7 @@ namespace Docuccino\Laravel\Engine;
 use Docuccino\Core\Inference\NullTypeEngine;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Support\GeneratedDirectory;
+use Docuccino\Laravel\Support\Psr4Namespaces;
 
 /**
  * Builds the configured {@see TypeEngine} (design §Inference). `null` mode skips analysis entirely, and
@@ -174,6 +175,9 @@ final readonly class TypeEngineFactory
      * isn't body-stripped. Vendor roots never appear — composer's `autoload.psr-4` maps only the app's
      * own dirs. An unreadable composer.json falls back to the descend paths.
      *
+     * The map comes from {@see Psr4Namespaces}, which the scaffold command reads for the namespace a
+     * generated class carries: one reader, so the two cannot disagree about what the application maps.
+     *
      * @param  list<string>  $descendPaths
      * @return list<string>
      */
@@ -181,18 +185,10 @@ final readonly class TypeEngineFactory
     {
         $paths = $descendPaths;
 
-        $composer = $this->basePath.'/composer.json';
-        $contents = is_file($composer) ? @file_get_contents($composer) : false;
-        $decoded = $contents === false ? null : json_decode($contents, true);
-
-        foreach (['autoload', 'autoload-dev'] as $section) {
-            $autoload = is_array($decoded) && is_array($decoded[$section] ?? null) ? $decoded[$section] : [];
-            $psr4 = is_array($autoload['psr-4'] ?? null) ? $autoload['psr-4'] : [];
-            foreach ($psr4 as $dirs) {
-                foreach ((array) $dirs as $dir) {
-                    if (is_string($dir) && $dir !== '') {
-                        $paths[] = $this->basePath.'/'.rtrim(ltrim($dir, './'), '/');
-                    }
+        foreach (Psr4Namespaces::roots($this->basePath) as $dirs) {
+            foreach ($dirs as $dir) {
+                if ($dir !== '') {
+                    $paths[] = $this->basePath.'/'.rtrim(ltrim($dir, './'), '/');
                 }
             }
         }

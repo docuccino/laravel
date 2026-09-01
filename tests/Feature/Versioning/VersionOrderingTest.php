@@ -30,7 +30,7 @@ function orderedVersionDocument(string $dir, string $version, ?string $versionin
         'info' => ['title' => 'Forms API', 'version' => $version],
         'routes' => ['include' => ['api/versioned-forms']],
         'error_responses' => 'none',
-        'api_version' => ['changes' => ['dir' => $dir]],
+        'api_version' => ['changes' => [$dir]],
     ] + ($versioning === null ? [] : ['versioning' => $versioning]);
 }
 

@@ -113,7 +113,7 @@ it('watches nothing for a configured path no filesystem call can accept', functi
     config()->set('docuccino.documents.default.overlays', ["resources\0/overlays/*.yaml"]);
     config()->set('docuccino.documents.default.content.dir', "resources\0/docs");
     config()->set('docuccino.documents.default.webhooks.dir', "app\0/Webhooks");
-    config()->set('docuccino.documents.default.api_version.changes.dir', "app\0/Api/Versions");
+    config()->set('docuccino.documents.default.api_version.changes', ["app\0/Api/Versions"]);
 
     $roots = $this->watched->documentRoots(['default']);
 
@@ -124,7 +124,7 @@ it('watches nothing for a configured path no filesystem call can accept', functi
 
 it('adds the version-changes directory, so a change written mid-session registers', function (): void {
     mkdir($this->fixture->path('app/Api/Versions'), 0755, true);
-    config()->set('docuccino.documents.default.api_version.changes.dir', 'app/Api/Versions');
+    config()->set('docuccino.documents.default.api_version.changes', ['app/Api/Versions']);
 
     $roots = $this->watched->documentRoots(['default']);
     expect($roots)->toContain($this->fixture->path('app/Api/Versions'));

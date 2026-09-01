@@ -32,6 +32,7 @@ use Docuccino\Laravel\Commands\ExportCommand;
 use Docuccino\Laravel\Commands\InstallCommand;
 use Docuccino\Laravel\Commands\MemoryLimitOption;
 use Docuccino\Laravel\Commands\ValidateCommand;
+use Docuccino\Laravel\Commands\VersionChangesCommand;
 use Docuccino\Laravel\Commands\WatchCommand;
 use Docuccino\Laravel\Config\ConfigPublisher;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
@@ -68,6 +69,7 @@ use Docuccino\Laravel\Routing\ResolvedRouteIndex;
 use Docuccino\Laravel\Routing\RouteSurvey;
 use Docuccino\Laravel\Routing\VendorRoutePolicy;
 use Docuccino\Laravel\Runtime\DocumentCache;
+use Docuccino\Laravel\Versioning\Scaffold\ChangeStub;
 use Docuccino\Laravel\Versioning\VersionChangeCollector;
 use Docuccino\Laravel\Watch\ArtisanBuildRunner;
 use Docuccino\Laravel\Watch\BuildRunner;
@@ -119,6 +121,7 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
                 WatchCommand::class,
                 ExplainCommand::class,
                 CoverageCommand::class,
+                VersionChangesCommand::class,
             ]);
     }
 
@@ -538,6 +541,15 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
         // Ahead of the off-switch: `--memory-limit` has to reach config before a command's dependencies
         // resolve the engine, and this listener is the last hook early enough (see MemoryLimitOption).
         Event::listen(CommandStarting::class, MemoryLimitOption::capture(...));
+
+        // The scaffold template, publishable the way every other publishable file in Laravel is. Not on
+        // `docuccino:install`: that command runs once and idempotently, while editing a stub is a
+        // repeatable act somebody takes when they want their own — so it rides `vendor:publish`, which
+        // is where an author already looks, exactly as `--tag=docuccino-config` does for the config.
+        $this->publishes(
+            [ChangeStub::packaged() => $this->app->basePath(ChangeStub::PUBLISHED_DIRECTORY.'/'.ChangeStub::NAME)],
+            'docuccino-stubs',
+        );
 
         // Master off-switch: no runtime endpoints exist at all when it's off.
         if (config('docuccino.enabled', true) === false) {

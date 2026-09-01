@@ -60,7 +60,7 @@ function snapshotVersionDocument(string $version): array
         'info' => ['title' => 'Snapshots', 'version' => $version],
         'routes' => ['include' => ['api/forms']],
         'error_responses' => 'none',
-        'api_version' => ['changes' => ['dir' => 'app/Versioning']],
+        'api_version' => ['changes' => ['app/Versioning']],
     ]]);
 
     $result = generateDocument(key: 'v');

@@ -91,7 +91,7 @@ final class DocumentBuilder
             return $result;
         }
 
-        return new GenerationResult($result->document, $this->sort([...$diagnostics, ...$result->diagnostics]));
+        return new GenerationResult($result->document, $this->sort([...$diagnostics, ...$result->diagnostics]), $result->schemaSources);
     }
 
     /**

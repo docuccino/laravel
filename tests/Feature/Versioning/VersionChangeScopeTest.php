@@ -34,7 +34,7 @@ function scopedVersionDocument(?string $dir): array
         'info' => ['title' => 'Forms API', 'version' => '2026-06-01'],
         'routes' => ['include' => ['api/versioned-forms*']],
         'error_responses' => 'none',
-        'api_version' => $dir === null ? [] : ['changes' => ['dir' => $dir]],
+        'api_version' => $dir === null ? [] : ['changes' => [$dir]],
     ];
 }
 

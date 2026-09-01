@@ -69,7 +69,7 @@ function documentFrom(array $raw, string $basePath = '/checkout/one'): DocumentC
 
 /** Path-like keys that SHAPE the document, so they are digested by `hash()`. */
 dataset('pathKeys', [
-    'api_version.changes.dir' => ['api_version.changes.dir', 'app/Api/Versions'],
+    'api_version.changes[0]' => ['api_version.changes.0', 'app/Api/Versions'],
     'content.dir' => ['content.dir', 'resources/docs/api'],
     'coverage.log' => ['coverage.log', 'storage/docuccino/coverage'],
     'examples.recordings' => ['examples.recordings', 'docs/recordings'],
@@ -94,7 +94,7 @@ dataset('destinationKeys', [
 function pathKeyRows(): array
 {
     return [
-        'api_version.changes.dir' => ['api_version.changes.dir', 'app/Api/Versions'],
+        'api_version.changes[0]' => ['api_version.changes.0', 'app/Api/Versions'],
         'content.dir' => ['content.dir', 'resources/docs/api'],
         'coverage.log' => ['coverage.log', 'storage/docuccino/coverage'],
         'examples.recordings' => ['examples.recordings', 'docs/recordings'],

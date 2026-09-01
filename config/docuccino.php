@@ -33,11 +33,13 @@ return [
 
             // Declares that this document IS an API version: the one below is `info.version`, every
             // operation publishes the header a client pins a version with, and every change declared
-            // under `changes.dir` that shipped AFTER this version is applied in reverse to derive the
+            // under `changes` that shipped AFTER this version is applied in reverse to derive the
             // older shape. Absent means the document is not a version at all.
             // 'api_version' => [
-            //     // Where the #[ApiVersionChange] classes live, relative to the base path.
-            //     'changes' => ['dir' => 'app/Api/Versions'],
+            //     // Where the #[ApiVersionChange] classes live, relative to the base path. A list of
+            //     // directories, each of which may be a glob, so a modular app keeps its changes
+            //     // beside the modules that own them: 'modules/*/Api/Versions'.
+            //     'changes' => ['app/Api/Versions'],
             //     // The request header the version enum is published on.
             //     'header' => 'X-Api-Version',
             // ],
