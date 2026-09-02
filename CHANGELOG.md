@@ -7,6 +7,21 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.14.0
+
+### Breaking changes
+
+- remove the problem-details error preset ([#358](https://github.com/docuccino/docuccino/pull/358))
+  - the `problem-details` error preset is removed. `error_responses` now accepts `'default'` or `'none'` only, and the bag form (`['preset' => …, 'errors_shape' => …]`) is gone with it. A document still configured either way is built as if it said `'default'` and reports `config.unknown-error-responses` at warning, so nothing fails silently. Set it to `'default'` or `'none'` explicitly: REMOVING the key is not the same edit, because an absent `error_responses` resolves to `'none'` and publishes no error responses at all.
+
+### Bug fixes
+
+- say what the too-dynamic warning is, and what a filled example really carries ([#374](https://github.com/docuccino/docuccino/pull/374))
+- withhold the framework error body at every producer that fills one in ([#362](https://github.com/docuccino/docuccino/pull/362))
+- illustrate an unread error member with a value its own schema accepts ([#360](https://github.com/docuccino/docuccino/pull/360))
+- publish the media type a handler proved when its body could not be read ([#357](https://github.com/docuccino/docuccino/pull/357))
+- keep the error body a handler proved when its status could not be read ([#354](https://github.com/docuccino/docuccino/pull/354))
+
 ## v0.13.1
 
 ### Features
