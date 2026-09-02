@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Docuccino\Core\Diagnostics\DiagnosticCollector;
+use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\DocumentContext;
 use Docuccino\Core\Extensions\Document\UirDocumentDraft;
@@ -65,15 +66,24 @@ it('emits one summary diagnostic per callback with count + first few exception t
     $diagnostics = $collector->all();
     expect($diagnostics)->toHaveCount(1)
         ->and($diagnostics[0]->code)->toBe('inferred-handler.too-dynamic')
+        // A WARNING, and the reason is a prediction rather than a judgement about this document: where
+        // this fires and the tier declines, the error is published with no `content`, and a contract test
+        // on a response that really returns bytes fails against exactly that. `--fail-on=warning` starts
+        // failing on it, which `diagnostics.accept` is the escape hatch for.
+        ->and($diagnostics[0]->severity)->toBe(Severity::Warning)
         ->and($diagnostics[0]->message)->toContain('5 exception type(s)')
         ->and($diagnostics[0]->message)->toContain('E1, E2, E3')
         ->and($diagnostics[0]->message)->toContain('(and 2 more)')
         ->and($diagnostics[0]->message)->toContain('App\\Renderer::__invoke')
-        // The help names only what clears the deferral — a JsonResponse arm with a status or a body
-        // that folds — and says outright that the attribute corrects the document without silencing
-        // this, because the deferral is recorded before any attribute layer runs.
+        // The help names both remedies — making the arm readable, and stating the response outright with
+        // the attribute and the arguments that do it — and says that the attribute corrects the document
+        // without silencing this, because the deferral is recorded before any attribute layer runs. It
+        // calls itself a warning, since it is one, and it credits only the PAYLOAD with settling it: a
+        // status or media type the arm folded is published and the deferral is recorded beside it —
+        // InferredHandlerTest's "states the representation and the loss where it folded a status and no
+        // body" is where that population is pinned.
         ->and($diagnostics[0]->help)->toBe(
-            'Return a JsonResponse from the arm — `response()->json(…)`, not a plain `response()`, a view or a redirect — and give it a literal integer status: `404`, not `$e->getCode()` or a ternary. Either a status that folds or a body that folds is enough, and that is what settles this. Naming these responses with #[Response] corrects the document instead, and this notice keeps naming the callback.',
+            'Two remedies. Make the arm readable: return a JsonResponse — `response()->json(…)`, not a plain `response()`, a view or a redirect — with the payload written at that call site, and a literal integer status (`404`, not `$e->getCode()` or a ternary). The payload is what settles this: where only the status or the `Content-Type` folded, the response publishes that much and no shape, and this warning stands. Or state the response yourself with #[Response(status: 404, type: ErrorPayload::class)] on the action, which publishes the shape — it corrects the document without silencing this warning, and the warning keeps naming the callback.',
         );
 });
 

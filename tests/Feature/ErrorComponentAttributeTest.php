@@ -409,27 +409,24 @@ it('reports an errorComponent: on a status that shares no error body', function 
 ]);
 
 it('reports an errorComponent: on a status a mapper turned into a $ref', function (): void {
-    // The Problem Details preset answers the whole status with a reference to a component it named where
-    // that component is defined, so there is no body here to carry another name. `ErrorResponsesExtension`
-    // has guarded the same path for the class anchor since it was written; it just did so in silence, and
-    // for an argument written AT the operation silence is the defect. Asked at Finalize because a status
-    // does not become a `$ref` until a mapper resolves, one phase after the claim is written.
+    // A mapper that answers the whole status with a reference to a component it named where that component
+    // is defined leaves no body here to carry another name. `ErrorResponsesExtension` has guarded the same
+    // path for the class anchor since it was written; it just did so in silence, and for an argument
+    // written AT the operation silence is the defect. Asked at Finalize because a status does not become a
+    // `$ref` until a mapper resolves, one phase after the claim is written.
     /** @var Router $router */
     $router = app('router');
     $router->get('api/zz-declared-twentyFirst', [DeclaredErrorsController::class, 'twentyFirst']);
 
     app()->instance(TypeEngine::class, declaringEngine(['twentyFirst' => [NotFoundHttpException::class, 404]])());
+    Docuccino::extend(declaringRefMapper(NotFoundHttpException::class, '404', 'SharedNotFound'));
 
-    $result = generateDocument(static function (array $raw): array {
-        $raw['error_responses'] = 'problem-details';
-
-        return $raw;
-    });
+    $result = generateDocument();
 
     $unreachable = diagnosticsCoded($result->diagnostics, 'attribute.error-component-unreachable');
 
     expect($result->document->toArray()['paths']['/api/zz-declared-twentyFirst']['get']['responses']['404']['$ref'])
-        ->toBe('#/components/responses/ProblemNotFound')
+        ->toBe('#/components/responses/SharedNotFound')
         ->and($unreachable)->toHaveCount(1)
         ->and($unreachable[0]->message)->toContain('NamesTheReference')
         ->and($unreachable[0]->message)->toContain('is a reference to a shared component')
@@ -550,6 +547,45 @@ function declaringAppMapper(string $fqcn, string $status, string $name): Excepti
             $draft->setDescription('Conflict', $by);
             $draft->content('application/json')->set('type', 'object', $by);
             $draft->content('application/json')->set('properties', ['detail' => ['type' => 'string']], $by);
+
+            return $draft;
+        }
+    };
+}
+
+/**
+ * An application's own mapper that answers a whole status with a `$ref` to a response component it
+ * registered — the shape of a document whose error bodies are shared and named where they are defined.
+ */
+function declaringRefMapper(string $fqcn, string $status, string $component): ExceptionToResponse
+{
+    return new class($fqcn, $status, $component) implements ExceptionToResponse
+    {
+        public function __construct(
+            private readonly string $fqcn,
+            private readonly string $status,
+            private readonly string $component,
+        ) {}
+
+        public function supports(ThrownException $exception, RouteContext $context): bool
+        {
+            return is_a($exception->exceptionFqcn, $this->fqcn, true);
+        }
+
+        public function producer(): string
+        {
+            return 'integration:acme';
+        }
+
+        public function toResponse(ThrownException $exception, RouteContext $context, ComponentRegistry $components): ?ResponseDraft
+        {
+            $components->referenceResponse($this->component, [
+                'description' => 'Error',
+                'content' => ['application/problem+json' => ['schema' => ['type' => 'object']]],
+            ]);
+
+            $draft = new ResponseDraft($this->status);
+            $draft->setRef('#/components/responses/'.$this->component, Contribution::integration('acme'));
 
             return $draft;
         }
@@ -847,25 +883,22 @@ it('invalidates a fragment when the BASE class that declares the name is edited'
 });
 
 it('leaves a response that is only a reference for its component to name', function (): void {
-    // Under the Problem Details preset an error is a `$ref` to a shared `Problem*` response. A reference
-    // states no body of its own, so there is nothing here for the exception's name to rename — the
-    // component it points at was named where it was defined.
+    // A mapper can answer a status with a `$ref` to a shared response. A reference states no body of its
+    // own, so there is nothing here for the exception's name to rename — the component it points at was
+    // named where it was defined.
     /** @var Router $router */
     $router = app('router');
     $router->get('api/zz-declared-first', [DeclaredErrorsController::class, 'first']);
 
     app()->instance(TypeEngine::class, declaringEngine(['first' => [HttpConflictException::class, 409]])());
+    Docuccino::extend(declaringRefMapper(HttpConflictException::class, '409', 'SharedConflict'));
 
-    $document = generateDocument(static function (array $raw): array {
-        $raw['error_responses'] = ['preset' => 'problem-details'];
-
-        return $raw;
-    })->document->toArray();
+    $document = generateDocument()->document->toArray();
 
     $response = $document['paths']['/api/zz-declared-first']['get']['responses']['409'];
 
     expect($response)->toHaveKey('$ref')
-        ->and($response['$ref'])->toBe('#/components/responses/Problem409')
+        ->and($response['$ref'])->toBe('#/components/responses/SharedConflict')
         ->and($response['x-docuccino']['facts'] ?? [])->not->toHaveKey('component')
         ->and($document['components']['responses'])->not->toHaveKey('ResourceMissing');
 });

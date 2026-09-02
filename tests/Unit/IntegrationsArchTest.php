@@ -3,16 +3,20 @@
 declare(strict_types=1);
 
 /**
- * The dogfooding rule: built-in integrations under `Docuccino\Laravel\Integrations\*` may consume only
- * the public extension surface — core extension contracts, the type/rule/validation value objects,
- * drafts, inference, diagnostics, provenance — plus Illuminate and the shared php-parser boundary.
- * Never a core internal (Document, Identity, Emit, Canonical, Overlay, the core Validator) or the
- * adapter's own pipeline/registry/routing wiring. That forces a new integration through the same
+ * The dogfooding rule as a LIST: built-in integrations under `Docuccino\Laravel\Integrations\*` may
+ * consume only the public extension surface — core extension contracts, the type/rule/validation value
+ * objects, drafts, inference, diagnostics, provenance — plus Illuminate and the shared php-parser
+ * boundary. Never a core internal (Document, Identity, Emit, Canonical, Overlay, the core Validator) or
+ * the adapter's own pipeline/registry/routing wiring. That forces a new integration through the same
  * public API a third-party package would use.
+ *
+ * Named rather than inlined so the guard below holds the SAME list the rule enforces, never a copy.
+ *
+ * @return list<string>
  */
-arch('built-in integrations consume only the public extension surface')
-    ->expect('Docuccino\Laravel\Integrations')
-    ->toOnlyUse([
+function publicExtensionSurface(): array
+{
+    return [
         'Docuccino\Core\Extensions\Contracts',
         // Schema + Validation are allow-listed per class, not per namespace: both contain an @internal
         // class (Schema\SchemaConverter, Validation\FieldNode) the frozen extension-author surface must
@@ -95,6 +99,18 @@ arch('built-in integrations consume only the public extension surface')
         // becoming a path parameter) must answer exactly what a response body would, and allow-listing
         // the table is how that stays true — a private copy is how the two drift apart.
         'Docuccino\Core\Extensions\BuiltIn\JsonTypes',
+        // Same exemption, same reason: the ONE sample per JSON Schema `format`. An integration filling a
+        // member the build could not read has to illustrate a `date-time` with the same value the
+        // validation side and the collection exporter do — a private copy is how one producer starts
+        // publishing a different email address for the same keyword. It also carries the document's own
+        // `representation.examples.formats` overrides at the single lookup, which a copy would not.
+        'Docuccino\Core\Support\FormatSamples',
+        // Same exemption, same reason: the ONE ladder from a set of numeric bounds to a value they admit.
+        // A bound both constrains a value and names one, so `minimum: 5` has a legal illustration where a
+        // `pattern` has none — and an integration filling an unread member has to reach for the same one
+        // the validated field's example and the collection exporter reach for. A private copy is how one
+        // producer starts publishing `0` beside a floor of 5, which is a value that schema rejects.
+        'Docuccino\Core\Support\BoundedNumber',
         // Same exemption, same reason as FieldPath above: the ONE reading of a hand-written type string.
         // An attribute's `type:` is folded into a schema by an extension, and the notice that stands
         // down when a declaration has settled a container has to ask that same fold what the type
@@ -137,7 +153,42 @@ arch('built-in integrations consume only the public extension surface')
         // renaming a neighbour when a value is added. Versioning may not import an integration, so the
         // rule lives under Laravel\Support rather than being written twice.
         'Docuccino\Laravel\Support\ListValueNames',
-    ]);
+    ];
+}
+
+arch('built-in integrations consume only the public extension surface')
+    ->expect('Docuccino\Laravel\Integrations')
+    ->toOnlyUse(publicExtensionSurface());
+
+/**
+ * The half the allow-list states in prose and nothing was asking: an entry naming a CLASS widens the
+ * frozen extension-author surface, so it may not be one core marks `@internal`. Entries have already been
+ * un-marked deliberately for exactly this — `Core\Support\Fqcn` says so in its own docblock — and the
+ * rule held only for as long as each reviewer remembered it: an `@internal` class added here, or an
+ * `@internal` added later to a class already here, was a silent widening either way.
+ */
+it('allow-lists no class core marks @internal', function (): void {
+    $checked = [];
+    $internal = [];
+
+    foreach (publicExtensionSurface() as $entry) {
+        if (! class_exists($entry) && ! interface_exists($entry)) {
+            continue; // a namespace, or a package the adapter allows wholesale
+        }
+
+        $checked[] = $entry;
+
+        $doc = (new ReflectionClass($entry))->getDocComment();
+        if (is_string($doc) && preg_match('/^\s*\*\s*@internal\b/m', $doc) === 1) {
+            $internal[] = $entry;
+        }
+    }
+
+    // A scan that stopped recognising its shapes must fail rather than pass: the list carries a dozen
+    // class entries today, well above this floor.
+    expect($internal)->toBe([])
+        ->and(count($checked))->toBeGreaterThan(8);
+});
 
 arch('built-in integrations never reach into core internals or adapter wiring')
     ->expect('Docuccino\Laravel\Integrations')

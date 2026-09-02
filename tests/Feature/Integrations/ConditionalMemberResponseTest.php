@@ -14,6 +14,9 @@ use Docuccino\Core\Inference\ClassMetadata;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\ReturnSite;
 use Docuccino\Core\Inference\SourceLocation;
+use Docuccino\Core\Inference\ThrowConfidence;
+use Docuccino\Core\Inference\ThrowDisposition;
+use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Patch\Contribution;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Inference\PhpStan\Tests\Support\FixtureRunner;
@@ -81,6 +84,8 @@ function conditionalMemberBody(string $method): array
         new ActionAnalysis(returns: [new ReturnSite($onTwin, new SourceLocation(''))]),
         $context,
         Contribution::integration('inferred-handler'),
+        new ThrownException('App\\Exceptions\\ProbeFailure', 422, [], ThrowConfidence::Certain, ThrowDisposition::Signal),
+        'App\\Exceptions\\Handler::render',
     );
 
     $frozen = $draft?->freeze()->toArray() ?? [];

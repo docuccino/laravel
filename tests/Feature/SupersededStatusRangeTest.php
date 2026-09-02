@@ -125,7 +125,7 @@ it('leaves an error range standing beside a declared member of its own class', f
     // An error range IS a member set — "any 4xx answers like this" — so declaring 404 denies nothing
     // about 409. Only the redirect range stands for one unknown code, so only it is retracted.
     $operation = afterResponseAttributes([new Response(status: $status)], function (OperationDraft $draft) use ($range): void {
-        $draft->response($range)->setDescription('Problem', Contribution::integration('problem-details'));
+        $draft->response($range)->setDescription('Problem', Contribution::integration('framework-errors'));
     });
 
     expect($operation->responseStatuses())->toBe([(string) $status, $range]);
@@ -140,8 +140,8 @@ it('leaves a range standing when an ignore names a member of it', function (stri
     // one it cannot name at all is the range key itself (`#[IgnoreResponse]` takes an int).
     $operation = afterResponseAttributes([new IgnoreResponse(status: $status)], function (OperationDraft $draft) use ($range, $status): void {
         seedInferredRedirect($draft);
-        $draft->response($range)->setDescription('Problem', Contribution::integration('problem-details'));
-        $draft->response((string) $status)->setDescription('Gone', Contribution::integration('problem-details'));
+        $draft->response($range)->setDescription('Problem', Contribution::integration('framework-errors'));
+        $draft->response((string) $status)->setDescription('Gone', Contribution::integration('framework-errors'));
     });
 
     // The member the ignore names is the only thing gone; both ranges stand.

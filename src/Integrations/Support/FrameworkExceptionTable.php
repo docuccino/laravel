@@ -6,12 +6,12 @@ namespace Docuccino\Laravel\Integrations\Support;
 
 /**
  * How Laravel's stock exceptions map to HTTP responses. Every error tier reads this one table — the
- * plain-JSON framework-errors tier, the RFC 9457 Problem Details preset, the terminal fallback and the
- * inferred-handler builder — so no two presentations can drift on a status or its label.
+ * plain-JSON framework-errors tier, the terminal fallback and the inferred-handler builder — so no two
+ * presentations can drift on a status or its label.
  *
  * Reason phrases are the RFC 9110 §15 canonical ones, used verbatim as the framework-error response
- * description and the problem-details title. Note 401 is "Unauthorized" (§15.5.2), not
- * "Unauthenticated" — Laravel's own message wording is not the reason phrase.
+ * description. Note 401 is "Unauthorized" (§15.5.2), not "Unauthenticated" — Laravel's own message
+ * wording is not the reason phrase.
  */
 final class FrameworkExceptionTable
 {
@@ -19,7 +19,7 @@ final class FrameworkExceptionTable
      * The status an error carrying no readable status of its own is published under. It is not a claim
      * about the exception — nothing read one — but a key the document cannot do without, since a response
      * is addressed by status and there is no other key to give it. Shared because more than one tier
-     * reaches for it (the terminal fallback, and the Problem Details preset for an `HttpException` whose
+     * reaches for it (the terminal fallback, and the inferred-handler builder for a render path whose
      * status did not fold), and two tiers keying one error differently would publish two responses where
      * the server sends one.
      */
@@ -86,6 +86,22 @@ final class FrameworkExceptionTable
         }
 
         return null;
+    }
+
+    /**
+     * The status an error is published under when nothing in the code stated one: the exception's own
+     * framework classification where this table knows it, and {@see UNPLACED_STATUS} otherwise. It is a
+     * classification and not a reading — the build never saw a number — which is why the two tiers with
+     * no reading to fall back on (the inferred-handler builder and the terminal fallback) both ask here
+     * rather than picking their own: two tiers keying one error differently publish two responses where
+     * the server sends one. The framework-defaults tier keys off {@see match()} instead, one call lower
+     * on the same table, because it needs the body shape beside the status.
+     */
+    public static function classification(string $fqcn): string
+    {
+        $facts = self::match($fqcn);
+
+        return $facts === null ? self::UNPLACED_STATUS : $facts['status'];
     }
 
     /** The reason phrase for a status, or a generic `Error` when unlisted. */

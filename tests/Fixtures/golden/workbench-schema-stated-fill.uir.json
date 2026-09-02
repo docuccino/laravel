@@ -1,0 +1,307 @@
+{
+  "$schema": "https://spec.docuccino.app/uir/1.0/schema.json",
+  "uir": "1.0.0",
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/export-archive": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:hvkhq5d4njtdl6pm",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/SharedErrors/ExportController.php",
+                "line": 11,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\ExportController::archive"
+              }
+            }
+          ]
+        },
+        "tags": [
+          "Export"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:stz4yny63phe4w5h",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "x-docuccino": {
+              "id": "res:v1:xnvn7jucd6ijndi5",
+              "provenance": [
+                {
+                  "producer": "integration:inferred-handler",
+                  "layer": "integration",
+                  "fields": [
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/SharedErrors/ExportController.php",
+                    "line": 11,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\ExportController::archive"
+                  }
+                }
+              ],
+              "facts": {
+                "examplePlaceholders": {
+                  "application/problem+json": [
+                    "context",
+                    "failedAt",
+                    "reason",
+                    "retryable"
+                  ]
+                }
+              }
+            },
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    },
+    "/api/export-ledger": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:5opmkijjyh7dy57u",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/SharedErrors/ExportController.php",
+                "line": 17,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\ExportController::ledger"
+              }
+            }
+          ]
+        },
+        "tags": [
+          "Export"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:dyly7homqukufggb",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "x-docuccino": {
+              "id": "res:v1:73h2xoupabumpkuf",
+              "provenance": [
+                {
+                  "producer": "integration:inferred-handler",
+                  "layer": "integration",
+                  "fields": [
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/SharedErrors/ExportController.php",
+                    "line": 17,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\ExportController::ledger"
+                  }
+                }
+              ],
+              "facts": {
+                "examplePlaceholders": {
+                  "application/problem+json": [
+                    "context",
+                    "failedAt",
+                    "reason",
+                    "retryable"
+                  ]
+                }
+              }
+            },
+            "$ref": "#/components/responses/Error409"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ExportFailure": {
+        "x-docuccino": {
+          "id": "sch:v1:7patujxnfwznrsp4"
+        },
+        "type": "string",
+        "enum": [
+          "quota-exceeded",
+          "source-unavailable"
+        ],
+        "x-enum-varnames": [
+          "QuotaExceeded",
+          "SourceUnavailable"
+        ],
+        "x-enumNames": [
+          "QuotaExceeded",
+          "SourceUnavailable"
+        ]
+      },
+      "ExportProblem": {
+        "x-docuccino": {
+          "id": "sch:v1:g2kkki34wnuw4gen"
+        },
+        "type": "object",
+        "properties": {
+          "context": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "failedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ExportFailure"
+          },
+          "retryable": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "reason",
+          "failedAt",
+          "retryable",
+          "context"
+        ]
+      }
+    },
+    "responses": {
+      "Error409": {
+        "description": "Conflict",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ExportProblem"
+            },
+            "example": {
+              "type": "https://example.com/problems/export-refused",
+              "title": "Conflict",
+              "status": 409,
+              "reason": "quota-exceeded",
+              "failedAt": "2024-01-01T00:00:00Z",
+              "retryable": true,
+              "context": {}
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "5f2fa7f04d876587d654542b680caee47345866b9fdf48bc1e55e33f72a81989",
+      "contentHash": "468de6085c8c5bf67b31290a321112c3deed3ce646a9df2a0cbd3fe68d15ebe1"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.13.1",
+      "specVersion": "1.0.0"
+    }
+  }
+}

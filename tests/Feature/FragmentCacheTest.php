@@ -60,6 +60,9 @@ afterEach(function (): void {
 });
 
 it('serves a warm cache hit byte-identically while skipping the engine', function (): void {
+    // A warm hit rebuilds `components` from the `$ref`s each fragment carries, so anything registered
+    // without being referenced exists only on a cold build — the default document's throttled route asks
+    // the error chain for a 429 body and rolls the component back, which is where that asymmetry shows up.
     fragmentCacheDir('fragments');
     $engine = new CountingTypeEngine(WorkbenchEngine::make());
     app()->instance(TypeEngine::class, $engine);
@@ -71,35 +74,6 @@ it('serves a warm cache hit byte-identically while skipping the engine', functio
     // Warm run: every fragment is served from cache; the engine is never touched.
     $engine->analyzeCount = 0;
     $warm = (new UirEmitter)->emit(generateDocument()->document);
-
-    expect($warm)->toBe($cold)
-        ->and($engine->analyzeCount)->toBe(0);
-});
-
-/**
- * @param  array<string, mixed>  $raw
- * @return array<string, mixed>
- */
-function withProblemDetails(array $raw): array
-{
-    $raw['error_responses'] = ['preset' => 'problem-details'];
-
-    return $raw;
-}
-
-it('serves a warm cache hit byte-identically for a problem-details document', function (): void {
-    // A warm hit rebuilds `components` from the `$ref`s each fragment carries, so anything registered
-    // without being referenced exists only on a cold build — the preset's shared `Problem*` responses
-    // and the throttled route's 429 are where that asymmetry shows up.
-    fragmentCacheDir('fragments');
-    $engine = new CountingTypeEngine(WorkbenchEngine::make());
-    app()->instance(TypeEngine::class, $engine);
-
-    $cold = (new UirEmitter)->emit(generateDocument(withProblemDetails(...))->document);
-    expect($engine->analyzeCount)->toBeGreaterThan(0);
-
-    $engine->analyzeCount = 0;
-    $warm = (new UirEmitter)->emit(generateDocument(withProblemDetails(...))->document);
 
     expect($warm)->toBe($cold)
         ->and($engine->analyzeCount)->toBe(0);

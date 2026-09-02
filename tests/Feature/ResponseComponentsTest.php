@@ -13,9 +13,9 @@ use Docuccino\Laravel\Tests\Support\CountingTypeEngine;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 
 /**
- * Reusable response components (design §6 error-response chain / the Problem Details preset seam):
- * shared `components.responses` are hoisted once, referenced by `$ref` from many operations, roll
- * back with a failed route, and survive a warm cache hit — the same discipline schemas get (S5).
+ * Reusable response components (design §6 error-response chain): shared `components.responses` are
+ * hoisted once, referenced by `$ref` from many operations, roll back with a failed route, and survive
+ * a warm cache hit — the same discipline schemas get (S5).
  *
  * An extension that references a shared response component (`$name`) from status 418 of every
  * operation; for `$throwOnUri` it additionally registers an orphan response and then explodes.

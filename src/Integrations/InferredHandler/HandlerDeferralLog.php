@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\InferredHandler;
 
+use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Context\RouteNotes;
 use Docuccino\Core\Extensions\Contracts\RouteNoteCollector;
 
@@ -24,6 +25,17 @@ final class HandlerDeferralLog implements RouteNoteCollector
 {
     /** The {@see RouteNotes} channel the tier writes its deferrals to. */
     public const CHANNEL = 'inferred-handler.deferral';
+
+    /**
+     * Note that a callback's JSON body could not be read for one exception type. Written wherever the
+     * document ends up without the shape that callback renders — the tier declining outright, and the
+     * widened answer that keeps the media type alone ({@see HandlerResponseBuilder}) — so the two spell
+     * one note rather than two.
+     */
+    public static function record(RouteContext $context, string $renderer, string $exceptionFqcn): void
+    {
+        $context->notes()->record(self::CHANNEL, $renderer, $exceptionFqcn);
+    }
 
     /** @var array<string, list<string>> callback target ⇒ deduped exception FQCNs it could not fold */
     private array $entries = [];

@@ -118,13 +118,11 @@
           },
           "404": {
             "x-docuccino": {
-              "id": "res:v1:oalmgud3stpmjjrk",
               "provenance": [
                 {
                   "producer": "integration:framework-errors",
                   "layer": "integration",
                   "fields": [
-                    "component",
                     "description"
                   ],
                   "source": {
@@ -133,12 +131,9 @@
                     "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
                   }
                 }
-              ],
-              "facts": {
-                "component": "NotFound"
-              }
+              ]
             },
-            "$ref": "#/components/responses/NotFound"
+            "description": "Not Found"
           }
         }
       }
@@ -253,13 +248,11 @@
           },
           "404": {
             "x-docuccino": {
-              "id": "res:v1:xwgq676o6qh7v2xs",
               "provenance": [
                 {
                   "producer": "integration:framework-errors",
                   "layer": "integration",
                   "fields": [
-                    "component",
                     "description"
                   ],
                   "source": {
@@ -268,12 +261,9 @@
                     "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
                   }
                 }
-              ],
-              "facts": {
-                "component": "NotFound"
-              }
+              ]
             },
-            "$ref": "#/components/responses/NotFound"
+            "description": "Not Found"
           }
         }
       }
@@ -304,32 +294,6 @@
           "id",
           "title"
         ]
-      },
-      "NotFound": {
-        "x-docuccino": {
-          "id": "sch:v1:bvvuacym2wsq7ebk"
-        },
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "message"
-        ]
-      }
-    },
-    "responses": {
-      "NotFound": {
-        "description": "Not Found",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/NotFound"
-            }
-          }
-        }
       }
     }
   },
@@ -337,7 +301,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "5f2fa7f04d876587d654542b680caee47345866b9fdf48bc1e55e33f72a81989",
-      "contentHash": "ade13aa76192df57db66e72e99b115d398bd725e7f06e5cc8e6e974773ef7873"
+      "contentHash": "1a4323bde5ab8225ca2246f1194eff2c571338c836b6604c1c903f0e858e43c3"
     },
     "generator": {
       "name": "docuccino/laravel",

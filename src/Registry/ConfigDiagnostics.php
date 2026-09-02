@@ -19,11 +19,15 @@ use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParameters;
  * no-ops:
  *
  * - An `enabled` switch on an always-on producer. Those have no {@see IntegrationToggles} entry, so the
- *   switch does nothing (problem_details is driven by the `error_responses` preset instead).
+ *   switch does nothing.
  * - An `integrations.<key>` bag naming neither a toggle nor an always-on producer — a typo, so the
  *   whole bag under it is read by nobody.
  * - An unknown `tags.default_strategy`, which {@see DocumentConfig::tagDefaultStrategy()} coerces to
  *   `controller`.
+ * - An `error_responses` value outside the two the key accepts, which reads as `default`. Every other
+ *   value the build could be handed here would otherwise change what a document says about every error
+ *   in it without a word — null included, which is what an unset `env()` puts under a key an author
+ *   deliberately wrote. Only an ABSENT key is silent, and it resolves to `none` rather than to this.
  * - An `integrations.query_builder.filter_descriptions` key naming no filter kind. The sentence under it
  *   can never be reached, so the override looks like it did nothing.
  * - A `representation.examples.formats` sample that is not a string. `format` is a string keyword, so
@@ -41,9 +45,12 @@ use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParameters;
 final class ConfigDiagnostics
 {
     /** Producers with no `enabled` toggle, i.e. absent from {@see IntegrationToggles}. Fixed order. */
-    private const ALWAYS_ON = ['validation', 'form_request', 'framework_errors', 'problem_details', 'inferred_handler'];
+    private const ALWAYS_ON = ['validation', 'form_request', 'framework_errors', 'inferred_handler'];
 
     private const VALID_TAG_STRATEGIES = ['controller', 'none'];
+
+    /** Everything `error_responses` accepts. Anything else is read as the first of them. */
+    private const VALID_ERROR_RESPONSES = ['default', 'none'];
 
     /**
      * @return list<Diagnostic>
@@ -79,6 +86,28 @@ final class ConfigDiagnostics
                 ),
                 help: self::integrationHelp($key),
             );
+        }
+
+        // Asked by presence: a key holding null is an author who named it, and only an absent key is silent.
+        if (array_key_exists('error_responses', $document->raw)) {
+            $configured = $document->raw['error_responses'];
+
+            if (! in_array($configured, self::VALID_ERROR_RESPONSES, true)) {
+                // A WARNING, like the other two here that drop something the author wrote rather than
+                // merely ignoring a switch: what this key names is the whole document's error contract,
+                // so a value read as something else changes the body of every error response in it.
+                $diagnostics[] = new Diagnostic(
+                    severity: Severity::Warning,
+                    code: 'config.unknown-error-responses',
+                    message: sprintf(
+                        "error_responses is %s, which names no error-response strategy — the document is built as if it said 'default'.",
+                        is_string($configured) ? "'".PlainText::of($configured)."'" : get_debug_type($configured),
+                    ),
+                    help: "Valid values are 'default' (the framework's own error shapes, and the implicit "
+                        ."responses) and 'none'. The shape your own exception handling returns is read from "
+                        .'your code either way, and is published over both.',
+                );
+            }
         }
 
         $strategy = $document->tags['default_strategy'] ?? null;

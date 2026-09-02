@@ -11,13 +11,11 @@ use Docuccino\Laravel\Registry\IntegrationToggles;
 /**
  * The config-shape info diagnostics (design §9, B7): the silent no-ops the config surface used to
  * swallow — an `enabled` switch on an always-on producer, an `integrations` key nothing reads, an
- * unknown tags.default_strategy, and a
- * dropped tags.definitions `parent` — are surfaced as info diagnostics so a misconfiguration is
- * discoverable.
+ * unknown tags.default_strategy, an `error_responses` value naming no strategy, and a dropped
+ * tags.definitions `parent` — are surfaced as diagnostics so a misconfiguration is discoverable.
  */
-function configDoc(array $integrations = [], array $tags = [], array $representation = []): DocumentConfig
+function configDoc(array $integrations = [], array $tags = [], array $representation = [], array $raw = []): DocumentConfig
 {
-    $raw = [];
     if ($integrations !== []) {
         $raw['integrations'] = $integrations;
     }
@@ -39,7 +37,6 @@ it('emits an info diagnostic when an always-on producer carries an enabled switc
     'validation' => ['validation'],
     'form_request' => ['form_request'],
     'framework_errors' => ['framework_errors'],
-    'problem_details' => ['problem_details'],
     'inferred_handler' => ['inferred_handler'],
 ]);
 
@@ -86,9 +83,39 @@ it('does not flag a key some integration actually reads', function (string $key)
 })->with([
     ...array_map(static fn (string $key): array => [$key], array_keys(IntegrationToggles::descriptors())),
     ...array_map(static fn (string $key): array => [$key], [
-        'validation', 'form_request', 'framework_errors', 'problem_details', 'inferred_handler',
+        'validation', 'form_request', 'framework_errors', 'inferred_handler',
     ]),
 ]);
+
+it('warns, and names what was built instead, for an error_responses value that is not one of the two', function (mixed $configured, string $named): void {
+    // The key decides what EVERY error response in the document says, so a value nothing recognises is
+    // reported rather than quietly read as one of them — including a shape (an array, say) that once meant
+    // something here, where the silent reading would be a document with no error responses at all.
+    $diagnostics = ConfigDiagnostics::for(configDoc(raw: ['error_responses' => $configured]));
+
+    expect($diagnostics)->toHaveCount(1)
+        ->and($diagnostics[0]->severity)->toBe(Severity::Warning)
+        ->and($diagnostics[0]->code)->toBe('config.unknown-error-responses')
+        ->and($diagnostics[0]->message)->toContain($named)
+        ->and($diagnostics[0]->message)->toContain("as if it said 'default'")
+        ->and($diagnostics[0]->help)->toContain("'default'");
+})->with([
+    'a strategy name nothing recognises' => ['problem-details', "'problem-details'"],
+    'a misspelling' => ['defualt', "'defualt'"],
+    'an array where a strategy name belongs' => [['preset' => 'problem-details'], 'array'],
+    'a boolean' => [false, 'bool'],
+    // The key an author wrote with an `env()` behind it that came back empty. It is a PRESENT key, so it
+    // reads as `default` like every other unrecognised value — only deleting the key gets you `none`.
+    'an unset env()' => [null, 'null'],
+]);
+
+it('says nothing about the two error_responses values there are, or about a document that sets neither', function (): void {
+    // The third case is ABSENCE, which is not a misconfiguration: it is how a document asks for no error
+    // responses at all, and the row above proves that a key present and holding null is a different thing.
+    expect(ConfigDiagnostics::for(configDoc(raw: ['error_responses' => 'default'])))->toBe([])
+        ->and(ConfigDiagnostics::for(configDoc(raw: ['error_responses' => 'none'])))->toBe([])
+        ->and(ConfigDiagnostics::for(configDoc()))->toBe([]);
+});
 
 it('emits an info diagnostic for an unknown tags.default_strategy value', function (): void {
     $diagnostics = ConfigDiagnostics::for(configDoc(tags: ['default_strategy' => 'wibble']));

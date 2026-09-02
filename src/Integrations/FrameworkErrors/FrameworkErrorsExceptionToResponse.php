@@ -12,6 +12,7 @@ use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Extensions\Schema\ComponentRegistry;
 use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Patch\Contribution;
+use Docuccino\Laravel\Integrations\Support\AppRenderedErrors;
 use Docuccino\Laravel\Integrations\Support\FrameworkExceptionTable;
 
 /**
@@ -19,9 +20,13 @@ use Docuccino\Laravel\Integrations\Support\FrameworkExceptionTable;
  * exception the framework renders to each status. `401`/`403`/`404` are `{message}`; `422` adds the
  * field-keyed `errors` map.
  *
- * Ordered LATE — after the inferred-handler tier (FIRST) and any active preset (EARLY), before the
- * terminal fallback (LAST) — so a real handler or preset always wins and this only covers what neither
- * did. Matching is subtype-aware; an exception outside the table is declined so the chain continues.
+ * Ordered LATE — after the inferred-handler tier (FIRST) and anything an extension orders ahead of it,
+ * before the terminal fallback (LAST) — so a real handler always wins and this only covers what it did
+ * not. Matching is subtype-aware; an exception outside the table is declined so the chain continues.
+ *
+ * The shapes are the framework's, so they are withheld where the application demonstrably renders the
+ * exception itself and the build could not read what it renders it to: the status still stands, the body
+ * goes unsaid ({@see AppRenderedErrors}).
  */
 #[ExtensionOrder(priority: Priorities::LATE)]
 final class FrameworkErrorsExceptionToResponse implements ExceptionToResponse
@@ -73,6 +78,17 @@ final class FrameworkErrorsExceptionToResponse implements ExceptionToResponse
         $contribution = Contribution::integration('framework-errors');
         $draft = new ResponseDraft($entry['status']);
         $draft->setDescription($entry['description'], $contribution);
+
+        // The application renders this exception itself and the build could not read what it renders it
+        // to, or the tier ahead would already have answered. Everything this tier knows about the body is
+        // what the FRAMEWORK sends, which that renderer replaces, so it publishes the status it classifies
+        // and stops there rather than asserting a shape and a media type over code that refutes them
+        // ({@see AppRenderedErrors}). It still ANSWERS: deferring would only hand the same guess to the
+        // tier behind it. What the author should fix is said in the deferral summary, not here.
+        if (AppRenderedErrors::includes($context, $exception->exceptionFqcn)) {
+            return $draft;
+        }
+
         // This tier speaks for one kind of error per status, so it can name the shared component after
         // the error rather than after the number.
         $draft->claimComponentName(FrameworkExceptionTable::componentName($entry['status']), $contribution, isStatusDefault: true);

@@ -14,6 +14,7 @@ use Docuccino\Core\Inference\ThrowConfidence;
 use Docuccino\Core\Inference\ThrowDisposition;
 use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Patch\Contribution;
+use Docuccino\Laravel\Integrations\Support\AppRenderedErrors;
 use Docuccino\Laravel\Integrations\Support\FrameworkExceptionTable;
 use Docuccino\Laravel\Support\IgnoredResponses;
 use Illuminate\Cache\RateLimiter;
@@ -29,6 +30,8 @@ use Illuminate\Cache\RateLimiter;
  *
  * The body comes from the error-response chain rather than this integration — see {@see body()} for why a
  * middleware-synthesized response has to ask, and why it stays inline.
+ *
+ * @phpstan-type ChainBody array{content: array<array-key, mixed>|null, placeholders: array<string, list<string>>}
  */
 final class RateLimitResponsesExtension implements OperationExtension
 {
@@ -48,6 +51,14 @@ final class RateLimitResponsesExtension implements OperationExtension
 
     public function handle(OperationDraft $operation, RouteContext $context): void
     {
+        // A document that publishes no error responses publishes no 429 either. The 429 is an error
+        // response synthesized from middleware rather than from a throw, but it is one — so it answers to
+        // the document-level switch exactly as the implicit 401/403/404/422, the declared errors and the
+        // Query Builder's 400 do, and the per-route knob for keeping one is `#[IgnoreResponse]`.
+        if ($context->document->errorResponses === 'none') {
+            return;
+        }
+
         $limits = $this->throttles($context);
         if ($limits === []) {
             return;
@@ -88,9 +99,25 @@ final class RateLimitResponsesExtension implements OperationExtension
         }
         $response->set('headers', $built['headers'], $contribution);
 
-        $content = $this->body($context) ?? $built['content'];
+        // The stock `{message}` is the FRAMEWORK's shape, so it is withheld on the one route whose own
+        // handler demonstrably renders the throttle exception and whose result the build could not read —
+        // the same standing-aside the framework-defaults tier and the terminal fallback make off the same
+        // fact ({@see AppRenderedErrors}). This is the fourth producer of a framework-shaped error body,
+        // and filling the gap here would re-assert on a throttled route exactly what the other three
+        // withheld everywhere else. The status, the reason and the rate headers all still answer.
+        //
+        // So a chain that ANSWERED is used as it stands, `content: null` included; only a chain with
+        // nothing to say falls through to the framework shape.
+        $chain = $this->body($context);
+        $content = $chain === null ? $built['content'] : $chain['content'];
+        $placeholders = $chain['placeholders'] ?? [];
         if (is_array($content)) {
             foreach ($content as $mediaType => $media) {
+                // Registered first, for the reason core's response-draft merge states: a chain answer that
+                // names a media type and constrains nothing under it is a representation this 429 really
+                // has, and a copy driven by the keyword loop alone would drop it.
+                $response->content((string) $mediaType);
+
                 $schema = is_array($media) && is_array($media['schema'] ?? null) ? $media['schema'] : [];
                 foreach ($schema as $keyword => $value) {
                     if ($keyword === 'x-docuccino') {
@@ -99,21 +126,27 @@ final class RateLimitResponsesExtension implements OperationExtension
                     $response->content((string) $mediaType)->set((string) $keyword, $value, $contribution);
                 }
 
+                // With whichever of its members the chain FILLED rather than read, for the reason core's
+                // response-draft merge states: the frozen body cannot say, and a copy that dropped the
+                // set would publish a filled example claiming every member of it was proven.
                 if (is_array($media) && array_key_exists('example', $media)) {
-                    $response->setExample((string) $mediaType, $media['example']);
+                    $response->setExample((string) $mediaType, $media['example'], $placeholders[(string) $mediaType] ?? []);
                 }
             }
         }
     }
 
     /**
-     * The 429 body the document's own error style calls for, or null to keep the stock `{message}`.
+     * What the error-response chain says this 429's body is, or null where it said nothing usable — the
+     * one answer that falls through to the framework's own shape. A chain that answered with NO body has
+     * still answered: `content` is null and this 429 publishes no body, which is the whole point of
+     * asking.
      *
      * This 429 is synthesized from middleware rather than from a throw the engine saw, so the
      * error-response chain never gets asked about it — and hardcoding Laravel's shape would contradict an
      * app whose handler renders `application/problem+json` for the very same exception. Asking the chain
      * fixes that. The response stays inline rather than `$ref`-ing the chain's component, because that
-     * component carries none of the `X-RateLimit-*` headers this 429 needs; when a preset answers with a
+     * component carries none of the `X-RateLimit-*` headers this 429 needs; when a mapper answers with a
      * reference, the referenced component's content is copied in instead. The finished 429 — headers and
      * all — is then hoisted into its own shared component by `SharedErrorResponses`, which it can be
      * because the headers are identical for every throttled route.
@@ -122,37 +155,78 @@ final class RateLimitResponsesExtension implements OperationExtension
      * `$ref`s nothing, and an unreferenced component would make a cold build's bytes differ from a
      * warm one's. Any schema the copied content points at stays registered.
      *
-     * @return array<array-key, mixed>|null
+     * A mapper's ROUTE NOTES roll back only where its answer is DISCARDED, which is the same rule
+     * {@see IgnoredResponses::mapThrow()} states: a note written while building something nobody will see
+     * is a fact about nothing and reaches the document as a diagnostic asking the author to fix it, while
+     * a note about the body this 429 goes on to publish — or deliberately withholds — describes a
+     * response the route really has.
+     *
+     * The filled members of each media type's example travel beside the content, since the chain's draft
+     * is the only thing that knows them. A body reached through a `$ref` states none: what is copied there
+     * is a component somebody else published, and this says no more about it than the document does.
+     *
+     * @return ChainBody|null
      */
     private function body(RouteContext $context): ?array
     {
-        if ($context->document->errorResponses === 'none') {
+        $components = $context->components->snapshot();
+        $notes = $context->notes()->snapshot();
+        $answer = null;
+
+        try {
+            $answer = $this->ask($context);
+        } finally {
+            $context->components->restoreResponses($components);
+            if ($answer === null) {
+                $context->notes()->restore($notes);
+            }
+        }
+
+        return $answer;
+    }
+
+    /**
+     * One consultation of the chain: its answer, or null where nothing usable came back.
+     *
+     * @return ChainBody|null
+     */
+    private function ask(RouteContext $context): ?array
+    {
+        $mapped = $context->mapThrow(new ThrownException(
+            self::THROTTLE_EXCEPTION,
+            429,
+            [],
+            ThrowConfidence::Certain,
+            ThrowDisposition::Signal,
+        ));
+        if ($mapped === null) {
             return null;
         }
 
-        $snapshot = $context->components->snapshot();
-
-        try {
-            $mapped = $context->mapThrow(new ThrownException(
-                self::THROTTLE_EXCEPTION,
-                429,
-                [],
-                ThrowConfidence::Certain,
-                ThrowDisposition::Signal,
-            ));
-            if ($mapped === null) {
-                return null;
+        $frozen = $mapped->draft->freeze();
+        if ($frozen->content !== null && $frozen->content !== []) {
+            $placeholders = [];
+            foreach (array_keys($frozen->content) as $mediaType) {
+                $filled = $mapped->draft->examplePlaceholders((string) $mediaType);
+                if ($filled !== []) {
+                    $placeholders[(string) $mediaType] = $filled;
+                }
             }
 
-            $frozen = $mapped->draft->freeze();
-            if ($frozen->content !== null && $frozen->content !== []) {
-                return $frozen->content;
-            }
-
-            return $frozen->ref === null ? null : self::referencedContent($frozen->ref, $context);
-        } finally {
-            $context->components->restoreResponses($snapshot);
+            return ['content' => $frozen->content, 'placeholders' => $placeholders];
         }
+
+        $referenced = $frozen->ref === null ? null : self::referencedContent($frozen->ref, $context);
+        if ($referenced !== null) {
+            return ['content' => $referenced, 'placeholders' => []];
+        }
+
+        // A tier answered and stated no body. Where that is the gate — the application renders this
+        // exception itself and the build could not read what it renders it to — the answer IS the body
+        // being withheld, and it is kept rather than rolled back.
+        return AppRenderedErrors::includes($context, self::THROTTLE_EXCEPTION)
+            ? ['content' => null, 'placeholders' => []]
+            : null;
     }
 
     /**

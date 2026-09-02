@@ -16,9 +16,13 @@ use Docuccino\Core\Inference\DType\NullT;
 use Docuccino\Core\Inference\DType\StatusMarkerT;
 use Docuccino\Core\Inference\DType\UnknownT;
 use Docuccino\Core\Inference\DType\VoidT;
+use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Patch\Contribution;
+use Docuccino\Core\Support\BoundedNumber;
+use Docuccino\Core\Support\FormatSamples;
 use Docuccino\Laravel\Integrations\Support\FrameworkExceptionTable;
 use Docuccino\Laravel\Support\FrameworkClasses;
+use stdClass;
 
 /**
  * Builds an error {@see ResponseDraft} from a handler/closure analysis (design §6): reads the recovered
@@ -26,25 +30,22 @@ use Docuccino\Laravel\Support\FrameworkClasses;
  * type (default `application/json`, `application/problem+json` when the helper set that header), then hoists
  * the payload schema through the route's converter.
  *
- * The example carries only members that folded to a literal — including a {@see StatusMarkerT} member (a
- * value echoing the response status) resolved to this response's status, so the 403 arm says `403`.
- * Required members that didn't fold are filled with type-derived placeholders (and the real status) so the
- * example is a valid instance of the schema beside it — see {@see example()} for why that fill is confined
- * to examples and nothing else. A status that didn't fold falls back to the one the body itself states, and
- * only then to the exception's own status hint; with none of the three, the tier declines rather than write
- * a number nothing stated ({@see foldStatus()}).
- *
- * A payload that didn't fold ({@see UnknownT}, or no shape recovered at all) has no body to document, and
- * an error response with no `content` states that the error returns nothing — so the tier answers only
- * when it has something the chain's later tiers do not: the body, a status it folded itself, or a status
- * HTTP forbids a body on. Otherwise it declines and they fill in ({@see build()}).
+ * The example carries only members that folded to a literal — a {@see StatusMarkerT} member among them,
+ * resolved to this response's status, so the 403 arm says `403` — and required members that didn't fold
+ * are filled with type-derived placeholders so the example is a valid instance of the schema beside it
+ * ({@see example()} for why that fill is confined to examples and nothing else). A status that didn't fold
+ * falls back to the one the body states, and only then to the exception's own hint ({@see foldStatus()}).
  *
  * When the body is an object the engine watched being constructed, the fourth type arg names the arguments
- * it was built with, and those decide the example's membership rather than the schema's `required` list: an
- * argument passed at this call site is in THIS response even where the schema calls it optional, and one
- * that wasn't passed is absent even where the schema calls it required. An argument that renders the key
- * only sometimes settles nothing and hands the question back to the schema
- * ({@see suppliedMembers()}). Only the schema is ever consulted for what such a member should look like.
+ * it was built with, and those ADD to the example's membership over the schema's `required` list rather
+ * than replacing it ({@see example()} for the whole rule, {@see suppliedMembers()} for what the map says).
+ * Only the schema is ever consulted for what such a member should look like.
+ *
+ * What this tier answers with where only half the response folded is design §6, "The inferred-handler
+ * tier, and the four facts it answers for": the four facts worth an answer at all ({@see build()}), the
+ * classification an unread status is filed under
+ * ({@see FrameworkExceptionTable::classification()}), and why a body it could not read is a media type
+ * under an EMPTY schema rather than no `content`.
  *
  * Null means this tier has no answer: no `JsonResponse` was recovered — either a `return null`/void arm
  * ({@see isDelegation()} — the renderer handing the type back to the framework, not a fold failure) or a
@@ -56,11 +57,21 @@ final class HandlerResponseBuilder
     /** How far a placeholder follows nested schemas before flattening — a self-referential one never ends. */
     private const PLACEHOLDER_DEPTH = 4;
 
+    /**
+     * Where a bounded number starts from. ZERO, for the reason core's factory states: this fills a bare
+     * `type: integer` member too, where the seed is the whole answer, and the neutral value claims least.
+     */
+    private const NUMBER_SEED = 0;
+
+    /** What a `JsonResponse` is sent as when the render path stated no content type of its own. */
+    private const DEFAULT_MEDIA_TYPE = 'application/json';
+
     public static function build(
         ActionAnalysis $analysis,
         RouteContext $context,
         Contribution $contribution,
-        ?int $statusHint = null,
+        ThrownException $exception,
+        string $renderer,
     ): ?ResponseDraft {
         foreach ($analysis->returns as $return) {
             $type = $return->type;
@@ -71,11 +82,16 @@ final class HandlerResponseBuilder
             $payload = $type->typeArgs[0] ?? null;
             $members = self::suppliedMembers($type->typeArgs[3] ?? null);
             $statusArg = $type->typeArgs[1] ?? null;
+            $mediaType = self::statedContentType($type->typeArgs[2] ?? null);
 
-            $status = self::foldStatus($statusArg, $payload, $members, $statusHint);
-            if ($status === null) {
-                return null;
-            }
+            // Nothing anywhere stated a status. What the render path FOLDED is still proven — the shape,
+            // or at least the media type it is sent as — and the only thing missing is the key to file it
+            // under, so it is filed under the exception's classification rather than dropped onto a tier
+            // that would assert a different media type over it. With neither there is nothing to keep,
+            // which the one guard below answers for this branch too: a classification is never a status
+            // HTTP forbids a body on, so the guard reduces to exactly "no body and no media type here".
+            $status = self::foldStatus($statusArg, $payload, $members, $exception->httpStatusHint)
+                ?? FrameworkExceptionTable::classification($exception->exceptionFqcn);
 
             $draft = new ResponseDraft($status);
 
@@ -86,16 +102,11 @@ final class HandlerResponseBuilder
             // own contract says it does for a body too dynamic to fold, and the deferral log turns it into
             // one `inferred-handler.too-dynamic` diagnostic naming the callback.
             //
-            // The same reasoning is why {@see foldStatus()} declines above rather than answering: with no
-            // status folded on either side and none on the throw — an HttpException subclass whose own is
-            // unreadable arrives exactly so — the only number left to write is 200, which would file an
-            // ERROR under success. A later tier still knows the exception's classification, and no status
-            // at all beats the wrong one.
-            //
             // A status HTTP forbids a body on is no failure — there, no content is the truth. Neither is a
-            // status this tier FOLDED itself: that is a fact no later tier has (they classify the exception
-            // type without reading the renderer), so the response keeps it and states only what it knows.
-            if (! self::statesBody($payload) && ! $draft->isBodyless() && ! self::statesStatus($statusArg, $payload, $members)) {
+            // status this tier FOLDED itself, nor a MEDIA TYPE it folded: each is a fact no later tier has
+            // (they classify the exception type without reading the renderer), so the response keeps it and
+            // states only what it knows.
+            if (! self::statesBody($payload) && $mediaType === null && ! $draft->isBodyless() && ! self::statesStatus($statusArg, $payload, $members)) {
                 return null;
             }
 
@@ -111,16 +122,27 @@ final class HandlerResponseBuilder
             $draft->claimComponentName($return->component?->name, $contribution);
 
             if (! $draft->isBodyless() && self::statesBody($payload)) {
-                $mediaType = self::contentType($type->typeArgs[2] ?? null);
+                $media = $mediaType ?? self::DEFAULT_MEDIA_TYPE;
                 $payload = self::resolveStatusMarkers($payload, (int) $status);
                 $schema = $context->converter()->toSchema($payload)->schema;
                 foreach ($schema as $keyword => $value) {
-                    $draft->content($mediaType)->set($keyword, $value, $contribution);
+                    $draft->content($media)->set($keyword, $value, $contribution);
                 }
-                $example = self::example($payload, $schema, (int) $status, $context, $members);
+                [$example, $placeholders] = self::example($payload, $schema, (int) $status, $context, $members);
                 if ($example !== [] && self::satisfies($example, self::resolveSchema($schema, $context))) {
-                    $draft->setExample($mediaType, $example);
+                    $draft->setExample($media, $example, $placeholders);
                 }
+            } elseif (! $draft->isBodyless()) {
+                // The widened answer: the representation is stated, the shape is not. Registering the
+                // media type and writing no keyword into it is what publishes an empty schema — see the
+                // class docblock for why that beats both `{type: object}` and no schema at all. Where the
+                // render path folded no type of its own the response is a `JsonResponse`, which sends
+                // `application/json` — the same reading the folded-body branch above makes, and the only
+                // one that keeps a response the tier ANSWERS for from claiming the error has no body. The
+                // author is told the shape was lost, since a partial recovery that says nothing is a
+                // silent degradation.
+                $draft->content($mediaType ?? self::DEFAULT_MEDIA_TYPE);
+                HandlerDeferralLog::record($context, $renderer, $exception->exceptionFqcn);
             }
 
             return $draft;
@@ -177,8 +199,9 @@ final class HandlerResponseBuilder
     }
 
     /**
-     * The status this response is documented under, or null when nothing states one — neither side of the
-     * render path folded, and the throw arrived without a classification of its own.
+     * The status this response is READ to be, or null when nothing states one — neither side of the render
+     * path folded, and the throw arrived without a status of its own. Only a reading comes back here; what
+     * {@see build()} does with the null is where a classification may stand in for one.
      *
      * @param  array<string, DType>  $members
      */
@@ -198,8 +221,8 @@ final class HandlerResponseBuilder
             return (string) $stated;
         }
 
-        // Nothing folded either side — the exception's own classification is all that is left, and where
-        // the throw carried none there is no honest number to write ({@see build()}).
+        // Nothing folded either side — the status the throw arrived with is the last reading available,
+        // and where it carried none nothing read one at all ({@see build()}).
         return $statusHint === null ? null : (string) $statusHint;
     }
 
@@ -237,11 +260,16 @@ final class HandlerResponseBuilder
         return null;
     }
 
-    private static function contentType(mixed $contentTypeArg): string
+    /**
+     * The media type the render path FOLDED, or null when it did not — the helper's own default is not
+     * one, since the whole point of asking is to tell a type this build read off the renderer from a type
+     * every later tier would have assumed anyway ({@see build()}).
+     */
+    private static function statedContentType(mixed $contentTypeArg): ?string
     {
         return $contentTypeArg instanceof LiteralT && is_string($contentTypeArg->value)
             ? $contentTypeArg->value
-            : 'application/json';
+            : null;
     }
 
     /**
@@ -280,9 +308,15 @@ final class HandlerResponseBuilder
      * this response is documented under (RFC 9457's own convention, and most of what makes a rendered
      * example worth reading), so it gets the real number.
      *
+     * Which members were filled from the DECLARED TYPE alone travels back with the example, because
+     * nothing downstream can work it out again: `"string"` filled for an unread member and `"string"`
+     * returned by the code are the same bytes, and only the build that filled one knows which it is
+     * ({@see ResponseDraft::setExample()} for where the answer goes and what reads it).
+     *
      * @param  array<string, mixed>  $schema  the converted body schema, possibly a bare `$ref`
      * @param  array<string, DType>  $members  supplied constructor argument → its folded literal or {@see UnknownT}
-     * @return array<string, mixed>
+     * @return array{array<string, mixed>, list<string>} the example, and the members nothing but their
+     *                                                   declared type answered for, in name order
      */
     private static function example(DType $payload, array $schema, int $status, RouteContext $context, array $members): array
     {
@@ -291,12 +325,13 @@ final class HandlerResponseBuilder
 
         $properties = $resolved['properties'] ?? null;
         if (! is_array($properties) || $properties === []) {
-            return $folded;
+            return [$folded, []];
         }
 
         $required = is_array($resolved['required'] ?? null) ? $resolved['required'] : [];
 
         $example = [];
+        $derived = [];
         foreach ($properties as $name => $spec) {
             $name = (string) $name;
             $spec = is_array($spec) ? $spec : [];
@@ -323,11 +358,16 @@ final class HandlerResponseBuilder
             // what may well be a list would state something the code never said. A REQUIRED one is filled
             // anyway, since the alternative is dropping an example that would otherwise be complete.
             if ($isRequired || self::illustratable($spec, $context)) {
-                $example[$name] = self::placeholder($name, $spec, $status, $context);
+                [$example[$name], $typeDerived] = self::placeholder($name, $spec, $status, $context);
+                if ($typeDerived) {
+                    $derived[] = $name;
+                }
             }
         }
 
-        return $example;
+        sort($derived, SORT_STRING);
+
+        return [$example, $derived];
     }
 
     /**
@@ -365,19 +405,43 @@ final class HandlerResponseBuilder
     }
 
     /**
+     * The entry an `enum` illustrates itself with, wrapped so a null entry is distinguishable from a
+     * schema stating no enum at all; null where it states none. The FIRST entry: a list's order is
+     * authored, so every other reader of the document shows that same branch.
+     *
+     * Wrapped rather than bare because the two readings are opposite here, unlike in
+     * {@see statedValue()}: an entry of `null` is a value the enum ADMITS, so falling through to the
+     * type would illustrate the member with something the same two lines of schema reject.
+     *
+     * @param  array<array-key, mixed>  $spec
+     * @return array{mixed}|null
+     */
+    private static function enumValue(array $spec): ?array
+    {
+        $enum = $spec['enum'] ?? null;
+
+        return is_array($enum) && $enum !== [] ? [array_values($enum)[0]] : null;
+    }
+
+    /**
      * A stand-in for one member: the `const` the schema pins, the real status for an integer `status`, else
      * a value that reads unmistakably as a placeholder for its declared type.
      *
+     * Each answer says whether it came from the TYPE alone. The first two did not — a `const` is what the
+     * schema pins and the status is what this response really answers with — so only the third is a member
+     * about which nothing was read.
+     *
      * @param  array<array-key, mixed>  $spec
+     * @return array{mixed, bool}
      */
-    private static function placeholder(string $name, array $spec, int $status, RouteContext $context): mixed
+    private static function placeholder(string $name, array $spec, int $status, RouteContext $context): array
     {
         if (array_key_exists('const', $spec)) {
-            return $spec['const'];
+            return [$spec['const'], false];
         }
 
         if ($name === 'status' && self::isType($spec['type'] ?? null, 'integer')) {
-            return $status;
+            return [$status, false];
         }
 
         return self::typePlaceholder($spec, $context, 0);
@@ -394,19 +458,54 @@ final class HandlerResponseBuilder
      * spatie property's `@example` or its PHP default reaches the component schema, and either is the app's
      * own word for what this member looks like — which `"string"` is not.
      *
+     * Failing that, the keywords that NAME the member's value domain are read before its type is. An `enum`
+     * and a `format` each say what the member holds, and `"string"` is a value the schema they describe
+     * REJECTS — so a member the document declares two lines up as one of a fixed set of codes, or as a
+     * date-time, would otherwise be illustrated by something the build's own example lint reports every
+     * time (`lint.example-mismatch`), against an example its reader never wrote and cannot correct. A
+     * numeric bound is read for the same reason and by the same table every other producer of a
+     * representative value reads ({@see BoundedNumber}): it constrains a value and it also names one, so
+     * `minimum: 5` is answered by 5 where `0` is a value that schema rejects.
+     *
+     * A constraint that names NO value stays unread: no constant satisfies an arbitrary `pattern`, and
+     * nothing in this corpus states a length bound on a body member this tier fills. The lint remains the
+     * backstop there.
+     *
+     * The second half of the answer is whether the value came from the type rather than from something
+     * the schema STATED, which is the whole question {@see placeholder()} passes on. It is answered here
+     * so there is one reading of it: a guard deciding it in a branch structure of its own would be a
+     * second grammar to keep in step with this one. An `enum` entry and a format sample are on the DERIVED
+     * side of that line: both come from the schema rather than from anything the code said, so the member
+     * stays in the fill record {@see ResponseDraft::setExample()} keeps, and a collapse reading that record
+     * still knows this arm never read it.
+     *
      * @param  array<array-key, mixed>  $spec
+     * @return array{mixed, bool}
      */
-    private static function typePlaceholder(array $spec, RouteContext $context, int $depth): mixed
+    private static function typePlaceholder(array $spec, RouteContext $context, int $depth): array
     {
         $spec = self::effectiveSpec($spec, $context);
 
         if (array_key_exists('const', $spec)) {
-            return $spec['const'];
+            return [$spec['const'], false];
         }
 
         $stated = self::statedValue($spec);
         if ($stated !== null) {
-            return $stated;
+            return [$stated, false];
+        }
+
+        $enumValue = self::enumValue($spec);
+        if ($enumValue !== null) {
+            return [$enumValue[0], true];
+        }
+
+        $format = $spec['format'] ?? null;
+        $sample = is_string($format)
+            ? FormatSamples::for($format, $context->representation()->formatSamples)
+            : null;
+        if ($sample !== null) {
+            return [$sample, true];
         }
 
         $type = $spec['type'] ?? null;
@@ -415,34 +514,44 @@ final class HandlerResponseBuilder
         if (self::isType($type, 'array')) {
             $items = $spec['items'] ?? null;
 
-            return is_array($items) && $deeper < self::PLACEHOLDER_DEPTH
-                ? [self::typePlaceholder($items, $context, $deeper)]
-                : [];
+            return [is_array($items) && $deeper < self::PLACEHOLDER_DEPTH
+                ? [self::typePlaceholder($items, $context, $deeper)[0]]
+                : [], true];
         }
 
         if (self::isType($type, 'object')) {
-            return $deeper < self::PLACEHOLDER_DEPTH ? self::objectPlaceholder($spec, $context, $deeper) : [];
+            // The depth cap answers `{}` rather than `[]` for the reason {@see objectPlaceholder()}
+            // states.
+            return [$deeper < self::PLACEHOLDER_DEPTH ? self::objectPlaceholder($spec, $context, $deeper) : new stdClass, true];
         }
 
-        return match (true) {
-            self::isType($type, 'integer'), self::isType($type, 'number') => 0,
-            self::isType($type, 'boolean') => false,
-            default => 'string',
-        };
+        if (self::isType($type, 'integer') || self::isType($type, 'number')) {
+            $bounded = BoundedNumber::nearest($spec, self::NUMBER_SEED, self::isType($type, 'integer'));
+
+            // The keywords name no number to publish ({@see BoundedNumber}) and this tier has nowhere
+            // to put that — dropping the member would drop the whole example. So the seed stands and the
+            // build's example lint reports it against the schema beside it, which is the two lines of
+            // the document the author wrote: a range nothing inhabits, or a bound no double could hold.
+            return [$bounded === null ? self::NUMBER_SEED : $bounded[0], true];
+        }
+
+        return [self::isType($type, 'boolean') ? true : 'string', true];
     }
 
     /**
-     * A nested object's required members only. An object requiring nothing comes out empty rather than
-     * inventing a key, which is still a truthful instance of it.
+     * A nested object's required members only. An object requiring nothing comes out EMPTY rather than
+     * inventing a key, which is still a truthful instance of it — and empty is a {@see stdClass}, never
+     * `[]`, because a PHP array cannot spell `{}` and the array writes back as a JSON list the schema
+     * beside it rejects (design §1, "The empty-object invariant").
      *
      * @param  array<array-key, mixed>  $spec
-     * @return array<string, mixed>
+     * @return array<string, mixed>|stdClass
      */
-    private static function objectPlaceholder(array $spec, RouteContext $context, int $depth): array
+    private static function objectPlaceholder(array $spec, RouteContext $context, int $depth): array|stdClass
     {
         $properties = $spec['properties'] ?? null;
         if (! is_array($properties)) {
-            return [];
+            return new stdClass;
         }
 
         $required = is_array($spec['required'] ?? null) ? $spec['required'] : [];
@@ -451,11 +560,11 @@ final class HandlerResponseBuilder
         foreach ($properties as $name => $property) {
             $name = (string) $name;
             if (in_array($name, $required, true)) {
-                $example[$name] = self::typePlaceholder(is_array($property) ? $property : [], $context, $depth);
+                $example[$name] = self::typePlaceholder(is_array($property) ? $property : [], $context, $depth)[0];
             }
         }
 
-        return $example;
+        return $example === [] ? new stdClass : $example;
     }
 
     /**
@@ -496,17 +605,21 @@ final class HandlerResponseBuilder
     }
 
     /**
-     * The schema a placeholder is actually derived from: the reference followed, and a nullable branch
+     * The schema a placeholder is actually derived from: the reference followed, a conjunction reduced to
+     * the one schema its branches add up to ({@see conjoined()}), and a nullable branch
      * (`anyOf: [X, {type: null}]` — how a nullable `$ref` or composite is expressed) reduced to `X`, since
      * illustrating the null branch would show nothing. The first non-null branch wins for a wider union;
      * picking one member of a union is what an example is.
+     *
+     * A union's chosen branch is reduced again, because a nullable intersection arrives as a conjunction
+     * INSIDE the branch.
      *
      * @param  array<array-key, mixed>  $spec
      * @return array<array-key, mixed>
      */
     private static function effectiveSpec(array $spec, RouteContext $context): array
     {
-        $spec = self::resolveSchema($spec, $context);
+        $spec = self::conjoined(self::resolveSchema($spec, $context), $context);
         $branches = $spec['anyOf'] ?? $spec['oneOf'] ?? null;
 
         if (! is_array($branches)) {
@@ -515,11 +628,89 @@ final class HandlerResponseBuilder
 
         foreach ($branches as $branch) {
             if (is_array($branch) && ! self::isType($branch['type'] ?? null, 'null')) {
-                return self::resolveSchema($branch, $context);
+                return self::conjoined(self::resolveSchema($branch, $context), $context);
             }
         }
 
         return $spec;
+    }
+
+    /**
+     * An `allOf` reduced to the single schema its branches add up to — how an intersection-typed member
+     * reaches the document, and without this the member has no readable type at all and gets illustrated
+     * `"string"`, a value every branch of it rejects.
+     *
+     * The rule: each branch's keywords accumulate in BRANCH ORDER and the first statement of a keyword
+     * wins, except `properties`, which accumulate member by member under that same rule, and `required`,
+     * which unions — for those two the conjunction of the branches IS their union.
+     *
+     * First-wins is exactly right for a keyword whose two spellings cannot both hold — `type`, `const`,
+     * `format` — where the second is a contradiction the document already carries and the first branch is
+     * the one every other reader of the document shows (the same authored-order reading `enum` and a
+     * union's branches get); the example lint names it. It is NOT the conjunction of a numeric BOUND,
+     * where two spellings have a well-defined answer (the higher floor, the lower ceiling) that this does
+     * not compute, so a value legal under branch one and refused by branch two can come out. No producer
+     * writes a body member as an `allOf` of bounds — the only in-tree producer writes object `$ref`
+     * branches — and the divergence is a row of the adapter's example-agreement table rather than reach
+     * nothing exercises.
+     *
+     * One level: a branch that is a boolean is no schema object and states nothing, and a branch carrying
+     * a conjunction OF ITS OWN is DROPPED rather than followed, since a `$ref` cycle through one would
+     * not end and nothing mints the shape. The answer therefore never states an `allOf`.
+     *
+     * @param  array<array-key, mixed>  $spec
+     * @return array<array-key, mixed>
+     */
+    private static function conjoined(array $spec, RouteContext $context): array
+    {
+        $branches = $spec['allOf'] ?? null;
+
+        if (! is_array($branches)) {
+            return $spec;
+        }
+
+        unset($spec['allOf']);
+
+        foreach ($branches as $branch) {
+            if (is_array($branch)) {
+                $spec = self::conjoin($spec, self::resolveSchema($branch, $context));
+            }
+        }
+
+        return $spec;
+    }
+
+    /**
+     * One branch folded into what the conjunction has so far, under the rule {@see conjoined()} states.
+     *
+     * @param  array<array-key, mixed>  $into
+     * @param  array<array-key, mixed>  $branch
+     * @return array<array-key, mixed>
+     */
+    private static function conjoin(array $into, array $branch): array
+    {
+        foreach ($branch as $keyword => $value) {
+            $existing = $into[$keyword] ?? null;
+
+            if ($keyword === 'allOf') {
+                // A conjunction of its own, which this reduction does not follow — carrying it forward
+                // would leave the answer stating a keyword the reduction promises to have removed.
+                continue;
+            }
+
+            if ($keyword === 'properties' && is_array($value)) {
+                $into['properties'] = (is_array($existing) ? $existing : []) + $value;
+            } elseif ($keyword === 'required' && is_array($value)) {
+                $into['required'] = array_values(array_unique([
+                    ...array_values(is_array($existing) ? $existing : []),
+                    ...array_values($value),
+                ], SORT_REGULAR));
+            } elseif (! array_key_exists($keyword, $into)) {
+                $into[$keyword] = $value;
+            }
+        }
+
+        return $into;
     }
 
     /**

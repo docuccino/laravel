@@ -16,6 +16,7 @@ use Docuccino\Core\Inference\CallableRef;
 use Docuccino\Core\Inference\ComponentDeclaration;
 use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Patch\Contribution;
+use Docuccino\Laravel\Integrations\Support\AppRenderedErrors;
 use Docuccino\Laravel\Support\ErrorComponentDiagnostic;
 use ReflectionMethod;
 use Throwable;
@@ -28,10 +29,11 @@ use Throwable;
  * reachable branch; then the exception's own `render()`; then a `Responsable`'s `toResponse()`.
  *
  * The recovered `JsonResponse<payload, status>` becomes the documented response, under the name the
- * render path declared with `#[ErrorComponent]` where one did. A body too dynamic to fold defers with an
- * info diagnostic so the next tier (preset, framework defaults) fills in. Ordered FIRST so ground truth
- * beats any preset — a mapper that must beat it says so with an order of its own. Handler files join the
- * route's fragment-cache deps.
+ * render path declared with `#[ErrorComponent]` where one did. A body too dynamic to fold raises one
+ * `inferred-handler.too-dynamic` warning whether or not the tier still answers, and defers to the next
+ * tier (framework defaults) only where nothing else folded ({@see HandlerResponseBuilder}). Ordered
+ * FIRST so ground truth beats anything a document declares about its errors in the abstract — a mapper
+ * that must beat it says so with an order of its own. Handler files join the route's fragment-cache deps.
  */
 #[ExtensionOrder(priority: Priorities::FIRST)]
 final class InferredHandlerExceptionToResponse implements ExceptionToResponse
@@ -77,18 +79,30 @@ final class InferredHandlerExceptionToResponse implements ExceptionToResponse
             $analysis,
             $context,
             Contribution::integration('inferred-handler'),
-            $exception->httpStatusHint,
+            $exception,
+            $callable->target(),
         );
         if ($response !== null) {
             return $response;
         }
 
-        // Nothing recovered. A framework delegation (`return null`/void arm) is expected, so defer
-        // quietly; a real fold failure is noted per callback for one summary diagnostic at build. The note
-        // goes on the ROUTE and not into the log the summary reads: it has to ride this route's fragment,
-        // or a warm build comes back without the summary a cold one publishes ({@see HandlerDeferralLog}).
+        // Declined, so the chain moves on — and the two notes below are both messages to what comes next.
+        // The gate says the APPLICATION renders this exception and this build could not read what it
+        // renders it to, which is exactly the question the tiers behind ask before publishing a body of
+        // the framework's ({@see AppRenderedErrors}); recording it where the tier ANSWERED would write a
+        // fact nothing can read, since no later tier is asked about an exception already answered for.
+        // A framework delegation (`return null`/void arm) is neither: the framework really does render
+        // those, so the gate stays open and the deferral goes unnoted. An analysis that recovered no
+        // return at all refutes nothing either, though it is still a fold that failed.
+        if ($analysis->returns !== [] && ! HandlerResponseBuilder::isDelegation($analysis)) {
+            AppRenderedErrors::record($context, $exception->exceptionFqcn, $callable->target());
+        }
+
+        // The deferral is noted per callback for one summary diagnostic at build. The note goes on the
+        // ROUTE and not into the log the summary reads: it has to ride this route's fragment, or a warm
+        // build comes back without the summary a cold one publishes ({@see HandlerDeferralLog}).
         if (! HandlerResponseBuilder::isDelegation($analysis)) {
-            $context->notes()->record(HandlerDeferralLog::CHANNEL, $callable->target(), $exception->exceptionFqcn);
+            HandlerDeferralLog::record($context, $callable->target(), $exception->exceptionFqcn);
         }
 
         return null;

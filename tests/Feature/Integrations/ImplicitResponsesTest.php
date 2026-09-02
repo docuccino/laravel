@@ -5,11 +5,14 @@ declare(strict_types=1);
 use Docuccino\Attributes\IgnoreResponse;
 use Docuccino\Attributes\Unauthenticated;
 use Docuccino\Core\Draft\OperationDraft;
+use Docuccino\Core\Draft\ResponseDraft;
 use Docuccino\Core\Extensions\Context\AttributeSet;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
+use Docuccino\Core\Extensions\Contracts\ExceptionToResponse;
 use Docuccino\Core\Extensions\ResolvedExtensions;
+use Docuccino\Core\Extensions\Schema\ComponentRegistry;
 use Docuccino\Core\Inference\ActionAnalysis;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Inference\DType\LiteralT;
@@ -17,6 +20,7 @@ use Docuccino\Core\Inference\DType\ScalarT;
 use Docuccino\Core\Inference\NullTypeEngine;
 use Docuccino\Core\Inference\ReturnSite;
 use Docuccino\Core\Inference\SourceLocation;
+use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Patch\Contribution;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
@@ -53,6 +57,7 @@ function implicitContext(
     ?TypeEngine $engine = null,
     ?ActionRef $actionRef = null,
     ?string $formRequestClass = null,
+    ?array $mappers = null,
 ): RouteContext {
     return new RouteContext(
         route: $route,
@@ -61,7 +66,7 @@ function implicitContext(
         engine: $engine ?? new NullTypeEngine,
         document: new DocumentConfig('default', [], authMiddleware: 'auth*', errorResponses: $errorResponses),
         extensions: new ResolvedExtensions(
-            exceptionToResponse: implicitResponseMappers($errorResponses),
+            exceptionToResponse: $mappers ?? implicitResponseMappers($errorResponses),
         ),
         routeBindings: $routeBindings,
         formRequestClass: $formRequestClass,
@@ -226,15 +231,38 @@ it('emits nothing when error_responses is none', function (): void {
     expect(implicitStatuses(runImplicit($context)))->toBe([]);
 });
 
-it('references the Problem Details component when the preset is active', function (): void {
+it('carries a chain answer that is a reference onto the implicit response', function (): void {
+    // The implicit 401 is synthesized here and then asked of the chain like any other error, so whatever
+    // the chain answers is what it publishes — including a mapper that answers with a `$ref` to a shared
+    // response it registered rather than with a body of its own.
     $context = implicitContext(
         new RouteDescriptor(['GET'], 'api/me', middleware: ['auth:sanctum']),
-        errorResponses: 'problem-details',
+        mappers: [new class implements ExceptionToResponse
+        {
+            public function supports(ThrownException $exception, RouteContext $context): bool
+            {
+                return true;
+            }
+
+            public function producer(): string
+            {
+                return 'integration:test-chain';
+            }
+
+            public function toResponse(ThrownException $exception, RouteContext $context, ComponentRegistry $components): ?ResponseDraft
+            {
+                $components->referenceResponse('AppUnauthorized', ['description' => 'Unauthorized']);
+                $draft = new ResponseDraft('401');
+                $draft->setRef('#/components/responses/AppUnauthorized', Contribution::integration('test-chain'));
+
+                return $draft;
+            }
+        }],
     );
 
     $response = runImplicit($context)->freeze()->responses['401'];
 
-    expect($response->ref)->toBe('#/components/responses/ProblemUnauthenticated');
+    expect($response->ref)->toBe('#/components/responses/AppUnauthorized');
 });
 
 it('does not double up a status the action already throws (chain merge)', function (): void {

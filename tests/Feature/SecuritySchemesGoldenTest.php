@@ -19,9 +19,6 @@ it('emits a secured document byte-identical to its committed golden', function (
     /** @var array<string, mixed> $raw */
     $raw = config('docuccino.documents.default');
     $raw['info'] = ['title' => 'Secured API', 'version' => '1.0.0'];
-    // Exercise the RFC 9457 Problem Details preset in a golden: the framework 404 becomes a shared
-    // ProblemNotFound $ref, while the renderable-exception 402 (inferred tier, FIRST) still wins.
-    $raw['error_responses'] = 'problem-details';
     $raw['security'] = [
         'schemes' => [
             'apiKey' => ['type' => 'apiKey', 'in' => 'header', 'name' => 'X-API-Key'],

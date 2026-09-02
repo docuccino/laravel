@@ -135,12 +135,14 @@
           },
           "404": {
             "x-docuccino": {
+              "id": "res:v1:q4b32gs2mqkn25zr",
               "provenance": [
                 {
-                  "producer": "integration:problem-details",
+                  "producer": "integration:framework-errors",
                   "layer": "integration",
                   "fields": [
-                    "$ref"
+                    "component",
+                    "description"
                   ],
                   "source": {
                     "file": "workbench/app/Http/Controllers/FormController.php",
@@ -148,9 +150,12 @@
                     "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
                   }
                 }
-              ]
+              ],
+              "facts": {
+                "component": "NotFound"
+              }
             },
-            "$ref": "#/components/responses/ProblemNotFound"
+            "$ref": "#/components/responses/NotFound"
           }
         }
       }
@@ -436,12 +441,14 @@
           },
           "422": {
             "x-docuccino": {
+              "id": "res:v1:vvekqflzofr4yvyp",
               "provenance": [
                 {
                   "producer": "integration:implicit-response",
                   "layer": "integration",
                   "fields": [
-                    "$ref"
+                    "component",
+                    "description"
                   ],
                   "source": {
                     "file": "workbench/app/Http/Controllers/IntegrationsController.php",
@@ -449,9 +456,12 @@
                     "symbol": "implicit:validated-request"
                   }
                 }
-              ]
+              ],
+              "facts": {
+                "component": "UnprocessableEntity"
+              }
             },
-            "$ref": "#/components/responses/ProblemValidation"
+            "$ref": "#/components/responses/UnprocessableEntity"
           }
         }
       }
@@ -1007,12 +1017,14 @@
           },
           "404": {
             "x-docuccino": {
+              "id": "res:v1:meupm32nhpw3t2ua",
               "provenance": [
                 {
-                  "producer": "integration:problem-details",
+                  "producer": "integration:framework-errors",
                   "layer": "integration",
                   "fields": [
-                    "$ref"
+                    "component",
+                    "description"
                   ],
                   "source": {
                     "file": "workbench/app/Http/Controllers/FormController.php",
@@ -1020,9 +1032,12 @@
                     "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
                   }
                 }
-              ]
+              ],
+              "facts": {
+                "component": "NotFound"
+              }
             },
-            "$ref": "#/components/responses/ProblemNotFound"
+            "$ref": "#/components/responses/NotFound"
           }
         }
       }
@@ -1100,12 +1115,14 @@
           },
           "403": {
             "x-docuccino": {
+              "id": "res:v1:uu2j6vkul665jt5h",
               "provenance": [
                 {
                   "producer": "integration:implicit-response",
                   "layer": "integration",
                   "fields": [
-                    "$ref"
+                    "component",
+                    "description"
                   ],
                   "source": {
                     "file": "workbench/app/Http/Controllers/FormController.php",
@@ -1113,9 +1130,45 @@
                     "symbol": "implicit:can-middleware"
                   }
                 }
-              ]
+              ],
+              "facts": {
+                "component": "Forbidden"
+              }
             },
-            "$ref": "#/components/responses/ProblemForbidden"
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:implicit-response",
+                        "layer": "integration",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/FormController.php",
+                          "line": 23,
+                          "symbol": "implicit:can-middleware"
+                        }
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -1824,12 +1877,14 @@
         "responses": {
           "400": {
             "x-docuccino": {
+              "id": "res:v1:sb47afe247hr62lr",
               "provenance": [
                 {
                   "producer": "integration:query-builder",
                   "layer": "integration",
                   "fields": [
-                    "$ref"
+                    "component",
+                    "description"
                   ],
                   "source": {
                     "file": "workbench/app/Http/Controllers/LedgerQueryController.php",
@@ -1837,9 +1892,12 @@
                     "symbol": "query-builder:strict-mode"
                   }
                 }
-              ]
+              ],
+              "facts": {
+                "component": "BadRequest"
+              }
             },
-            "$ref": "#/components/responses/Problem400"
+            "$ref": "#/components/responses/BadRequest"
           }
         }
       }
@@ -2356,7 +2414,7 @@
           },
           "429": {
             "x-docuccino": {
-              "id": "res:v1:p3rhjzu2lwodgkkq",
+              "id": "res:v1:pttqsqruwlejfokk",
               "provenance": [
                 {
                   "producer": "integration:rate-limit",
@@ -2409,7 +2467,7 @@
               }
             },
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
                   "x-docuccino": {
                     "provenance": [
@@ -2417,7 +2475,8 @@
                         "producer": "integration:rate-limit",
                         "layer": "integration",
                         "fields": [
-                          "$ref"
+                          "properties",
+                          "type"
                         ],
                         "source": {
                           "file": "workbench/app/Http/Controllers/FormController.php",
@@ -2427,12 +2486,12 @@
                       }
                     ]
                   },
-                  "$ref": "#/components/schemas/ProblemDetails"
-                },
-                "example": {
-                  "type": "about:blank",
-                  "title": "Error",
-                  "status": 429
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
                 }
               }
             }
@@ -2862,12 +2921,14 @@
           },
           "422": {
             "x-docuccino": {
+              "id": "res:v1:agzqj436h22d3bhd",
               "provenance": [
                 {
                   "producer": "integration:implicit-response",
                   "layer": "integration",
                   "fields": [
-                    "$ref"
+                    "component",
+                    "description"
                   ],
                   "source": {
                     "file": "workbench/app/Http/Controllers/ValidationController.php",
@@ -2875,9 +2936,12 @@
                     "symbol": "implicit:validated-request"
                   }
                 }
-              ]
+              ],
+              "facts": {
+                "component": "UnprocessableEntity"
+              }
             },
-            "$ref": "#/components/responses/ProblemValidation"
+            "$ref": "#/components/responses/UnprocessableEntity"
           }
         }
       }
@@ -3131,12 +3195,14 @@
         "responses": {
           "400": {
             "x-docuccino": {
+              "id": "res:v1:lec7koljxmdemlsx",
               "provenance": [
                 {
                   "producer": "integration:query-builder",
                   "layer": "integration",
                   "fields": [
-                    "$ref"
+                    "component",
+                    "description"
                   ],
                   "source": {
                     "file": "workbench/app/Http/Controllers/WidgetQueryController.php",
@@ -3144,9 +3210,12 @@
                     "symbol": "query-builder:strict-mode"
                   }
                 }
-              ]
+              ],
+              "facts": {
+                "component": "BadRequest"
+              }
             },
-            "$ref": "#/components/responses/Problem400"
+            "$ref": "#/components/responses/BadRequest"
           }
         }
       }
@@ -3544,6 +3613,17 @@
           "email"
         ]
       },
+      "BadRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:s46jnknuwmxt4uep"
+        },
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
       "FormData": {
         "x-docuccino": {
           "id": "sch:v1:6iocn62c7ru5zutw"
@@ -3598,6 +3678,20 @@
         "required": [
           "id",
           "name"
+        ]
+      },
+      "NotFound": {
+        "x-docuccino": {
+          "id": "sch:v1:bvvuacym2wsq7ebk"
+        },
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
         ]
       },
       "PaginationLinks": {
@@ -3687,32 +3781,6 @@
           "id",
           "title"
         ]
-      },
-      "ProblemDetails": {
-        "x-docuccino": {
-          "id": "sch:v1:3krm4fipnksxpz35"
-        },
-        "type": "object",
-        "properties": {
-          "detail": {
-            "type": "string"
-          },
-          "instance": {
-            "type": "string",
-            "format": "uri"
-          },
-          "status": {
-            "type": "integer"
-          },
-          "title": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "format": "uri",
-            "default": "about:blank"
-          }
-        }
       },
       "Showcase": {
         "x-docuccino": {
@@ -3807,6 +3875,30 @@
           "label",
           "strong_room",
           "keeper"
+        ]
+      },
+      "UnprocessableEntity": {
+        "x-docuccino": {
+          "id": "sch:v1:f3tcwvg2vhs255gy"
+        },
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "errors"
         ]
       },
       "Widget": {
@@ -3906,88 +3998,32 @@
       }
     },
     "responses": {
-      "Problem400": {
-        "description": "Error",
+      "BadRequest": {
+        "description": "Bad Request",
         "content": {
-          "application/problem+json": {
+          "application/json": {
             "schema": {
-              "$ref": "#/components/schemas/ProblemDetails"
-            },
-            "example": {
-              "type": "about:blank",
-              "title": "Error",
-              "status": 400
+              "$ref": "#/components/schemas/BadRequest"
             }
           }
         }
       },
-      "ProblemForbidden": {
-        "description": "This action is unauthorized",
+      "NotFound": {
+        "description": "Not Found",
         "content": {
-          "application/problem+json": {
+          "application/json": {
             "schema": {
-              "$ref": "#/components/schemas/ProblemDetails"
-            },
-            "example": {
-              "type": "about:blank",
-              "title": "Forbidden",
-              "status": 403,
-              "detail": "This action is unauthorized."
+              "$ref": "#/components/schemas/NotFound"
             }
           }
         }
       },
-      "ProblemNotFound": {
-        "description": "The resource was not found",
+      "UnprocessableEntity": {
+        "description": "Unprocessable Entity",
         "content": {
-          "application/problem+json": {
+          "application/json": {
             "schema": {
-              "$ref": "#/components/schemas/ProblemDetails"
-            },
-            "example": {
-              "type": "about:blank",
-              "title": "Not Found",
-              "status": 404,
-              "detail": "The resource was not found."
-            }
-          }
-        }
-      },
-      "ProblemValidation": {
-        "description": "Validation failed",
-        "content": {
-          "application/problem+json": {
-            "schema": {
-              "allOf": [
-                {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "errors": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      }
-                    }
-                  }
-                }
-              ]
-            },
-            "example": {
-              "type": "about:blank",
-              "title": "Unprocessable Entity",
-              "status": 422,
-              "detail": "Validation failed.",
-              "errors": {
-                "field": [
-                  "The field is invalid."
-                ]
-              }
+              "$ref": "#/components/schemas/UnprocessableEntity"
             }
           }
         }
@@ -4017,8 +4053,8 @@
   "x-docuccino": {
     "document": {
       "id": "doc:secured",
-      "configHash": "94201d8762854c81e0339989335efbb54aec3f6f6a92b868be5c89489a0de1af",
-      "contentHash": "aa51842e9d8f2e7637f88f778bbbf5f97cf1084f7e59404e30f013f31961101e"
+      "configHash": "5ce1291fb113fe0f9cc8e7abdb8b501a7a5e66477f542fefa0655446f5b082cf",
+      "contentHash": "fc3be73a01090b1fb903d47a9ee3a5daa580150462471be3ac998a1c6b8e8681"
     },
     "generator": {
       "name": "docuccino/laravel",

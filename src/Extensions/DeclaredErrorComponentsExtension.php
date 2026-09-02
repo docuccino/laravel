@@ -83,7 +83,7 @@ final class DeclaredErrorComponentsExtension implements OperationExtension
                     $status,
                     $name,
                     sprintf('the %s response is a reference to a shared component, which was named where that component is defined, so the name was not used.', $status),
-                    'A response that is a reference states no body of its own to name. Name the component at its own definition — the Problem Details preset names its own, and an ExceptionToResponse of yours names whatever it builds — or stop referencing it from this status.',
+                    'A response that is a reference states no body of its own to name. Name the component at its own definition — an ExceptionToResponse of yours names whatever it builds — or stop referencing it from this status.',
                 );
             }
         }

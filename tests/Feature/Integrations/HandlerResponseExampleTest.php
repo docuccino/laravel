@@ -15,6 +15,7 @@ use Docuccino\Core\Inference\DType\ArrayShapeField;
 use Docuccino\Core\Inference\DType\ArrayShapeT;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\DType\DType;
+use Docuccino\Core\Inference\DType\EnumT;
 use Docuccino\Core\Inference\DType\ListT;
 use Docuccino\Core\Inference\DType\LiteralT;
 use Docuccino\Core\Inference\DType\NullT;
@@ -26,10 +27,14 @@ use Docuccino\Core\Inference\NullTypeEngine;
 use Docuccino\Core\Inference\PropertyMetadata;
 use Docuccino\Core\Inference\ReturnSite;
 use Docuccino\Core\Inference\SourceLocation;
+use Docuccino\Core\Inference\ThrowConfidence;
+use Docuccino\Core\Inference\ThrowDisposition;
+use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Patch\Contribution;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Laravel\Integrations\InferredHandler\HandlerResponseBuilder;
+use Docuccino\Laravel\Tests\Fixtures\SharedErrors\ExportFailure;
 
 /**
  * The example an inferred handler response carries has to be a valid instance of the schema beside it. Only
@@ -38,11 +43,23 @@ use Docuccino\Laravel\Integrations\InferredHandler\HandlerResponseBuilder;
  * type-derived placeholders, plus the real response status. The fill is confined to examples, which are
  * illustrative by definition; nothing invented ever reaches a schema.
  *
- * When the body is an object the engine watched being constructed, the arguments it was built with decide
- * membership instead: supplied beats optional (this branch passed it, so this response has it) and
- * unsupplied beats required (this branch didn't, so it doesn't). An argument that renders the key only on
- * some responses decides nothing, and the schema answers for it.
+ * When the body is an object the engine watched being constructed, the arguments it was built with ADD to
+ * membership rather than replacing the schema's: supplied beats optional (this branch passed it, so this
+ * response has it), and a member the schema REQUIRES is illustrated whether the branch passed it or not,
+ * since an example missing one would fail against the schema printed beside it ('still fills a required
+ * member no argument accounted for' is that guard). Only an unsupplied optional member is left out — and
+ * an argument that renders the key only on some responses decides nothing, so the schema answers for it.
  */
+/**
+ * The throw the tier is answering for. Only its status hint and its FQCN reach the builder: the hint is
+ * the last reading available when neither side of the render path folded one, and the FQCN is what the
+ * builder classifies with when there is no reading at all.
+ */
+function handlerThrow(?int $hint, string $fqcn = 'App\\Exceptions\\ProbeFailure'): ThrownException
+{
+    return new ThrownException($fqcn, $hint, [], ThrowConfidence::Certain, ThrowDisposition::Signal);
+}
+
 function handlerContext(?TypeEngine $engine = null): RouteContext
 {
     return new RouteContext(
@@ -128,6 +145,8 @@ it('completes an example whose required members did not all fold', function (): 
         handlerAnalysis($payload, 422),
         handlerContext(),
         Contribution::integration('inferred-handler'),
+        handlerThrow(422),
+        'App\\Exceptions\\Handler::render',
     );
 
     $frozen = $draft?->freeze()->toArray() ?? [];
@@ -155,6 +174,8 @@ it('keeps an example whose literals cover every required member', function (): v
         handlerAnalysis($payload, 404),
         handlerContext(),
         Contribution::integration('inferred-handler'),
+        handlerThrow(422),
+        'App\\Exceptions\\Handler::render',
     );
 
     $frozen = $draft?->freeze()->toArray() ?? [];
@@ -173,6 +194,8 @@ it('keeps an example when the shape requires nothing at all', function (): void 
         handlerAnalysis($payload, 503),
         handlerContext(),
         Contribution::integration('inferred-handler'),
+        handlerThrow(422),
+        'App\\Exceptions\\Handler::render',
     );
 
     $frozen = $draft?->freeze()->toArray() ?? [];
@@ -187,6 +210,8 @@ function objectExample(array $members, int $status = 422): array
         handlerAnalysis(new ClassT('App\\Data\\ProblemDocument'), $status, suppliedMembers($members)),
         problemDocumentContext(),
         Contribution::integration('inferred-handler'),
+        handlerThrow(422),
+        'App\\Exceptions\\Handler::render',
     );
 
     $frozen = $draft?->freeze()->toArray() ?? [];
@@ -233,6 +258,8 @@ it('leaves out a member the branch renders only sometimes', function (): void {
         ),
         problemDocumentContext(),
         Contribution::integration('inferred-handler'),
+        handlerThrow(422),
+        'App\\Exceptions\\Handler::render',
     );
 
     expect($draft?->freeze()->toArray()['content']['application/problem+json']['example'] ?? null)->toBe([
@@ -241,6 +268,45 @@ it('leaves out a member the branch renders only sometimes', function (): void {
         'status' => 422,
         'detail' => 'string',
     ]);
+});
+
+it('illustrates an unread member from the value domain its schema states', function (): void {
+    // An example is an instance of the schema beside it, and where that schema NAMES the values the member
+    // may hold, `"string"` is not one of them: a consumer copying the example would send a body the server
+    // refuses, and the build's own example lint would report a mismatch its reader never wrote and cannot
+    // correct. Which entry is settled in advance rather than by encounter order — the first, because a
+    // list's order is authored and every other reader of the document shows that same branch.
+    //
+    // The member is still a FILL: nothing about this response was read, only the schema next to it. So it
+    // stays in the record, and a reader of the record still knows this arm never proved the value.
+    $context = handlerContext(new StubTypeEngine(classes: [
+        'App\\Data\\ExportProblem' => new ClassMetadata('App\\Data\\ExportProblem', [
+            new PropertyMetadata('status', ScalarT::int()),
+            new PropertyMetadata('reason', new EnumT(ExportFailure::class, ['QuotaExceeded', 'SourceUnavailable'])),
+        ]),
+    ]));
+
+    $draft = HandlerResponseBuilder::build(
+        handlerAnalysis(
+            new ClassT('App\\Data\\ExportProblem'),
+            409,
+            suppliedMembers(['status' => 409, 'reason' => null]),
+        ),
+        $context,
+        Contribution::integration('inferred-handler'),
+        handlerThrow(409),
+        'App\\Exceptions\\Handler::render',
+    );
+
+    $frozen = $draft?->freeze()->toArray() ?? [];
+
+    // The case NAMES, because this context carries only core's case-names enum mapper. What the fill reads
+    // is the schema the document actually published, never the type behind it — an application whose
+    // reflection-rich mapper publishes backing values gets those instead, and neither is second-guessed.
+    expect($frozen['content']['application/problem+json']['example'] ?? null)
+        ->toBe(['status' => 409, 'reason' => 'QuotaExceeded'])
+        ->and($frozen['x-docuccino']['facts']['examplePlaceholders'] ?? null)
+        ->toBe(['application/problem+json' => ['reason']]);
 });
 
 it('still shows a sometimes-rendered member the schema requires of every response', function (): void {
@@ -258,6 +324,8 @@ it('still shows a sometimes-rendered member the schema requires of every respons
         ),
         problemDocumentContext(),
         Contribution::integration('inferred-handler'),
+        handlerThrow(422),
+        'App\\Exceptions\\Handler::render',
     );
 
     expect($draft?->freeze()->toArray()['content']['application/problem+json']['example'] ?? null)->toBe([
@@ -307,7 +375,8 @@ it('documents an object body under the status its own construction folded', func
         ),
         problemDocumentContext(),
         Contribution::integration('inferred-handler'),
-        statusHint: 500,
+        handlerThrow(500),
+        'App\\Exceptions\\Handler::render',
     );
 
     $frozen = $draft?->freeze()->toArray() ?? [];
@@ -327,7 +396,8 @@ it('keeps the hint when nothing in the body states a status either', function ()
         ),
         problemDocumentContext(),
         Contribution::integration('inferred-handler'),
-        statusHint: 500,
+        handlerThrow(500),
+        'App\\Exceptions\\Handler::render',
     );
 
     expect($draft?->status)->toBe('500');
@@ -360,6 +430,8 @@ it('fills a member from the value its own schema states, not from its type', fun
         handlerAnalysis(new ClassT('App\\Data\\StatedProblem'), 422),
         $context,
         Contribution::integration('inferred-handler'),
+        handlerThrow(422),
+        'App\\Exceptions\\Handler::render',
     );
 
     expect($draft?->freeze()->toArray()['content']['application/problem+json']['example'] ?? null)->toBe([
@@ -367,6 +439,58 @@ it('fills a member from the value its own schema states, not from its type', fun
         'title' => 'Unprocessable Content',
         'detail' => 'pinned',
     ]);
+});
+
+it('fills a member from the bound its schema carries, and still calls that member unread', function (): void {
+    // A bound is the one CONSTRAINT that also names a legal value, which is why it is read where a
+    // `pattern` is not: `0` is a value `minimum: 5` rejects, and a filled member the schema next to it
+    // rejects is a body the server refuses AND a `lint.example-mismatch` against an example its reader
+    // never wrote. The answers here come from the keywords' own meaning — 5 clears a floor of 5, 1 is the
+    // nearest integer above an exclusive 0, and 10 is the first multiple of 10 at or above a floor of 1.
+    //
+    // Then the second half, which a better fill could quietly lose: every one of them is still recorded as
+    // a member NOTHING READ. `5` reads exactly like a value a server sends, and the record is the only
+    // thing that can tell those apart downstream — a collapse consulting it would otherwise treat this arm
+    // as having read the member and drop a rival illustration that had actually proved it.
+    $context = handlerContext(new StubTypeEngine(classes: [
+        'App\\Data\\BoundedProblem' => new ClassMetadata('App\\Data\\BoundedProblem', [
+            new PropertyMetadata('status', ScalarT::int()),
+            new PropertyMetadata('attempt', ScalarT::int()),
+            new PropertyMetadata('backoff', ScalarT::int()),
+            new PropertyMetadata('quota', ScalarT::int()),
+        ]),
+    ]));
+
+    // The component as the document publishes it — a hand-authored one, since no type mapper mints a
+    // bound: the fill reads whatever the finished component says, wherever that came from.
+    $context->components->registerSchema('BoundedProblem', [
+        'type' => 'object',
+        'properties' => [
+            'status' => ['type' => 'integer'],
+            'attempt' => ['type' => 'integer', 'exclusiveMinimum' => 0],
+            'backoff' => ['type' => 'integer', 'minimum' => 1, 'multipleOf' => 10],
+            'quota' => ['type' => 'integer', 'minimum' => 5],
+        ],
+        'required' => ['status', 'attempt', 'backoff', 'quota'],
+    ], 'App\\Data\\BoundedProblem');
+
+    $frozen = HandlerResponseBuilder::build(
+        handlerAnalysis(new ClassT('App\\Data\\BoundedProblem'), 429),
+        $context,
+        Contribution::integration('inferred-handler'),
+        handlerThrow(429),
+        'App\\Exceptions\\Handler::render',
+    )?->freeze()->toArray() ?? [];
+
+    expect($frozen['content']['application/problem+json']['example'] ?? null)->toBe([
+        // Unbounded and named `status`, so it is the one member here that is not a fill at all: it is the
+        // status this response really answers with.
+        'status' => 429,
+        'attempt' => 1,
+        'backoff' => 10,
+        'quota' => 5,
+    ])->and($frozen['x-docuccino']['facts']['examplePlaceholders'] ?? null)
+        ->toBe(['application/problem+json' => ['attempt', 'backoff', 'quota']]);
 });
 
 it('still pins a status member to the response status over a stated default', function (): void {
@@ -388,6 +512,8 @@ it('still pins a status member to the response status over a stated default', fu
         handlerAnalysis(new ClassT('App\\Data\\DefaultedStatus'), 404),
         $context,
         Contribution::integration('inferred-handler'),
+        handlerThrow(422),
+        'App\\Exceptions\\Handler::render',
     );
 
     expect($draft?->freeze()->toArray()['content']['application/problem+json']['example'] ?? null)
@@ -409,6 +535,8 @@ it('leaves out a supplied member the schema declares no type for', function (): 
         handlerAnalysis(new ClassT('App\\Data\\OpaqueProblem'), 422, suppliedMembers(['title' => null, 'errors' => null])),
         $context,
         Contribution::integration('inferred-handler'),
+        handlerThrow(422),
+        'App\\Exceptions\\Handler::render',
     );
 
     $content = $draft?->freeze()->toArray()['content']['application/problem+json'] ?? [];
@@ -436,6 +564,8 @@ it('illustrates a nullable member through its non-null branch', function (): voi
         handlerAnalysis(new ClassT('App\\Data\\NullableProblem'), 422, suppliedMembers(['hint' => null, 'codes' => null])),
         $context,
         Contribution::integration('inferred-handler'),
+        handlerThrow(422),
+        'App\\Exceptions\\Handler::render',
     );
 
     $example = $draft?->freeze()->toArray()['content']['application/problem+json']['example'] ?? null;
@@ -451,6 +581,8 @@ it('falls back to the required members when no construction was seen at all', fu
         handlerAnalysis(new ClassT('App\\Data\\ProblemDocument'), 422),
         problemDocumentContext(),
         Contribution::integration('inferred-handler'),
+        handlerThrow(422),
+        'App\\Exceptions\\Handler::render',
     );
 
     $content = $draft?->freeze()->toArray()['content']['application/problem+json'] ?? [];
