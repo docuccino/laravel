@@ -15,6 +15,7 @@ use Docuccino\Core\Examples\RecordingStore;
 use Docuccino\Laravel\Tests\Fixtures\SharedErrors\ErrorsController;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Routing\Events\RouteMatched;
+use Illuminate\Routing\RouteCollection;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Event;
 use Workbench\App\Http\Controllers\ExamplesController;
@@ -395,13 +396,13 @@ it('joins the map an author curated, under the name the test chose and never ove
     expect(array_keys($ok['examples']))->toBe(['as-tested', 'discontinued', 'stocked'])
         ->and($ok['examples']['stocked']['value'])->not->toBe(['id' => 8, 'name' => 'Overruled', 'status' => 'draft'])
         ->and($ok)->not->toHaveKey('example')
-        // The 404 is a status the shared-error pass groups, so its names go nowhere at all — and the
-        // author's map is what publishes there whether or not anything was recorded for it.
-        ->and(array_keys($responses['404']['content']['application/json']['examples']))->toBe(['missing'])
+        // …and the 404 is no different. An error status carries a named example the way any other does,
+        // so the recording joins the author's map there too rather than displacing it or being dropped.
+        ->and(array_keys($responses['404']['content']['application/json']['examples']))->toBe(['as-tested', 'missing'])
         ->and($responses['404']['content']['application/json'])->not->toHaveKey('example');
 });
 
-it('leaves a neighbour exactly where it was when a name is recorded on a shared error', function (): void {
+it('carries every recorded name onto the error component, and leaves its neighbour where it was', function (): void {
     /** @var Router $router */
     $router = app('router');
     $router->get('api/zz-denied', [ErrorsController::class, 'denied']);
@@ -416,39 +417,135 @@ it('leaves a neighbour exactly where it was when a name is recorded on a shared 
 
     $after = recordedDocument($this->recordings);
 
-    // A recorded name is not an authored one, so it publishes as the singular example this route's arm
-    // carries into the response it shares.
+    // Both arms, under the names the assertions gave them. A union error body is the case where the
+    // names matter most — a client branches on which arm it got — and the shared component is what a
+    // consumer actually reads, so a map that stopped at the operation would be a map nobody sees.
     $media = resolveResponse($after, $after['paths']['/api/zz-denied']['get']['responses']['403'])['content']['application/json'];
 
     // The neighbour recorded nothing, so what a consumer READS for its 403 — the component it points at,
     // its own words, its shape — is what it read before, with one sanctioned widening: the two state one
-    // response, so the illustration published on it is offered by both. That is the whole of the change,
-    // which is why it is stated as one member rather than left to a schema comparison.
+    // response, so the illustrations published on it are offered by both. That is the whole of the
+    // change, which is why it is stated as one member rather than left to a schema comparison.
     $neighbour = resolveResponse($after, $after['paths']['/api/zz-denied-again']['get']['responses']['403']);
     $before403 = resolveResponse($before, $before['paths']['/api/zz-denied-again']['get']['responses']['403']);
 
     $widened = $neighbour;
-    unset($widened['content']['application/json']['example']);
+    unset($widened['content']['application/json']['examples']);
 
-    expect($media['example'])->toBe(['code' => 'expired'])
-        ->and($media)->not->toHaveKey('examples')
+    expect($media['examples'])->toBe([
+        'expired' => ['value' => ['code' => 'expired']],
+        'missing' => ['value' => ['code' => 'forbidden']],
+    ])
+        ->and($media)->not->toHaveKey('example')
+        ->and($after['components']['responses'])->toHaveKey('Error403')
+        ->and($after['paths']['/api/zz-denied']['get']['responses']['403']['$ref'])->toBe('#/components/responses/Error403')
+        ->and($after['paths']['/api/zz-denied-again']['get']['responses']['403']['$ref'])->toBe('#/components/responses/Error403')
         ->and($after['paths']['/api/zz-denied-again'])->toBe($before['paths']['/api/zz-denied-again'])
-        ->and($neighbour['content']['application/json']['example'])->toBe(['code' => 'expired'])
-        ->and($before403['content']['application/json'])->not->toHaveKey('example')
+        ->and($before403['content']['application/json'])->not->toHaveKey('examples')
         ->and($widened)->toBe($before403);
 });
 
-it('says so where a recorded name went nowhere', function (): void {
+it('publishes the same names whichever order the sibling routes were registered in', function (): void {
+    // A name on a shared component is now a function of what a SIBLING recorded, so it owes the minted-
+    // name invariant: the answer must come from the SET of arms contesting the body and never from the
+    // order they were met. Both orders are built and held to the same bytes for the whole document.
+    $bytes = [];
+
+    foreach ([['denied', 'deniedAgain'], ['deniedAgain', 'denied']] as $order) {
+        /** @var Router $router */
+        $router = app('router');
+        $router->setRoutes(new RouteCollection);
+        foreach ($order as $action) {
+            $router->get('api/zz-'.strtolower($action), [ErrorsController::class, $action]);
+        }
+
+        $ids = recordedDocument($this->recordings)['paths'];
+
+        // Each route records the SAME name for two different bodies, so the arms contest "denied" — the
+        // one case where the published key is minted rather than written, and so the one most likely to
+        // fall out of encounter order.
+        foreach (['denied', 'deniedagain'] as $i => $action) {
+            writeRecording($this->recordings, $ids['/api/zz-'.$action]['get']['x-docuccino']['id'], 'GET /api/zz-'.$action, [
+                RecordedExample::of('403', 'application/json', ['code' => 'a'.$i], 'denied'),
+                RecordedExample::of('403', 'application/json', ['code' => 'shared'], 'agreed'),
+            ]);
+        }
+
+        $document = recordedDocument($this->recordings);
+        $bytes[] = json_encode($document['components']['responses']['Error403'], JSON_THROW_ON_ERROR);
+    }
+
+    $published = json_decode($bytes[0], true)['content']['application/json']['examples'];
+
+    expect($bytes[1])->toBe($bytes[0])
+        // The name both arms agreed on publishes as written; the contested one publishes for neither,
+        // under keys minted from the bodies themselves.
+        ->and($published)->toHaveKey('agreed')
+        ->and($published['agreed'])->toBe(['value' => ['code' => 'shared']])
+        ->and($published)->not->toHaveKey('denied')
+        ->and($published)->toHaveCount(3);
+});
+
+it('publishes the recorded names on the shared error component, cold and warm alike', function (): void {
+    // A FIXED directory, unlike this suite's per-row scratch one: `examples.recordings` is hashed into
+    // `document.configHash`, so a random path would churn the golden on every run.
+    $dir = base_path('docs/recordings-shared-error-golden');
+    @mkdir($dir, 0777, true);
+    config()->set('docuccino.documents.default.examples.recordings', $dir);
+
+    $routes = static function (Router $router, array $actions): void {
+        foreach ($actions as $action) {
+            $router->get('api/zz-'.strtolower($action), [ErrorsController::class, $action]);
+        }
+    };
+
+    try {
+        $routes(app('router'), ['denied']);
+        $id = stubDocumentArray()['paths']['/api/zz-denied']['get']['x-docuccino']['id'];
+
+        writeRecording($dir, $id, 'GET /api/zz-denied', [
+            RecordedExample::of('403', 'application/json', ['code' => 'expired'], 'expired'),
+            RecordedExample::of('403', 'application/json', ['code' => 'forbidden'], 'missing'),
+        ]);
+
+        // Warm on the ONE route, then document both: the recorded arm reaches the hoist as a cached
+        // fragment, so a map that only survived the cold path — or a diagnostic that only the cold path
+        // raised — shows here and nowhere else.
+        $warm = assertWarmEqualsCold(
+            static fn (Router $router) => $routes($router, ['denied']),
+            static fn (Router $router) => $routes($router, ['denied', 'deniedAgain']),
+        );
+
+        // Byte-locked, because this population had no golden: of the laravel goldens, none stood where a
+        // recorded, NAMED example lands on a status the shared-error pass groups — the case a union error
+        // body makes, and the one a client has to branch on.
+        assertGolden('workbench-recorded-shared-error.uir.json', (new UirEmitter)->emit($warm->document));
+    } finally {
+        foreach (glob($dir.'/*') ?: [] as $file) {
+            @unlink($file);
+        }
+        @rmdir($dir);
+    }
+});
+
+it('says nothing where a recorded name reaches the shared error component', function (): void {
     /** @var Router $router */
     $router = app('router');
     $router->get('api/zz-denied', [ErrorsController::class, 'denied']);
+    $router->get('api/zz-denied-again', [ErrorsController::class, 'deniedAgain']);
 
     $id = recordedDocument($this->recordings)['paths']['/api/zz-denied']['get']['x-docuccino']['id'];
     writeRecording($this->recordings, $id, 'GET /api/zz-denied', [
         RecordedExample::of('403', 'application/json', ['code' => 'forbidden'], 'missing'),
     ]);
 
-    expect(recordedDiagnosticCodes($this->recordings))->toBe(['examples.recording-name-unpublished']);
+    // Silence, and the name really is there — silence about a loss would read the same from here, which
+    // is why the published map is asserted in the same test rather than left to its neighbour.
+    $document = recordedDocument($this->recordings);
+
+    expect(recordedDiagnosticCodes($this->recordings))->toBe([])
+        ->and($document['components']['responses']['Error403']['content']['application/json']['examples'])
+        ->toBe(['missing' => ['value' => ['code' => 'forbidden']]]);
 });
 
 it('says nothing about a name the document publishes', function (): void {

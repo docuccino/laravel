@@ -34,6 +34,21 @@ use Symfony\Component\HttpFoundation\Response;
 trait AssertsApiContract
 {
     /**
+     * Record what each request arrives carrying, before the application's own middleware can rewrite
+     * it — `TrimStrings` and `ConvertEmptyStringsToNull` are in Laravel's default global stack, and any
+     * `$request->merge()` adds fields no client sent.
+     *
+     * Laravel calls `setUp<Trait>()` for every trait a test case takes, so this runs once per
+     * application, which is what the capture needs: a bootstrap called once cannot reach an application
+     * that is built again for every test. {@see ApiContract::captureRequestBodies()} is the same call for
+     * a suite that reaches the assertions without the trait.
+     */
+    protected function setUpAssertsApiContract(): void
+    {
+        ApiContract::captureRequestBodies();
+    }
+
+    /**
      * The request that produced this response matches what the contract documents for the operation.
      *
      * @param  TestResponse<Response>  $response

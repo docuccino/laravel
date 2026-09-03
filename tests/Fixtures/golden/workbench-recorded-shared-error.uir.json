@@ -1,0 +1,181 @@
+{
+  "$schema": "https://spec.docuccino.app/uir/1.0/schema.json",
+  "uir": "1.0.0",
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-denied": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:lodmtqyuuzlrmwmc",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/SharedErrors/ErrorsController.php",
+                "line": 17,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\ErrorsController::denied"
+              }
+            }
+          ]
+        },
+        "tags": [
+          "Errors"
+        ],
+        "responses": {
+          "403": {
+            "x-docuccino": {
+              "id": "res:v1:op6gk7jiowbnkc2r",
+              "provenance": [
+                {
+                  "producer": "attribute",
+                  "layer": "attribute",
+                  "fields": [
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/SharedErrors/ErrorsController.php",
+                    "line": 17,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\ErrorsController::denied"
+                  },
+                  "overrode": [
+                    {
+                      "field": "description",
+                      "value": "OK",
+                      "producer": "fallback"
+                    }
+                  ]
+                }
+              ]
+            },
+            "$ref": "#/components/responses/Error403"
+          }
+        }
+      }
+    },
+    "/api/zz-deniedagain": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:4yfqky7byp73h4p6",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/SharedErrors/ErrorsController.php",
+                "line": 24,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\ErrorsController::deniedAgain"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            }
+          ]
+        },
+        "summary": "The same body as, described differently — presentation, not contract.",
+        "tags": [
+          "Errors"
+        ],
+        "responses": {
+          "403": {
+            "x-docuccino": {
+              "id": "res:v1:ltqlgxz72ja5amtw",
+              "provenance": [
+                {
+                  "producer": "attribute",
+                  "layer": "attribute",
+                  "fields": [
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/SharedErrors/ErrorsController.php",
+                    "line": 24,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\ErrorsController::deniedAgain"
+                  },
+                  "overrode": [
+                    {
+                      "field": "description",
+                      "value": "OK",
+                      "producer": "fallback"
+                    }
+                  ]
+                }
+              ]
+            },
+            "$ref": "#/components/responses/Error403",
+            "description": "You may not do that"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error403": {
+        "x-docuccino": {
+          "id": "sch:v1:4ggssff6mnyltsx4"
+        },
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ]
+      }
+    },
+    "responses": {
+      "Error403": {
+        "description": "Forbidden",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error403"
+            },
+            "examples": {
+              "expired": {
+                "value": {
+                  "code": "expired"
+                }
+              },
+              "missing": {
+                "value": {
+                  "code": "forbidden"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "1692182cd0c1fec0e1d36cf478ccbe32bf4f605b7cb03c2b4897149d5374130d",
+      "contentHash": "764de7bbc6743f859bad24c67f1a3766a17b1de05e73a930fd7ccf3d4339731e"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.14.0",
+      "specVersion": "1.0.0"
+    }
+  }
+}

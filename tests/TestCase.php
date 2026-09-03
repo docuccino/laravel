@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Tests;
 
 use Docuccino\Laravel\DocuccinoServiceProvider;
+use Docuccino\Laravel\Testing\AssertsApiContract;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Gadget;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Widget;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -26,6 +27,10 @@ use Workbench\App\Http\Controllers\WidgetQueryController;
  */
 abstract class TestCase extends Orchestra
 {
+    // The documented setup, so the contract tests exercise the automatic request capture the way a real
+    // suite gets it rather than a wiring of their own.
+    use AssertsApiContract;
+
     /**
      * @return list<class-string>
      */

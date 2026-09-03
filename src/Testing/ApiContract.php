@@ -14,6 +14,8 @@ use Docuccino\Core\Support\PlainText;
 use Docuccino\Laravel\Support\ArtifactLocator;
 use Docuccino\Laravel\Testing\Contracts\ContractObserver;
 use Illuminate\Container\Container;
+use Illuminate\Contracts\Http\Kernel as HttpKernelContract;
+use Illuminate\Foundation\Http\Kernel as HttpKernel;
 use Illuminate\Http\Request;
 use Illuminate\Testing\TestResponse;
 use JsonException;
@@ -21,6 +23,7 @@ use PHPUnit\Framework\Assert;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\HeaderBag;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * The suite-wide entry point for contract testing: which artifact the assertions read, who observes
@@ -177,7 +180,7 @@ final class ApiContract
     {
         $index = self::index();
         $request = self::requestFor($response);
-        $exchange = self::exchangeFor($request, $response);
+        $exchange = self::exchangeFor($request, $response, $checkResponse);
 
         $result = (new ContractChecker($index))->check($exchange, $checkRequest, $checkResponse);
         $operation = $result->operation;
@@ -319,17 +322,41 @@ final class ApiContract
     }
 
     /**
+     * Record what each request arrived carrying, before the application can rewrite it.
+     *
+     * Per APPLICATION, so it belongs where an application exists: {@see AssertsApiContract} calls it for
+     * every test that takes the trait, which is the documented setup, and a suite that reaches the
+     * assertions another way calls it itself. A request nothing captured is not checked as though it had
+     * been — {@see FormBody::read()} says why, and the check reports that.
+     */
+    public static function captureRequestBodies(): void
+    {
+        $container = Container::getInstance();
+        $kernel = $container->bound(HttpKernelContract::class) ? $container->get(HttpKernelContract::class) : null;
+
+        if ($kernel instanceof HttpKernel) {
+            $kernel->prependMiddleware(CaptureRequestBody::class);
+        }
+    }
+
+    /**
      * The Laravel pair reduced to the neutral value core checks.
+     *
+     * `$readResponseBody` is false where the caller is only checking the request half. It is not an
+     * optimisation: a streamed response has no body until something RUNS the application's callback,
+     * and running one an assertion never asked about executes whatever that closure does — consumes a
+     * queue, deletes an export, or never returns at all on an SSE endpoint.
      *
      * @param  TestResponse<Response>  $response
      */
-    public static function exchangeFor(Request $request, TestResponse $response): Exchange
+    public static function exchangeFor(Request $request, TestResponse $response, bool $readResponseBody = true): Exchange
     {
         $base = $response->baseResponse;
-        $body = $base->getContent();
 
         /** @var array<string, mixed> $query */
         $query = $request->query->all();
+
+        [$form, $unread] = FormBody::read($request);
 
         return new Exchange(
             method: $request->getMethod(),
@@ -339,16 +366,48 @@ final class ApiContract
             headers: self::headerValues($request->headers),
             cookies: self::strings($request->cookies->all()),
             requestBody: $request->getContent(),
-            requestContentType: $request->headers->get('Content-Type'),
+            // The type a real client would have sent it under, not the test client's header, where the
+            // request carried a form ({@see FormBody}).
+            requestContentType: $form === null ? $request->headers->get('Content-Type') : $form->contentType,
+            requestForm: $form?->fields,
+            requestBodyUnread: $unread,
             // PHP has one array and JSON has two containers, so `json_encode([])` is `[]` and there is
             // no PHP value the JSON test helpers — which take `array $data` — would write as `{}`.
             // A JSON request body of `[]` therefore says nothing about which the author meant, and the
             // check reads it as whichever the contract accepts.
             ambiguousEmptyRequestBody: $request->isJson(),
-            responseBody: $body === false ? '' : $body,
+            responseBody: self::responseBody($response, $readResponseBody),
             responseContentType: $base->headers->get('Content-Type'),
             responseHeaders: self::headerValues($base->headers),
         );
+    }
+
+    /**
+     * The bytes the response really carried.
+     *
+     * `getContent()` answers `false` for a STREAMED response: there is no string to hand back, only a
+     * callback that writes to the output buffer. `TestResponse` runs it and keeps what it wrote, which
+     * is what every one of Laravel's own body assertions does with a streamed response, and it caches
+     * the result — so asking costs the stream nothing a test's own `assertSee` would not have. A
+     * response with no callback set has streamed nothing, and running it would throw rather than say so.
+     *
+     * A `BinaryFileResponse` answers `false` too and is deliberately left alone: its body is a file on
+     * disk, published under a media type the check does not read, so it already reaches a note rather
+     * than a false failure — and sending it would read the whole file to prove nothing.
+     *
+     * @param  TestResponse<Response>  $response
+     */
+    private static function responseBody(TestResponse $response, bool $wanted): string
+    {
+        $base = $response->baseResponse;
+
+        if ($base instanceof StreamedResponse) {
+            return $wanted && $base->getCallback() !== null ? $response->streamedContent() : '';
+        }
+
+        $body = $base->getContent();
+
+        return $body === false ? '' : $body;
     }
 
     /**

@@ -6,8 +6,11 @@ use Docuccino\Laravel\Testing\ApiContract;
 use Docuccino\Laravel\Testing\Contracts\ContractObserver;
 use Docuccino\Laravel\Testing\ObservedExchange;
 use Docuccino\Laravel\Testing\UnreadableContract;
+use Illuminate\Http\Request;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\AssertionFailedError;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 afterEach(function (): void {
     @unlink(workbenchContractPath());
@@ -335,6 +338,86 @@ it('fails a 429 that omits a rate-limit header the document marks required', fun
     }
 
     throw new RuntimeException('the assertion should have failed');
+});
+
+/*
+ * The response half of the same defect a parsed form body is on the request half: a body the transport
+ * no longer holds, read as a body nobody sent. `getContent()` answers `false` for a streamed response,
+ * and `false` read as `''` failed a response that had really written every byte the document promises.
+ */
+it('checks the bytes a streamed response really wrote, not the nothing getContent hands back', function (string $body, bool $ok): void {
+    workbenchContract();
+
+    $base = new StreamedResponse(static function () use ($body): void {
+        echo $body;
+    }, 200, ['Content-Type' => 'application/json']);
+
+    $response = TestResponse::fromBaseResponse($base, Request::create('/api/forms', 'GET'));
+
+    // The premise, pinned: without it this passes over a response that had its content all along.
+    expect($base->getContent())->toBeFalse();
+
+    $assert = fn () => ApiContract::assertions()->assertValidResponse($response);
+
+    $ok
+        ? expect($assert())->toBe($response)
+        // The guard executed rather than asserted: a stream that wrote the wrong shape still fails, so
+        // reading the stream is a check and not a way of skipping one.
+        : expect($assert)->toThrow(AssertionFailedError::class, 'must match the type: array');
+})->with([
+    'what the document promises' => ['[{"id":1,"title":"Intake"}]', true],
+    'something else entirely' => ['{"data":[]}', false],
+]);
+
+it('never runs a response stream for an assertion that only asked about the request', function (): void {
+    workbenchContract();
+
+    $ran = false;
+    $base = new StreamedResponse(static function () use (&$ran): void {
+        $ran = true;
+        echo '[]';
+    }, 200, ['Content-Type' => 'application/json']);
+
+    ApiContract::assertions()->assertValidRequest(TestResponse::fromBaseResponse($base, Request::create('/api/forms', 'GET')));
+
+    // Running it is not a cost, it is the application executing: an SSE endpoint never returns, and a
+    // callback that marks a queue consumed or deletes an export has done so.
+    expect($ran)->toBeFalse();
+});
+
+it('fails a streamed response that set no callback, rather than erroring the test', function (): void {
+    workbenchContract();
+
+    $response = TestResponse::fromBaseResponse(
+        new StreamedResponse(status: 200, headers: ['Content-Type' => 'application/json']),
+        Request::create('/api/forms', 'GET'),
+    );
+
+    // Sending one throws `LogicException: The response callback must be set.` — which errors the test
+    // instead of reporting what the check found. It streamed nothing, and nothing is what it is held to.
+    expect(fn () => ApiContract::assertions()->assertValidResponse($response))
+        ->toThrow(AssertionFailedError::class, 'the response body is empty, but the contract documents a application/json body');
+});
+
+it('notes a binary file response rather than failing it for a body JSON Schema cannot read', function (): void {
+    $path = workbenchContract();
+    $document = json_decode((string) file_get_contents($path), true);
+    $content = $document['paths']['/api/forms']['get']['responses']['200']['content'];
+    $document['paths']['/api/forms']['get']['responses']['200']['content'] = ['application/pdf' => reset($content)];
+    file_put_contents($path, (string) json_encode($document));
+    ApiContract::using($path);
+
+    $base = new BinaryFileResponse(__FILE__, 200, ['Content-Type' => 'application/pdf']);
+    $response = TestResponse::fromBaseResponse($base, Request::create('/api/forms', 'GET'));
+
+    // The premise, pinned: a file response hands back no string either, and is deliberately left that
+    // way — sending it would read the whole file to prove nothing.
+    expect($base->getContent())->toBeFalse();
+
+    expect(warningsRaisedBy(function () use ($response): void {
+        ApiContract::assertions()->assertValidResponse($response);
+    }))->toBe(['GET /api/forms passed, but part of the contract was not checked: the response body is '.
+        'application/pdf, which JSON Schema cannot check.']);
 });
 
 it('reduces the response headers Laravel sent, repeats and all, to the neutral exchange', function (): void {

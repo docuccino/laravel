@@ -268,7 +268,7 @@ it('settles a named recording against what an author wrote', function (array $na
     ],
 ]);
 
-it('publishes the best recorded body without its name where the shared-error pass would group it', function (): void {
+it('publishes every recorded name on an error status, as it does on any other', function (array $representation): void {
     $base = recordedExamplesBase();
     recordInvoices($base, [
         RecordedExample::of('403', 'application/json', ['code' => 'forbidden', 'detail' => 'No.'], 'expired'),
@@ -276,33 +276,26 @@ it('publishes the best recorded body without its name where the shared-error pas
     ]);
 
     $operation = recordedDraft('403');
-    (new RecordedExamplesExtension($base))->handle($operation, recordedContext($base));
+    (new RecordedExamplesExtension($base))->handle($operation, recordedContext($base, representation: $representation));
 
-    // An `examples` map is not stripped before that pass groups bodies, so publishing one here would
-    // take this 403 out of the component an unrelated route also points at.
+    // The map survives the shared-error pass: {@see SharedErrorResponses::illustrated()} lifts it into
+    // the component under the names it carries rather than leaving the response behind, so there is
+    // nothing here for the hoist setting to change. Asserted under BOTH values because that is the
+    // claim — an answer that varied with the setting is what this extension used to give.
     $content = recordedResponse($operation, '403')['content']['application/json'];
 
-    expect($content['example'])->toBe(['code' => 'forbidden', 'detail' => 'No.'])
-        ->and($content)->not->toHaveKey('examples');
-});
+    expect($content['examples'])->toBe([
+        'expired' => ['value' => ['code' => 'forbidden', 'detail' => 'No.']],
+        'missing' => ['value' => ['code' => 'forbidden']],
+    ])->and($content)->not->toHaveKey('example');
+})->with([
+    'sharing error components' => [[]],
+    'sharing none' => [['errors' => ['components' => false]]],
+]);
 
-it('publishes the names on an error response of a document that shares no error components', function (): void {
-    $base = recordedExamplesBase();
-    recordInvoices($base, [
-        RecordedExample::of('403', 'application/json', ['code' => 'forbidden'], 'missing'),
-    ]);
-
-    $operation = recordedDraft('403');
-    (new RecordedExamplesExtension($base))->handle(
-        $operation,
-        recordedContext($base, representation: ['errors' => ['components' => false]]),
-    );
-
-    expect(recordedResponse($operation, '403')['content']['application/json']['examples'])
-        ->toBe(['missing' => ['value' => ['code' => 'forbidden']]]);
-});
-
-it('names a status the shared-error pass reads and one it does not', function (string $status, bool $shares): void {
+it('reads no status when it decides which member a name publishes into', function (string $status): void {
+    // The one branch this extension may take is named-or-not. A status-dependent one is what published a
+    // 404's recordings under a different rule from a 200's, so the whole range is asserted alike.
     $base = recordedExamplesBase();
     recordInvoices($base, [RecordedExample::of($status, 'application/json', ['code' => 'x'], 'named')]);
 
@@ -310,13 +303,15 @@ it('names a status the shared-error pass reads and one it does not', function (s
     (new RecordedExamplesExtension($base))->handle($operation, recordedContext($base));
 
     expect(recordedResponse($operation, $status)['content']['application/json'])
-        ->toHaveKey($shares ? 'example' : 'examples');
+        ->toHaveKey('examples')
+        ->and(recordedResponse($operation, $status)['content']['application/json'])
+        ->not->toHaveKey('example');
 })->with([
-    'a 200' => ['200', false],
-    'a 399' => ['399', false],
-    'a 404' => ['404', true],
-    'a 500' => ['500', true],
-    'a 4XX range, which that pass never groups' => ['4XX', false],
+    'a 200' => ['200'],
+    'a 399' => ['399'],
+    'a 404' => ['404'],
+    'a 500' => ['500'],
+    'a 4XX range' => ['4XX'],
 ]);
 
 it('drops only the named recording that still holds a credential', function (): void {

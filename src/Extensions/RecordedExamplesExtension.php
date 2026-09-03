@@ -12,7 +12,6 @@ use Docuccino\Core\Examples\RecordedExample;
 use Docuccino\Core\Examples\RecordedExampleAudit;
 use Docuccino\Core\Examples\RecordingStore;
 use Docuccino\Core\Extensions\BuiltIn\SharedErrorResponses;
-use Docuccino\Core\Extensions\Context\RepresentationPolicy;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
@@ -24,9 +23,10 @@ use Docuccino\Core\Extensions\Contracts\OperationPhase;
  * Which of a recording and an `#[Example]` publishes is the draft's answer rather than this class's — a
  * recording fills an ILLUSTRATION bag and an attribute a DECLARATION bag, and {@see ResponseDraft::freeze()}
  * publishes a declaration over an illustration whichever ran first. Examples go on the MEDIA TYPE and
- * never into the schema: the shared-error hoist strips a schema-level `example` before it groups bodies,
- * so recorded there, one route acquiring a recording could drop an unrelated route's 404 out of its
- * shared component ({@see SharedErrorResponses::shares()}).
+ * never into the schema: the shared-error hoist keys on the schema, so recorded there, one route
+ * acquiring a recording could drop an unrelated route's 404 out of its shared component. On the media
+ * type an error status needs no special case — {@see SharedErrorResponses} lifts an `examples` map into
+ * the shared component under the names it carries, so a name recorded on a 404 publishes there.
  */
 final class RecordedExamplesExtension implements OperationExtension
 {
@@ -68,10 +68,8 @@ final class RecordedExamplesExtension implements OperationExtension
             return;
         }
 
-        $hoists = RepresentationPolicy::fromConfig($context->document->representation)->errorComponents;
-
         foreach (self::slots($recording) as $examples) {
-            $this->attach($operation, $examples, $hoists);
+            $this->attach($operation, $examples);
         }
     }
 
@@ -95,7 +93,7 @@ final class RecordedExamplesExtension implements OperationExtension
      * @param  non-empty-list<RecordedExample>  $examples  every example recorded for one media type,
      *                                                     named or unnamed but never a mix of the two
      */
-    private function attach(OperationDraft $operation, array $examples, bool $hoists): void
+    private function attach(OperationDraft $operation, array $examples): void
     {
         $first = $examples[0];
 
@@ -122,7 +120,7 @@ final class RecordedExamplesExtension implements OperationExtension
             return;
         }
 
-        if (! $first->isNamed() || ($hoists && SharedErrorResponses::shares($first->status))) {
+        if (! $first->isNamed()) {
             // First writer wins here, which is what settles a recording against another integration-layer
             // producer that already illustrated this media type — the built-in error tiers attach the
             // literals they folded, and a value the application really returns is not better evidence than
