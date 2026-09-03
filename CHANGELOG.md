@@ -7,6 +7,13 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.14.1
+
+### Bug fixes
+
+- check a form request body as the message arrived, not as the application rewrote it ([#380](https://github.com/docuccino/docuccino/pull/380))
+- publish every recorded example name, on an error status as on any other ([#379](https://github.com/docuccino/docuccino/pull/379))
+
 ## v0.14.0
 
 ### Breaking changes
