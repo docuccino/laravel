@@ -26,9 +26,8 @@ use JsonException;
  * agreed with the contract at the moment it was recorded.
  *
  * What it writes is a committed file per operation, named after the operation's stable id. The
- * document build reads those files and nothing else, so "Docuccino never executes your application
- * code" stays exactly as true as it was: the execution is your test suite's, which is where it already
- * lived.
+ * document build reads those files and nothing else, so it still runs none of your endpoints: the
+ * execution is your test suite's, which is where it already lived.
  *
  * Recording is opt-in at each assertion, and `recordAs:` is how it is asked for. Checking an exchange
  * and publishing it as documentation are two decisions with opposite ideal coverage: a suite should

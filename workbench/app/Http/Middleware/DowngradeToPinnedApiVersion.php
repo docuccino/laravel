@@ -13,8 +13,8 @@ use Symfony\Component\HttpFoundation\Response;
  * The workbench's hand-rolled migrations runtime: read the pinned API version off `X-Api-Version`, then
  * walk the JSON body back through the named resource's changes that shipped AFTER the pin, newest first.
  *
- * Docuccino executes nothing of the application, so it neither reads nor runs this. It stands in for the
- * runtime an application owns; only the declarative half is ever compiled into a document.
+ * Docuccino compiles the declarative half only, so it neither reads nor runs this. It stands in for the
+ * runtime an application owns.
  *
  * Both orderings below are `strcmp`, and that is safe HERE only because these versions are fixed-width
  * dates. Byte order reads `1.10.0` as older than `1.9.0`, so an API on semver copying this shape would

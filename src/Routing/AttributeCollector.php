@@ -26,6 +26,15 @@ use Throwable;
  * fails to instantiate is skipped and handed to `$onUnreadable` as the `attribute.unreadable`
  * diagnostic this class is the single mint for.
  *
+ * The guarantee everything reading an attribute leans on is narrower than "nothing of the application
+ * runs", and this is where it is stated. PHP requires every attribute argument to be a constant
+ * expression, so a closure or a method call cannot be written in one at all — but `new` can be, and
+ * its constructor RUNS during the instantiation below, before the parameter type gets to refuse the
+ * object; a declaring file in weak mode will even coerce a `Stringable` into a string parameter and
+ * keep what `__toString()` returned. So the scalar-only signatures on the attributes are a TYPE
+ * guard, not an execution guard: what makes a document deterministic is that an attribute argument is
+ * a constant somebody wrote, not that nothing there could run.
+ *
  * @internal
  */
 final class AttributeCollector

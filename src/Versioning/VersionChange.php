@@ -15,7 +15,8 @@ final readonly class VersionChange
 {
     /**
      * @param  class-string  $class
-     * @param  list<VersionVerb>  $verbs  in the order they are APPLIED, which {@see VerbOrder} settles
+     * @param  list<VersionVerb|OperationVerb>  $verbs  in the order they are APPLIED, which
+     *                                                  {@see VerbOrder} settles
      * @param  list<string>  $selectors  the operation selectors its #[AppliesTo] declare; empty means
      *                                   every operation the schema appears in
      */

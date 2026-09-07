@@ -22,6 +22,7 @@ use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Pipeline\GenerationResult;
 use Docuccino\Laravel\Extensions\IgnoredParametersExtension;
+use Docuccino\Laravel\Support\ParameterLocations;
 use Docuccino\Laravel\Tests\Support\TraceScript;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Illuminate\Routing\Router;
@@ -155,8 +156,13 @@ it('reports an `in:` that names no parameter location, and drops nothing for it'
         // The value the author wrote, verbatim, and the name it was written beside.
         ->and($reports[0]->message)->toContain('"body"')
         ->and($reports[0]->message)->toContain('X-Trace')
-        // The legal set, so the reader never has to look it up.
+        // The legal set, so the reader never has to look it up — written out, and then held to the set
+        // the product declares, because a list spelled into prose is silent the day it goes short.
         ->and($reports[0]->help)->toContain('cookie, header, path or query')
+        ->and(array_filter(
+            ParameterLocations::all(),
+            static fn (string $location): bool => ! str_contains($reports[0]->help ?? '', $location),
+        ))->toBe([])
         // Nothing was dropped, which is what the report says.
         ->and(ignoreParamParameters($result, '/api/ignored/nowhere'))->toContain(['header', 'X-Trace']);
 });

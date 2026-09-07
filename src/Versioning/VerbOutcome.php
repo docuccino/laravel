@@ -9,6 +9,11 @@ namespace Docuccino\Laravel\Versioning;
  * published more than once — the hoisted component and an inline copy of it — so the answer is the
  * STRONGEST thing seen: a verb that edited one copy and found nothing to do at another has applied.
  *
+ * That collapse is a fact about COPIES, which is why an {@see OperationVerb} is not given it: two
+ * operations declaring one parameter are two declarations rather than two copies of one node, so
+ * {@see ApiVersionTransformer::applyToOperations()} keeps one outcome per operation and reports a
+ * refusal on one even where another applied.
+ *
  * @internal
  */
 enum VerbOutcome: int

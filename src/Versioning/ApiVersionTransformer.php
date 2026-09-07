@@ -7,28 +7,20 @@ namespace Docuccino\Laravel\Versioning;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Document\DocumentGraph;
-use Docuccino\Core\Document\PathItem;
 use Docuccino\Core\Extensions\Context\DocumentContext;
-use Docuccino\Core\Extensions\Context\RepresentationPolicy;
 use Docuccino\Core\Extensions\Contracts\DocumentTransformer;
 use Docuccino\Core\Extensions\Document\UirDocumentDraft;
 use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
-use Docuccino\Core\Extensions\Schema\ComponentNames;
-use Docuccino\Core\Extensions\Schema\EnumDecoration;
 use Docuccino\Core\Identity\IdentityGenerator;
-use Docuccino\Core\Support\Arr;
 use Docuccino\Core\Support\Glob;
 use Docuccino\Core\Support\PlainText;
-use Docuccino\Core\Versioning\VersionOrder;
-use Docuccino\Laravel\Config\ConfiguredDocuments;
-use Docuccino\Laravel\Support\ListValueNames;
 
 /**
  * Turns the document a build just assembled into the document for the API version it declares: every
- * declared change that shipped AFTER this version is applied in REVERSE, and every operation declares
- * the header a client pins a version with. A document with no `api_version` is not an API version, and
- * this moves not a byte of it.
+ * declared change that shipped AFTER this version is applied in REVERSE, and then every operation is
+ * given the header a client pins a version with ({@see ApiVersionHeader}). A document with no
+ * `api_version` is not an API version, and this moves not a byte of it.
  *
  * The one thing to know before reading it is the fork rule a scoped change follows, which
  * `docs/design/api-versioning.md` states and justifies.
@@ -40,23 +32,9 @@ use Docuccino\Laravel\Support\ListValueNames;
 #[ExtensionOrder(priority: Priorities::LATE)]
 final readonly class ApiVersionTransformer implements DocumentTransformer
 {
-    /** The components bucket the one header declaration is published in, and where a `$ref` finds it. */
-    private const string PARAMETERS = 'parameters';
-
-    private const string PARAMETER_REF = '#/components/parameters/';
-
-    /** The registration slot the one claim on a component name is made under. */
-    private const string CLAIM = 'api-version-header';
-
-    /**
-     * What the header says to somebody who cannot see the codebase — which is why it names no attribute,
-     * no config key and no way to change it.
-     */
-    private const string DESCRIPTION = 'The API version this request is answered as. Omit it and the request is answered as the version this document describes.';
-
     public function __construct(
         private VersionChangeCollector $changes,
-        private ConfiguredDocuments $documents = new ConfiguredDocuments,
+        private ApiVersionHeader $header = new ApiVersionHeader,
         private IdentityGenerator $identity = new IdentityGenerator,
     ) {}
 
@@ -106,13 +84,19 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
             // In the order {@see VerbOrder} settles, which is the whole of what "the author's written
             // order" comes to once an AttributeSet has answered per type.
             foreach ($change->verbs as $verb) {
+                if ($verb instanceof OperationVerb) {
+                    $doc = $this->applyToOperations($doc, $verb, $change, $context, $said);
+
+                    continue;
+                }
+
                 $doc = $change->selectors === []
                     ? $this->apply($doc, $verb, $change, $context, $said)
                     : $this->applyScoped($doc, $verb, $change, $context, $said);
             }
         }
 
-        $document->replace($this->declareVersionHeader($doc, $context, $version, $set->changes, $set->order));
+        $document->replace($this->header->declareIn($doc, $context, $version, $set->changes, $set->order));
     }
 
     /**
@@ -202,7 +186,7 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
 
         foreach ($change->selectors as $selector) {
             if (! self::namesAny([$selector], $reaching)) {
-                self::reportOnce($context, self::matchesNothing($change, $selector, $verb), $said);
+                self::reportOnce($context, VerbDiagnostics::scopeMatchesNothing($change, $selector, $verb), $said);
             }
         }
 
@@ -231,7 +215,7 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
             // would write it for that one too — the document-wide rename again in miniature, refused for
             // the same reason.
             if (self::sharedWithExcluded($reaching[$index], $reaching, $matched)) {
-                self::reportOnce($context, self::unforkable($change, sprintf(
+                self::reportOnce($context, VerbDiagnostics::unforkable($change, sprintf(
                     'the operation "%s" is published through a path item it shares with operations the scope leaves out, so it cannot be given a copy of the schema for %s and was left at the shape the code publishes',
                     PlainText::of($reaching[$index]['signature'] ?? implode('/', $reaching[$index]['keys'])),
                     PlainText::of($verb->schema()),
@@ -241,6 +225,124 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
             }
 
             $doc = $this->fork($doc, $reaching[$index], $id, $verb, $reaches, $change, $context, $said);
+        }
+
+        return $doc;
+    }
+
+    /**
+     * Applies a verb whose subject is the OPERATION rather than a schema, on every operation the change
+     * is in scope for — {@see OperationVerb} states why that is the whole of the scope rule here, and
+     * why the fork the schema path performs has no analogue.
+     *
+     * Every operation this document publishes is visited where no `#[AppliesTo]` is written, and only
+     * the ones a selector names where one is. There is no widening to refuse: an unscoped verb rewrites
+     * every operation that declares the parameter and a scoped one a subset of them, so a scope that
+     * decides nothing leaves the document alone and says which of the two things is wrong.
+     *
+     * The one thing a scope cannot narrow is a path item two paths address through a `$ref`, because
+     * both operations ARE one node — renaming its parameter would rename it for the path the scope
+     * excluded. Refused for the same reason {@see fork()} refuses to write a private copy there.
+     *
+     * That shared node is also why the walk is per NODE rather than per site. One node is one
+     * declaration and one edit, so it owes one report: two sites over it would otherwise be asked
+     * twice and name TWO operations for a single refusal the author fixes once. (The second pass would
+     * edit nothing either way — a parameter already carrying the older name is no longer the one the
+     * verb looks for — so the dedupe is about what is reported rather than about what is written.)
+     *
+     * @param  array<string, mixed>  $doc
+     * @param  array<string, true>  $said
+     * @return array<string, mixed>
+     */
+    private function applyToOperations(array $doc, OperationVerb $verb, VersionChange $change, DocumentContext $context, array &$said): array
+    {
+        $sites = DocumentGraph::operationSites($doc);
+        $selectors = $change->selectors;
+
+        $matched = [];
+        foreach ($sites as $index => $site) {
+            if ($selectors === [] || self::names($change, $site)) {
+                $matched[$index] = true;
+            }
+        }
+
+        foreach ($selectors as $selector) {
+            if (! self::namesAny([$selector], $sites)) {
+                self::reportOnce($context, VerbDiagnostics::scopeNamesNoOperation($change, $selector, $verb), $said);
+            }
+        }
+
+        if ($matched === []) {
+            return $doc;
+        }
+
+        $written = [];
+        $applied = false;
+
+        /** @var list<string> $refused */
+        $refused = [];
+
+        // Whether any operation was actually looked at. A run where every matched one was refused above
+        // has said why already, and "no operation declares that parameter" on top of it would be a
+        // second problem the reader would go looking for — of a parameter the document plainly declares.
+        $walked = false;
+
+        foreach (array_keys($matched) as $index) {
+            $site = $sites[$index];
+            $node = implode("\0", $site['keys']);
+            if (isset($written[$node])) {
+                continue;
+            }
+            $written[$node] = true;
+
+            if (self::sharedWithExcluded($site, $sites, $matched)) {
+                self::reportOnce($context, VerbDiagnostics::unnarrowable($change, sprintf(
+                    'the operation "%s" is published through a path item it shares with operations the scope leaves out, so %s cannot be renamed for it alone and was left at the name the code gives it',
+                    PlainText::of($site['signature'] ?? implode('/', $site['keys'])),
+                    $verb->declares(),
+                )), $said);
+
+                continue;
+            }
+
+            $operation = DocumentGraph::at($doc, $site['keys']);
+            if (! is_array($operation)) {
+                continue;
+            }
+
+            $walked = true;
+
+            // One outcome PER OPERATION, and this is the half {@see VerbOutcome::strongest()} must not
+            // be asked for here. A schema is published more than once and the copies are one node, so
+            // the strongest answer over them is the answer; two operations are two declarations, and
+            // collapsing them lets a refusal on one hide under an edit on another — a version document
+            // that spells one logical parameter two ways, with nothing said.
+            $outcome = VerbOutcome::Absent;
+            $edited = $verb->apply($operation, self::nodeScope($operation, $site), $this->identity, $outcome);
+
+            if ($edited !== $operation) {
+                $doc = DocumentGraph::with($doc, $site['keys'], $edited);
+            }
+
+            if ($outcome === VerbOutcome::Applied) {
+                $applied = true;
+            }
+
+            if ($outcome === VerbOutcome::Declined) {
+                $refused[] = $site['signature'] ?? implode('/', $site['keys']);
+            }
+        }
+
+        foreach ($refused as $operation) {
+            self::reportOnce($context, $verb->refused($operation, $change), $said);
+        }
+
+        // Said only where the whole walk came to nothing. Most operations in scope will not declare the
+        // parameter — an unscoped verb visits every operation the document publishes — so "no operation
+        // declares it" is the walk's answer rather than any one operation's, and a run that edited or
+        // refused something has already said what it found.
+        if ($walked && ! $applied && $refused === []) {
+            self::reportOnce($context, $verb->unreached($change), $said);
         }
 
         return $doc;
@@ -372,7 +474,7 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
             // that way is one route in; the other is a verb that PUTS a member back pointing at
             // something that leads here, which the expansion below meets on its way through the copy
             // and reports the same way, because it is the same fact.
-            self::reportOnce($context, self::unforkable($change, sprintf(
+            self::reportOnce($context, VerbDiagnostics::unforkable($change, sprintf(
                 'a copy of the schema for %s would point back at the shared component, so the operation "%s" cannot be given one and was left at the shape the code publishes',
                 PlainText::of($verb->schema()),
                 PlainText::of($site['signature'] ?? implode('/', $site['keys'])),
@@ -396,7 +498,7 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
         // it, and the copy says something different the moment it is renamed. `ContractIndex` resolves
         // an id to the shallowest, first-sorted node carrying it — `paths` before `components` — so the
         // copy would win the id and the component would vanish from the index it is still published in.
-        return DocumentGraph::with($doc, $site['keys'], $this->reidentify($forked, DocumentGraph::identitiesIn($operation), self::forkScope($operation, $site)));
+        return DocumentGraph::with($doc, $site['keys'], $this->reidentify($forked, DocumentGraph::identitiesIn($operation), self::nodeScope($operation, $site)));
     }
 
     /**
@@ -431,13 +533,15 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
     }
 
     /**
-     * What the copy belongs to, which is what keeps its id a function of the thing: the operation's own
-     * identity where it has one, and the position it is published at where it does not.
+     * What a node inside this operation belongs to, which is what keeps its id a function of the thing:
+     * the operation's own identity where it has one, and the position it is published at where it does
+     * not. Asked by the fork, which re-mints every id it copied in, and by a verb that moves a name an
+     * id was derived from — nothing forks on that second path.
      *
      * @param  array<array-key, mixed>  $operation
      * @param  OperationSite  $site
      */
-    private static function forkScope(array $operation, array $site): string
+    private static function nodeScope(array $operation, array $site): string
     {
         $docuccino = $operation['x-docuccino'] ?? null;
         $id = is_array($docuccino) ? $docuccino['id'] ?? null : null;
@@ -526,310 +630,5 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
         foreach ($diagnostics as $diagnostic) {
             self::reportOnce($context, $diagnostic, $said);
         }
-    }
-
-    /**
-     * An operation the scope matched that cannot be given a private copy of the schema — the schema
-     * contains itself, or the node it is published through is shared with operations the scope leaves
-     * out. Its own code, because the remedy is the SCOPE rather than the declaration: nothing about the
-     * change is written wrong, and telling the author to fix the declaration sends them to a line that
-     * is already right.
-     */
-    private static function unforkable(VersionChange $change, string $problem): Diagnostic
-    {
-        return new Diagnostic(
-            severity: Severity::Warning,
-            code: 'versioning.scope-unforkable',
-            message: sprintf('%s could not be narrowed as written: %s.', PlainText::of($change->class), $problem),
-            help: 'Drop the #[AppliesTo], or widen it to every operation that publishes the schema, and the shared component is renamed in place instead.',
-        );
-    }
-
-    /**
-     * A selector naming no operation this document publishes the schema for. Worth a warning because a
-     * scope that matches nothing is indistinguishable from a change that was never declared: a route
-     * renamed months later silently stops the change applying, and the version's document goes back to
-     * saying what the code says without anything having been edited.
-     */
-    private static function matchesNothing(VersionChange $change, string $selector, VersionVerb $verb): Diagnostic
-    {
-        return new Diagnostic(
-            severity: Severity::Warning,
-            code: 'versioning.scope-matches-nothing',
-            message: sprintf(
-                '%s is scoped to "%s", which names no operation this document publishes %s for, so that part of the change applies to nothing.',
-                PlainText::of($change->class),
-                PlainText::of($selector),
-                PlainText::of($verb->schema()),
-            ),
-            help: 'Write the operation the way the document names it — `GET /api/things`, an operationId, or either with a `*` — and check the document publishes that schema for it.',
-        );
-    }
-
-    /**
-     * Declares the version header ONCE, in `components.parameters`, and points every operation the
-     * document publishes at it: `in: header`, optional, defaulting to this document's version and
-     * enumerating every version the application configures.
-     *
-     * Hoisted rather than restated per operation because the declaration is a function of the DOCUMENT
-     * and of nothing else — the same name, description, enum and default on every one of them — while
-     * its enum carries four parallel arrays one member long per version. Inline, a document grows by
-     * operations × versions and a 400-operation API at 50 versions publishes 4.7 MB of one sentence
-     * repeated; hoisted, it is flat in the version count. This is the componentization
-     * {@see RepresentationPolicy}'s `enumComponents`/`errorComponents`/`paginationComponents` already
-     * do for the repetition classes recovered from an application's own code.
-     *
-     * No `representation` keyword switches it off, and the three above are not the precedent for one:
-     * each of them chooses between two shapes of a fact read out of the application, where the inline
-     * form is a shape a consumer's toolchain may genuinely prefer. This parameter is minted whole from
-     * document config, is byte-identical on every operation by construction, and — with each site's own
-     * identity kept beside the `$ref` below — the inline form has no property the hoisted one lacks. A
-     * switch here would choose only between a small document and a large one saying the same thing.
-     *
-     * The name is a function of the header name ({@see componentName()}), never of the route table, so
-     * adding an unrelated route cannot move it. That is what lets this be NAMED at all where a scoped
-     * change's fork may not be.
-     *
-     * The enum is derived from the document SET rather than from a second list kept beside it, so
-     * adding a version moves the enum in every other version document. That is correct and deliberate —
-     * versions are related by construction, so this is not the locality rule being broken.
-     *
-     * `webhooks` are left alone: a webhook is a request the SERVER makes, and the header is what a
-     * CLIENT sends to pin a version.
-     *
-     * @param  array<string, mixed>  $doc
-     * @param  list<VersionChange>  $changes
-     * @return array<string, mixed>
-     */
-    private function declareVersionHeader(array $doc, DocumentContext $context, string $version, array $changes, ?VersionOrder $order): array
-    {
-        $paths = $doc['paths'] ?? null;
-        if (! is_array($paths)) {
-            return $doc;
-        }
-
-        $name = $context->config->apiVersionHeader();
-        $components = is_array($doc['components'] ?? null) ? Arr::stringKeyed($doc['components']) : [];
-        $bucket = is_array($components[self::PARAMETERS] ?? null) ? Arr::stringKeyed($components[self::PARAMETERS]) : [];
-
-        [$component, $collision] = self::componentName($name, array_keys($bucket));
-
-        $declared = false;
-        foreach ($paths as $path => $item) {
-            if (! is_array($item)) {
-                continue;
-            }
-
-            foreach (PathItem::METHODS as $method) {
-                $operation = $item[$method] ?? null;
-                if (is_array($operation)) {
-                    $item[$method] = $this->withVersionHeader($operation, $name, self::PARAMETER_REF.$component, $declared);
-                }
-            }
-
-            $paths[$path] = $item;
-        }
-
-        // Nothing points at it when every operation documents the header itself, and a component
-        // nothing reaches is bytes a consumer reads past on the way to the ones that mean something.
-        // The collision goes unsaid with it: a name nothing was published under is nothing to act on.
-        if (! $declared) {
-            return $doc;
-        }
-
-        if ($collision !== null) {
-            $context->report($collision);
-        }
-
-        $bucket[$component] = [
-            // Minted from the document and the header rather than from any one route, which has no
-            // business speaking for the others sharing it.
-            'x-docuccino' => ['id' => $this->identity->publishedParameterId($context->documentId, 'header', $name)],
-            'name' => $name,
-            'in' => 'header',
-            'description' => self::DESCRIPTION,
-            'required' => false,
-            'schema' => $this->versionSchema($context, $version, $changes, $order),
-        ];
-
-        $components[self::PARAMETERS] = $bucket;
-        $doc['paths'] = $paths;
-        $doc['components'] = $components;
-
-        return $doc;
-    }
-
-    /**
-     * What the one declaration is published under, and the report owed if it could not have the name it
-     * asked for: the header name as a single word, which is the whole of the rule — `X-Api-Version` is
-     * `XApiVersion` whatever the application routes. {@see ComponentNames} owns what happens when
-     * something already holds that name, and holds it here for the same reason it does everywhere: a
-     * first-come tail would reassign the name on a build that met the incumbent second.
-     *
-     * The diagnostic is handed back rather than reported, because whether it is worth saying depends on
-     * something this cannot see — a document where nothing points at the component publishes no name to
-     * have moved.
-     *
-     * @param  list<string>  $taken
-     * @return array{string, Diagnostic|null}
-     */
-    private static function componentName(string $header, array $taken): array
-    {
-        $base = self::headerBase($header);
-
-        [$names, $contested] = ComponentNames::mint(
-            [self::CLAIM => ['base' => $base, 'identity' => null, 'content' => $header]],
-            $taken,
-        );
-
-        $published = $names[self::CLAIM] ?? $base;
-
-        if ($contested === []) {
-            return [$published, null];
-        }
-
-        return [$published, new Diagnostic(
-            severity: Severity::Warning,
-            code: 'components.name-collision',
-            message: sprintf(
-                'A component in components.parameters already holds the name "%s", so the API version header was published under a name derived from its own instead (%s).',
-                PlainText::of($base),
-                PlainText::of($published),
-            ),
-            help: 'The component already holding the name was published before this ran and cannot move. Rename it, or name the header something else with api_version.header, and the version parameter publishes under a plain name again.',
-        )];
-    }
-
-    /** The header name as one word: every run of letters and digits capitalised and joined. */
-    private static function headerBase(string $header): string
-    {
-        $words = preg_split('/[^A-Za-z0-9]+/', $header, -1, PREG_SPLIT_NO_EMPTY);
-        $base = implode('', array_map(ucfirst(...), is_array($words) ? $words : []));
-
-        // A header of nothing but punctuation is still a header the application configured, and the
-        // component needs a name whatever it is called.
-        return $base === '' ? 'ApiVersion' : $base;
-    }
-
-    /**
-     * Points one operation at the shared declaration, unless the application documents the header
-     * itself. The `$ref` carries the operation's OWN parameter identity, exactly as a hoisted error
-     * response keeps its use site's: `x-docuccino` never reaches an emitted OpenAPI document, so the
-     * artifact a consumer reads is a bare `$ref`, while the UIR, {@see ContractIndex} and per-operation
-     * provenance keep an addressable node per operation and lose nothing to the hoist.
-     *
-     * @param  array<array-key, mixed>  $operation
-     * @return array<array-key, mixed>
-     */
-    private function withVersionHeader(array $operation, string $name, string $ref, bool &$declared): array
-    {
-        $parameters = $operation['parameters'] ?? null;
-        $parameters = is_array($parameters) ? array_values($parameters) : [];
-
-        foreach ($parameters as $parameter) {
-            if (! is_array($parameter) || ($parameter['in'] ?? null) !== 'header') {
-                continue;
-            }
-
-            $stated = $parameter['name'] ?? null;
-
-            // An application that documents the header itself keeps its own wording; two parameters of
-            // one name in one location is a document no client can read.
-            if (is_string($stated) && strcasecmp($stated, $name) === 0) {
-                return $operation;
-            }
-        }
-
-        $parameter = ['$ref' => $ref];
-
-        $docuccino = $operation['x-docuccino'] ?? null;
-        $operationId = is_array($docuccino) ? $docuccino['id'] ?? null : null;
-        if (is_string($operationId)) {
-            $parameter = ['x-docuccino' => ['id' => $this->identity->parameterId($operationId, 'header', $name)], ...$parameter];
-        }
-
-        $parameters[] = $parameter;
-        $operation['parameters'] = $parameters;
-        $declared = true;
-
-        return $operation;
-    }
-
-    /**
-     * The closed set of versions, decorated the way every other published enum is: SDK member names for
-     * values no generator could name a constant after (`2026-09-01` is not an identifier), and the
-     * change each version shipped as its per-value prose.
-     *
-     * Ordered by the order this document resolved rather than bytewise. An enum listing `1.10.0` before
-     * `1.9.0` is the exact reading {@see VersionOrder} exists to replace, published in the artifact a
-     * consumer reads.
-     *
-     * @param  list<VersionChange>  $changes
-     * @return array<string, mixed>
-     */
-    private function versionSchema(DocumentContext $context, string $version, array $changes, ?VersionOrder $order): array
-    {
-        $versions = $this->documents->apiVersions();
-
-        // An enum narrower than what the server accepts is worse than none: it marks a working request
-        // invalid. This document's own version is one the server certainly answers, whatever the
-        // configured set turned out to hold, so it is in the set or the set is wrong.
-        if (! in_array($version, $versions, true)) {
-            $versions[] = $version;
-        }
-
-        $versions = VersionOrder::sorted($versions, $order);
-
-        $policy = RepresentationPolicy::fromConfig($context->config->representation);
-
-        return EnumDecoration::apply(
-            ['type' => 'string', 'enum' => $versions, 'default' => $version],
-            $policy->enumNaming,
-            self::versionNames($versions),
-            self::changeProse($changes),
-        );
-    }
-
-    /**
-     * The SDK member name for each version. A version is not an identifier in any target language, and
-     * the general list-value minting was written for sort keys (`-total` → `TotalDesc`), so every version
-     * fell to its digit-prefix last resort and a generated client got `Version._20260901`. A version has
-     * a spelling of its own — `V` and the separators as underscores — and the consumer should not be
-     * paying for which minting the producer happened to reuse.
-     *
-     * @param  list<string>  $versions
-     * @return list<string>
-     */
-    private static function versionNames(array $versions): array
-    {
-        $names = array_map(
-            static fn (string $version): string => 'V'.trim((string) preg_replace('/[^A-Za-z0-9]+/', '_', $version), '_'),
-            $versions,
-        );
-
-        // Two versions spelled differently can normalise alike — `1.10.0` and `1-10-0`. A generator
-        // applies these by index and without a dedupe of its own, so a colliding set goes to the general
-        // minting instead: uglier, and distinct, which is the half that has to hold.
-        return count(array_unique($names)) === count($names) ? $names : ListValueNames::names($versions);
-    }
-
-    /**
-     * What each version changed, keyed by the version it shipped in — the descriptions the changes
-     * themselves carry, joined in the order the collector settled, so a version that shipped two
-     * changes reads as one sentence per change and never depends on which file was met first.
-     *
-     * @param  list<VersionChange>  $changes
-     * @return array<string, string>
-     */
-    private static function changeProse(array $changes): array
-    {
-        $prose = [];
-        foreach ($changes as $change) {
-            if ($change->description !== '') {
-                $prose[$change->since][] = $change->description;
-            }
-        }
-
-        return array_map(static fn (array $lines): string => implode(' ', $lines), $prose);
     }
 }

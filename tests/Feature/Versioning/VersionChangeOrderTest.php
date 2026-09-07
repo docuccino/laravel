@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Docuccino\Core\Diagnostics\Diagnostic;
 use Illuminate\Routing\Router;
 use Workbench\App\Http\Controllers\VersionedFormController;
 
@@ -83,4 +84,56 @@ it('takes the guarantee off the field before the rename re-spells it', function 
 
 it('applies both verbs of one change without complaint, which the other order could not', function (): void {
     expect(versioningDiagnostics('tests/Fixtures/Versioning/VerbOrder'))->toBe([]);
+});
+
+/*
+ * The same rule, confirmed rather than assumed for the two renames that reach a REQUEST body and a
+ * parameter — the question the order has to be re-asked for every time a rename verb is added.
+ *
+ * The request one is the identical problem on the other half of the wire: `MadeRequestFieldOptional`
+ * names `subtitle` the way the code spells it TODAY, so a rename running first leaves it looking for a
+ * field that has already become `caption`. Executed the same way its response sibling is — move the
+ * `#[RenamedRequestField]` loop in `VerbOrder::read()` above the required-ness ones and this goes red,
+ * with `required` short of `caption` and a `versioning.change-target-missing` against a declaration
+ * that is written perfectly correctly.
+ */
+it('puts a request field back into required before the rename re-spells it', function (): void {
+    $request = versionedArticleSchemas('tests/Fixtures/Versioning/RequestVerbOrder')['request'];
+
+    expect(array_keys($request['properties']))
+        ->toBe(['id', 'heading', 'body', 'secret', 'internal', 'caption', 'author', 'metadata', 'overrides'])
+        // `subtitle` was demanded while it was still called `subtitle`, and the rename then took what
+        // was left back to the older spelling — in `properties` and in `required` together.
+        ->and($request['required'])->toBe(['id', 'heading', 'body', 'secret', 'internal', 'caption', 'metadata', 'overrides']);
+});
+
+it('applies both request verbs of one change without complaint, which the other order could not', function (): void {
+    expect(versioningDiagnostics('tests/Fixtures/Versioning/RequestVerbOrder', route: 'api/articles'))->toBe([]);
+});
+
+/*
+ * And the parameter verb, whose position in the order is NOT observable today and is fixed anyway.
+ * Nothing else in the vocabulary can name a parameter, so there is no target it could rot and none that
+ * could rot its own — which is a claim worth executing rather than leaving as a sentence, because it is
+ * the reason the rule was not re-derived for it.
+ *
+ * One order runs, and there is no second one to run: `VerbOrder::read()` is the only thing that decides
+ * it, an `AttributeSet` has already lost the order the author wrote by the time anything can ask, and
+ * this verb reaches `operation.parameters[]` while its neighbour reaches `components.schemas` — disjoint
+ * positions, so there is nothing an order could change. What this row proves is that both verbs of one
+ * change arrive; the executed guard for the ORDER is the two pairs above, which go red when the halves
+ * of `read()` are swapped.
+ */
+it('applies a parameter rename and a schema rename declared on one change, each to its own half', function (): void {
+    /** @var Router $router */
+    $router = app('router');
+    $router->get('api/versioned-search', [VersionedFormController::class, 'search']);
+    bindVersionedRequestEngine();
+
+    $diagnostics = versioningDiagnostics('tests/Fixtures/Versioning/ParameterBesideSchema', route: 'api/versioned-*');
+    $document = generateDocument(key: 'v')->document->toArray();
+
+    expect(array_map(static fn (Diagnostic $d): string => $d->code, $diagnostics))->toBe([])
+        ->and(array_column($document['paths']['/api/versioned-search']['get']['parameters'], 'name'))->toBe(['q', 'trace_id'])
+        ->and(array_keys($document['components']['schemas']['FormData']['properties']))->toBe(['id', 'name', 'publishedAt']);
 });

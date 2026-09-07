@@ -15,6 +15,7 @@ use Docuccino\Core\Extensions\Contracts\OperationPhase;
 use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Support\PlainText;
+use Docuccino\Laravel\Support\ParameterLocations;
 use Docuccino\Laravel\Support\UnmatchedDeclaration;
 
 /**
@@ -29,13 +30,6 @@ use Docuccino\Laravel\Support\UnmatchedDeclaration;
 #[ExtensionOrder(priority: Priorities::FIRST)]
 final class IgnoredParametersExtension implements OperationExtension
 {
-    /**
-     * The OAS parameter locations — where a declaration naming none of them applies, and the set the
-     * diagnostic quotes. Alphabetical, because a legal set a reader checks against is easier to read in
-     * an order they can predict than in the one OAS happens to list.
-     */
-    private const array LOCATIONS = ['cookie', 'header', 'path', 'query'];
-
     public function phase(): OperationPhase
     {
         return OperationPhase::Finalize;
@@ -121,12 +115,12 @@ final class IgnoredParametersExtension implements OperationExtension
     private function locations(RouteContext $context, IgnoreParam $ignore): array
     {
         if ($ignore->in === null) {
-            return self::LOCATIONS;
+            return ParameterLocations::all();
         }
 
-        $normalized = strtolower(trim($ignore->in));
-        if (in_array($normalized, self::LOCATIONS, true)) {
-            return [$normalized];
+        $location = ParameterLocations::read($ignore->in);
+        if ($location !== null) {
+            return [$location];
         }
 
         $context->components->addDiagnostic(new Diagnostic(

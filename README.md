@@ -104,7 +104,7 @@ $this->getJson('/api/invoices')->assertValidExchange();
 
 `ApiContract::record()` turns the same seam into examples: the responses your suite produced are
 written to committed files, keyed by operation id and with credentials replaced, which the build
-reads. The document build still executes nothing — the execution happened in your tests.
+reads. The document build still runs none of your endpoints — the execution happened in your tests.
 
 Test-only: nothing registers it, and the service provider never touches it. See
 [contract testing](https://docs.docuccino.app/laravel/guides/contract-testing/).

@@ -237,3 +237,51 @@ it('names no absolute path in what it publishes', function (): void {
             ->and($diagnostic->help)->not->toContain(dirname(__DIR__, 4));
     }
 });
+
+/**
+ * The declaration on that same type that is NOT reconciled, pinned so it cannot start or stop being
+ * dropped unnoticed. A read verb mints no component for the type, so the `#[SchemaName]` beside the
+ * `#[BodyParameter]` reaches nothing either — and nothing says so.
+ *
+ * It stays that way deliberately. Whether a name is read is not a predicate on the ROUTE, which is
+ * what a `SchemaClassAttributes::CONDITIONAL` row states and what makes the body case's single
+ * observation site sound; the reasoning is stated there. This row is the evidence rather than the
+ * argument: the actionable shape the mechanism would exist for, and the silence it would replace.
+ *
+ * The silence is pinned as the build's whole CODE multiset rather than as prose about the name. A
+ * substring match over `SchemaName`/`PreferenceFilters` catches the name becoming honoured and the
+ * neighbour going quiet, and misses the direction a pin is for — the name starting to be reported
+ * under a different wording. Any report about it is either a code this list does not hold or a second
+ * copy of the one it does, and both fail here whatever sentence they are written in.
+ */
+it('mints no component, and says nothing, about the #[SchemaName] on the same read-only type', function (): void {
+    $result = localityBuild(readOnlyPreferenceRoutes(), preferenceRouteEngine());
+    $document = $result->document->toArray();
+
+    $codes = array_map(static fn (Diagnostic $diagnostic): string => $diagnostic->code, $result->diagnostics);
+    sort($codes, SORT_STRING);
+
+    $reported = diagnosticsCoded($result->diagnostics, 'attribute.schema-class-unusable');
+
+    expect($document['components']['schemas'] ?? [])->toBe([])
+        ->and($codes)->toBe(['attribute.schema-class-unusable'])
+        // Beside it, so the silence above is this one declaration and not a dead build: the one
+        // report this build owes is the #[BodyParameter] on the very same class, and it is made.
+        ->and($reported)->toHaveCount(1)
+        ->and($reported[0]->message)->toContain('#[BodyParameter]')
+        ->and($reported[0]->message)->toContain(ReadOnlyFilterRequest::class);
+});
+
+/**
+ * And the name is not dead in general — the same class at a write verb publishes the component it
+ * asked to be called. Without this row the one above would pass just as well against a `#[SchemaName]`
+ * nothing ever reads.
+ */
+it('publishes the asked-for name where the type does mint a component', function (): void {
+    $result = localityBuild(static function (Router $router): void {
+        $router->post('api/preference-filters', [PreferencesRouteController::class, 'index']);
+    }, preferenceRouteEngine());
+
+    expect(array_keys($result->document->toArray()['components']['schemas'] ?? []))
+        ->toBe(['PreferenceFiltersRequest']);
+});

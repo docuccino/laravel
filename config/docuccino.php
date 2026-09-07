@@ -261,16 +261,17 @@ return [
     */
 
     'lint' => [
-        // Warns when a schema property name looks sensitive (password/token/secret/api_key…), and
-        // when a published example, const, enum or default value looks like a credential.
+        // Warns when a schema property name or a query/path parameter name looks sensitive
+        // (password/token/secret/api_key…), and when a published example, const, enum or default
+        // value looks like a credential.
         'leakage' => [
             'enabled' => true,
-            // Property names or JSON pointers to accept, e.g.
+            // Property names, parameter names or JSON pointers to accept, e.g.
             // ['reset_token', '/components/schemas/Invoice/properties/status']. A name silences this
             // lint only; the response recorder redacts by name regardless and honours a pointer alone.
             'allow' => [],
             // Extra heuristics, merged over the built-in table (built-in tokens keep their label).
-            // Key = a token matched anywhere inside a property name, value = the label in the message.
+            // Key = a token matched anywhere inside a property or parameter name, value = the label.
             // 'patterns' => ['sortcode' => 'a bank sort code', 'iban' => 'an IBAN'],
         ],
         // Warns on an operation that publishes neither a summary nor a description. Off by default:

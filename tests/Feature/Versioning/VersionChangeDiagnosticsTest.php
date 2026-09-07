@@ -55,6 +55,39 @@ it('says which declaration cannot be applied as it is written', function (): voi
         ->and($messages)->not->toContain('NotAChange');
 });
 
+/*
+ * One author-written word, read once. Every verb normalises its declaration before anything compares or
+ * stores it, and this pair is what made that worth stating: read as typed, `from: 'title'` and
+ * `to: ' title'` are two different names, so the self-rename refusal let them past — and the change
+ * then arrived at the other end as a collision with a field nobody had renamed.
+ */
+it('refuses a rename whose two ends are one name with room around it', function (): void {
+    $diagnostics = versioningDiagnostics('tests/Fixtures/Versioning/PaddedSelfRename');
+
+    expect(array_map(static fn (Diagnostic $d): string => $d->code, $diagnostics))
+        ->toBe(['versioning.change-invalid', 'versioning.change-invalid']);
+
+    $messages = implode("\n", array_map(static fn (Diagnostic $d): string => $d->message, $diagnostics));
+
+    // The field verb and the parameter verb both, because the normalisation is one place for every verb.
+    expect($messages)->toContain('renames "title" to itself')
+        ->toContain('renames "search" to itself');
+});
+
+/*
+ * And the half that proves the normalisation is applied rather than only compared: a declaration padded
+ * on the class AND on both ends of the rename still names what it means. Stored as typed, the class
+ * would mint an identity no schema carries and the field would match no property.
+ */
+it('reads a padded declaration as the names it means', function (): void {
+    expect(versioningDiagnostics('tests/Fixtures/Versioning/PaddedRename'))->toBe([]);
+
+    $schema = generateDocument(key: 'v')->document->toArray()['components']['schemas']['FormData'];
+
+    expect(array_keys($schema['properties']))->toBe(['id', 'name', 'publishedAt'])
+        ->and($schema['required'])->toBe(['id', 'name']);
+});
+
 it('refuses a rename that would collapse two published fields into one', function (): void {
     $diagnostics = versioningDiagnostics('tests/Fixtures/Versioning/Occupied');
 
@@ -87,8 +120,9 @@ it('says a change names a shape the document does not publish', function (): voi
 /*
  * The foldability guarantee, EXECUTED rather than asserted. PHP refuses a closure in an attribute
  * argument outright; it permits `new`, and the vocabulary's scalar-only parameter types are what close
- * that hole — an object cannot satisfy `string $since`, so the declaration degrades to the existing
- * `attribute.unreadable` diagnostic instead of being believed.
+ * that hole — this object cannot be kept in `string $since`, so the declaration degrades to the
+ * existing `attribute.unreadable` diagnostic instead of being believed. What the types do NOT do is
+ * stop the argument running: that is the row below.
  */
 it('degrades a declaration whose argument cannot be read, rather than reading it', function (): void {
     $diagnostics = versioningDiagnostics('tests/Fixtures/Versioning/Unreadable');
@@ -108,4 +142,20 @@ it('leaves a change that shipped at or before this version alone', function (): 
     // reports; a version at or after it must not apply it at all, and so must not report either.
     expect(versioningDiagnostics('tests/Fixtures/Versioning/Missing', '2026-09-01'))->toBe([])
         ->and(versioningDiagnostics('tests/Fixtures/Versioning/Missing', '2027-01-01'))->toBe([]);
+});
+
+/*
+ * The other half of that guarantee, and the half a docblock is tempted to overstate: PHP EVALUATES a
+ * `new` in an attribute argument, so the object's constructor runs before `string $since` gets to
+ * refuse it. Which throwable the diagnostic names is the proof — the argument's own, raised while it
+ * was being constructed, rather than the TypeError the parameter would have raised on its own.
+ */
+it('reports the throwable an attribute argument raised while it was being constructed', function (): void {
+    $diagnostics = versioningDiagnostics('tests/Fixtures/Versioning/ArgumentEvaluated');
+
+    expect($diagnostics)->toHaveCount(1)
+        ->and($diagnostics[0]->code)->toBe('attribute.unreadable')
+        ->and($diagnostics[0]->message)->toContain('EvaluatesArgument')
+        ->and($diagnostics[0]->help)->toContain('LogicException')
+        ->and($diagnostics[0]->help)->not->toContain('TypeError');
 });

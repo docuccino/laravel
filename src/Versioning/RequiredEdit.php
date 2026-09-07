@@ -146,17 +146,11 @@ final readonly class RequiredEdit implements VersionVerb
 
     private function missing(VersionChange $change): Diagnostic
     {
-        return new Diagnostic(
-            severity: Severity::Warning,
-            code: 'versioning.change-target-missing',
-            message: sprintf(
-                '%s names "%s", which the %sschema for %s no longer publishes, so this version still says what the code says.',
-                PlainText::of($change->class),
-                PlainText::of($this->field),
-                $this->facet === SchemaFacet::Request ? 'request body ' : '',
-                PlainText::of($this->schema),
-            ),
-            help: 'Update the change to name the field as it is spelled today, or retire it if the field is gone.',
-        );
+        return VerbDiagnostics::targetMissing($change, sprintf(
+            'names "%s", which the %sschema for %s no longer publishes',
+            PlainText::of($this->field),
+            $this->facet->schemaQualifier(),
+            PlainText::of($this->schema),
+        ), 'field');
     }
 }

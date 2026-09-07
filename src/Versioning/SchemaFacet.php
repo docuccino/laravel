@@ -39,4 +39,17 @@ enum SchemaFacet
     {
         return $this === self::Request ? 'request' : 'response';
     }
+
+    /**
+     * What a report calls the SCHEMA of this facet, as a prefix to "schema for Foo". Empty for the
+     * response side, which is the shape a reader means when they say "the schema for Foo".
+     *
+     * Here rather than in each verb, because a reader told only that "this document publishes no schema
+     * for Foo" — while looking at a document that plainly publishes one — goes hunting for a bug that is
+     * not there, and every verb that can name a request body owes them the same word for it.
+     */
+    public function schemaQualifier(): string
+    {
+        return $this === self::Request ? 'request body ' : '';
+    }
 }

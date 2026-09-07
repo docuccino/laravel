@@ -9,9 +9,12 @@ use Docuccino\Attributes\Versioning\MadeRequestFieldOptional;
 use Docuccino\Attributes\Versioning\MadeResponseFieldOptional;
 use Docuccino\Attributes\Versioning\MadeResponseFieldRequired;
 use Docuccino\Attributes\Versioning\RemovedResponseField;
+use Docuccino\Attributes\Versioning\RenamedParameter;
+use Docuccino\Attributes\Versioning\RenamedRequestField;
 use Docuccino\Attributes\Versioning\RenamedResponseField;
 use Docuccino\Core\Diff\Change;
 use Docuccino\Core\Diff\Changeset;
+use Docuccino\Core\Diff\ChangeTarget;
 use Docuccino\Core\Diff\Pairing;
 use Docuccino\Core\Document\DocumentGraph;
 use Docuccino\Core\Document\UirDocument;
@@ -24,10 +27,14 @@ use Docuccino\Laravel\Versioning\SchemaFacet;
  * Turns a diff between the version an application published and the one its code is now into draft
  * version-change classes.
  *
- * It writes nothing it cannot say truthfully. The vocabulary expresses five differences, so those five
- * become classes and everything else becomes a SENTENCE — a wrong declaration costs the author a
- * version document that lies, while a reported gap costs them one they know is incomplete. That is the
- * degraded-answer rule at the level of a whole change.
+ * It writes nothing it cannot say truthfully. The differences the vocabulary reaches become classes and
+ * everything else becomes a SENTENCE — a wrong declaration costs the author a version document that
+ * lies, while a reported gap costs them one they know is incomplete. That is the degraded-answer rule at
+ * the level of a whole change.
+ *
+ * Two axes, because a parameter is not a schema property: the component-keyed half below groups the
+ * differ's changes by the schema node they address, and {@see parameterRenames()} reads the ones that
+ * address a parameter, which lives on an operation and belongs to no class at all.
  *
  * The one thing a diff cannot give it is the WHY, so the `description` it drafts is the diff's own
  * factual sentence rather than a `TODO`: what changed, in the words a consumer reads, with the reason
@@ -35,6 +42,7 @@ use Docuccino\Laravel\Versioning\SchemaFacet;
  * it; a first draft the author improves is what makes declaring nearly free.
  *
  * @phpstan-type SchemaEntry array{name: string, body: array<string, mixed>}
+ * @phpstan-type ParameterEntry array{site: string, in: string, name: string, shape: string}
  *
  * @phpstan-import-type OperationSite from DocumentGraph
  *
@@ -48,6 +56,20 @@ final readonly class ChangeScaffolder
      * class is the node id the two documents share.
      */
     private const string NO_IDENTITIES = 'The old artifact carries no Docuccino identities, so no schema in it can be tied to the class that produces it and nothing was scaffolded. Export the previous version as UIR (`docuccino:export --format=uir`) and diff against that.';
+
+    /**
+     * The differ's classifications for a parameter that came or went, each mapped to the half of a
+     * candidate rename it fills. A rename is invisible to a differ — it reads as one of each — so these
+     * are the only codes a parameter rename can be assembled out of, and every other parameter code
+     * falls through to the gap line like any difference no verb declares.
+     *
+     * @var array<string, 'gone'|'arrived'>
+     */
+    private const array PARAMETER_MOVES = [
+        'parameter.removed' => 'gone',
+        'parameter.added' => 'arrived',
+        'parameter.added-required' => 'arrived',
+    ];
 
     /**
      * The change classes `$old` → `$new` calls for, and a sentence for every difference the vocabulary
@@ -78,7 +100,16 @@ final readonly class ChangeScaffolder
         /** @var array<string, int> $gaps */
         $gaps = [];
 
+        /** @var list<Change> $parameterChanges */
+        $parameterChanges = [];
+
         foreach ($changeset->changes as $change) {
+            if ($change->target === ChangeTarget::Parameter && isset(self::PARAMETER_MOVES[$change->code])) {
+                $parameterChanges[] = $change;
+
+                continue;
+            }
+
             if (! isset($oldById[$change->id], $newById[$change->id])) {
                 self::note($gaps, self::unexpressed($change->code));
 
@@ -94,7 +125,7 @@ final readonly class ChangeScaffolder
             $grouped[$change->id][] = $change;
         }
 
-        $changes = [];
+        $changes = self::parameterRenames($parameterChanges, $oldDoc, $newDoc, $since, $gaps);
 
         foreach ($grouped as $id => $group) {
             $scope = self::scope($oldDoc, $newDoc, (string) $id, $newById[$id], $gaps);
@@ -180,7 +211,7 @@ final readonly class ChangeScaffolder
         $short = Fqcn::short($fqcn);
 
         foreach ($renames as $from => $to) {
-            $changes[] = $this->rename($fqcn, $short, $facet, (string) $from, $to, $since, $gaps);
+            $changes[] = $this->rename($fqcn, $short, $facet, (string) $from, $to, $since);
         }
 
         foreach ($ambiguous as $field) {
@@ -223,30 +254,34 @@ final readonly class ChangeScaffolder
     }
 
     /**
-     * `#[RenamedResponseField]`. The direction is the one the whole vocabulary runs in: `to:` is the
-     * name the code spells today and `from:` the one the older documents publish.
+     * `#[RenamedResponseField]` or `#[RenamedRequestField]`. The direction is the one the whole
+     * vocabulary runs in: `to:` is the name the code spells today and `from:` the one the older
+     * documents publish.
      *
-     * @param  array<string, int>  $gaps
+     * The two halves of the wire really are one sentence here, which is what makes this the one
+     * difference the scaffolder writes for BOTH facets. A field that was renamed is published under
+     * both names either way round; what a request rename adds is that a client sending the old
+     * spelling has to still be accepted, and that is a claim a per-version contract test can refuse
+     * rather than a claim this has to hedge.
      */
-    private function rename(string $fqcn, string $short, SchemaFacet $facet, string $from, string $to, string $since, array &$gaps): ?ScaffoldedChange
+    private function rename(string $fqcn, string $short, SchemaFacet $facet, string $from, string $to, string $since): ScaffoldedChange
     {
-        if ($facet !== SchemaFacet::Response) {
-            self::note($gaps, 'The vocabulary has no verb for a renamed REQUEST field, so the rename in a request body was not written.');
-
-            return null;
-        }
+        $request = $facet === SchemaFacet::Request;
+        $verb = $request ? RenamedRequestField::class : RenamedResponseField::class;
 
         return new ScaffoldedChange(
-            class: $short.self::studly($to).'Replaces'.self::studly($from),
+            class: $short.($request ? 'Request' : '').self::studly($to).'Replaces'.self::studly($from),
             schema: $fqcn,
             since: $since,
-            description: sprintf('`%s` publishes `%s` where it published `%s`.', $short, $to, $from),
-            verb: self::attribute(RenamedResponseField::class, [
-                'schema' => self::reference($fqcn, RenamedResponseField::class),
+            description: $request
+                ? sprintf('`%s` accepts `%s` where it accepted `%s`.', $short, $to, $from)
+                : sprintf('`%s` publishes `%s` where it published `%s`.', $short, $to, $from),
+            verb: self::attribute($verb, [
+                'schema' => self::reference($fqcn, $verb),
                 'from' => self::literal($from),
                 'to' => self::literal($to),
             ]),
-            imports: self::imports(RenamedResponseField::class, $fqcn),
+            imports: self::imports($verb, $fqcn),
         );
     }
 
@@ -352,12 +387,251 @@ final readonly class ChangeScaffolder
     }
 
     /**
-     * Which removed field is which added field under a new name: the two whose published shape is
-     * IDENTICAL, and only where that pairing is unique in both directions.
+     * `#[RenamedParameter]` for every parameter the diff shows renamed, and a gap line for every
+     * parameter difference it does not.
      *
-     * A rename is the one difference a diff cannot see directly — it reads as a removal and an addition
-     * — so the shape is the only evidence there is. Two candidates means there is no evidence, and
-     * guessing would rename the wrong field in every document derived from this version.
+     * A parameter is not a schema property, so none of the component-keyed machinery above reaches it:
+     * it is flattened onto one operation under an identity that is a function of the operation, the
+     * location and the NAME. That makes the pairing operation-local — a `q` that went and a `search`
+     * that arrived on the same operation, in the same location, wearing the same published shape — and
+     * it makes the pairing rule the same one the schema side applies, and for the same reason
+     * ({@see uniquePairs()}).
+     *
+     * @param  list<Change>  $changes
+     * @param  array<string, mixed>  $oldDoc
+     * @param  array<string, mixed>  $newDoc
+     * @param  array<string, int>  $gaps
+     * @return list<ScaffoldedChange>
+     */
+    private static function parameterRenames(array $changes, array $oldDoc, array $newDoc, string $since, array &$gaps): array
+    {
+        if ($changes === []) {
+            return [];
+        }
+
+        $old = self::parametersById($oldDoc);
+        $new = self::parametersById($newDoc);
+
+        /** @var array<string, array<string, array{gone: list<ParameterEntry>, arrived: list<ParameterEntry>}>> $moved */
+        $moved = [];
+
+        foreach ($changes as $change) {
+            // Present for every code plan() collects, which is the only route in here.
+            $half = self::PARAMETER_MOVES[$change->code] ?? 'arrived';
+            $entry = $half === 'gone' ? $old[$change->id] ?? null : $new[$change->id] ?? null;
+
+            if ($entry === null) {
+                // No node to read it off: the artifact carries no identity for that parameter, or it is
+                // written as a `$ref`, which states no name of its own. Either way there is nothing to
+                // pair, and the difference is said rather than dropped.
+                self::note($gaps, self::unexpressed($change->code));
+
+                continue;
+            }
+
+            $bucket = $moved[$entry['site']][$entry['in']] ?? ['gone' => [], 'arrived' => []];
+            $bucket[$half][] = $entry;
+            $moved[$entry['site']][$entry['in']] = $bucket;
+        }
+
+        ksort($moved, SORT_STRING);
+
+        /** @var array<string, list<string>> $observed  "in\0from\0to" => the sites it was seen on */
+        $observed = [];
+
+        foreach ($moved as $site => $locations) {
+            ksort($locations, SORT_STRING);
+
+            foreach ($locations as $in => $bucket) {
+                [$paired, $ambiguous] = self::pairedNames($bucket['gone'], $bucket['arrived']);
+
+                foreach ($paired as $from => $to) {
+                    $observed[$in."\0".$from."\0".$to][] = (string) $site;
+                }
+
+                foreach ($ambiguous as $name) {
+                    self::note($gaps, sprintf(
+                        'The %s parameter `%s` went and more than one that arrived beside it wears the same shape, so nothing here can tell which — declare the rename yourself, or leave it: no verb declares a parameter a version simply stopped accepting.',
+                        $in,
+                        $name,
+                    ));
+                }
+
+                foreach ($bucket['gone'] as $entry) {
+                    if (! isset($paired[$entry['name']]) && ! in_array($entry['name'], $ambiguous, true)) {
+                        self::note($gaps, sprintf(
+                            'The %s parameter `%s` went and nothing that arrived beside it wears the same shape, so no rename could be read out of it — and no verb declares a parameter a version simply stopped accepting.',
+                            $in,
+                            $entry['name'],
+                        ));
+                    }
+                }
+
+                foreach ($bucket['arrived'] as $entry) {
+                    if (! in_array($entry['name'], $paired, true)) {
+                        self::note($gaps, 'No verb declares a parameter a version ADDED: older versions simply do not accept it, which is what their documents already say.');
+                    }
+                }
+            }
+        }
+
+        ksort($observed, SORT_STRING);
+
+        $scaffolded = [];
+        foreach ($observed as $key => $sites) {
+            [$in, $from, $to] = explode("\0", (string) $key);
+
+            $change = self::parameterRename($newDoc, $in, $from, $to, $sites, $since, $gaps);
+
+            if ($change !== null) {
+                $scaffolded[] = $change;
+            }
+        }
+
+        return $scaffolded;
+    }
+
+    /**
+     * One `#[RenamedParameter]`, scoped where the application forked and unscoped where it did not.
+     *
+     * The subset rule is the schema side's, read on the axis a parameter has: the base is every
+     * operation the HEAD publishes the parameter for, and a scope is written only where the rename was
+     * observed on strictly fewer of them. What differs is that a scope here has only the one branch —
+     * {@see OperationVerb} states why, and it is why nothing below writes a fork.
+     *
+     * @param  array<string, mixed>  $newDoc
+     * @param  list<string>  $sites
+     * @param  array<string, int>  $gaps
+     */
+    private static function parameterRename(array $newDoc, string $in, string $from, string $to, array $sites, string $since, array &$gaps): ?ScaffoldedChange
+    {
+        $publishing = self::declaring($newDoc, $in, $to);
+
+        $scope = [];
+        if (count($sites) < count($publishing)) {
+            $selectors = self::selectors(array_intersect_key($publishing, array_flip($sites)), $to, $gaps);
+
+            if ($selectors === null) {
+                return null;
+            }
+
+            $scope = array_map(
+                static fn (string $operation): string => self::attribute(AppliesTo::class, ['operation' => self::literal($operation)]),
+                $selectors,
+            );
+        }
+
+        return (new ScaffoldedChange(
+            class: self::studly($in).self::studly($to).'Replaces'.self::studly($from),
+            // A parameter belongs to no class, so there is nothing for the placement rule to read a
+            // module off; {@see ChangePlacement} takes it to the first configured directory and says so.
+            schema: '',
+            since: $since,
+            description: sprintf('The %s parameter `%s` was called `%s`.', $in, $to, $from),
+            verb: self::attribute(RenamedParameter::class, [
+                'in' => self::literal($in),
+                'from' => self::literal($from),
+                'to' => self::literal($to),
+            ]),
+            imports: [RenamedParameter::class],
+        ))->scopedTo($scope);
+    }
+
+    /**
+     * Which gone name is which arrived name, by identical published shape — {@see uniquePairs()}'s rule,
+     * over parameters instead of properties, and reporting the same two answers.
+     *
+     * @param  list<ParameterEntry>  $gone
+     * @param  list<ParameterEntry>  $arrived
+     * @return array{0: array<string, string>, 1: list<string>} from => to, and the names left ambiguous
+     */
+    private static function pairedNames(array $gone, array $arrived): array
+    {
+        $candidates = [];
+        foreach ($gone as $left) {
+            foreach ($arrived as $right) {
+                if ($left['shape'] === $right['shape']) {
+                    $candidates[$left['name']][] = $right['name'];
+                }
+            }
+        }
+
+        return self::uniquePairs($candidates);
+    }
+
+    /**
+     * Every parameter a document publishes on an operation, keyed by the node id the diff pairs on. The
+     * shape is the parameter with its NAME and its identities dropped: the name is what moved, and an
+     * identity is a fact about where a node came from rather than about what it promises.
+     *
+     * A parameter written as a `$ref` is skipped. It states no name here, so there is nothing to pair,
+     * and the verb would not rename it either — it is shared with every site referencing it.
+     *
+     * @param  array<string, mixed>  $doc
+     * @return array<string, ParameterEntry>
+     */
+    private static function parametersById(array $doc): array
+    {
+        $out = [];
+
+        foreach (self::sites($doc) as $key => $site) {
+            $operation = DocumentGraph::at($doc, $site['keys']);
+            $parameters = is_array($operation) ? $operation['parameters'] ?? null : null;
+
+            foreach (is_array($parameters) ? $parameters : [] as $parameter) {
+                $parameter = Hydrate::map($parameter);
+                $name = Hydrate::stringOrNull($parameter['name'] ?? null);
+                $in = Hydrate::stringOrNull($parameter['in'] ?? null);
+                $id = Hydrate::stringOrNull(Hydrate::map($parameter['x-docuccino'] ?? null)['id'] ?? null);
+
+                if ($name === null || $in === null || $id === null) {
+                    continue;
+                }
+
+                $shape = $parameter;
+                unset($shape['name']);
+
+                $out[$id] = [
+                    'site' => $key,
+                    'in' => strtolower($in),
+                    'name' => $name,
+                    'shape' => Json::stable(self::withoutIdentities($shape)),
+                ];
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * The operations a document declares a parameter of this location and name on, keyed the way a
+     * selector spells them.
+     *
+     * @param  array<string, mixed>  $doc
+     * @return array<string, OperationSite>
+     */
+    private static function declaring(array $doc, string $in, string $name): array
+    {
+        return array_filter(self::sites($doc), static function (array $site) use ($doc, $in, $name): bool {
+            $operation = DocumentGraph::at($doc, $site['keys']);
+            $parameters = is_array($operation) ? $operation['parameters'] ?? null : null;
+
+            foreach (is_array($parameters) ? $parameters : [] as $parameter) {
+                $parameter = Hydrate::map($parameter);
+
+                if (Hydrate::stringOrNull($parameter['name'] ?? null) === $name
+                    && strtolower((string) Hydrate::stringOrNull($parameter['in'] ?? null)) === $in) {
+                    return true;
+                }
+            }
+
+            return false;
+        });
+    }
+
+    /**
+     * Which removed field is which added field under a new name: the two whose published shape is
+     * IDENTICAL, read by {@see uniquePairs()}.
      *
      * @param  list<string>  $removed
      * @param  list<string>  $added
@@ -378,16 +652,36 @@ final readonly class ChangeScaffolder
             }
         }
 
-        $renames = [];
+        return self::uniquePairs($candidates);
+    }
+
+    /**
+     * Which of these candidate pairings names a single pair, and which names more than one.
+     *
+     * A rename is the one difference a diff cannot see directly — it reads as a removal and an addition
+     * — so the shape is the only evidence there is. Unique in BOTH directions is what makes it
+     * evidence: one thing arrived wearing this shape, and this the only thing that went wearing it.
+     * Anything else names no single pair, and guessing would rename the wrong thing in every document
+     * derived from this version.
+     *
+     * Both answers are handed back because they are different things to say. A name with no candidate
+     * at all went and nothing replaced it; a name with two went and the tool cannot tell which
+     * replaced it — and a caller holding only the pairs cannot tell those apart, so it tells the author
+     * the first when the truth is the second.
+     *
+     * @param  array<array-key, list<string>>  $candidates  what went => the names that arrived wearing its shape
+     * @return array{0: array<string, string>, 1: list<string>} from => to, and the names left ambiguous
+     */
+    private static function uniquePairs(array $candidates): array
+    {
+        $paired = [];
         $ambiguous = [];
 
         foreach ($candidates as $from => $matches) {
-            // Unique in both directions: one added field wearing this shape, and this the only removed
-            // field wearing it. Anything else names no single pair.
             $claimants = array_filter($candidates, static fn (array $others): bool => in_array($matches[0], $others, true));
 
             if (count($matches) === 1 && count($claimants) === 1) {
-                $renames[(string) $from] = $matches[0];
+                $paired[(string) $from] = $matches[0];
 
                 continue;
             }
@@ -395,10 +689,10 @@ final readonly class ChangeScaffolder
             $ambiguous[] = (string) $from;
         }
 
-        ksort($renames, SORT_STRING);
+        ksort($paired, SORT_STRING);
         sort($ambiguous, SORT_STRING);
 
-        return [$renames, $ambiguous];
+        return [$paired, $ambiguous];
     }
 
     /**

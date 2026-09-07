@@ -89,3 +89,28 @@ it('flags an extra property via a custom lint.leakage.patterns heuristic', funct
         // The built-in heuristics still fire alongside the custom one.
         ->and($messages)->toContain('"secret"');
 });
+
+it('warns about a query parameter whose name matches a heuristic', function (): void {
+    // The lint's third subject, on the real path. No parameter the workbench publishes is sensitive
+    // under the built-in table — that is the measured firing population, and the reason no golden
+    // moves — so the heuristic is the one the config adds, over `dry_run`: an `in: query` parameter
+    // recovered from a `#[QueryParameter]` on WidgetController::store.
+    $diagnostics = leakageDiagnostics(function (array $raw): array {
+        config()->set('docuccino.lint.leakage.patterns', ['dryrun' => 'a dry-run flag']);
+
+        return $raw;
+    });
+
+    $messages = implode("\n", array_map(static fn ($d): string => $d->message, $diagnostics));
+    expect($messages)->toContain('The query parameter "dry_run"')
+        ->and($messages)->toContain('a dry-run flag')
+        // The pointer is a pointer into the emitted document, at the member the author changes.
+        ->and($messages)->toContain('/paths//api/widgets/post/parameters/')
+        // And the parameter half honours the same safelist the property half does.
+        ->and(implode("\n", array_map(static fn ($d): string => $d->message, leakageDiagnostics(function (array $raw): array {
+            config()->set('docuccino.lint.leakage.patterns', ['dryrun' => 'a dry-run flag']);
+            config()->set('docuccino.lint.leakage.allow', ['dry_run']);
+
+            return $raw;
+        }))))->not->toContain('dry_run');
+});

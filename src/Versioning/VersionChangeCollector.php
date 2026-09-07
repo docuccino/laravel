@@ -18,8 +18,10 @@ use ReflectionClass;
 
 /**
  * Reads `documents.*.api_version.changes` into the version changes that document derives an older
- * shape from. Reflection only: an attribute argument is a constant expression the compiler already
- * settled, so nothing here parses, folds or executes a line of the application.
+ * shape from. Reflection only: nothing here parses or folds a line of the application, and an
+ * attribute argument has to be a constant expression, so a change cannot be written as a closure over
+ * the document the way every runtime migrations package writes one. It is not that nothing can run —
+ * {@see AttributeCollector} states what instantiating an attribute does and does not guarantee.
  *
  * The answer is ordered `since` descending then FQCN ascending — the order the changes are APPLIED in,
  * newest first, so each hands the shape of the version below it to the next. Nothing depends on the

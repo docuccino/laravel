@@ -30,37 +30,6 @@ beforeEach(function (): void {
     $router->get('api/versioned-forms', [VersionedFormController::class, 'index']);
 });
 
-/**
- * One document's `FormData`, built with the changes in `$dir` applied.
- *
- * @return array<string, mixed>
- */
-function versionedFormSchema(string $dir): array
-{
-    versioningDiagnostics($dir);
-
-    /** @var array<string, mixed> $schema */
-    $schema = generateDocument(key: 'v')->document->toArray()['components']['schemas']['FormData'];
-
-    return $schema;
-}
-
-/**
- * The two shapes `POST /api/articles` publishes for one class: the body a client sends, and the
- * article it gets back.
- *
- * @return array{request: array<string, mixed>, response: array<string, mixed>}
- */
-function versionedArticleSchemas(string $dir): array
-{
-    versioningDiagnostics($dir, route: 'api/articles');
-
-    /** @var array<string, array<string, mixed>> $schemas */
-    $schemas = generateDocument(key: 'v')->document->toArray()['components']['schemas'];
-
-    return ['request' => $schemas['ArticleRequest'], 'response' => $schemas['Article']];
-}
-
 it('takes a field out of required for the versions before it was guaranteed', function (): void {
     // `properties` is untouched: the field was published then and is published now, and only the
     // promise about it moved.

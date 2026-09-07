@@ -103,3 +103,15 @@ it('falls back for a class nothing can read a file for', function (): void {
     expect(placementFor('Docuccino\\Nope\\NeverDeclared', ['workbench/app/Data/Versions' => 'workbench/app/Data']))
         ->toBe('changes — the first configured change directory; no configured module holds Docuccino\\Nope\\NeverDeclared');
 });
+
+it('writes a change that names no class to the first configured directory, and says why', function (): void {
+    // A renamed PARAMETER belongs to an operation rather than to a shape, so there is no file to look
+    // for. It falls to the same directory a class no module holds does, and the reason has to say which
+    // of the two happened: "no configured module holds " with nothing after it reads as a bug.
+    expect(placementFor('', ['workbench/app/Data/Versions' => 'workbench/app/Data']))
+        ->toBe('changes — the first configured change directory; the change names a parameter rather than a class, so no module owns it');
+});
+
+it('writes a classless change to the only configured directory when there is one', function (): void {
+    expect(placementFor('', [], ['changes']))->toBe('changes — the only configured change directory');
+});

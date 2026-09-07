@@ -11,8 +11,16 @@ use Docuccino\Core\Identity\IdentityGenerator;
 use Docuccino\Core\Support\PlainText;
 
 /**
- * `#[RenamedResponseField]` as the transformer applies it: the property goes back to the name older
- * versions publish, and every example carrying it goes with it.
+ * `#[RenamedResponseField]` and `#[RenamedRequestField]` as the transformer applies them: the property
+ * goes back to the name older versions publish, and every example carrying it goes with it.
+ *
+ * One edit with one switch — WHICH of the class's published shapes it names. A rename is symmetric
+ * across the wire in a way required-ness is not: the field is published on both halves either way, and
+ * only what it is CALLED moves, so the two verbs really are one sentence read in two directions rather
+ * than two sentences ({@see RequiredEdit} is the case where they are not). What the facet decides is the
+ * node, and that is not cosmetic — a class that is a request body on the way in and a response on the
+ * way out is two nodes with two identities, and a verb resolving the wrong one rewrites a schema the
+ * author never named.
  *
  * @internal
  */
@@ -22,6 +30,7 @@ final readonly class RenameEdit implements VersionVerb
         private string $schema,
         private string $from,
         private string $to,
+        private SchemaFacet $facet,
     ) {}
 
     public function schema(): string
@@ -31,7 +40,7 @@ final readonly class RenameEdit implements VersionVerb
 
     public function facet(): SchemaFacet
     {
-        return SchemaFacet::Response;
+        return $this->facet;
     }
 
     public function identity(IdentityGenerator $identity): string
@@ -97,22 +106,18 @@ final readonly class RenameEdit implements VersionVerb
         return match ($outcome) {
             VerbOutcome::Applied => null,
             VerbOutcome::Declined => VersionChangeCollector::unapplicable($change->class, sprintf(
-                'the schema for %s already publishes a field called "%s", so renaming "%s" onto it would collapse two fields into one',
+                'the %sschema for %s already publishes a field called "%s", so renaming "%s" onto it would collapse two fields into one',
+                $this->facet->schemaQualifier(),
                 PlainText::of($this->schema),
                 PlainText::of($this->from),
                 PlainText::of($this->to),
             )),
-            VerbOutcome::Absent => new Diagnostic(
-                severity: Severity::Warning,
-                code: 'versioning.change-target-missing',
-                message: sprintf(
-                    '%s renames "%s", which the schema for %s no longer publishes, so this version still says what the code says.',
-                    PlainText::of($change->class),
-                    PlainText::of($this->to),
-                    PlainText::of($this->schema),
-                ),
-                help: 'Update the change to name the field as it is spelled today, or retire it if the field is gone.',
-            ),
+            VerbOutcome::Absent => VerbDiagnostics::targetMissing($change, sprintf(
+                'renames "%s", which the %sschema for %s no longer publishes',
+                PlainText::of($this->to),
+                $this->facet->schemaQualifier(),
+                PlainText::of($this->schema),
+            ), 'field'),
             VerbOutcome::Unresolved => VerbDiagnostics::schemaUnresolved($change, $this),
         };
     }
