@@ -7,6 +7,7 @@ namespace Docuccino\Laravel\Config;
 use Closure;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Contracts\TagMapper;
+use Docuccino\Core\Support\ConfiguredFlag;
 use Docuccino\Core\Support\ConfinedPath;
 use Docuccino\Core\Support\Hydrate;
 use Docuccino\Core\Support\LineEndings;
@@ -61,7 +62,7 @@ final readonly class DocumentConfigFactory
             routeInclude: Hydrate::stringList($routes['include'] ?? []),
             routeExclude: Hydrate::stringList($routes['exclude'] ?? []),
             routeFilter: $closure instanceof Closure ? $closure : null,
-            includeVendor: ($routes['include_vendor'] ?? false) === true,
+            includeVendor: ConfiguredFlag::read($routes, 'include_vendor', false)->on,
             authMiddleware: is_string($security['auto_detect_middleware'] ?? null) ? $security['auto_detect_middleware'] : null,
             errorResponses: self::errorResponses($config),
             // A glob holding a NUL byte raises out of `glob()` and takes the build with it, so it never

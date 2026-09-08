@@ -6,6 +6,7 @@ namespace Docuccino\Laravel\Viewer;
 
 use Docuccino\Core\Extensions\Context\ViewerContext;
 use Docuccino\Core\Extensions\Contracts\Viewer;
+use Docuccino\Core\Support\ConfiguredFlag;
 
 /**
  * The HTML skeleton every bundled driver renders into, plus the three URLs they all need: the
@@ -33,7 +34,7 @@ final readonly class ViewerPage
      */
     public function scriptSrc(string $asset, string $cdn): string
     {
-        return $this->attr(($this->context->config->viewer['cdn'] ?? false) === true
+        return $this->attr(ConfiguredFlag::read($this->context->config->viewer, 'cdn', false)->on
             ? $cdn
             : url($this->base().'/assets/'.$asset.'.js'));
     }

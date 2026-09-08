@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Commands;
 
+use Docuccino\Laravel\Config\ConfiguredFlags;
 use Illuminate\Console\Command;
 
 /**
@@ -17,7 +18,7 @@ trait GuardsEnabled
     /** True — having printed why — when the command should stop. */
     protected function abortIfDisabled(): bool
     {
-        if (config('docuccino.enabled', true) === false) {
+        if (! ConfiguredFlags::enabled()) {
             $this->error('Docuccino is disabled (set docuccino.enabled = true to run this command).');
 
             return true;

@@ -34,7 +34,7 @@ final class LeakageOptions
             : [];
 
         $options = new SensitiveFieldLintOptions(
-            enabled: ! $honourSwitch || ($leakage['enabled'] ?? true) !== false,
+            enabled: ! $honourSwitch || ConfiguredFlags::lintEnabled('leakage', $leakage),
             allow: $allow,
         );
 

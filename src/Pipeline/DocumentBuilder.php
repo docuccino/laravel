@@ -19,6 +19,7 @@ use Docuccino\Core\Support\ConfinedPath;
 use Docuccino\Core\Support\Hydrate;
 use Docuccino\Core\Support\PlainText;
 use Docuccino\Laravel\Config\ConfiguredDocuments;
+use Docuccino\Laravel\Config\ConfiguredFlags;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
 use Docuccino\Laravel\Engine\EngineNeon;
 use Docuccino\Laravel\Engine\EnginePackage;
@@ -74,6 +75,9 @@ final class DocumentBuilder
         [$overlays, $overlayDiagnostics] = $this->overlays($config);
         [$extensions, $extensionDiagnostics] = ConfigExtensions::read();
         $preDiagnostics = [
+            // The switches outside every document — the master one, the fragment cache, the lint rules.
+            // Reported here because they are read at container binds, where nothing can carry a report.
+            ...ConfiguredFlags::forInstall(),
             ...$this->engineDiagnostics(),
             ...$this->cachePathDiagnostics(),
             ...$this->descriptionFileDiagnostics($config),

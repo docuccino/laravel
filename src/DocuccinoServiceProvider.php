@@ -24,6 +24,7 @@ use Docuccino\Core\Pipeline\Assembler;
 use Docuccino\Core\Pipeline\FragmentCache;
 use Docuccino\Core\Provenance\RootRelativeSourcePathResolver;
 use Docuccino\Core\Provenance\SourcePathResolver;
+use Docuccino\Core\Support\ConfiguredFlag;
 use Docuccino\Laravel\Commands\CacheCommand;
 use Docuccino\Laravel\Commands\ClearCommand;
 use Docuccino\Laravel\Commands\CoverageCommand;
@@ -36,6 +37,7 @@ use Docuccino\Laravel\Commands\ValidateCommand;
 use Docuccino\Laravel\Commands\VersionChangesCommand;
 use Docuccino\Laravel\Commands\WatchCommand;
 use Docuccino\Laravel\Config\ConfigPublisher;
+use Docuccino\Laravel\Config\ConfiguredFlags;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
 use Docuccino\Laravel\Config\LeakageOptions;
 use Docuccino\Laravel\Engine\ConsoleBuild;
@@ -233,7 +235,7 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             $path = is_string($cache['path'] ?? null) ? $cache['path'] : $app->storagePath('docuccino/fragments');
 
             return new FragmentStore(
-                enabled: (bool) ($cache['enabled'] ?? false),
+                enabled: ConfiguredFlag::read($cache, 'enabled', false)->on,
                 path: str_starts_with($path, '/') ? $path : $app->basePath($path),
             );
         });
@@ -322,12 +324,12 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
 
         // The completeness lints share one options shape, so they share one reader; each is core, and
         // the adapter only maps its docuccino.lint.<key> bag onto it.
-        $this->app->bind(MissingDescriptionLint::class, static fn (): MissingDescriptionLint => new MissingDescriptionLint(self::lintRule('descriptions', false)));
-        $this->app->bind(OperationIdStyleLint::class, static fn (): OperationIdStyleLint => new OperationIdStyleLint(self::lintRule('operation_ids', true)));
-        $this->app->bind(UndocumentedTagLint::class, static fn (): UndocumentedTagLint => new UndocumentedTagLint(self::lintRule('tags', false)));
-        $this->app->bind(VacuousUnionLint::class, static fn (): VacuousUnionLint => new VacuousUnionLint(self::lintRule('vacuous_union', true)));
-        $this->app->bind(ExampleSchemaLint::class, static fn (): ExampleSchemaLint => new ExampleSchemaLint(self::lintRule('examples', true)));
-        $this->app->bind(UnpinnedRedirectLint::class, static fn (): UnpinnedRedirectLint => new UnpinnedRedirectLint(self::lintRule('unpinned_redirect', true)));
+        $this->app->bind(MissingDescriptionLint::class, static fn (): MissingDescriptionLint => new MissingDescriptionLint(self::lintRule('descriptions')));
+        $this->app->bind(OperationIdStyleLint::class, static fn (): OperationIdStyleLint => new OperationIdStyleLint(self::lintRule('operation_ids')));
+        $this->app->bind(UndocumentedTagLint::class, static fn (): UndocumentedTagLint => new UndocumentedTagLint(self::lintRule('tags')));
+        $this->app->bind(VacuousUnionLint::class, static fn (): VacuousUnionLint => new VacuousUnionLint(self::lintRule('vacuous_union')));
+        $this->app->bind(ExampleSchemaLint::class, static fn (): ExampleSchemaLint => new ExampleSchemaLint(self::lintRule('examples')));
+        $this->app->bind(UnpinnedRedirectLint::class, static fn (): UnpinnedRedirectLint => new UnpinnedRedirectLint(self::lintRule('unpinned_redirect')));
 
         // json-api-paginate's parameter names and sizes are renamable in its own config; an absent bag
         // falls back to defaults plus an info diagnostic. Its response envelope (pagination mode) and
@@ -515,17 +517,20 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
     }
 
     /**
-     * One `docuccino.lint.<key>` bag as rule options. `$default` is the rule's own answer when the key
-     * is absent, so a config file predating the rule keeps whatever shipped with it.
+     * One `docuccino.lint.<key>` bag as rule options. The rule's own answer when the key is absent
+     * comes from {@see ConfiguredFlags::LINT_DEFAULTS}, so a config file predating the rule keeps
+     * whatever shipped with it.
+     *
+     * @param  key-of<ConfiguredFlags::LINT_DEFAULTS>  $key
      */
-    private static function lintRule(string $key, bool $default): LintRuleOptions
+    private static function lintRule(string $key): LintRuleOptions
     {
         /** @var array<string, mixed> $rule */
         $rule = (array) config('docuccino.lint.'.$key, []);
         $allow = is_array($rule['allow'] ?? null) ? array_values(array_filter($rule['allow'], 'is_string')) : [];
 
         return new LintRuleOptions(
-            enabled: ($rule['enabled'] ?? $default) !== false,
+            enabled: ConfiguredFlags::lintEnabled($key, $rule),
             allow: $allow,
         );
     }
@@ -591,7 +596,7 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
         );
 
         // Master off-switch: no runtime endpoints exist at all when it's off.
-        if (config('docuccino.enabled', true) === false) {
+        if (! ConfiguredFlags::enabled()) {
             return;
         }
 

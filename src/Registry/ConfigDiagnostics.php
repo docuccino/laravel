@@ -11,6 +11,7 @@ use Docuccino\Core\Extensions\Context\RepresentationPolicy;
 use Docuccino\Core\Support\Hydrate;
 use Docuccino\Core\Support\PlainText;
 use Docuccino\Laravel\Config\ConfigPaths;
+use Docuccino\Laravel\Config\ConfiguredFlags;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderConfig;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParameters;
 
@@ -39,6 +40,8 @@ use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParameters;
  *   goes verbatim into the `configHash` and the output becomes machine-dependent.
  * - A path-like key holding a NUL byte, which no filesystem call accepts. Every reader is handed
  *   nothing instead ({@see ConfigPaths::unholdable()}), so this is what says the path was dropped.
+ * - An on/off switch in this document's bag holding something that is no switch — the one reading
+ *   refuses it rather than coercing, and {@see ConfiguredFlags} is what says so.
  *
  * @internal
  */
@@ -57,7 +60,7 @@ final class ConfigDiagnostics
      */
     public static function for(DocumentConfig $document): array
     {
-        $diagnostics = [];
+        $diagnostics = ConfiguredFlags::forDocument($document);
 
         foreach (self::ALWAYS_ON as $key) {
             if (array_key_exists('enabled', $document->integration($key))) {
