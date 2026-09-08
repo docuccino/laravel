@@ -4180,7 +4180,7 @@
       },
       "PaginationLinks": {
         "x-docuccino": {
-          "id": "sch:v1:ygkjpxjgdcdk6bvw"
+          "id": "sch:v1:cn3i5qf4y7huo2hk"
         },
         "type": "object",
         "properties": {
@@ -4212,7 +4212,7 @@
       },
       "PaginationMeta": {
         "x-docuccino": {
-          "id": "sch:v1:7fi652lnus2kwipy"
+          "id": "sch:v1:ex4annm3ko66tkrv"
         },
         "type": "object",
         "properties": {
@@ -4548,7 +4548,7 @@
     "document": {
       "id": "doc:secured",
       "configHash": "5ce1291fb113fe0f9cc8e7abdb8b501a7a5e66477f542fefa0655446f5b082cf",
-      "contentHash": "bd50d3f41bd30e2365af4501e17f55ac07544f50421a2144a95aa390010b6c53"
+      "contentHash": "5f90f842f077af65d87c798e368f97306b6d0e74d17fc08321cb9324808b6b24"
     },
     "generator": {
       "name": "docuccino/laravel",
