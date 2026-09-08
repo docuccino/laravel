@@ -8,7 +8,10 @@ use Docuccino\Laravel\DocuccinoServiceProvider;
 use Docuccino\Laravel\Testing\AssertsApiContract;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Gadget;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Widget;
+use Illuminate\Auth\Middleware\Authorize;
+use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Routing\Middleware\ValidateSignature;
 use Illuminate\Routing\Router;
 use Orchestra\Testbench\TestCase as Orchestra;
 use Workbench\App\Http\Controllers\BrokenController;
@@ -80,6 +83,17 @@ abstract class TestCase extends Orchestra
         // so no Sanctum/Passport security scheme lands in the default doc — the 401 doesn't depend on one
         // being configured.
         $router->get('api/guarded-forms', [FormController::class, 'index'])->middleware(['auth:web', 'can:view']);
+        // The 403s that come from a middleware other than the `can:` alias. Each publishes a different
+        // signal into the provenance, and none of the three had a golden standing in it: written as its
+        // own class name, which is what every static constructor the framework ships renders, the
+        // authorization middleware carried no gate and `signed`/`verified` no signal at all — so the
+        // response simply went missing and no committed bytes said so.
+        $router->get('api/signed-forms', [FormController::class, 'index'])
+            ->middleware(ValidateSignature::relative());
+        $router->get('api/verified-forms', [FormController::class, 'index'])
+            ->middleware(['auth:web', EnsureEmailIsVerified::redirectTo('verification.notice')]);
+        $router->get('api/authorized-forms', [FormController::class, 'index'])
+            ->middleware(['auth:web', Authorize::using('view')]);
 
         // Spatie Data, API Resources, JSON:API, Eloquent and status-code routes.
         $router->post('api/articles', [IntegrationsController::class, 'storeArticle']);

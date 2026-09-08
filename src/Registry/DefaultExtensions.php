@@ -43,6 +43,7 @@ use Docuccino\Laravel\Integrations\InferredHandler\InferredHandlerIntegration;
 use Docuccino\Laravel\Integrations\Support\AuthConfigDigestContributor;
 use Docuccino\Laravel\Integrations\Validation\ValidationIntegration;
 use Docuccino\Laravel\Routing\LaravelRouteResolver;
+use Docuccino\Laravel\Support\GatePoliciesDigestContributor;
 use Docuccino\Laravel\Versioning\ApiVersionTransformer;
 
 /**
@@ -83,6 +84,10 @@ final class DefaultExtensions
             // Auth config is the framework's, not any auth package's, so it keys the cache whether or
             // not one of them is installed.
             AuthConfigDigestContributor::class,
+            // Gate registrations are the framework's too, and the implicit 403's reachability check
+            // reads them off the booted app rather than off any file a route records. What the reading
+            // does and does not run is stated in GateInternals.
+            GatePoliciesDigestContributor::class,
             AttributeOverridesExtension::class,
             // Reads a committed file of responses a test suite recorded; nothing is executed here.
             RecordedExamplesExtension::class,

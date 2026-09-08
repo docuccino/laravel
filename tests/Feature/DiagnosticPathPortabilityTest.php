@@ -126,6 +126,38 @@ it('publishes no machine path in what the analyser reported', function (): void 
         ->and($reports[0]->message)->not->toContain($broken);
 });
 
+it('publishes no machine path in the throw site an unread status names', function (): void {
+    // The other half of the same crossing, and the one with a second producer behind it: the engine
+    // relativises the site before the notice leaves it, and the adapter relativises again on the way
+    // into the fragment. Each half is asserted where it lives — this is the join, so a message arriving
+    // with the analyser's raw finding still in it cannot reach the document by either route.
+    $symbol = ApiReportController::class.'::index';
+    $site = base_path('app/Services/ExportProbeQuery.php');
+
+    $engine = new StubTypeEngine([$symbol => new ActionAnalysis(diagnostics: [new Diagnostic(
+        severity: Severity::Info,
+        code: 'inference.http-exception-status-unread',
+        message: sprintf(
+            'App\\Exceptions\\ExportConflictException is thrown at %s:22 with no status this build could read: the construction the throw names does not fold to one status.',
+            $site,
+        ),
+        help: 'Say the status as a constant where the exception is built.',
+    )])]);
+
+    $result = localityBuild(
+        static fn (Router $router) => $router->get('api/zz-unread', [ApiReportController::class, 'index']),
+        static fn (): TypeEngine => $engine,
+    );
+
+    $reports = diagnosticsCoded($result->diagnostics, 'inference.http-exception-status-unread');
+
+    expect($reports)->toHaveCount(1)
+        // The exception's namespace is not a path and survives whole, as does the line the reader needs.
+        ->and($reports[0]->message)->toContain('App\\Exceptions\\ExportConflictException')
+        ->and($reports[0]->message)->toContain('app/Services/ExportProbeQuery.php:22')
+        ->and($reports[0]->message)->not->toContain($site);
+});
+
 it('reports a failed route on a warm cache hit exactly as a cold one does', function (): void {
     // A failed route writes no fragment, so its diagnostic is re-raised rather than replayed — which
     // makes the scrub part of every build rather than of the first one. The claim is worth pinning

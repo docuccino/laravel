@@ -95,9 +95,17 @@ it('keeps a hoisted class the framework happens to share a name with in view', f
     ]);
 
     // The registry got there first, so the class keeps the plain name and the framework's 404 shape
-    // climbs past it — and only the climbed one is filtered, because only the 404s reach it.
+    // climbs past it — and only the climbed one is filtered, because only the 404s reach it. Read by
+    // NAME rather than by counting the whole bucket, which every unrelated error component moves.
+    $notFounds = array_values(array_filter(
+        array_keys($document['components']['schemas']),
+        static fn (string $name): bool => str_starts_with($name, 'NotFound'),
+    ));
+
     expect(array_keys(typeSchemas($document)))->toBe(['NotFound'])
-        ->and(array_keys($document['components']['schemas']))->toHaveCount(2);
+        ->and($notFounds)->toHaveCount(2)
+        ->and($notFounds[0])->toBe('NotFound')
+        ->and($notFounds[1])->not->toBe('NotFound');
 });
 
 it('refuses a framework response wherever it turns up, not just at the top level', function (): void {

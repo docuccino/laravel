@@ -429,6 +429,63 @@
               }
             }
           },
+          "409": {
+            "x-docuccino": {
+              "id": "res:v1:o52qssialje4x5wh",
+              "provenance": [
+                {
+                  "producer": "integration:framework-errors",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/IntegrationsController.php",
+                    "line": 28,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::storeArticle"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "Conflict"
+              }
+            },
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:framework-errors",
+                        "layer": "integration",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/IntegrationsController.php",
+                          "line": 28,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::storeArticle"
+                        }
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "422": {
             "x-docuccino": {
               "id": "res:v1:3uyjfa64rg6bficj",
@@ -568,6 +625,128 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/authorized-forms": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:bh5vqy5mc5kn7iy5",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FormController.php",
+                "line": 23,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "description",
+                "summary"
+              ]
+            }
+          ]
+        },
+        "summary": "List forms.",
+        "description": "Returns the collection of forms visible to the caller.",
+        "tags": [
+          "Forms"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:zynr46urktfxdv2l",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "items",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FormData"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "x-docuccino": {
+              "id": "res:v1:3ebqxcj6eb2q6w2y",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/FormController.php",
+                    "line": 23,
+                    "symbol": "implicit:auth-middleware"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "Unauthorized"
+              }
+            },
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "x-docuccino": {
+              "id": "res:v1:pzsemf2jo6k2c67z",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/FormController.php",
+                    "line": 23,
+                    "symbol": "implicit:can-middleware"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "Forbidden"
+              }
+            },
+            "$ref": "#/components/responses/Forbidden"
           }
         }
       }
@@ -1125,40 +1304,7 @@
                 "component": "Unauthorized"
               }
             },
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "x-docuccino": {
-                    "provenance": [
-                      {
-                        "producer": "integration:implicit-response",
-                        "layer": "integration",
-                        "fields": [
-                          "properties",
-                          "required",
-                          "type"
-                        ],
-                        "source": {
-                          "file": "workbench/app/Http/Controllers/FormController.php",
-                          "line": 23,
-                          "symbol": "implicit:auth-middleware"
-                        }
-                      }
-                    ]
-                  },
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "message"
-                  ]
-                }
-              }
-            }
+            "$ref": "#/components/responses/Unauthorized"
           },
           "403": {
             "x-docuccino": {
@@ -1182,40 +1328,7 @@
                 "component": "Forbidden"
               }
             },
-            "description": "Forbidden",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "x-docuccino": {
-                    "provenance": [
-                      {
-                        "producer": "integration:implicit-response",
-                        "layer": "integration",
-                        "fields": [
-                          "properties",
-                          "required",
-                          "type"
-                        ],
-                        "source": {
-                          "file": "workbench/app/Http/Controllers/FormController.php",
-                          "line": 23,
-                          "symbol": "implicit:can-middleware"
-                        }
-                      }
-                    ]
-                  },
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "message"
-                  ]
-                }
-              }
-            }
+            "$ref": "#/components/responses/Forbidden"
           }
         }
       }
@@ -2523,6 +2636,7 @@
                         "layer": "integration",
                         "fields": [
                           "properties",
+                          "required",
                           "type"
                         ],
                         "source": {
@@ -2538,7 +2652,10 @@
                     "message": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "required": [
+                    "message"
+                  ]
                 }
               }
             }
@@ -2770,6 +2887,104 @@
         }
       }
     },
+    "/api/signed-forms": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:vjnaqae4swfqri2a",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FormController.php",
+                "line": 23,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "description",
+                "summary"
+              ]
+            }
+          ]
+        },
+        "summary": "List forms.",
+        "description": "Returns the collection of forms visible to the caller.",
+        "tags": [
+          "Forms"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:6vhcud6upebyl7gn",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "items",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FormData"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "x-docuccino": {
+              "id": "res:v1:jp76d76l4j3duo63",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/FormController.php",
+                    "line": 23,
+                    "symbol": "implicit:signed-middleware"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "Forbidden"
+              }
+            },
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
     "/api/strongboxes/{id}": {
       "get": {
         "x-docuccino": {
@@ -2989,6 +3204,128 @@
               }
             },
             "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/api/verified-forms": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:uu5uarmxqckgnlhi",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FormController.php",
+                "line": 23,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "description",
+                "summary"
+              ]
+            }
+          ]
+        },
+        "summary": "List forms.",
+        "description": "Returns the collection of forms visible to the caller.",
+        "tags": [
+          "Forms"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:ud3lx46aaugakajc",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "items",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FormData"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "x-docuccino": {
+              "id": "res:v1:4hir764lbct77rov",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/FormController.php",
+                    "line": 23,
+                    "symbol": "implicit:auth-middleware"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "Unauthorized"
+              }
+            },
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "x-docuccino": {
+              "id": "res:v1:zqntoi2vjvat7ynr",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/FormController.php",
+                    "line": 23,
+                    "symbol": "implicit:verified-middleware"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "Forbidden"
+              }
+            },
+            "$ref": "#/components/responses/Forbidden"
           }
         }
       }
@@ -3671,6 +4008,20 @@
           }
         }
       },
+      "Forbidden": {
+        "x-docuccino": {
+          "id": "sch:v1:n5qazsrgxr4czglj"
+        },
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
       "FormData": {
         "x-docuccino": {
           "id": "sch:v1:6iocn62c7ru5zutw"
@@ -3924,6 +4275,20 @@
           "keeper"
         ]
       },
+      "Unauthorized": {
+        "x-docuccino": {
+          "id": "sch:v1:qntkok75rrb2gjjq"
+        },
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
       "UnprocessableEntity": {
         "x-docuccino": {
           "id": "sch:v1:f3tcwvg2vhs255gy"
@@ -4055,12 +4420,32 @@
           }
         }
       },
+      "Forbidden": {
+        "description": "Forbidden",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Forbidden"
+            }
+          }
+        }
+      },
       "NotFound": {
         "description": "Not Found",
         "content": {
           "application/json": {
             "schema": {
               "$ref": "#/components/schemas/NotFound"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Unauthorized",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Unauthorized"
             }
           }
         }
@@ -4081,7 +4466,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "5f2fa7f04d876587d654542b680caee47345866b9fdf48bc1e55e33f72a81989",
-      "contentHash": "31d6adf78c962aea3588ab39198415ea9770f65e86d196c98a845c64ea4df748"
+      "contentHash": "55cbef19e24c0d740d4d549de23e5f65c3a07c97bae2ffa7f48c98ba9343d46a"
     },
     "generator": {
       "name": "docuccino/laravel",

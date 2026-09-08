@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Commands;
 
+use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Document\PathItem;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Provenance\Explain\ExplainedNode;
@@ -32,12 +33,19 @@ use Symfony\Component\Console\Output\OutputInterface;
  * Three outcomes, three exit codes: explained (0), nothing matched (1), several matched (2). Which
  * one a query gets is the {@see OperationLookup}'s call, and it never picks a match on the reader's
  * behalf. `--field` narrows the same way and answers on the same three codes.
+ *
+ * What the build REPORTED about the operation is printed under its trail. The trail records which rung
+ * wrote a field and where from; it has no room for why a producer could only answer vaguely — an error
+ * response filed under a status no throw stated is the case that sends people looking — and that half
+ * is what the diagnostics already say. Printing them here is the join: both halves of the answer on one
+ * screen, in the vocabulary the route signature already speaks.
  */
 final class ExplainCommand extends Command
 {
     use GuardsEnabled;
     use IteratesDocuments;
     use PrintsSections;
+    use RendersDiagnostics;
     use StringOptions;
 
     protected $signature = 'docuccino:explain
@@ -71,10 +79,16 @@ final class ExplainCommand extends Command
 
         $lookup = new OperationLookup($router);
         $documents = [];
+        $reported = [];
         $operations = [];
 
         foreach ($keys as $key) {
-            $documents[$key] = $builder->build($key, $engine)->document->toArray();
+            $result = $builder->build($key, $engine);
+            $documents[$key] = $result->document->toArray();
+            // Kept beside the document: the trail says which rung wrote a field and what it wrote, and
+            // for a field nothing could read — an error response filed under a status no throw stated —
+            // the reason is in what the BUILD reported, which the reader otherwise has to go and find.
+            $reported[$key] = $result->diagnostics;
             $operations = [...$operations, ...$lookup->operations($key, $documents[$key])];
         }
 
@@ -91,24 +105,44 @@ final class ExplainCommand extends Command
 
         $match = $matches[0];
         $nodes = $this->explainer->explain($documents[$match->document], $match->path, $match->method);
+        $diagnostics = self::forOperation($reported[$match->document] ?? [], $match);
 
         $field = $this->stringOption('field');
 
         return $field === null
-            ? $this->explain($match, $nodes)
-            : $this->explainField($match, $nodes, $field);
+            ? $this->explain($match, $nodes, $diagnostics)
+            : $this->explainField($match, $nodes, $diagnostics, $field);
+    }
+
+    /**
+     * What the build reported about THIS operation. A diagnostic's `routeSignature` is the same
+     * vocabulary {@see OperationMatch::signature()} speaks, so the match is exact rather than a
+     * fuzzy one over paths; everything the build said about the document as a whole belongs to
+     * `docuccino:generate`, which prints all of it.
+     *
+     * @param  list<Diagnostic>  $diagnostics
+     * @return list<Diagnostic>
+     */
+    private static function forOperation(array $diagnostics, OperationMatch $match): array
+    {
+        return array_values(array_filter(
+            $diagnostics,
+            static fn (Diagnostic $diagnostic): bool => $diagnostic->routeSignature === $match->signature(),
+        ));
     }
 
     /**
      * @param  list<ExplainedNode>  $nodes
+     * @param  list<Diagnostic>  $diagnostics
      */
-    private function explain(OperationMatch $match, array $nodes): int
+    private function explain(OperationMatch $match, array $nodes, array $diagnostics): int
     {
         if ($this->option('json') === true) {
             $this->json([
                 'status' => 'explained',
                 'operation' => $match->toArray(),
                 'nodes' => array_map(static fn (ExplainedNode $node): array => $node->toArray(), $nodes),
+                'diagnostics' => array_map(static fn (Diagnostic $diagnostic): array => $diagnostic->toArray(), $diagnostics),
             ]);
 
             return self::SUCCESS;
@@ -118,6 +152,7 @@ final class ExplainCommand extends Command
 
         if ($nodes === []) {
             $this->emptyTrail();
+            $this->renderDiagnostics($match->signature(), $diagnostics);
 
             return self::SUCCESS;
         }
@@ -140,6 +175,8 @@ final class ExplainCommand extends Command
             $this->line($line);
         }
 
+        $this->renderDiagnostics($match->signature(), $diagnostics);
+
         return self::SUCCESS;
     }
 
@@ -149,8 +186,9 @@ final class ExplainCommand extends Command
      * names several fields lists them rather than picking one.
      *
      * @param  list<ExplainedNode>  $nodes
+     * @param  list<Diagnostic>  $diagnostics
      */
-    private function explainField(OperationMatch $match, array $nodes, string $query): int
+    private function explainField(OperationMatch $match, array $nodes, array $diagnostics, string $query): int
     {
         $found = self::matchFields($nodes, $query);
 
@@ -165,6 +203,7 @@ final class ExplainCommand extends Command
                 'status' => 'explained',
                 'operation' => $match->toArray(),
                 'nodes' => [(new ExplainedNode($node->label, $node->pointer, [$trail], $node->ref))->toArray()],
+                'diagnostics' => array_map(static fn (Diagnostic $diagnostic): array => $diagnostic->toArray(), $diagnostics),
             ]);
 
             return self::SUCCESS;
@@ -175,6 +214,8 @@ final class ExplainCommand extends Command
         foreach ($this->report->field($node, $trail) as $line) {
             $this->line($line);
         }
+
+        $this->renderDiagnostics($match->signature(), $diagnostics);
 
         return self::SUCCESS;
     }

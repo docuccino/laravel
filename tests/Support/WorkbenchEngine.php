@@ -158,9 +158,21 @@ final class WorkbenchEngine
                     )],
                 ),
 
-                // Spatie Data: request body from the Data class + a Data response under a folded 201.
+                // Spatie Data: request body from the Data class + a Data response under a folded 201,
+                // beside a throw of a Symfony HttpException carrying NO status hint. That is what the
+                // real engine recovers for one of these: the status is a literal in a `vendor/`
+                // constructor, whose body PHPStan strips, so the hint is null and only the
+                // framework-exception table can say the server answers 409 rather than 500. This route
+                // is the golden's standing witness to that — see FrameworkHttpExceptionPinsTest.
                 self::CONTROLLER.'storeArticle' => new ActionAnalysis(
                     returns: [new ReturnSite($jsonResponse(new ClassT(self::ARTICLE_DATA), 201), $location)],
+                    throws: [new ThrownException(
+                        'Symfony\\Component\\HttpKernel\\Exception\\ConflictHttpException',
+                        null,
+                        [],
+                        ThrowConfidence::Certain,
+                        ThrowDisposition::Signal,
+                    )],
                 ),
                 // API Resources: an anonymous collection, and a single resource with whenLoaded fields.
                 self::CONTROLLER.'listArticleResources' => new ActionAnalysis(

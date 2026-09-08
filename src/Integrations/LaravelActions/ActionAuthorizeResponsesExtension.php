@@ -22,6 +22,11 @@ use ReflectionClass;
  * sees it. This puts a synthetic `AuthorizationException` through the same exception→response chain as
  * every other error, so the 403 body matches the document's error style. Skipped when
  * `error_responses => 'none'`.
+ *
+ * The third producer of an implicit 403, and the one that does not read the gate's body at all: an
+ * action's `authorize()` is dispatched by the package's own decorator, and whether the body could
+ * refuse is a question this deliberately leaves unasked rather than answering it differently from the
+ * other two. The `GateBody` seam the other two ask through states all three rows.
  */
 final class ActionAuthorizeResponsesExtension implements OperationExtension
 {

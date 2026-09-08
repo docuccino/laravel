@@ -24,9 +24,34 @@ it('resolves each mapped exception to its status subtype-aware', function (strin
     'authorization → 403' => ['Illuminate\\Auth\\Access\\AuthorizationException', '403', false],
     'model-not-found → 404' => ['Illuminate\\Database\\Eloquent\\ModelNotFoundException', '404', false],
     'records-not-found (parent) → 404' => ['Illuminate\\Database\\RecordsNotFoundException', '404', false],
+    // Symfony's HttpException family. Each pins its status in a vendor/ constructor an analyser
+    // strips, so the row here is the only thing standing between the consumer and a false 500.
+    'http-bad-request → 400' => ['Symfony\\Component\\HttpKernel\\Exception\\BadRequestHttpException', '400', false],
+    'http-unauthorized → 401' => ['Symfony\\Component\\HttpKernel\\Exception\\UnauthorizedHttpException', '401', false],
+    'http-access-denied → 403' => ['Symfony\\Component\\HttpKernel\\Exception\\AccessDeniedHttpException', '403', false],
     'http-not-found → 404' => ['Symfony\\Component\\HttpKernel\\Exception\\NotFoundHttpException', '404', false],
+    'http-method-not-allowed → 405' => ['Symfony\\Component\\HttpKernel\\Exception\\MethodNotAllowedHttpException', '405', false],
+    'http-not-acceptable → 406' => ['Symfony\\Component\\HttpKernel\\Exception\\NotAcceptableHttpException', '406', false],
+    'http-conflict → 409' => ['Symfony\\Component\\HttpKernel\\Exception\\ConflictHttpException', '409', false],
+    'http-gone → 410' => ['Symfony\\Component\\HttpKernel\\Exception\\GoneHttpException', '410', false],
+    'http-length-required → 411' => ['Symfony\\Component\\HttpKernel\\Exception\\LengthRequiredHttpException', '411', false],
+    'http-precondition-failed → 412' => ['Symfony\\Component\\HttpKernel\\Exception\\PreconditionFailedHttpException', '412', false],
+    'http-unsupported-media-type → 415' => ['Symfony\\Component\\HttpKernel\\Exception\\UnsupportedMediaTypeHttpException', '415', false],
+    // 422 WITHOUT the `errors` map: that shape comes from a validator, and this exception carries none.
+    'http-unprocessable-entity → 422' => ['Symfony\\Component\\HttpKernel\\Exception\\UnprocessableEntityHttpException', '422', false],
+    'http-locked → 423' => ['Symfony\\Component\\HttpKernel\\Exception\\LockedHttpException', '423', false],
+    'http-precondition-required → 428' => ['Symfony\\Component\\HttpKernel\\Exception\\PreconditionRequiredHttpException', '428', false],
+    'http-too-many-requests → 429' => ['Symfony\\Component\\HttpKernel\\Exception\\TooManyRequestsHttpException', '429', false],
+    'http-service-unavailable → 503' => ['Symfony\\Component\\HttpKernel\\Exception\\ServiceUnavailableHttpException', '503', false],
+    // Laravel's own HttpException subclasses, which pin theirs the same way.
+    'malformed-url → 400' => ['Illuminate\\Http\\Exceptions\\MalformedUrlException', '400', false],
+    'invalid-signature → 403' => ['Illuminate\\Routing\\Exceptions\\InvalidSignatureException', '403', false],
+    'post-too-large → 413' => ['Illuminate\\Http\\Exceptions\\PostTooLargeException', '413', false],
     // Subtype: a subclass of a mapped base inherits its mapping.
     'a ModelNotFound subclass inherits 404' => [FixtureMissingModelException::class, '404', false],
+    // …which is why the table lists what pins a status and no more. Laravel's throttle exception pins
+    // nothing of its own and inherits 429 here exactly as it inherits it at runtime; a row would be noise.
+    'throttle inherits its base 429' => ['Illuminate\\Http\\Exceptions\\ThrottleRequestsException', '429', false],
 ]);
 
 it('declines an unmapped exception', function (): void {
@@ -47,7 +72,25 @@ it('classifies an unread status the same way every tier that publishes it must',
     'authorization → 403' => ['Illuminate\\Auth\\Access\\AuthorizationException', '403'],
     'model-not-found → 404' => ['Illuminate\\Database\\Eloquent\\ModelNotFoundException', '404'],
     'records-not-found (parent) → 404' => ['Illuminate\\Database\\RecordsNotFoundException', '404'],
+    'http-bad-request → 400' => ['Symfony\\Component\\HttpKernel\\Exception\\BadRequestHttpException', '400'],
+    'http-unauthorized → 401' => ['Symfony\\Component\\HttpKernel\\Exception\\UnauthorizedHttpException', '401'],
+    'http-access-denied → 403' => ['Symfony\\Component\\HttpKernel\\Exception\\AccessDeniedHttpException', '403'],
     'http-not-found → 404' => ['Symfony\\Component\\HttpKernel\\Exception\\NotFoundHttpException', '404'],
+    'http-method-not-allowed → 405' => ['Symfony\\Component\\HttpKernel\\Exception\\MethodNotAllowedHttpException', '405'],
+    'http-not-acceptable → 406' => ['Symfony\\Component\\HttpKernel\\Exception\\NotAcceptableHttpException', '406'],
+    'http-conflict → 409' => ['Symfony\\Component\\HttpKernel\\Exception\\ConflictHttpException', '409'],
+    'http-gone → 410' => ['Symfony\\Component\\HttpKernel\\Exception\\GoneHttpException', '410'],
+    'http-length-required → 411' => ['Symfony\\Component\\HttpKernel\\Exception\\LengthRequiredHttpException', '411'],
+    'http-precondition-failed → 412' => ['Symfony\\Component\\HttpKernel\\Exception\\PreconditionFailedHttpException', '412'],
+    'http-unsupported-media-type → 415' => ['Symfony\\Component\\HttpKernel\\Exception\\UnsupportedMediaTypeHttpException', '415'],
+    'http-unprocessable-entity → 422' => ['Symfony\\Component\\HttpKernel\\Exception\\UnprocessableEntityHttpException', '422'],
+    'http-locked → 423' => ['Symfony\\Component\\HttpKernel\\Exception\\LockedHttpException', '423'],
+    'http-precondition-required → 428' => ['Symfony\\Component\\HttpKernel\\Exception\\PreconditionRequiredHttpException', '428'],
+    'http-too-many-requests → 429' => ['Symfony\\Component\\HttpKernel\\Exception\\TooManyRequestsHttpException', '429'],
+    'http-service-unavailable → 503' => ['Symfony\\Component\\HttpKernel\\Exception\\ServiceUnavailableHttpException', '503'],
+    'malformed-url → 400' => ['Illuminate\\Http\\Exceptions\\MalformedUrlException', '400'],
+    'invalid-signature → 403' => ['Illuminate\\Routing\\Exceptions\\InvalidSignatureException', '403'],
+    'post-too-large → 413' => ['Illuminate\\Http\\Exceptions\\PostTooLargeException', '413'],
     'a subclass inherits its base' => [FixtureMissingModelException::class, '404'],
     // Outside the table there is no classification at all, only the key the document cannot do without.
     'an application exception → the unplaced status' => ['App\\Exceptions\\ProbeFailure', '500'],
@@ -81,7 +124,32 @@ it('never classifies an error at a status HTTP forbids a body on', function (): 
 it('covers every mapped exception in the classification rows above', function (): void {
     // The rows are a literal list, so an exception added to the table without one would classify by
     // nobody's decision and this file would stay green.
-    $classified = ['Illuminate\\Validation\\ValidationException', 'Illuminate\\Auth\\AuthenticationException', 'Illuminate\\Auth\\Access\\AuthorizationException', 'Illuminate\\Database\\Eloquent\\ModelNotFoundException', 'Illuminate\\Database\\RecordsNotFoundException', 'Symfony\\Component\\HttpKernel\\Exception\\NotFoundHttpException'];
+    $classified = [
+        'Illuminate\\Validation\\ValidationException',
+        'Illuminate\\Auth\\AuthenticationException',
+        'Illuminate\\Auth\\Access\\AuthorizationException',
+        'Illuminate\\Database\\Eloquent\\ModelNotFoundException',
+        'Illuminate\\Database\\RecordsNotFoundException',
+        'Symfony\\Component\\HttpKernel\\Exception\\BadRequestHttpException',
+        'Symfony\\Component\\HttpKernel\\Exception\\UnauthorizedHttpException',
+        'Symfony\\Component\\HttpKernel\\Exception\\AccessDeniedHttpException',
+        'Symfony\\Component\\HttpKernel\\Exception\\NotFoundHttpException',
+        'Symfony\\Component\\HttpKernel\\Exception\\MethodNotAllowedHttpException',
+        'Symfony\\Component\\HttpKernel\\Exception\\NotAcceptableHttpException',
+        'Symfony\\Component\\HttpKernel\\Exception\\ConflictHttpException',
+        'Symfony\\Component\\HttpKernel\\Exception\\GoneHttpException',
+        'Symfony\\Component\\HttpKernel\\Exception\\LengthRequiredHttpException',
+        'Symfony\\Component\\HttpKernel\\Exception\\PreconditionFailedHttpException',
+        'Symfony\\Component\\HttpKernel\\Exception\\UnsupportedMediaTypeHttpException',
+        'Symfony\\Component\\HttpKernel\\Exception\\UnprocessableEntityHttpException',
+        'Symfony\\Component\\HttpKernel\\Exception\\LockedHttpException',
+        'Symfony\\Component\\HttpKernel\\Exception\\PreconditionRequiredHttpException',
+        'Symfony\\Component\\HttpKernel\\Exception\\TooManyRequestsHttpException',
+        'Symfony\\Component\\HttpKernel\\Exception\\ServiceUnavailableHttpException',
+        'Illuminate\\Http\\Exceptions\\MalformedUrlException',
+        'Illuminate\\Routing\\Exceptions\\InvalidSignatureException',
+        'Illuminate\\Http\\Exceptions\\PostTooLargeException',
+    ];
 
     expect($classified)->toBe(FrameworkExceptionTable::exceptions())
         ->and($classified)->not->toBeEmpty();
@@ -90,6 +158,18 @@ it('covers every mapped exception in the classification rows above', function ()
 it('uses the RFC reason phrase for every mapped status', function (string $status, string $reason): void {
     expect(FrameworkExceptionTable::reason($status))->toBe($reason);
 })->with(FrameworkExceptionTable::reasonPhrases());
+
+it('takes each phrase from the RFC that defines the status, not from RFC 9110 alone', function (): void {
+    // Three the table would get wrong by reaching for one document. 413 is where RFC 9110 §15.5.14
+    // RENAMED what RFC 7231 called "Payload Too Large", and the name is a type in somebody's generated
+    // client, so the current one is the one to publish. 423 and 428 RFC 9110 never registered at all;
+    // their own RFCs name them, and taking the phrase from there is what keeps them off the generic
+    // `Error` the alternative would leave them on (429 was already in that position).
+    expect(FrameworkExceptionTable::reason('413'))->toBe('Content Too Large')
+        ->and(FrameworkExceptionTable::reason('423'))->toBe('Locked')
+        ->and(FrameworkExceptionTable::reason('428'))->toBe('Precondition Required')
+        ->and(FrameworkExceptionTable::reason('429'))->toBe('Too Many Requests');
+});
 
 it('locks 401 to Unauthorized and degrades an unlisted status to Error', function (): void {
     expect(FrameworkExceptionTable::reason('401'))->toBe('Unauthorized')
@@ -109,8 +189,16 @@ const EXPECTED_COMPONENT_NAMES = [
     ['403', 'Forbidden'],
     ['404', 'NotFound'],
     ['405', 'MethodNotAllowed'],
+    ['406', 'NotAcceptable'],
     ['409', 'Conflict'],
+    ['410', 'Gone'],
+    ['411', 'LengthRequired'],
+    ['412', 'PreconditionFailed'],
+    ['413', 'ContentTooLarge'],
+    ['415', 'UnsupportedMediaType'],
     ['422', 'UnprocessableEntity'],
+    ['423', 'Locked'],
+    ['428', 'PreconditionRequired'],
     ['429', 'TooManyRequests'],
     ['500', 'InternalServerError'],
     ['503', 'ServiceUnavailable'],

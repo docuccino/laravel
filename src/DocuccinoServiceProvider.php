@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel;
 
+use Closure;
 use Composer\InstalledVersions;
 use Docuccino\Core\Content\ContentCompiler;
 use Docuccino\Core\Examples\ExampleRedaction;
@@ -69,6 +70,8 @@ use Docuccino\Laravel\Routing\ResolvedRouteIndex;
 use Docuccino\Laravel\Routing\RouteSurvey;
 use Docuccino\Laravel\Routing\VendorRoutePolicy;
 use Docuccino\Laravel\Runtime\DocumentCache;
+use Docuccino\Laravel\Support\GateDenial;
+use Docuccino\Laravel\Support\GatePoliciesDigestContributor;
 use Docuccino\Laravel\Versioning\Scaffold\ChangeStub;
 use Docuccino\Laravel\Versioning\VersionChangeCollector;
 use Docuccino\Laravel\Watch\ArtisanBuildRunner;
@@ -78,6 +81,7 @@ use Docuccino\Laravel\Watch\WatchSet;
 use Docuccino\Laravel\Watch\WatchSignal;
 use Docuccino\Laravel\Webhooks\WebhookCollector;
 use Illuminate\Console\Events\CommandStarting;
+use Illuminate\Contracts\Auth\Access\Gate as GateContract;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Event;
@@ -143,6 +147,23 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
         $this->app->when([LaravelRouteResolver::class, RouteSurvey::class])
             ->needs(VendorRoutePolicy::class)
             ->give(fn (): VendorRoutePolicy => new VendorRoutePolicy($this->app->basePath('vendor')));
+
+        // The implicit 403's reachability check and the digest that keys it both read the booted app's
+        // Gate, and both are constructed while the extension set resolves — before an application that
+        // replaced the framework's auth providers has necessarily bound one. So the Gate is resolved
+        // when it is read, not when they are built, and an app without one degrades instead of failing.
+        // The check also refuses to report a policy method it found in a package: the remedy it prints
+        // is an edit, and an edit to somebody else's file is not one its reader can make.
+        $this->app->bind(GateDenial::class, static function (Application $app): GateDenial {
+            $vendor = new VendorRoutePolicy($app->basePath('vendor'));
+
+            return new GateDenial(self::gateResolver($app), $vendor->isVendorFile(...));
+        });
+
+        $this->app->bind(
+            GatePoliciesDigestContributor::class,
+            static fn (Application $app): GatePoliciesDigestContributor => new GatePoliciesDigestContributor(self::gateResolver($app)),
+        );
 
         // `docuccino:install` publishes the same file, from the same place, that
         // `vendor:publish --tag=docuccino-config` does.
@@ -430,6 +451,24 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
         }
 
         return is_string($reference) ? '@'.$reference : '';
+    }
+
+    /**
+     * The booted app's Gate, asked for only when somebody reads it. Both gate readers are built while
+     * the extension set resolves, and an app that replaced the framework's auth providers has none to
+     * give — an answer of null, not a build that throws.
+     *
+     * @return Closure(): ?GateContract
+     */
+    private static function gateResolver(Application $app): Closure
+    {
+        return static function () use ($app): ?GateContract {
+            try {
+                return $app->make(GateContract::class);
+            } catch (Throwable) {
+                return null;
+            }
+        };
     }
 
     /**

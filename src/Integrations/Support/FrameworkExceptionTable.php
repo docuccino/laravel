@@ -9,9 +9,12 @@ namespace Docuccino\Laravel\Integrations\Support;
  * plain-JSON framework-errors tier, the terminal fallback and the inferred-handler builder — so no two
  * presentations can drift on a status or its label.
  *
- * Reason phrases are the RFC 9110 §15 canonical ones, used verbatim as the framework-error response
- * description. Note 401 is "Unauthorized" (§15.5.2), not "Unauthenticated" — Laravel's own message
- * wording is not the reason phrase.
+ * Reason phrases are the canonical ones from the RFC that DEFINES each status — RFC 9110 §15 for the
+ * statuses it registers, and the extension's own RFC otherwise (423 is RFC 4918 §11.3, 428 and 429 are
+ * RFC 6585 §3–4) — used verbatim as the framework-error response description. Note 401 is
+ * "Unauthorized" (§15.5.2), not "Unauthenticated" — Laravel's own message wording is not the reason
+ * phrase — and 413 is "Content Too Large" (§15.5.14), the name RFC 9110 gave what RFC 7231 called
+ * "Payload Too Large".
  */
 final class FrameworkExceptionTable
 {
@@ -29,6 +32,22 @@ final class FrameworkExceptionTable
      * Base exception FQCN → its HTTP status and whether it carries a field-keyed `errors` map (the
      * validation shape). Matched subtype-aware, so a subclass inherits its base's mapping.
      *
+     * The `HttpException` families below are here because the status is written in a `vendor/`
+     * constructor, whose body an analyser strips: nothing can read the number, so a table is the only
+     * way the document says what the class fixes by construction rather than falling to
+     * {@see UNPLACED_STATUS} and stating a 500 the server never sends. Every entry is a class that pins
+     * a literal status in its OWN constructor, and no more than that: a subclass pinning nothing of its
+     * own inherits its base's mapping here exactly as it inherits the status at runtime, which is why
+     * `ThrottleRequestsException` (a `TooManyRequestsHttpException`) needs no row. Symfony's family is
+     * flat — sixteen direct children of `HttpException`, none an ancestor of another — so none of them
+     * covers any other and all sixteen are named. The base `HttpException` itself is deliberately absent:
+     * it takes an arbitrary status, so any row for it would be a guess rather than a reading.
+     *
+     * None carries the validation shape: an `errors` map comes from a validator, and these render as
+     * Laravel's plain `{message}`. Held to the installed package by the guard in
+     * `FrameworkHttpExceptionPinsTest`, which parses each constructor and fails when a row goes missing
+     * or disagrees with what the class actually pins.
+     *
      * @var array<string, array{status: string, validation: bool}>
      */
     private const EXCEPTIONS = [
@@ -39,13 +58,35 @@ final class FrameworkExceptionTable
         // ModelNotFoundException's PARENT: a bare `sole()`/`firstOrFail()` on the query builder throws
         // this directly, and subtype matching on the child alone would miss it.
         'Illuminate\\Database\\RecordsNotFoundException' => ['status' => '404', 'validation' => false],
+
+        // Symfony's HttpException family, in status order.
+        'Symfony\\Component\\HttpKernel\\Exception\\BadRequestHttpException' => ['status' => '400', 'validation' => false],
+        'Symfony\\Component\\HttpKernel\\Exception\\UnauthorizedHttpException' => ['status' => '401', 'validation' => false],
+        'Symfony\\Component\\HttpKernel\\Exception\\AccessDeniedHttpException' => ['status' => '403', 'validation' => false],
         'Symfony\\Component\\HttpKernel\\Exception\\NotFoundHttpException' => ['status' => '404', 'validation' => false],
+        'Symfony\\Component\\HttpKernel\\Exception\\MethodNotAllowedHttpException' => ['status' => '405', 'validation' => false],
+        'Symfony\\Component\\HttpKernel\\Exception\\NotAcceptableHttpException' => ['status' => '406', 'validation' => false],
+        'Symfony\\Component\\HttpKernel\\Exception\\ConflictHttpException' => ['status' => '409', 'validation' => false],
+        'Symfony\\Component\\HttpKernel\\Exception\\GoneHttpException' => ['status' => '410', 'validation' => false],
+        'Symfony\\Component\\HttpKernel\\Exception\\LengthRequiredHttpException' => ['status' => '411', 'validation' => false],
+        'Symfony\\Component\\HttpKernel\\Exception\\PreconditionFailedHttpException' => ['status' => '412', 'validation' => false],
+        'Symfony\\Component\\HttpKernel\\Exception\\UnsupportedMediaTypeHttpException' => ['status' => '415', 'validation' => false],
+        'Symfony\\Component\\HttpKernel\\Exception\\UnprocessableEntityHttpException' => ['status' => '422', 'validation' => false],
+        'Symfony\\Component\\HttpKernel\\Exception\\LockedHttpException' => ['status' => '423', 'validation' => false],
+        'Symfony\\Component\\HttpKernel\\Exception\\PreconditionRequiredHttpException' => ['status' => '428', 'validation' => false],
+        'Symfony\\Component\\HttpKernel\\Exception\\TooManyRequestsHttpException' => ['status' => '429', 'validation' => false],
+        'Symfony\\Component\\HttpKernel\\Exception\\ServiceUnavailableHttpException' => ['status' => '503', 'validation' => false],
+
+        // Laravel's own HttpException subclasses, likewise in status order.
+        'Illuminate\\Http\\Exceptions\\MalformedUrlException' => ['status' => '400', 'validation' => false],
+        'Illuminate\\Routing\\Exceptions\\InvalidSignatureException' => ['status' => '403', 'validation' => false],
+        'Illuminate\\Http\\Exceptions\\PostTooLargeException' => ['status' => '413', 'validation' => false],
     ];
 
     /**
-     * HTTP status → RFC 9110 §15 reason phrase. Covers every status the error tiers can emit; anything
-     * unlisted degrades to a generic `Error`. Typed `array<int, string>` because PHP coerces the
-     * numeric-string keys to int.
+     * HTTP status → reason phrase. Covers every status the error tiers can emit; anything unlisted
+     * degrades to a generic `Error`. Typed `array<int, string>` because PHP coerces the numeric-string
+     * keys to int.
      *
      * @var array<int, string>
      */
@@ -55,8 +96,16 @@ final class FrameworkExceptionTable
         '403' => 'Forbidden',
         '404' => 'Not Found',
         '405' => 'Method Not Allowed',
+        '406' => 'Not Acceptable',
         '409' => 'Conflict',
+        '410' => 'Gone',
+        '411' => 'Length Required',
+        '412' => 'Precondition Failed',
+        '413' => 'Content Too Large',
+        '415' => 'Unsupported Media Type',
         '422' => 'Unprocessable Entity',
+        '423' => 'Locked',
+        '428' => 'Precondition Required',
         '429' => 'Too Many Requests',
         '500' => 'Internal Server Error',
         '503' => 'Service Unavailable',

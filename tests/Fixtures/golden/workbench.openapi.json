@@ -136,6 +136,24 @@
               }
             }
           },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
           "422": {
             "$ref": "#/components/responses/UnprocessableEntity"
           }
@@ -182,6 +200,36 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/authorized-forms": {
+      "get": {
+        "summary": "List forms.",
+        "description": "Returns the collection of forms visible to the caller.",
+        "tags": [
+          "Forms"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FormData"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
           }
         }
       }
@@ -360,40 +408,10 @@
             }
           },
           "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "message"
-                  ]
-                }
-              }
-            }
+            "$ref": "#/components/responses/Unauthorized"
           },
           "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "message"
-                  ]
-                }
-              }
-            }
+            "$ref": "#/components/responses/Forbidden"
           }
         }
       }
@@ -818,7 +836,10 @@
                     "message": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "required": [
+                    "message"
+                  ]
                 }
               }
             }
@@ -903,6 +924,33 @@
         }
       }
     },
+    "/api/signed-forms": {
+      "get": {
+        "summary": "List forms.",
+        "description": "Returns the collection of forms visible to the caller.",
+        "tags": [
+          "Forms"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FormData"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
     "/api/strongboxes/{id}": {
       "get": {
         "summary": "A model whose deny-list also reaches its appends and its eager-loaded relations.",
@@ -961,6 +1009,36 @@
           },
           "422": {
             "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/api/verified-forms": {
+      "get": {
+        "summary": "List forms.",
+        "description": "Returns the collection of forms visible to the caller.",
+        "tags": [
+          "Forms"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FormData"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
           }
         }
       }
@@ -1331,6 +1409,17 @@
           }
         }
       },
+      "Forbidden": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
       "FormData": {
         "type": "object",
         "properties": {
@@ -1554,6 +1643,17 @@
           "keeper"
         ]
       },
+      "Unauthorized": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
       "UnprocessableEntity": {
         "type": "object",
         "properties": {
@@ -1673,12 +1773,32 @@
           }
         }
       },
+      "Forbidden": {
+        "description": "Forbidden",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Forbidden"
+            }
+          }
+        }
+      },
       "NotFound": {
         "description": "Not Found",
         "content": {
           "application/json": {
             "schema": {
               "$ref": "#/components/schemas/NotFound"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Unauthorized",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Unauthorized"
             }
           }
         }

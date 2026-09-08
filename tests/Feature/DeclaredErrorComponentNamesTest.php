@@ -80,13 +80,14 @@ afterEach(function (): void {
 });
 
 it('publishes the framework\'s own errors under the names it calls them', function (): void {
-    // The default output. Laravel's 404 and 422 are the two the workbench states more than once, and
-    // both come out named after the error rather than after the number.
+    // The default output. Four of Laravel's own errors are stated by more than one workbench route —
+    // the 404 and the 422, and the 401 and 403 the authenticated and gated routes share — and each
+    // comes out named after the error rather than after the number.
     bindStubEngine();
     $document = generateDocument()->document->toArray();
 
-    expect(array_keys(errorComponents($document)))->toBe(['NotFound', 'UnprocessableEntity'])
-        ->and(array_keys(errorComponents($document, 'responses')))->toBe(['NotFound', 'UnprocessableEntity'])
+    expect(array_keys(errorComponents($document)))->toBe(['Forbidden', 'NotFound', 'Unauthorized', 'UnprocessableEntity'])
+        ->and(array_keys(errorComponents($document, 'responses')))->toBe(['Forbidden', 'NotFound', 'Unauthorized', 'UnprocessableEntity'])
         ->and($document['components']['responses']['NotFound']['content']['application/json']['schema'])
         ->toBe(['$ref' => '#/components/schemas/NotFound'])
         ->and($document['paths']['/api/forms/{form}']['get']['responses']['404']['$ref'])
