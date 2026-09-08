@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\Sanctum;
 
 use Docuccino\Laravel\Integrations\Support\AuthGuardDrivers;
+use Docuccino\Laravel\Support\AuthMiddlewareNames;
 
 /**
  * Works out which Sanctum auth modes protect a route from its gathered middleware. Token mode is
  * signalled by `auth:sanctum`, the bare `sanctum` alias, an `abilities:`/`ability:` middleware, or any
- * `auth:<guard>` whose configured driver is `sanctum` (so a custom `auth:mobile` is recognised). Stateful
+ * `auth:<guard>` whose configured driver is `sanctum` (so a custom `auth:mobile` is recognised). Every
+ * read of the authenticator goes through {@see AuthMiddlewareNames}, so the class-name spelling
+ * `Authenticate::using()` renders answers exactly as the alias does. Stateful
  * cookie mode needs the stateful-frontend middleware *and* a real auth guard: `statefulApi()` prepends
  * that middleware to the whole api group, so on its own it would falsely secure public routes like login.
  *
@@ -58,7 +61,8 @@ final class SanctumDetector
             if ($entry === 'sanctum') {
                 return true;
             }
-            if (str_starts_with($entry, 'auth:') && in_array('sanctum', array_map('trim', explode(',', substr($entry, 5))), true)) {
+            $guards = AuthMiddlewareNames::guardArguments($entry);
+            if ($guards !== null && in_array('sanctum', array_map('trim', explode(',', $guards)), true)) {
                 return true;
             }
             // Ability middleware (short aliases or the `::using()` FQCN forms) only ever guards Sanctum
@@ -87,7 +91,7 @@ final class SanctumDetector
         }
 
         foreach ($middleware as $entry) {
-            if ($entry === 'auth' || str_starts_with($entry, 'auth:') || str_starts_with($entry, 'auth.')) {
+            if (AuthMiddlewareNames::matches($entry)) {
                 return true;
             }
         }

@@ -153,6 +153,12 @@ function publicExtensionSurface(): array
         // renaming a neighbour when a value is added. Versioning may not import an integration, so the
         // rule lives under Laravel\Support rather than being written twice.
         'Docuccino\Laravel\Support\ListValueNames',
+        // And again: the ONE list of the framework's authentication middleware and of the spellings a
+        // route can name it by. Whether a route is authenticated is one fact with readers on both sides
+        // of the line — the security layer and the implicit 401 are extensions, Sanctum's mode detection
+        // and the guard→driver resolution are integrations — and each holding its own list is how three
+        // of them came to read the alias only (consequence stated in the class).
+        'Docuccino\Laravel\Support\AuthMiddlewareNames',
     ];
 }
 

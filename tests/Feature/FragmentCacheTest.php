@@ -239,21 +239,23 @@ it('invalidates fragments when Relation::morphMap() changes (booted-app cache in
     Relation::morphMap(['widget' => 'Docuccino\\Laravel\\Tests\\Fixtures\\Eloquent\\Widget', 'gadget' => 'Docuccino\\Laravel\\Tests\\Fixtures\\Eloquent\\Gadget'], false);
 });
 
-it('invalidates fragments when two aliases for one model are reordered (booted-app cache input)', function (): void {
+it('invalidates fragments when several aliases for one model are reordered (booted-app cache input)', function (): void {
     fragmentCacheDir('fragments');
     $engine = new CountingTypeEngine(WorkbenchEngine::make());
     app()->instance(TypeEngine::class, $engine);
 
-    // A model with two aliases serialises its `type` as whichever was registered FIRST, so this reorder
-    // changes the discriminator the document publishes while registering the same pairs. Nothing on
-    // disk moves, so the environment digest is the only thing that can carry it.
+    // A model with several aliases serialises its `type` as whichever was registered FIRST, so this
+    // reorder changes the discriminator the document publishes while registering the same pairs.
+    // Nothing on disk moves, so the environment digest is the only thing that can carry it. Three
+    // aliases, and the reorder moves the first two: with two, first and last are the same entry, so a
+    // digest recording the LAST alias per model would invalidate here as well.
     $widget = 'Docuccino\\Laravel\\Tests\\Fixtures\\Eloquent\\Widget';
     $gadget = 'Docuccino\\Laravel\\Tests\\Fixtures\\Eloquent\\Gadget';
-    Relation::morphMap(['widget' => $widget, 'legacy_widget' => $widget, 'gadget' => $gadget], false);
+    Relation::morphMap(['widget' => $widget, 'legacy_widget' => $widget, 'ancient_widget' => $widget, 'gadget' => $gadget], false);
     generateDocument()->document;
     $engine->analyzeCount = 0;
 
-    Relation::morphMap(['legacy_widget' => $widget, 'widget' => $widget, 'gadget' => $gadget], false);
+    Relation::morphMap(['legacy_widget' => $widget, 'widget' => $widget, 'ancient_widget' => $widget, 'gadget' => $gadget], false);
     generateDocument()->document;
 
     expect($engine->analyzeCount)->toBeGreaterThan(0);

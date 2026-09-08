@@ -204,6 +204,33 @@
         }
       }
     },
+    "/api/authenticated-forms": {
+      "get": {
+        "summary": "List forms.",
+        "description": "Returns the collection of forms visible to the caller.",
+        "tags": [
+          "Forms"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FormData"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
     "/api/authorized-forms": {
       "get": {
         "summary": "List forms.",
@@ -1009,6 +1036,30 @@
           },
           "422": {
             "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/api/unguarded-forms": {
+      "get": {
+        "summary": "List forms.",
+        "description": "Returns the collection of forms visible to the caller.",
+        "tags": [
+          "Forms"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FormData"
+                  }
+                }
+              }
+            }
           }
         }
       }

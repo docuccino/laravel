@@ -4,14 +4,14 @@
   "openapi": "3.2.0",
   "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
   "info": {
-    "title": "Public API",
+    "title": "Auth Spelling",
     "version": "1.0.0"
   },
   "paths": {
-    "/api/secure/dual": {
+    "/api/spelling/by-alias": {
       "get": {
         "x-docuccino": {
-          "id": "op:v1:xic3nix4uv5i3t5d",
+          "id": "op:v1:raaunoixpijptn4z",
           "provenance": [
             {
               "producer": "attribute",
@@ -34,16 +34,11 @@
               ]
             },
             {
-              "producer": "integration:sanctum",
+              "producer": "integration:security",
               "layer": "integration",
               "fields": [
                 "security"
-              ],
-              "source": {
-                "file": "workbench/app/Http/Controllers/FormController.php",
-                "line": 23,
-                "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
-              }
+              ]
             }
           ]
         },
@@ -54,13 +49,13 @@
         ],
         "security": [
           {
-            "sanctumToken": []
+            "bearer": []
           }
         ],
         "responses": {
           "200": {
             "x-docuccino": {
-              "id": "res:v1:eaehba3gglwfk335",
+              "id": "res:v1:filoip4rr2yy7oev",
               "provenance": [
                 {
                   "producer": "fallback",
@@ -95,14 +90,38 @@
                 }
               }
             }
+          },
+          "401": {
+            "x-docuccino": {
+              "id": "res:v1:css2kbcoom42jltj",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/FormController.php",
+                    "line": 23,
+                    "symbol": "implicit:auth-middleware"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "Unauthorized"
+              }
+            },
+            "$ref": "#/components/responses/Unauthorized"
           }
         }
       }
     },
-    "/api/secure/dual-by-class": {
+    "/api/spelling/by-class": {
       "get": {
         "x-docuccino": {
-          "id": "op:v1:xwuvyckivh4zaa3v",
+          "id": "op:v1:c5ltiysei3lopx6a",
           "provenance": [
             {
               "producer": "attribute",
@@ -125,16 +144,11 @@
               ]
             },
             {
-              "producer": "integration:sanctum",
+              "producer": "integration:security",
               "layer": "integration",
               "fields": [
                 "security"
-              ],
-              "source": {
-                "file": "workbench/app/Http/Controllers/FormController.php",
-                "line": 23,
-                "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
-              }
+              ]
             }
           ]
         },
@@ -145,13 +159,13 @@
         ],
         "security": [
           {
-            "sanctumToken": []
+            "bearer": []
           }
         ],
         "responses": {
           "200": {
             "x-docuccino": {
-              "id": "res:v1:u4xmcic36c7szxc7",
+              "id": "res:v1:zymvfwp2ex4cqpe2",
               "provenance": [
                 {
                   "producer": "fallback",
@@ -186,100 +200,30 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/api/secure/scoped": {
-      "get": {
-        "x-docuccino": {
-          "id": "op:v1:dw6hya7mfxlu7ezj",
-          "provenance": [
-            {
-              "producer": "attribute",
-              "layer": "attribute",
-              "fields": [
-                "tags"
-              ],
-              "source": {
-                "file": "workbench/app/Http/Controllers/FormController.php",
-                "line": 23,
-                "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
-              }
-            },
-            {
-              "producer": "docblock",
-              "layer": "docblock",
-              "fields": [
-                "description",
-                "summary"
-              ]
-            },
-            {
-              "producer": "integration:passport",
-              "layer": "integration",
-              "fields": [
-                "security"
-              ],
-              "source": {
-                "file": "workbench/app/Http/Controllers/FormController.php",
-                "line": 23,
-                "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
-              }
-            }
-          ]
-        },
-        "summary": "List forms.",
-        "description": "Returns the collection of forms visible to the caller.",
-        "tags": [
-          "Forms"
-        ],
-        "security": [
-          {
-            "passport": [
-              "read",
-              "write"
-            ]
-          }
-        ],
-        "responses": {
-          "200": {
+          },
+          "401": {
             "x-docuccino": {
-              "id": "res:v1:t2f6vifb2s4e5kru",
+              "id": "res:v1:honhmlatl7hqonvf",
               "provenance": [
                 {
-                  "producer": "fallback",
-                  "layer": "fallback",
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
                   "fields": [
+                    "component",
                     "description"
-                  ]
-                }
-              ]
-            },
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "x-docuccino": {
-                    "provenance": [
-                      {
-                        "producer": "inference",
-                        "layer": "inference",
-                        "fields": [
-                          "items",
-                          "type"
-                        ],
-                        "confidence": 0.9
-                      }
-                    ]
-                  },
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/FormData"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/FormController.php",
+                    "line": 23,
+                    "symbol": "implicit:auth-middleware"
                   }
                 }
+              ],
+              "facts": {
+                "component": "Unauthorized"
               }
-            }
+            },
+            "$ref": "#/components/responses/Unauthorized"
           }
         }
       }
@@ -310,33 +254,36 @@
           "id",
           "title"
         ]
+      },
+      "Unauthorized": {
+        "x-docuccino": {
+          "id": "sch:v1:qntkok75rrb2gjjq"
+        },
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Unauthorized",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Unauthorized"
+            }
+          }
+        }
       }
     },
     "securitySchemes": {
-      "passport": {
-        "flows": {
-          "authorizationCode": {
-            "authorizationUrl": "http://localhost/oauth/authorize",
-            "refreshUrl": "http://localhost/oauth/token",
-            "scopes": {
-              "read": "read",
-              "write": "write"
-            },
-            "tokenUrl": "http://localhost/oauth/token"
-          },
-          "clientCredentials": {
-            "refreshUrl": "http://localhost/oauth/token",
-            "scopes": {
-              "read": "read",
-              "write": "write"
-            },
-            "tokenUrl": "http://localhost/oauth/token"
-          }
-        },
-        "type": "oauth2"
-      },
-      "sanctumToken": {
-        "description": "Sanctum API token authentication: send a personal access / API token as a `Bearer` token in the `Authorization` header.",
+      "bearer": {
         "scheme": "bearer",
         "type": "http"
       }
@@ -344,13 +291,13 @@
   },
   "x-docuccino": {
     "document": {
-      "id": "doc:public",
-      "configHash": "325af5cca035e5e24961fa232b988bc292c737eb2ca9c69ffdbd0c408acb7237",
-      "contentHash": "06741374db0a687a489e12bda640673486f0347a57b6e577ff58ae36b8379154"
+      "id": "doc:spelling",
+      "configHash": "f678e6d067f92572e3483e57f852f62abab3dabc7cd5be31952efb3f25119d73",
+      "contentHash": "5eb80691a95a443ba27194bd879fd25f16973e35fadaea687debc029329eeba9"
     },
     "generator": {
       "name": "docuccino/laravel",
-      "version": "0.8.3",
+      "version": "0.14.1",
       "specVersion": "1.0.0"
     }
   }

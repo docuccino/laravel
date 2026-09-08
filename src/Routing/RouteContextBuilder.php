@@ -14,6 +14,7 @@ use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Provenance\SourcePathResolver;
 use Docuccino\Core\TypeGrammar\DocBlockReader;
+use Docuccino\Laravel\Support\MiddlewareName;
 use Illuminate\Foundation\Http\FormRequest as LaravelFormRequest;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
@@ -101,6 +102,16 @@ final class RouteContextBuilder
         // fragment — an attribute added to a base controller must retire warm fragments.
         if ($reflected->controllerClass !== null) {
             $context->recordDependencyFiles(DeclarationFiles::of($reflected->controllerClass));
+        }
+
+        // A route's middleware CLASSES answer what no name can: a middleware extending the framework's
+        // authenticator authenticates the way its parent does, and the
+        // framework's own subtraction gates on `is_subclass_of`. So their hierarchies key the fragment
+        // too — one that stops extending publishes a different document and moves nothing else the key
+        // holds. Recorded here rather than in the readers because several of them ask, and one of them
+        // asking is enough to make the answer part of what this route was built from.
+        foreach ($descriptor->middleware as $middleware) {
+            $context->recordDependencyFiles(DeclarationFiles::of(MiddlewareName::name($middleware)));
         }
 
         return $context;

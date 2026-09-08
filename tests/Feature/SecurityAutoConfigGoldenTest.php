@@ -8,6 +8,7 @@ use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
 use Docuccino\Laravel\Pipeline\DocumentGenerator;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
+use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Routing\Router;
 use Workbench\App\Http\Controllers\FormController;
 
@@ -27,6 +28,11 @@ beforeEach(function (): void {
         ->middleware(['auth:sanctum', 'Laravel\\Sanctum\\Http\\Middleware\\EnsureFrontendRequestsAreStateful']);
     $router->get('api/secure/scoped', [FormController::class, 'index'])
         ->middleware(['auth:api', 'scopes:read,write']);
+    // The same dual-auth route with the authenticator written as its own class name, which is what
+    // `Authenticate::using()` renders: Sanctum reads the guard out of it for token mode and gates
+    // stateful mode on it, so the alias-only reading published this one with no scheme at all.
+    $router->get('api/secure/dual-by-class', [FormController::class, 'index'])
+        ->middleware([Authenticate::using('sanctum'), 'Laravel\\Sanctum\\Http\\Middleware\\EnsureFrontendRequestsAreStateful']);
 
     config()->set('docuccino.documents', [
         'public' => [
@@ -75,9 +81,12 @@ it('lists only the bearer token publicly but both modes internally', function ()
     )->document->toArray();
 
     expect($public['components']['securitySchemes'])->not->toHaveKey('sanctumStateful')
-        ->and($public['paths']['/api/secure/dual']['get']['security'])->toBe([['sanctumToken' => []]]);
+        ->and($public['paths']['/api/secure/dual']['get']['security'])->toBe([['sanctumToken' => []]])
+        // The class-name spelling of the authenticator is the same route: same modes, same schemes.
+        ->and($public['paths']['/api/secure/dual-by-class']['get']['security'])->toBe([['sanctumToken' => []]]);
 
     expect($internal['components']['securitySchemes'])->toHaveKeys(['sanctumToken', 'sanctumStateful'])
         ->and($internal['paths']['/api/secure/dual']['get']['security'])->toBe([['sanctumToken' => []], ['sanctumStateful' => []]])
+        ->and($internal['paths']['/api/secure/dual-by-class']['get']['security'])->toBe([['sanctumToken' => []], ['sanctumStateful' => []]])
         ->and($internal['paths']['/api/secure/scoped']['get']['security'])->toBe([['passport' => ['read', 'write']]]);
 });

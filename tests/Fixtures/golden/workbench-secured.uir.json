@@ -639,6 +639,80 @@
         }
       }
     },
+    "/api/authenticated-forms": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:wdcrm4446iimo7d7",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FormController.php",
+                "line": 23,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "description",
+                "summary"
+              ]
+            }
+          ]
+        },
+        "summary": "List forms.",
+        "description": "Returns the collection of forms visible to the caller.",
+        "tags": [
+          "Forms"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:g4vepubmcyupgjno",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "items",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FormData"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/authorized-forms": {
       "get": {
         "x-docuccino": {
@@ -3170,6 +3244,80 @@
         }
       }
     },
+    "/api/unguarded-forms": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:xneufqmpzi776zaa",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FormController.php",
+                "line": 23,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "description",
+                "summary"
+              ]
+            }
+          ]
+        },
+        "summary": "List forms.",
+        "description": "Returns the collection of forms visible to the caller.",
+        "tags": [
+          "Forms"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:xx54smmmx2s2d443",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "items",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FormData"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/verified-forms": {
       "get": {
         "x-docuccino": {
@@ -4400,7 +4548,7 @@
     "document": {
       "id": "doc:secured",
       "configHash": "5ce1291fb113fe0f9cc8e7abdb8b501a7a5e66477f542fefa0655446f5b082cf",
-      "contentHash": "5659653413d647abc0ac578fdce2548bbd8bafcb6c68d8a780158072dfa4e655"
+      "contentHash": "bd50d3f41bd30e2365af4501e17f55ac07544f50421a2144a95aa390010b6c53"
     },
     "generator": {
       "name": "docuccino/laravel",

@@ -102,6 +102,100 @@
         }
       }
     },
+    "/api/secure/dual-by-class": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:7oous6lv4lkp2ggx",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FormController.php",
+                "line": 23,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "description",
+                "summary"
+              ]
+            },
+            {
+              "producer": "integration:sanctum",
+              "layer": "integration",
+              "fields": [
+                "security"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FormController.php",
+                "line": 23,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
+              }
+            }
+          ]
+        },
+        "summary": "List forms.",
+        "description": "Returns the collection of forms visible to the caller.",
+        "tags": [
+          "Forms"
+        ],
+        "security": [
+          {
+            "sanctumToken": []
+          },
+          {
+            "sanctumStateful": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:m6btrrx3ktx2k6ht",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "items",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FormData"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/secure/scoped": {
       "get": {
         "x-docuccino": {
@@ -264,7 +358,7 @@
     "document": {
       "id": "doc:internal",
       "configHash": "58a8092e2ddce2265e379ab7e3d6e81ff274d5ce60755bd9e428ab667a642338",
-      "contentHash": "21d86745bdaae11662f3ba8d4cb880afb398b8c7e27ab6d1a1257d6f11626073"
+      "contentHash": "cb2a627860e0754835a48e694ef09ad6c9c890e6d2816cb2d41d8ece1552231f"
     },
     "generator": {
       "name": "docuccino/laravel",

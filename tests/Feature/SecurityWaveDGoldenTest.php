@@ -8,6 +8,7 @@ use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
 use Docuccino\Laravel\Pipeline\DocumentGenerator;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
+use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Routing\Router;
 use Laravel\Passport\Passport;
 use Workbench\App\Http\Controllers\AuthAttributesController;
@@ -45,6 +46,11 @@ beforeEach(function (): void {
     $router->get('api/wave-d/machine', [FormController::class, 'index'])->middleware('client:read,write');
     // A passport-driver guard recognised by its driver, not the name `api`.
     $router->get('api/wave-d/partner', [FormController::class, 'index'])->middleware('auth:partner');
+    // The same guard named by the authenticator's own class name, which is what `Authenticate::using()`
+    // renders: the guard→driver resolution reads the guard out of the middleware string, so the
+    // alias-only reading resolved no driver and no integration claimed the route.
+    $router->get('api/wave-d/partner-by-class', [FormController::class, 'index'])
+        ->middleware(Authenticate::using('partner'));
 
     config()->set('docuccino.documents', [
         'wave-d-auth' => [

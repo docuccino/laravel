@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use Docuccino\Laravel\Integrations\Sanctum\SanctumDetector;
 use Docuccino\Laravel\Integrations\Sanctum\SanctumScheme;
+use Illuminate\Auth\Middleware\Authenticate;
+use Illuminate\Auth\Middleware\AuthenticateWithBasicAuth;
 
 const STATEFUL = 'Laravel\\Sanctum\\Http\\Middleware\\EnsureFrontendRequestsAreStateful';
 
@@ -31,6 +33,17 @@ it('detects the active Sanctum modes across the detection combinations', functio
     // Driver-based: an `api` guard on a token driver is NOT Sanctum token mode.
     'neither (api guard driver is token)' => [['auth:api'], ['api' => 'token'], 'web', []],
     'neither (unknown guard absent from the map)' => [['auth:partner'], [], 'web', []],
+    // Every row above that names the authenticator, again in the spelling `Authenticate::using()`
+    // renders. Both readers of it are here: the token guard, and the auth gate stateful mode needs.
+    'token only (Authenticate::using(sanctum))' => [[Authenticate::using('sanctum')], [], 'web', ['token']],
+    'token only (Authenticate::using(web,sanctum))' => [[Authenticate::using('web', 'sanctum')], [], 'web', ['token']],
+    'token only (class-spelled custom sanctum-driver guard)' => [[Authenticate::using('mobile')], ['mobile' => 'sanctum'], 'web', ['token']],
+    'token only (bare Authenticate, default guard is sanctum)' => [[Authenticate::class], ['api' => 'sanctum'], 'api', ['token']],
+    'stateful only (cookie SPA, class-spelled web guard)' => [[STATEFUL, Authenticate::using('web')], [], 'web', ['stateful']],
+    'stateful only (class-spelled basic auth gate)' => [[STATEFUL, AuthenticateWithBasicAuth::using('web')], [], 'web', ['stateful']],
+    'both modes (class-spelled dual auth on one route)' => [[Authenticate::using('sanctum'), STATEFUL], [], 'web', ['token', 'stateful']],
+    'neither (class-spelled plain web auth)' => [[Authenticate::using('web')], [], 'web', []],
+    'neither (class-spelled api guard driver is token)' => [[Authenticate::using('api')], ['api' => 'token'], 'web', []],
 ]);
 
 it('builds the token and stateful schemes with auth-section prose', function (): void {

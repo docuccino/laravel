@@ -21,12 +21,9 @@ use Illuminate\Contracts\Auth\Access\Gate;
  * the check. A Gate this cannot read ({@see GateInternals}) contributes the empty string: a made-up
  * segment would key the cache on a fact nothing here established.
  *
- * Two segments carry the map, because resolution reads it two ways. Most of it is a SET: an exact
- * registration is a keyed lookup, so sorting keeps a reorder from churning every warm fragment over a
- * change no resolution can see. But the last resolution branch walks the map and takes the FIRST
- * registration the model is a subclass of, so the registrations that branch can reach owe their
- * SEQUENCE as well ({@see GateInternals::shadowable()}) — sorting those away is the cache being told
- * nothing changed while the policy a gate resolves to did.
+ * Two segments carry the map, because resolution reads it two ways: most of it is a keyed lookup and is
+ * hashed as a sorted SET, while the registrations the subclass-fallback branch can reach owe their
+ * SEQUENCE too — {@see GateInternals::shadowable()} owns that rule and states why.
  *
  * Registered unconditionally: gates are the framework's own authorization vocabulary and belong to no
  * package, the reason {@see AuthConfigDigestContributor} is too.
@@ -50,7 +47,7 @@ final class GatePoliciesDigestContributor implements EnvironmentDigestContributo
         $records = [];
         $shadowable = [];
         foreach ($internals->policies as $class => $policy) {
-            $record = (string) $class.'=>'.(is_string($policy) ? $policy : get_debug_type($policy));
+            $record = $class.'=>'.(is_string($policy) ? $policy : get_debug_type($policy));
             $records[] = $record;
             if (GateInternals::shadowable($class)) {
                 $shadowable[] = $record;

@@ -687,13 +687,16 @@ it('recomputes a verdict a reordered registration moved, instead of replaying it
     gateRegisteredInOrder([[Weatherproof::class, WeatherproofPolicy::class], [Illuminated::class, IlluminatedPolicy::class]]);
     $engine->analyzeCount = 0;
     $warm = diagnosticRecords(generateDocument()->diagnostics);
+    // Read while the warm cache is still the one that answered: the two cold builds below analyse
+    // everything, so a count taken after them is greater than zero whatever the digest did.
+    $warmAnalyses = $engine->analyzeCount;
 
     // What the warm build owes: the same registrations, read from an empty cache.
     fragmentCacheDir('fragments');
     $coldFindings = gateFindings();
     $cold = diagnosticRecords(generateDocument()->diagnostics);
 
-    expect($engine->analyzeCount)->toBeGreaterThan(0)
+    expect($warmAnalyses)->toBeGreaterThan(0)
         // The verdict really did move — silence, now that the gate resolves to the policy that can deny
         // — so the equality below is not being asserted over a document that never changed.
         ->and($coldFindings)->not->toHaveKey('GET /api/hoardings-temp')
