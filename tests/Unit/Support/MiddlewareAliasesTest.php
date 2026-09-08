@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Laravel\Support\MiddlewareAliases;
+use Docuccino\Laravel\Support\MiddlewareRegistrations;
 use Docuccino\Laravel\Support\MiddlewareResolution;
 use Docuccino\Laravel\Tests\Fixtures\Middleware\ApplicationAuthenticate;
 use Docuccino\Laravel\Tests\Fixtures\Middleware\MergesATenant;
@@ -15,14 +16,14 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Routing\Router;
 
 /**
- * Where the alias map comes from. A router carries none until the HTTP kernel is constructed, and a
- * documentation build usually runs from the console, where nothing constructs it — so a reader of the
- * router's map alone is blind in exactly the context the product runs in.
+ * The floor under the alias map. A router carries none until the HTTP kernel is constructed, and a
+ * build has that done before reading it ({@see MiddlewareRegistrations}); this is what is left where
+ * that could not be performed — never nothing, and never narrower than the framework's own table.
  */
 it('answers the framework\'s own default aliases for a router nothing has synced', function (): void {
     $bare = new Router(new Dispatcher);
 
-    // The premise, stated from the framework: this really is the state a console build finds.
+    // The premise, stated from the framework: an unsynced router really does hold nothing.
     expect($bare->getMiddleware())->toBe([]);
 
     $aliases = MiddlewareAliases::of($bare);
@@ -33,8 +34,8 @@ it('answers the framework\'s own default aliases for a router nothing has synced
         ->and($aliases)->toHaveKey('auth')
         ->and($aliases['auth'])->toBe(Authenticate::class)
         // And what the fallback is FOR: without it the subtraction stops equating the two spellings of
-        // one middleware in a console build, so a route that opts out of its authenticator keeps a 401
-        // it does not enforce.
+        // one middleware wherever the map could not be filled, so a route that opts out of its
+        // authenticator keeps a 401 it does not enforce.
         ->and(MiddlewareResolution::subtract(['auth:web'], [Authenticate::using('web')], $aliases))->toBe([]);
 });
 

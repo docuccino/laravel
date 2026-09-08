@@ -21,17 +21,16 @@ use Throwable;
  * upgraded from one still carries, and then `auth:web` and `App\Http\Middleware\Authenticate:web` are
  * one middleware while `auth:web` and the framework's `Authenticate:web` are two.
  *
- * The router's map alone is not enough, because it is EMPTY until the HTTP kernel is constructed —
- * that is what calls `syncMiddlewareToRouter()` — and a documentation build usually runs from the
- * console, where nothing resolves that kernel. Measured on a stock Laravel 12 application booted
- * through the console kernel: no aliases and no middleware groups at all, while the routes are all
- * there. The framework's default table is the best available reading of that, and it can only widen
- * the answer: `Middleware::getMiddlewareAliases()` is `array_merge(defaultAliases(), $customAliases)`,
- * so a real map is always a superset of the defaults — the fallback can neither introduce an alias the
- * framework would not have had nor resurrect one the application replaced.
+ * The router's map is EMPTY until the HTTP kernel is constructed — that is what calls
+ * `syncMiddlewareToRouter()` — so a build has the router filled before reading it
+ * ({@see MiddlewareRegistrations}). The framework's default table underneath is what survives a fill
+ * that could not be performed, and it can only widen the answer:
+ * `Middleware::getMiddlewareAliases()` is `array_merge(defaultAliases(), $customAliases)`, so a real
+ * map is always a superset of the defaults — the fallback can neither introduce an alias the framework
+ * would not have had nor resurrect one the application replaced.
  *
- * What it cannot stand in for is an alias of the application's OWN, which is invisible to a build that
- * constructs no kernel. Where that costs a published fact this says so ({@see unmatchedExclusion()}).
+ * What it cannot stand in for is an alias of the application's OWN, which is invisible wherever that
+ * fill failed. Where that costs a published fact this says so ({@see unmatchedExclusion()}).
  *
  * The map reaches the published document only through the middleware list the route resolver hands on,
  * and that list is folded into {@see RouteDescriptor::cacheSignature()} verbatim — so a map edited in a
@@ -86,11 +85,9 @@ final class MiddlewareAliases
             code: 'route.unmatched-exclusion',
             message: sprintf(
                 'Route excludes %s, which removed no middleware and names no alias this build could resolve. '
-                .'The aliases an application registers itself are applied when the HTTP kernel is constructed, which '
-                .'a documentation build does not do, so only the framework\'s own defaults are known here. Either the '
-                .'route never carried it — check the spelling — or it is another spelling of one the route does carry, '
-                .'and the responses behind that middleware are documented but not enforced. Writing both sides in the '
-                .'same spelling settles it.',
+                .'Either the route never carried it — check the spelling — or it is another spelling of one the route '
+                .'does carry, and the responses behind that middleware are documented but not enforced. Writing both '
+                .'sides in the same spelling settles it.',
                 (string) NameList::of($entries),
             ),
             routeSignature: $routeSignature,
@@ -149,9 +146,9 @@ final class MiddlewareAliases
             code: 'route.middleware-aliases-unreadable',
             message: sprintf(
                 'Could not read the framework\'s default middleware aliases (%s): %s. Middleware is resolved through '
-                .'whatever aliases the router itself holds, which is nothing at all in a console build — so a '
-                .'middleware named by its class is no longer equated with its alias, and a route that opts out of one '
-                .'in the other spelling keeps the response it does not enforce.',
+                .'whatever aliases the router itself holds — nothing at all where the HTTP kernel could not be resolved '
+                .'either, so a middleware named by its class is no longer equated with its alias, and a route that opts '
+                .'out of one in the other spelling keeps the response it does not enforce.',
                 $configuration.'::'.self::TABLE.'()',
                 $reason,
             ),

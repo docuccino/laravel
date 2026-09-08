@@ -13,8 +13,10 @@ use Docuccino\Core\Extensions\Contracts\RouteResolver;
 use Docuccino\Core\Support\Glob;
 use Docuccino\Laravel\Support\MiddlewareAliases;
 use Docuccino\Laravel\Support\MiddlewareName;
+use Docuccino\Laravel\Support\MiddlewareRegistrations;
 use Docuccino\Laravel\Support\MiddlewareResolution;
 use Docuccino\Laravel\Support\UnknownDocumentPins;
+use Illuminate\Contracts\Container\Container;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
 
@@ -35,6 +37,8 @@ final class LaravelRouteResolver implements RouteResolver
     /** @var list<Diagnostic> */
     private array $middlewareDiagnostics = [];
 
+    private readonly MiddlewareRegistrations $registrations;
+
     public function __construct(
         private readonly Router $router,
         private readonly RouteReflector $reflector = new RouteReflector,
@@ -43,12 +47,18 @@ final class LaravelRouteResolver implements RouteResolver
         // Supplied by the service provider with base_path('vendor'); null disables vendor exclusion.
         private readonly ?VendorRoutePolicy $vendorPolicy = null,
         private readonly UnknownDocumentPins $pins = new UnknownDocumentPins,
-    ) {}
+        // How the router gets the middleware registrations it does not have until something constructs
+        // the HTTP kernel, which a console build does not ({@see MiddlewareRegistrations}).
+        ?Container $app = null,
+    ) {
+        $this->registrations = new MiddlewareRegistrations($router, $app);
+    }
 
     /**
      * What the walk found and could not say for itself, emptied as it is read: the `#[InDocs]` keys
      * naming no configured document, whose only effect is a route that is not there
-     * ({@see UnknownDocumentPins}), and what the alias map could not answer ({@see MiddlewareAliases}).
+     * ({@see UnknownDocumentPins}), and what the middleware maps could not answer
+     * ({@see MiddlewareRegistrations}).
      * Drained by the generator once the walk is complete.
      *
      * @return list<Diagnostic>
@@ -66,10 +76,9 @@ final class LaravelRouteResolver implements RouteResolver
         /** @var iterable<Route> $routes */
         $routes = $this->router->getRoutes();
 
-        // Build-constant, and read once rather than per route: the alias map costs a reflection and an
-        // array merge to assemble ({@see MiddlewareAliases}).
-        $aliases = MiddlewareAliases::of($this->router, $this->record(...));
-        $groups = $this->router->getMiddlewareGroups();
+        // Build-constant, and read once rather than per route: filling the router costs a container
+        // resolution and the alias map a reflection and an array merge ({@see MiddlewareRegistrations}).
+        ['aliases' => $aliases, 'groups' => $groups] = $this->registrations->read($this->record(...));
 
         foreach ($routes as $route) {
             $descriptor = $this->describe($route, $aliases, $groups);

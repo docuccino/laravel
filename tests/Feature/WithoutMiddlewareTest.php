@@ -187,17 +187,14 @@ it('publishes the 401 and the security requirement for exactly the routes that s
 });
 
 /**
- * The same answer for a router the HTTP kernel has never synced, which is the state a console build
- * finds: the alias map is empty until that constructor runs. A reader of the router's own map alone
- * stops equating the two spellings of one middleware there, and the workbench's `api/unguarded-forms`
- * — which opts out of its authenticator in the other spelling — gets back a 401 it does not enforce.
+ * The same answer under the boot a console build performs, where nothing has synced the router
+ * ({@see refreshWithoutHttpKernel()}). A reader that took the router's empty map at face value would
+ * stop equating the two spellings of one middleware there, and the workbench's `api/unguarded-forms` —
+ * which opts out of its authenticator in the other spelling — would get back a 401 it does not enforce.
  */
 it('answers the same for a router the HTTP kernel has never synced', function (): void {
-    $this->refreshApplication();
+    refreshWithoutHttpKernel();
     bindStubEngine();
-
-    // The premise, from the framework: this really is what a console build reads.
-    expect(app('router')->getMiddleware())->toBe([]);
 
     $paths = generateDocument()->document->toArray()['paths'];
 

@@ -40,9 +40,9 @@ beforeEach(function (): void {
     $router->get('api/aliased/excluded-by-framework-class', [FormController::class, 'index'])
         ->middleware('auth:web')
         ->withoutMiddleware(Authenticate::using('web'));
-    // And an exclusion naming an alias no map here explains. An application's own aliases are applied
-    // when the HTTP kernel is constructed, which a documentation build does not do, so an exclusion
-    // written in one may subtract nothing and leave the route carrying a response nothing enforces.
+    // And an exclusion naming an alias no map here explains — a misspelling, or one registered somewhere
+    // this application never reaches — which subtracts nothing and leaves the route carrying a response
+    // nothing enforces.
     $router->get('api/aliased/excluded-by-unreadable-alias', [FormController::class, 'index'])
         ->middleware('auth:web')
         ->withoutMiddleware('tenant:acme');
