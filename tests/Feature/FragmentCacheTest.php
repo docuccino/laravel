@@ -239,6 +239,29 @@ it('invalidates fragments when Relation::morphMap() changes (booted-app cache in
     Relation::morphMap(['widget' => 'Docuccino\\Laravel\\Tests\\Fixtures\\Eloquent\\Widget', 'gadget' => 'Docuccino\\Laravel\\Tests\\Fixtures\\Eloquent\\Gadget'], false);
 });
 
+it('invalidates fragments when two aliases for one model are reordered (booted-app cache input)', function (): void {
+    fragmentCacheDir('fragments');
+    $engine = new CountingTypeEngine(WorkbenchEngine::make());
+    app()->instance(TypeEngine::class, $engine);
+
+    // A model with two aliases serialises its `type` as whichever was registered FIRST, so this reorder
+    // changes the discriminator the document publishes while registering the same pairs. Nothing on
+    // disk moves, so the environment digest is the only thing that can carry it.
+    $widget = 'Docuccino\\Laravel\\Tests\\Fixtures\\Eloquent\\Widget';
+    $gadget = 'Docuccino\\Laravel\\Tests\\Fixtures\\Eloquent\\Gadget';
+    Relation::morphMap(['widget' => $widget, 'legacy_widget' => $widget, 'gadget' => $gadget], false);
+    generateDocument()->document;
+    $engine->analyzeCount = 0;
+
+    Relation::morphMap(['legacy_widget' => $widget, 'widget' => $widget, 'gadget' => $gadget], false);
+    generateDocument()->document;
+
+    expect($engine->analyzeCount)->toBeGreaterThan(0);
+
+    // Restore the morph map so this test never leaks into another (see TestCase setUp).
+    Relation::morphMap(['widget' => $widget, 'gadget' => $gadget], false);
+});
+
 it('invalidates fragments when a render callback is registered (booted-app cache input)', function (): void {
     fragmentCacheDir('fragments');
     $engine = new CountingTypeEngine(WorkbenchEngine::make());

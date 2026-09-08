@@ -15,9 +15,12 @@ use Docuccino\Laravel\Registry\DefaultExtensions;
 use Docuccino\Laravel\Routing\VendorRoutePolicy;
 use Docuccino\Laravel\Support\CanGate;
 use Docuccino\Laravel\Support\GateDenial;
+use Docuccino\Laravel\Support\GateInternals;
 use Docuccino\Laravel\Support\GatePoliciesDigestContributor;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Awning;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Banner;
+use Docuccino\Laravel\Tests\Fixtures\Authorization\Hoarding;
+use Docuccino\Laravel\Tests\Fixtures\Authorization\Illuminated;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Kiosk;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\KioskController;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Marquee;
@@ -25,12 +28,15 @@ use Docuccino\Laravel\Tests\Fixtures\Authorization\MarqueeAccess;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Placard;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Policies\BannerPolicy;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Policies\BaseSignagePolicy;
+use Docuccino\Laravel\Tests\Fixtures\Authorization\Policies\IlluminatedPolicy;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Policies\KioskPolicy;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Policies\PlacardPolicy;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Policies\SignagePolicy;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Policies\TurnstilePolicy;
+use Docuccino\Laravel\Tests\Fixtures\Authorization\Policies\WeatherproofPolicy;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Signage;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Turnstile;
+use Docuccino\Laravel\Tests\Fixtures\Authorization\Weatherproof;
 use Docuccino\Laravel\Tests\Support\CountingTypeEngine;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Illuminate\Auth\Access\Gate as IlluminateGate;
@@ -594,17 +600,104 @@ it('digests every gate registration that can change a verdict', function (): voi
         ->and($withGuesser)->toContain('guesser:y');
 });
 
-it('digests a policy map by content rather than by the order it was registered', function (): void {
-    $one = app(GateContract::class);
-    $one->policy(Marquee::class, MarqueeAccess::class);
-    $one->policy(Placard::class, PlacardPolicy::class);
-    $first = (new GatePoliciesDigestContributor(static fn (): GateContract => $one))->digest();
+/**
+ * The policy map as an ORDER: the app's Gate carrying exactly these registrations, in exactly this
+ * sequence. `Gate::policy()` cannot express that on its own — assigning a key the map already holds
+ * leaves it where it was — so the map is emptied first, and the sequence is the whole input under test.
+ *
+ * @param  list<array{class-string, class-string}>  $registrations
+ */
+function gateRegisteredInOrder(array $registrations): GateContract
+{
+    $gate = app(GateContract::class);
+    (new ReflectionProperty(IlluminateGate::class, 'policies'))->setValue($gate, []);
+    foreach ($registrations as [$subject, $policy]) {
+        $gate->policy($subject, $policy);
+    }
 
-    $two = clone app(GateContract::class);
-    $two->policy(Placard::class, PlacardPolicy::class);
-    $two->policy(Marquee::class, MarqueeAccess::class);
+    return $gate;
+}
 
-    expect((new GatePoliciesDigestContributor(static fn (): GateContract => $two))->digest())->toBe($first);
+it('digests an exact registration by content rather than by the order it was registered', function (): void {
+    // An exact registration is a keyed lookup, so its position cannot change what any gate resolves to.
+    // A reorder that moves no resolution must move no digest either: keying the whole map as a sequence
+    // would rebuild every fragment in the application over a change nothing can observe.
+    //
+    // Both subjects are FINAL, which is what puts them here rather than in the row below: nothing can be
+    // a subclass of either, so neither is reachable by the one branch that reads the map in order.
+    // Asserted, because a fixture that stopped being final would leave this row quietly testing the
+    // opposite rule and still passing.
+    expect((new ReflectionClass(Marquee::class))->isFinal())->toBeTrue()
+        ->and((new ReflectionClass(Placard::class))->isFinal())->toBeTrue();
+
+    $digest = static fn (GateContract $gate): string => (new GatePoliciesDigestContributor(static fn (): GateContract => $gate))->digest();
+
+    $first = $digest(gateRegisteredInOrder([[Marquee::class, MarqueeAccess::class], [Placard::class, PlacardPolicy::class]]));
+    $second = $digest(gateRegisteredInOrder([[Placard::class, PlacardPolicy::class], [Marquee::class, MarqueeAccess::class]]));
+
+    expect($second)->toBe($first);
+});
+
+it('digests the subclass fallback as an order, because that is how a gate resolves it', function (): void {
+    // Resolution's last branch walks the policy map and takes the FIRST registration the model is a
+    // subclass of. So two applications that registered the same two parent types in opposite orders
+    // authorize the same model with DIFFERENT policies, and a digest keying the fragment cache on the
+    // resolution has to say so — or a build that reorders its registrations is served a fragment
+    // computed under the other resolution.
+    $digest = static fn (GateContract $gate): string => (new GatePoliciesDigestContributor(static fn (): GateContract => $gate))->digest();
+
+    // Read while each order is in place: there is one Gate in the application, so the second
+    // registration sequence replaces the first rather than standing beside it.
+    $reading = static fn (GateContract $gate): array => [
+        'digest' => $digest($gate),
+        'framework' => $gate->getPolicyFor(Hoarding::class),
+        'mirror' => GateInternals::read($gate)?->policyClassFor(Hoarding::class),
+    ];
+
+    $first = $reading(gateRegisteredInOrder([[Illuminated::class, IlluminatedPolicy::class], [Weatherproof::class, WeatherproofPolicy::class]]));
+    $second = $reading(gateRegisteredInOrder([[Weatherproof::class, WeatherproofPolicy::class], [Illuminated::class, IlluminatedPolicy::class]]));
+
+    // The premise first, and taken from the FRAMEWORK's own resolution rather than from the mirror this
+    // package keys on: the same two registrations really do authorize with two different policies.
+    // Without it the digest assertion would pass over a resolution that never moved.
+    expect($first['framework'])->toBeInstanceOf(IlluminatedPolicy::class)
+        ->and($second['framework'])->toBeInstanceOf(WeatherproofPolicy::class)
+        // And the mirror agrees with it, which is what makes the digest's partition the right one.
+        ->and($first['mirror'])->toBe(IlluminatedPolicy::class)
+        ->and($second['mirror'])->toBe(WeatherproofPolicy::class)
+        ->and($second['digest'])->not->toBe($first['digest']);
+});
+
+it('recomputes a verdict a reordered registration moved, instead of replaying it warm', function (): void {
+    // The property under repair, asserted where it is owed: a warm build must equal a cold one in
+    // DIAGNOSTICS as well as in bytes. Reordering two parent-type registrations moves the gate to the
+    // other policy, and the two disagree about whether it can deny — so the verdict is visible in
+    // whether the check reports at all. No file on disk changes, so nothing but the digest can carry it.
+    app('router')->get('api/hoardings-temp', [KioskController::class, 'index'])
+        ->middleware('auth:web')
+        ->can('viewAny', Hoarding::class);
+    app('router')->getRoutes()->refreshNameLookups();
+
+    gateRegisteredInOrder([[Illuminated::class, IlluminatedPolicy::class], [Weatherproof::class, WeatherproofPolicy::class]]);
+    $engine = gateWarmedEngine();
+
+    // Reported, because the gate resolved to the policy whose body cannot deny.
+    expect(gateFindings())->toHaveKey('GET /api/hoardings-temp');
+
+    gateRegisteredInOrder([[Weatherproof::class, WeatherproofPolicy::class], [Illuminated::class, IlluminatedPolicy::class]]);
+    $engine->analyzeCount = 0;
+    $warm = diagnosticRecords(generateDocument()->diagnostics);
+
+    // What the warm build owes: the same registrations, read from an empty cache.
+    fragmentCacheDir('fragments');
+    $coldFindings = gateFindings();
+    $cold = diagnosticRecords(generateDocument()->diagnostics);
+
+    expect($engine->analyzeCount)->toBeGreaterThan(0)
+        // The verdict really did move — silence, now that the gate resolves to the policy that can deny
+        // — so the equality below is not being asserted over a document that never changed.
+        ->and($coldFindings)->not->toHaveKey('GET /api/hoardings-temp')
+        ->and($warm)->toBe($cold);
 });
 
 it('says nothing about a policy method a package declares', function (): void {

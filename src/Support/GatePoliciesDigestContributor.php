@@ -18,8 +18,15 @@ use Illuminate\Contracts\Auth\Access\Gate;
  *
  * The map's KEYS and VALUES both count, since either changes which policy a `can:` gate resolves to;
  * the hook counts are enough, because a hook's body is never read — its mere presence is what silences
- * the check. Sorted, and a Gate this cannot read ({@see GateInternals}) contributes the empty string:
- * a made-up segment would key the cache on a fact nothing here established.
+ * the check. A Gate this cannot read ({@see GateInternals}) contributes the empty string: a made-up
+ * segment would key the cache on a fact nothing here established.
+ *
+ * Two segments carry the map, because resolution reads it two ways. Most of it is a SET: an exact
+ * registration is a keyed lookup, so sorting keeps a reorder from churning every warm fragment over a
+ * change no resolution can see. But the last resolution branch walks the map and takes the FIRST
+ * registration the model is a subclass of, so the registrations that branch can reach owe their
+ * SEQUENCE as well ({@see GateInternals::shadowable()}) — sorting those away is the cache being told
+ * nothing changed while the policy a gate resolves to did.
  *
  * Registered unconditionally: gates are the framework's own authorization vocabulary and belong to no
  * package, the reason {@see AuthConfigDigestContributor} is too.
@@ -41,12 +48,18 @@ final class GatePoliciesDigestContributor implements EnvironmentDigestContributo
         }
 
         $records = [];
+        $shadowable = [];
         foreach ($internals->policies as $class => $policy) {
-            $records[] = (string) $class.'=>'.(is_string($policy) ? $policy : get_debug_type($policy));
+            $record = (string) $class.'=>'.(is_string($policy) ? $policy : get_debug_type($policy));
+            $records[] = $record;
+            if (GateInternals::shadowable($class)) {
+                $shadowable[] = $record;
+            }
         }
         sort($records);
 
         return 'gate-policies:'.implode(',', $records)
+            .'|subclass-order:'.implode(',', $shadowable)
             .'|guesser:'.($internals->guesser ? 'y' : 'n')
             .'|before:'.$internals->beforeHooks
             .'|after:'.$internals->afterHooks;

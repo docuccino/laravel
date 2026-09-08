@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Support;
 
 use Illuminate\Contracts\Auth\Access\Gate;
+use ReflectionClass;
 use ReflectionMethod;
 use ReflectionObject;
 use Throwable;
@@ -138,6 +139,36 @@ final class GateInternals
             return is_string($policy) && class_exists($policy) ? ltrim($policy, '\\') : null;
         } catch (Throwable) {
             return null;
+        }
+    }
+
+    /**
+     * Whether a registered subject can be reached by the LAST branch of {@see policyClassFor()} — the
+     * walk over the map that takes the first registration the model is a subclass of. That branch is
+     * the only one whose answer depends on the map's ORDER: an exact registration is a keyed lookup,
+     * and the `#[UsePolicy]` and guesser branches read the model rather than the map. So it is the only
+     * branch whose registrations owe their sequence to anything keying a cache on the resolution
+     * ({@see GatePoliciesDigestContributor}), and the reason the rest can still be keyed as a set.
+     *
+     * `is_subclass_of()` is false for a class against itself, so a `final` class can never be reached
+     * here — and neither can a name that is no class or interface at all, a trait included, since
+     * nothing is a subclass of one. Anything this cannot decide answers yes: over-keying costs a
+     * rebuild, under-keying replays a resolution that is no longer true.
+     */
+    public static function shadowable(int|string $subject): bool
+    {
+        if (! is_string($subject)) {
+            return true;
+        }
+
+        try {
+            if (interface_exists($subject)) {
+                return true;
+            }
+
+            return class_exists($subject) && ! (new ReflectionClass($subject))->isFinal();
+        } catch (Throwable) {
+            return true;
         }
     }
 
