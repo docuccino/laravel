@@ -300,8 +300,8 @@
   "x-docuccino": {
     "document": {
       "id": "doc:default",
-      "configHash": "5f2fa7f04d876587d654542b680caee47345866b9fdf48bc1e55e33f72a81989",
-      "contentHash": "1a4323bde5ab8225ca2246f1194eff2c571338c836b6604c1c903f0e858e43c3"
+      "configHash": "92d5a8904b3c9ed4dc1d69993340515b161bddad43ae6910d0ac9d158eb168ac",
+      "contentHash": "fa43ee0518ddf2bd2eab9149f84510156fabd238b446e93c6334227198a8e89d"
     },
     "generator": {
       "name": "docuccino/laravel",

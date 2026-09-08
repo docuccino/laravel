@@ -111,6 +111,47 @@ it('keeps fragments warm when only the export destination changes', function ():
         ->and($engine->analyzeCount)->toBe(0);
 });
 
+it('keeps fragments warm when only the viewer wiring changes, and cold when shaping config does', function (): void {
+    fragmentCacheDir('fragments');
+    $engine = new CountingTypeEngine(WorkbenchEngine::make());
+    app()->instance(TypeEngine::class, $engine);
+
+    $cold = generateDocument();
+    $coldBytes = (new UirEmitter)->emit($cold->document);
+    expect($engine->analyzeCount)->toBeGreaterThan(0);
+    $engine->analyzeCount = 0;
+
+    // All seven viewer keys at once — the route, its gate and middleware, where the served spec comes
+    // from, which driver renders it, where that driver's script loads, and the page configuration.
+    // Every one of them is boot-time wiring nothing in document assembly reads, so the whole bag
+    // rewritten must not cost one re-analysis, move one byte, or lose one diagnostic.
+    config()->set('docuccino.documents.default.viewer', [
+        'route' => '/internal/reference',
+        'gate' => 'view-api-docs',
+        'middleware' => ['api'],
+        'source' => 'cache',
+        'driver' => 'redoc',
+        'cdn' => true,
+        'configuration' => ['layout' => 'classic'],
+    ]);
+
+    $warm = generateDocument();
+
+    expect((new UirEmitter)->emit($warm->document))->toBe($coldBytes)
+        // Equal bytes are a canonical projection and not equal builds, so the graph is compared too.
+        ->and(graphDifferences($warm->document->toArray(), $cold->document->toArray()))->toBe([])
+        // Fewer diagnostics on a warm build is a silent degradation, not a saving.
+        ->and(diagnosticRecords($warm->diagnostics))->toBe(diagnosticRecords($cold->diagnostics))
+        ->and($engine->analyzeCount)->toBe(0);
+
+    // The other direction, off the same warm store: a key that DOES shape the document still busts it.
+    // Without this the row would also pass if nothing keyed the cache at all.
+    config()->set('docuccino.documents.default.representation.operation_id', 'controller-method');
+    generateDocument();
+
+    expect($engine->analyzeCount)->toBeGreaterThan(0);
+});
+
 it('invalidates a fragment when one of its dependency files changes', function (): void {
     fragmentCacheDir('fragments');
 
