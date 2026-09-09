@@ -19,6 +19,7 @@ use Docuccino\Laravel\Support\GateInternals;
 use Docuccino\Laravel\Support\GatePoliciesDigestContributor;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Awning;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Banner;
+use Docuccino\Laravel\Tests\Fixtures\Authorization\Fascia;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Hoarding;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Illuminated;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Kiosk;
@@ -28,12 +29,15 @@ use Docuccino\Laravel\Tests\Fixtures\Authorization\MarqueeAccess;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Placard;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Policies\BannerPolicy;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Policies\BaseSignagePolicy;
+use Docuccino\Laravel\Tests\Fixtures\Authorization\Policies\FasciaPolicy;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Policies\IlluminatedPolicy;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Policies\KioskPolicy;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Policies\PlacardPolicy;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Policies\SignagePolicy;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Policies\TurnstilePolicy;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Policies\WeatherproofPolicy;
+use Docuccino\Laravel\Tests\Fixtures\Authorization\Pylon;
+use Docuccino\Laravel\Tests\Fixtures\Authorization\PylonAccess;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Signage;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Turnstile;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Weatherproof;
@@ -808,25 +812,27 @@ it('stays silent when the application own policy-name guesser throws', function 
 });
 
 it('stays silent when the Gate resolution step it calls throws', function (): void {
-    // The other half of the resolution an application can reach into: a Gate SUBCLASS. The methods are
-    // invoked by reflection because none of them is public, so what one of them raises has to answer
-    // "a gate this could not resolve" and never reach the build.
-    $gate = new class(app(), static fn () => null) extends IlluminateGate
-    {
-        protected function getPolicyFromAttribute(string $class): ?string
-        {
-            throw new RuntimeException('nope');
-        }
-    };
-
+    // The other half of the resolution an application can reach into: the `#[UsePolicy]` step, which the
+    // Gate keeps protected and this therefore invokes by reflection. What provokes the raise is the
+    // MODEL — {@see Fascia} repeats an attribute PHP refuses to instantiate — so the throw comes out of
+    // the framework's own method, and what it raises has to answer "a gate this could not resolve" and
+    // never reach the build.
+    $gate = new IlluminateGate(app(), static fn () => null);
+    $denial = new GateDenial(static fn (): GateContract => $gate, static fn (): bool => false);
     $context = gateDenialContext();
-    $canGate = CanGate::parse('can:viewAny,'.Kiosk::class);
+    $raises = CanGate::parse('can:viewAny,'.Fascia::class);
+    $reads = CanGate::parse('can:viewAny,'.Pylon::class);
 
-    expect($canGate)->not->toBeNull()
-        ->and((new GateDenial(static fn (): GateContract => $gate, static fn (): bool => false))->undeniablePolicyMethod($context, $canGate))->toBeNull()
-        // Anti-vacuity: the same subclass without the throw resolves the very same gate.
-        ->and((new GateDenial(static fn (): GateContract => new IlluminateGate(app(), static fn () => null), static fn (): bool => false))
-            ->undeniablePolicyMethod($context, $canGate))->toBe(KioskPolicy::class.'::viewAny');
+    expect($raises)->not->toBeNull()
+        ->and($denial->undeniablePolicyMethod($context, $raises))->toBeNull()
+        // Anti-vacuity, in the two ways this row can go vacuous. The conventional policy the resolution
+        // falls through to is really there, and really named, so the silence is the raise rather than a
+        // model nothing answers for…
+        ->and(GateInternals::read($gate)?->guessedNames(Fascia::class))->toContain(FasciaPolicy::class)
+        ->and(class_exists(FasciaPolicy::class))->toBeTrue()
+        // …and the step that raised is really on the path: the same gate resolves a model whose attribute
+        // CAN be read to the policy that attribute names, which no convention here would find.
+        ->and($denial->undeniablePolicyMethod($context, $reads))->toBe(PylonAccess::class.'::viewAny');
 });
 
 it('says nothing it cannot read, rather than guessing', function (): void {
