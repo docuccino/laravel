@@ -48,3 +48,21 @@ it('defaults the engine mode to the in-process literal', function (): void {
 
     expect(data_get($config, 'engine.mode'))->toBe('in-process');
 });
+
+/*
+ * And it has to survive `config:cache`, which the production guide now states as a property of the
+ * file. The command serializes the WHOLE config array with `var_export()` and requires it back
+ * (Illuminate\Foundation\Console\ConfigCacheCommand::handle), so one closure anywhere under
+ * `docuccino` fails the command for the entire application — which is why route filtering and tag
+ * mapping name a class rather than taking a predicate. Round-tripping the real file is total where a
+ * token scan for `fn`/`function` would only be a guess at the shapes.
+ */
+it('round-trips through the serialization config:cache uses', function (): void {
+    /** @var array<string, mixed> $config */
+    $config = require dirname(__DIR__, 2).'/config/docuccino.php';
+
+    /** @var array<string, mixed> $cached */
+    $cached = eval('return '.var_export($config, true).';');
+
+    expect($cached)->toBe($config);
+});

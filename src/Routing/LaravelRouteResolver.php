@@ -245,7 +245,7 @@ final class LaravelRouteResolver implements RouteResolver
 
         $filter = $document->routeFilter;
 
-        return ! (is_callable($filter) && $filter($descriptor) === false);
+        return $filter === null || $filter->includes($descriptor);
     }
 
     /**

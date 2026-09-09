@@ -4637,8 +4637,8 @@
   "x-docuccino": {
     "document": {
       "id": "doc:default",
-      "configHash": "385edad461017489e02cf2cbb8082c13d4b011999cfa080de5f18b667499bf35",
-      "contentHash": "1c27d5f0b82c7c4cd16ddea6ba829f5d52f596a28d23eea90c973eab6eb42b81"
+      "configHash": "1a1d26c1e750dbae6715859fe67c3ed45cbc7f079fbd889f3849b739e17a96e6",
+      "contentHash": "b11ea64252b3e9b7893e6d1cdd8b9e33fa6ef726a4ed7855628ca396daa029b0"
     },
     "generator": {
       "name": "docuccino/laravel",

@@ -61,8 +61,9 @@ return [
             'routes' => [
                 'include' => ['api/*'],
                 'exclude' => [],
-                // A closure filter, applied after the wildcards above.
-                'closure' => null, // fn (RouteDescriptor $route): bool => ...
+                // A route filter, applied after the wildcards above: the name of a class implementing
+                // Docuccino's RouteFilter contract, built by the container so it can take dependencies.
+                // 'filter' => App\Docs\PublicRoutes::class,
                 // Also document routes whose controller lives under vendor/. Off by default, matching
                 // `php artisan route:list --except-vendor`; closures and your own controllers are
                 // unaffected either way.

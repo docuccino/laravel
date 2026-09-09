@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Config;
 
-use Closure;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Contracts\TagMapper;
 use Docuccino\Core\Support\ConfiguredFlag;
@@ -19,7 +18,8 @@ use Illuminate\Contracts\Container\Container;
  * Builds a framework-agnostic {@see DocumentConfig} from one `config('docuccino.documents.*')` entry:
  * relativises every path-like key ({@see ConfigPaths}), reads `info.description.file` into its contents
  * so the pipeline never touches the filesystem, and resolves the tag mapper (a container-resolved
- * `tags.mapper`, else {@see PrefixTagMapper} over `tags.map`).
+ * `tags.mapper`, else {@see PrefixTagMapper} over `tags.map`) and the route filter
+ * ({@see ConfiguredRouteFilter}).
  */
 final readonly class DocumentConfigFactory
 {
@@ -41,8 +41,6 @@ final readonly class DocumentConfigFactory
         $security = Hydrate::map($config['security'] ?? []);
         $tags = Hydrate::map($config['tags'] ?? []);
 
-        $closure = $routes['closure'] ?? null;
-
         $rawInfo = Hydrate::map($config['info'] ?? []);
         $info = $this->resolveInfo($rawInfo);
 
@@ -61,7 +59,7 @@ final readonly class DocumentConfigFactory
             servers: Hydrate::listOfMaps($config['servers'] ?? null) ?? [],
             routeInclude: Hydrate::stringList($routes['include'] ?? []),
             routeExclude: Hydrate::stringList($routes['exclude'] ?? []),
-            routeFilter: $closure instanceof Closure ? $closure : null,
+            routeFilter: (new ConfiguredRouteFilter($this->container))->resolve($key, $routes),
             includeVendor: ConfiguredFlag::read($routes, 'include_vendor', false)->on,
             authMiddleware: is_string($security['auto_detect_middleware'] ?? null) ? $security['auto_detect_middleware'] : null,
             errorResponses: self::errorResponses($config),
