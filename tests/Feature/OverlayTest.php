@@ -24,7 +24,7 @@ afterEach(function (): void {
 it('degrades an unparseable overlay YAML file to a warning', function (): void {
     // An unterminated inline sequence: Yaml::parseFile() throws ParseException, not an overlay error.
     file_put_contents($this->overlayDir.'/broken.yaml', "overlay: 1.0.0\nactions: [ { target: '\$' }\n");
-    config()->set('docuccino.documents.default.overlays', [$this->overlayDir.'/*.yaml']);
+    setBuild('documents.default.overlays', [$this->overlayDir.'/*.yaml']);
 
     $result = app(DocumentBuilder::class)->build('default', WorkbenchEngine::make());
 
@@ -38,7 +38,7 @@ it('degrades an unparseable overlay YAML file to a warning', function (): void {
 
 it('degrades an unsupported overlay version to a warning', function (): void {
     file_put_contents($this->overlayDir.'/future.yaml', "overlay: 2.0.0\nactions: []\n");
-    config()->set('docuccino.documents.default.overlays', [$this->overlayDir.'/*.yaml']);
+    setBuild('documents.default.overlays', [$this->overlayDir.'/*.yaml']);
 
     $result = app(DocumentBuilder::class)->build('default', WorkbenchEngine::make());
 
@@ -59,7 +59,7 @@ it('cannot reach a shared error response component, because transformers make th
             update:
               description: Overlaid
         YAML);
-    config()->set('docuccino.documents.default.overlays', [$this->overlayDir.'/*.yaml']);
+    setBuild('documents.default.overlays', [$this->overlayDir.'/*.yaml']);
 
     $result = app(DocumentBuilder::class)->build('default', WorkbenchEngine::make());
     $document = $result->document->toArray();
@@ -81,7 +81,7 @@ it('degrades an overlay glob no filesystem can hold to a warning', function (): 
             update:
               title: Overlaid Title
         YAML);
-    config()->set('docuccino.documents.default.overlays', ["resources\0/overlays/*.yaml", $this->overlayDir.'/*.yaml']);
+    setBuild('documents.default.overlays', ["resources\0/overlays/*.yaml", $this->overlayDir.'/*.yaml']);
 
     $result = app(DocumentBuilder::class)->build('default', WorkbenchEngine::make());
 
@@ -96,8 +96,8 @@ it('degrades a fragment-cache directory no filesystem can hold to a cold build a
     // Same byte, a different reader: `FragmentCache` reads and writes with `file_get_contents()` and
     // `mkdir()`, so this killed the build from inside the cache. A cache that is off costs one rebuild
     // per route and answers exactly what a warm one would.
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', "storage/frag\0ments");
+    setBuild('cache.enabled', true);
+    setBuild('cache.path', "storage/frag\0ments");
 
     $result = app(DocumentBuilder::class)->build('default', WorkbenchEngine::make());
 
@@ -118,7 +118,7 @@ it('applies a valid overlay without warning', function (): void {
             update:
               title: Overlaid Title
         YAML);
-    config()->set('docuccino.documents.default.overlays', [$this->overlayDir.'/*.yaml']);
+    setBuild('documents.default.overlays', [$this->overlayDir.'/*.yaml']);
 
     $result = app(DocumentBuilder::class)->build('default', WorkbenchEngine::make());
 

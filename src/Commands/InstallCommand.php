@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Commands;
 
+use Docuccino\Core\Config\ConfigFile;
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
+use Docuccino\Laravel\Config\BuildConfig;
 use Docuccino\Laravel\Config\ConfigPublisher;
+use Docuccino\Laravel\Config\ConfigPublishers;
+use Docuccino\Laravel\Config\ConfigSplit;
 use Docuccino\Laravel\Engine\EnginePackage;
 use Docuccino\Laravel\Engine\TypeEngineMode;
 use Docuccino\Laravel\Pipeline\DocumentBuilder;
@@ -24,11 +28,13 @@ use Illuminate\Support\Facades\URL;
  * the rest live when it matches none), reports whether the analysis engine is there, offers a first
  * export, and names what to do next.
  *
- * The one command that WRITES anything outside an export path, which is why the config half is
- * timid: an existing `config/docuccino.php` is a decision somebody made, and is never replaced
- * without `--force`. Everything else here is a read, so a second run reports the same and changes
- * nothing. None of it is a diagnostic — a diagnostic tells the document's author about the document,
- * and this tells an operator about their machine ({@see ExplainCommand} set the precedent).
+ * The config half is timid: an existing configuration file is a decision somebody made, and neither
+ * of the two is ever replaced without `--force`. Build settings still sitting in `config/docuccino.php`
+ * are a decision too, so an application holding those gets `docuccino.yaml` written from THEM — by
+ * {@see MigrateConfigCommand}, which owns that — rather than from the shipped defaults. Everything
+ * else here is a read, so a second run reports the same and changes nothing. None of it is a
+ * diagnostic — a diagnostic tells the document's author about the document, and this tells an operator
+ * about their machine ({@see ExplainCommand} set the precedent).
  */
 final class InstallCommand extends Command
 {
@@ -39,14 +45,14 @@ final class InstallCommand extends Command
     private const int PREFIX_LIMIT = 8;
 
     protected $signature = 'docuccino:install
-        {--force : Replace an existing config/docuccino.php with the shipped defaults}
+        {--force : Replace existing configuration files with the shipped defaults}
         {--no-export : Set up without generating a first document}
         {--memory-limit= : Raise the PHP memory limit for inference (e.g. 2G)}';
 
     protected $description = 'Set Docuccino up in this application and generate a first document.';
 
     public function handle(
-        ConfigPublisher $publisher,
+        ConfigPublishers $publishers,
         DocumentBuilder $builder,
         EnginePackage $engine,
         RouteSurvey $survey,
@@ -57,12 +63,12 @@ final class InstallCommand extends Command
         }
 
         $this->section('Config');
-        if (! $this->publishConfig($publisher)) {
+        if (! $this->publishConfig($publishers)) {
             return self::FAILURE;
         }
 
         $this->section('Routes');
-        $example = $this->reportRoutes($builder, $survey, $resolver, $publisher);
+        $example = $this->reportRoutes($builder, $survey, $resolver, $publishers);
 
         $this->section('Engine');
         $this->reportEngine($engine);
@@ -77,14 +83,32 @@ final class InstallCommand extends Command
     }
 
     /**
-     * Publish `config/docuccino.php`, or say why it wasn't. False — having printed why — when the
+     * Publish both configuration files, or say why one wasn't. False — having printed why — when a
      * write failed, which is the one thing here worth stopping for: every later step reports on a
      * config the application does not have.
+     *
+     * Each file is timid on its own account, so an application that already keeps its own
+     * `docuccino.yaml` and has never published the framework half gets the half it is missing.
      */
-    private function publishConfig(ConfigPublisher $publisher): bool
+    private function publishConfig(ConfigPublishers $publishers): bool
+    {
+        foreach ($publishers->all() as $publisher) {
+            if (! $this->publishOne($publisher)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function publishOne(ConfigPublisher $publisher): bool
     {
         $path = $this->projectPath($publisher->target());
         $existed = $publisher->published();
+
+        if (! $existed && $this->option('force') !== true && $this->owesMigration($publisher)) {
+            return $this->migrate($publisher);
+        }
 
         if ($existed && $this->option('force') !== true) {
             $this->line(sprintf('%s is already there, and was left exactly as it is.', $path));
@@ -107,6 +131,53 @@ final class InstallCommand extends Command
     }
 
     /**
+     * Whether this publisher would write the shipped `docuccino.yaml` over settings an application
+     * already has, which is a state the timidity rule covers and the file name cannot see.
+     *
+     * An existing file is a decision somebody made — and so are build settings sitting in
+     * `config/docuccino.php`. Publishing defaults there answers confidently and wrongly in the one way
+     * that is hard to recover from: the file appears, so nothing refuses the build any more, the
+     * document is assembled from defaults, and the `config.stale-php-keys` warning that follows tells
+     * its reader to delete the only remaining copy of what they configured.
+     */
+    private function owesMigration(ConfigPublisher $publisher): bool
+    {
+        return basename($publisher->target()) === ConfigFile::NAME && ConfigSplit::staleKeys() !== [];
+    }
+
+    /**
+     * Write that file from the settings the application already has, by running the one command that
+     * knows how — rather than holding a second opinion about what belongs in it.
+     *
+     * Its exit code is not read: a setting it could not carry over is news for the operator, not a
+     * reason for the setup to stop. Whether the file arrived is read instead, because every step after
+     * this one reports on a configuration the application would not have.
+     */
+    private function migrate(ConfigPublisher $publisher): bool
+    {
+        $stale = ConfigSplit::staleKeys();
+
+        $this->line(sprintf(
+            'config/docuccino.php holds %d build setting%s the build no longer reads, so %s is written',
+            count($stale),
+            count($stale) === 1 ? '' : 's',
+            ConfigFile::NAME,
+        ));
+        $this->line('from those rather than from the shipped defaults.');
+        $this->newLine();
+
+        $this->call(MigrateConfigCommand::NAME);
+
+        if ($publisher->published()) {
+            return true;
+        }
+
+        $this->error(sprintf('Could not write %s.', $this->projectPath($publisher->target())));
+
+        return false;
+    }
+
+    /**
      * What each document's `routes.include` matches HERE, which is the question the shipped `api/*`
      * cannot answer on its own. The count comes from the real resolver, so it is the number the next
      * export will document — attribute exclusions, closure filters and vendor routes all already
@@ -118,7 +189,7 @@ final class InstallCommand extends Command
         DocumentBuilder $builder,
         RouteSurvey $survey,
         LaravelRouteResolver $resolver,
-        ConfigPublisher $publisher,
+        ConfigPublishers $publishers,
     ): ?RouteDescriptor {
         $candidates = count($survey->paths());
 
@@ -157,7 +228,7 @@ final class InstallCommand extends Command
         }
 
         if ($empty !== []) {
-            $this->reportPrefixes($survey, $empty, $publisher);
+            $this->reportPrefixes($survey, $empty, $publishers);
         }
 
         return $example;
@@ -170,7 +241,7 @@ final class InstallCommand extends Command
      *
      * @param  non-empty-list<string>  $documents  the document keys that matched nothing
      */
-    private function reportPrefixes(RouteSurvey $survey, array $documents, ConfigPublisher $publisher): void
+    private function reportPrefixes(RouteSurvey $survey, array $documents, ConfigPublishers $publishers): void
     {
         $prefixes = $survey->prefixes();
         $busiest = $prefixes[0] ?? null;
@@ -199,10 +270,11 @@ final class InstallCommand extends Command
         }
 
         $this->newLine();
+        $settings = $publishers->all()[0] ?? null;
         $this->line(sprintf(
             '<fg=gray>Set documents.%s.routes.include in %s — e.g. [\'%s\'].</>',
             TerminalText::of($documents[0]),
-            $this->projectPath($publisher->target()),
+            $settings === null ? ConfigFile::NAME : $this->projectPath($settings->target()),
             TerminalText::of($busiest->pattern()),
         ));
     }
@@ -214,7 +286,7 @@ final class InstallCommand extends Command
      */
     private function reportEngine(EnginePackage $engine): void
     {
-        if (config('docuccino.engine.mode') === TypeEngineMode::Null->value) {
+        if ((app(BuildConfig::class)->engine()['mode'] ?? null) === TypeEngineMode::Null->value) {
             $this->line('Inference is switched off (engine.mode = null).');
             $this->line('<fg=gray>Documentation comes from docblocks and attributes only, as configured.</>');
 

@@ -217,8 +217,8 @@ it('replays the unregistered-limiter report on a warm cache hit, and retires it 
     // limiter would touch — so a warm build has to replay it, and only the environment digest can
     // retire it. Under-key that digest and the stale report outlives the fix.
     $dir = sys_get_temp_dir().'/docuccino-ratelimit-fragments-'.uniqid('', true);
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', $dir);
+    setBuild('cache.enabled', true);
+    setBuild('cache.path', $dir);
 
     /** @var Router $router */
     $router = app('router');

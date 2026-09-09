@@ -26,8 +26,8 @@ afterEach(function (): void {
 });
 
 it('builds the engine once on a cold build, never on a fully warm one, and emits the same bytes', function (): void {
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', sys_get_temp_dir().'/docuccino-lazybuild-'.uniqid('', true));
+    setBuild('cache.enabled', true);
+    setBuild('cache.path', sys_get_temp_dir().'/docuccino-lazybuild-'.uniqid('', true));
 
     $coldBuilds = 0;
     app()->instance(TypeEngine::class, new LazyTypeEngine(function () use (&$coldBuilds): TypeEngine {
@@ -52,9 +52,9 @@ it('builds the engine once on a cold build, never on a fully warm one, and emits
 });
 
 it('still reports the state of inference on a warm build that never wakes the engine', function (string $mode, bool $installed, string $code): void {
-    config()->set('docuccino.engine.mode', $mode);
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', sys_get_temp_dir().'/docuccino-lazybuild-'.uniqid('', true));
+    setBuild('engine.mode', $mode);
+    setBuild('cache.enabled', true);
+    setBuild('cache.path', sys_get_temp_dir().'/docuccino-lazybuild-'.uniqid('', true));
     app()->instance(EnginePackage::class, new EnginePackage(static fn (string $class): bool => $installed));
 
     app()->instance(TypeEngine::class, new LazyTypeEngine(

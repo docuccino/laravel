@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use Docuccino\Core\Config\ConfigFile;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Emit\UirEmitter;
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Extensions\Contracts\RouteFilter;
+use Docuccino\Laravel\Config\ConfiguredRouteFilter;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
 use Docuccino\Laravel\Config\UnusableRouteFilterException;
 use Docuccino\Laravel\Registry\ConfigDiagnostics;
@@ -14,11 +16,13 @@ use Docuccino\Laravel\Tests\Fixtures\RouteFilters\DocumentedPaths;
 use Docuccino\Laravel\Tests\Fixtures\RouteFilters\NamedRoutes;
 use Docuccino\Laravel\Tests\Fixtures\RouteFilters\NotAFilter;
 use Docuccino\Laravel\Tests\Fixtures\RouteFilters\UnbuildableFilter;
-use Illuminate\Foundation\Console\ConfigCacheCommand;
+use Symfony\Component\Yaml\Yaml;
+
+require_once dirname(__DIR__, 4).'/tools/config-reference-sync.php';
 
 /*
  * `routes.filter` — the container-resolved RouteFilter that narrows a document past the
- * include/exclude wildcards — and `routes.closure`, the removed key it replaces.
+ * include/exclude wildcards.
  */
 
 afterEach(function (): void {
@@ -26,24 +30,24 @@ afterEach(function (): void {
 });
 
 /**
- * One document's raw config with both route-filter keys set to whatever the caller is testing.
+ * The default document's settings with `routes.filter` set to whatever the caller is testing, written
+ * as configuration and read back the way the product reads it.
  *
  * @return array<string, mixed>
  */
-function routeFilterConfig(mixed $filter = null, mixed $closure = null): array
+function routeFilterSettings(mixed $filter = null): array
 {
-    /** @var array<string, mixed> $raw */
-    $raw = config('docuccino.documents.default');
-    /** @var array<string, mixed> $routes */
-    $routes = $raw['routes'] ?? [];
+    if ($filter !== null) {
+        setBuild('documents.default.routes.filter', $filter);
+    }
 
-    return [...$raw, 'routes' => [...$routes, 'filter' => $filter, 'closure' => $closure]];
+    return documentSettings();
 }
 
-function resolvedRouteFilter(mixed $filter = null, mixed $closure = null): ?RouteFilter
+function resolvedRouteFilter(mixed $filter = null): ?RouteFilter
 {
     return app(DocumentConfigFactory::class)
-        ->make('default', routeFilterConfig($filter, $closure), 'skeleton')
+        ->make('default', routeFilterSettings($filter), 'skeleton')
         ->routeFilter;
 }
 
@@ -57,16 +61,20 @@ it('narrows the document with a filter the container built', function (): void {
     // if the instance the container held is the one the filter answered from.
     app()->instance(DocumentedPaths::class, new DocumentedPaths(['/api/forms']));
 
-    $document = stubDocumentArray(static fn (array $raw): array => [
-        ...$raw,
-        'routes' => [...(array) ($raw['routes'] ?? []), 'filter' => AllowListFilter::class],
-    ]);
+    setBuild('documents.default.routes.filter', AllowListFilter::class);
+
+    $document = stubDocumentArray();
 
     expect(array_keys($document['paths']))->toBe(['/api/forms']);
 });
 
 it('documents every wildcard-admitted route when the key is unset', function (): void {
-    expect(resolvedRouteFilter())->toBeNull();
+    $config = app(DocumentConfigFactory::class)->make('default', documentSettings(), 'skeleton');
+
+    expect($config->routeFilter)->toBeNull()
+        // And says nothing about it: a document that narrows nothing is the shipped shape, so a
+        // diagnostic here would fire on every fresh install.
+        ->and(ConfigDiagnostics::for($config))->toBe([]);
 });
 
 it('asks the filter on a warm build, not only on a cold one', function (): void {
@@ -76,7 +84,7 @@ it('asks the filter on a warm build, not only on a cold one', function (): void 
     // has to follow the filter's new answer on the very next build.
     fragmentCacheDir('route-filter');
     bindStubEngine();
-    config()->set('docuccino.documents.default.routes.filter', AllowListFilter::class);
+    setBuild('documents.default.routes.filter', AllowListFilter::class);
     app()->instance(DocumentedPaths::class, new DocumentedPaths(['/api/forms', '/api/ping']));
 
     $cold = generateDocument();
@@ -117,23 +125,23 @@ it('runs the worked example the multiple-documents guide prints', function (): v
         ->and($page)->toContain($decision)
         // Both halves, so the page cannot drift from the class the assertions above proved.
         ->and($body)->toContain($shown)
-        ->and($body)->toContain($decision);
+        ->and($body)->toContain($decision)
+        // And the key is quoted in the format the build reads it from: a PHP-shaped snippet would
+        // send a reader to a file that no longer holds the setting.
+        ->and($page)->toContain('filter: App\\Docs\\NamedRoutes');
 });
 
 it('refuses the build rather than publishing a route set the filter was there to narrow', function (
     mixed $filter,
-    mixed $closure,
-    string $code,
     string $message,
-    string $help,
 ): void {
     try {
-        resolvedRouteFilter($filter, $closure);
+        resolvedRouteFilter($filter);
     } catch (UnusableRouteFilterException $refusal) {
         expect($refusal->diagnostic->severity)->toBe(Severity::Error)
-            ->and($refusal->diagnostic->code)->toBe($code)
+            ->and($refusal->diagnostic->code)->toBe('config.route-filter-unusable')
             ->and($refusal->diagnostic->message)->toBe($message)
-            ->and($refusal->diagnostic->help)->toContain($help)
+            ->and($refusal->diagnostic->help)->toContain('Point documents.default.routes.filter at an autoloadable class')
             // The exception reads the same as the diagnostic, so the surfaces that let it through say
             // what the ones that render it say.
             ->and($refusal->getMessage())->toBe($message);
@@ -145,79 +153,47 @@ it('refuses the build rather than publishing a route set the filter was there to
 })->with([
     'filter is not a class-string' => [
         ['App\\Docs\\PublicRoutes'],
-        null,
-        'config.route-filter-unusable',
         'documents.default.routes.filter is array rather than the name of a class implementing Docuccino\Core\Extensions\Contracts\RouteFilter.',
-        'Point documents.default.routes.filter at an autoloadable class',
     ],
     'filter is an empty string' => [
         '   ',
-        null,
-        'config.route-filter-unusable',
         "documents.default.routes.filter is '   ' rather than the name of a class implementing Docuccino\Core\Extensions\Contracts\RouteFilter.",
-        'Point documents.default.routes.filter at an autoloadable class',
     ],
     'filter names no autoloadable class' => [
         'App\\Docs\\NoSuchFilter',
-        null,
-        'config.route-filter-unusable',
         "documents.default.routes.filter names 'App\\Docs\\NoSuchFilter', which is not an autoloadable class.",
-        'Point documents.default.routes.filter at an autoloadable class',
     ],
     'filter does not implement the contract' => [
         NotAFilter::class,
-        null,
-        'config.route-filter-unusable',
         "documents.default.routes.filter names 'Docuccino\Laravel\Tests\Fixtures\RouteFilters\NotAFilter', which does not implement Docuccino\Core\Extensions\Contracts\RouteFilter.",
-        'Point documents.default.routes.filter at an autoloadable class',
     ],
     'filter throws while the container builds it' => [
         UnbuildableFilter::class,
-        null,
-        'config.route-filter-unusable',
         "documents.default.routes.filter names 'Docuccino\Laravel\Tests\Fixtures\RouteFilters\UnbuildableFilter', which the container could not build: the tenant registry is not configured.",
-        'Point documents.default.routes.filter at an autoloadable class',
-    ],
-    'the removed closure key holds a closure' => [
-        null,
-        static fn (RouteDescriptor $route): bool => true,
-        'config.route-closure-removed',
-        'documents.default.routes.closure is set to Closure, and that key is no longer read.',
-        'name it under documents.default.routes.filter',
-    ],
-    'the removed closure key holds a class name' => [
-        null,
-        'App\\Docs\\PublicRoutes',
-        'config.route-closure-removed',
-        "documents.default.routes.closure is set to 'App\\Docs\\PublicRoutes', and that key is no longer read.",
-        'name it under documents.default.routes.filter',
-    ],
-    'the removed closure key refuses even beside a working filter' => [
-        AllowListFilter::class,
-        static fn (RouteDescriptor $route): bool => true,
-        'config.route-closure-removed',
-        'documents.default.routes.closure is set to Closure, and that key is no longer read.',
-        'name it under documents.default.routes.filter',
     ],
 ]);
 
-it('says nothing about a null left behind under the removed key', function (): void {
-    // An application that published the config before the key went, and never used it, has nothing to
-    // migrate. Refusing over a line its owner never filled in would be refusing over nothing.
-    $config = app(DocumentConfigFactory::class)->make('default', routeFilterConfig(), 'skeleton');
+it('shows the key without shipping it, and ships no key a file cannot hold', function (): void {
+    // Both halves of the fingerprint rule, at the file. The key has to be VISIBLE or nobody finds it,
+    // and it has to be ABSENT from what parses or every document's `configHash` carries a setting
+    // nobody turned on. There is also no `closure` key: a configuration file has no form for a
+    // callable, so the only thing shipping one could do is invite a value nothing would read.
+    $file = (string) file_get_contents(
+        dirname(__DIR__, 2).'/config/'.ConfigFile::NAME,
+    );
 
-    expect($config->routeFilter)->toBeNull()
-        ->and(ConfigDiagnostics::for($config))->toBe([]);
-});
-
-it('ships no closure key for an application to fill in', function (): void {
-    /** @var array<string, mixed> $shipped */
-    $shipped = require dirname(__DIR__, 2).'/config/docuccino.php';
+    /** @var array<string, mixed> $parsed */
+    $parsed = Yaml::parse($file, ConfigFile::FLAGS);
     /** @var array<string, mixed> $routes */
-    $routes = data_get($shipped, 'documents.default.routes', []);
+    $routes = data_get($parsed, 'documents.default.routes', []);
 
-    expect(array_key_exists('closure', $routes))->toBeFalse()
-        ->and(array_key_exists('filter', $routes))->toBeFalse();
+    // Commented-out keys included, which is what makes the first assertion say "shown".
+    $declared = config_reference_yaml_keys($file);
+
+    // The document key normalizes to `*`: it is a name an application chooses, not a key.
+    expect($declared)->toContain('documents.*.routes.filter')
+        ->and($declared)->not->toContain('documents.*.routes.closure')
+        ->and(array_keys($routes))->toBe(['include', 'exclude', 'include_vendor']);
 });
 
 it('keeps the cause of a construction failure attached to the refusal', function (): void {
@@ -235,9 +211,33 @@ it('keeps the cause of a construction failure attached to the refusal', function
     $this->fail('a constructor that throws has to stop the run');
 });
 
+it('escapes the document key in the refusal, the way it already escapes the class', function (mixed $filter): void {
+    // The class name and the container's own failure already go through `PlainText` here, and the
+    // document key beside them did not. It is not covered by the console renderer's escape either: the
+    // refusal is an EXCEPTION, and `getMessage()` is what a caller that lets it through prints.
+    try {
+        app(ConfiguredRouteFilter::class)->resolve("ev\x1b[31mil", ['filter' => $filter]);
+    } catch (UnusableRouteFilterException $refusal) {
+        expect($refusal->getMessage())->not->toContain("\x1b")
+            ->and($refusal->getMessage())->toContain('\x1B')
+            ->and($refusal->diagnostic->help)->not->toContain("\x1b")
+            ->and($refusal->diagnostic->help)->toContain('\x1B');
+
+        return;
+    }
+
+    $this->fail('a filter that cannot be applied has to stop the run');
+})->with([
+    // Every refusal, so the key is not hardened one arm at a time.
+    'not a class-string' => [['App\Docs\PublicRoutes']],
+    'not autoloadable' => ['App\Docs\NoSuchFilter'],
+    'the container could not build it' => [UnbuildableFilter::class],
+    'not a route filter' => [NotAFilter::class],
+]);
+
 it('reports an unusable filter as a config error and writes nothing', function (): void {
     $out = sys_get_temp_dir().'/docuccino-route-filter-'.uniqid().'.json';
-    config()->set('docuccino.documents.default.routes.filter', 'App\\Docs\\NoSuchFilter');
+    setBuild('documents.default.routes.filter', 'App\\Docs\\NoSuchFilter');
 
     // One substring per written line: the diagnostic's own line, then the `help` under it.
     $this->artisan('docuccino:export', ['--out' => $out])
@@ -246,45 +246,4 @@ it('reports an unusable filter as a config error and writes nothing', function (
         ->assertFailed();
 
     expect(file_exists($out))->toBeFalse();
-});
-
-it('reports the removed closure key as a config error and writes nothing', function (): void {
-    $out = sys_get_temp_dir().'/docuccino-route-closure-'.uniqid().'.json';
-    config()->set('docuccino.documents.default.routes.closure', static fn (RouteDescriptor $route): bool => true);
-
-    $this->artisan('docuccino:export', ['--out' => $out])
-        ->expectsOutputToContain('[error] config.route-closure-removed: documents.default.routes.closure is set to Closure, and that key is no longer read.')
-        ->expectsOutputToContain('Move the predicate into a class implementing')
-        ->assertFailed();
-
-    expect(file_exists($out))->toBeFalse();
-});
-
-it('keeps a filter class-string cacheable where a closure was not', function (): void {
-    // Why the key is gone rather than deprecated. `config:cache` serializes the whole config array
-    // with `var_export()` and requires the file back (ConfigCacheCommand::handle), then, on failure,
-    // re-exports each dotted value to name the one that broke. The command itself cannot run in this
-    // harness — it re-bootstraps a fresh application from the testbench skeleton, which never
-    // registers this package, so the config under test is not in the array it caches — so the step it
-    // fails at is exercised directly here, and the test below pins that this IS still the step.
-    $withFilter = ['filter' => AllowListFilter::class];
-    $withClosure = ['closure' => static fn (): bool => true];
-
-    /** @var array<string, mixed> $cached */
-    $cached = eval('return '.var_export($withFilter, true).';');
-
-    expect($cached)->toBe($withFilter)
-        // What `php artisan config:cache` reported for the same value: "Your configuration files
-        // could not be serialized because the value at documents.default.routes.closure is
-        // non-serializable."
-        ->and(static fn (): mixed => eval('return '.var_export($withClosure, true).';'))
-        ->toThrow(Error::class, 'Call to undefined method Closure::__set_state()');
-});
-
-it('reads config:cache as still serializing the config with var_export', function (): void {
-    // The premise of the test above, and of the removal itself. If the framework ever serializes
-    // config some other way, this fails and the claim gets re-checked rather than repeated.
-    $file = (new ReflectionClass(ConfigCacheCommand::class))->getFileName();
-
-    expect((string) file_get_contents((string) $file))->toContain('var_export($config, true)');
 });

@@ -14,6 +14,8 @@ use Docuccino\Core\Draft\DeprecationNote;
 use Docuccino\Core\Draft\DescriptionAppender;
 use Docuccino\Core\Draft\OperationDraft;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
+use Docuccino\Core\Extensions\Context\RouteDependencies;
+use Docuccino\Core\Extensions\Context\TagMapperKeying;
 use Docuccino\Core\Extensions\Contracts\TypeSchemaConverter;
 use Docuccino\Core\Inference\DType\UnknownT;
 use Docuccino\Core\Patch\Contribution;
@@ -41,12 +43,15 @@ final readonly class WebhookOperationBuilder
     ) {}
 
     /**
+     * @param  RouteDependencies  $dependencies  the fragment's manifest — a webhook is cached like a route,
+     *                                           so a tag mapper it read has to key it ({@see TagMapperKeying})
      * @param  list<Diagnostic>  $diagnostics
      */
     public function build(
         WebhookDeclaration $webhook,
         DocumentConfig $document,
         TypeSchemaConverter $converter,
+        RouteDependencies $dependencies,
         ?Source $source,
         array &$diagnostics,
     ): OperationDraft {
@@ -76,7 +81,7 @@ final readonly class WebhookOperationBuilder
         $this->applyBody($operation, $webhook, $converter, $imports, $source, $diagnostics);
         $this->applyResponses($operation, $webhook, $converter, $imports, $source);
 
-        $tags = $this->tags($webhook, $document);
+        $tags = $this->tags($webhook, $document, $dependencies);
         if ($tags !== []) {
             $operation->setTags($tags, $attribute);
         }
@@ -170,7 +175,7 @@ final readonly class WebhookOperationBuilder
      *
      * @return list<string>
      */
-    private function tags(WebhookDeclaration $webhook, DocumentConfig $document): array
+    private function tags(WebhookDeclaration $webhook, DocumentConfig $document, RouteDependencies $dependencies): array
     {
         $tags = [];
 
@@ -179,6 +184,10 @@ final readonly class WebhookOperationBuilder
             if (! in_array($mapped, $tags, true)) {
                 $tags[] = $mapped;
             }
+        }
+
+        if ($tags !== []) {
+            TagMapperKeying::record($dependencies, $document);
         }
 
         return $tags;

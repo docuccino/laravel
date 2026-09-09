@@ -72,7 +72,8 @@ it('404s a reload channel for a document that is not configured', function (): v
     Gate::before(static fn ($user = null): bool => true);
     $this->signal->publish($this->token);
 
-    config()->set('docuccino.documents', []);
+    // The reload route was registered at boot for `default`; the file now names another document.
+    setDocuments(['admin' => ['info' => ['title' => 'Admin', 'version' => '1.0.0']]]);
 
     $this->get('/docs/api/reload')->assertNotFound();
 });

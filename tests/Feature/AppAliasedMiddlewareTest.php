@@ -103,7 +103,7 @@ it('publishes the security requirement for a route authenticated under either al
     $paths = generateDocument(static function (array $raw): array {
         $raw['security'] = [
             'schemes' => ['bearer' => ['type' => 'http', 'scheme' => 'bearer']],
-            'auto_detect_middleware' => 'auth*',
+            'auth_middleware' => 'auth*',
             'default' => [['bearer' => []]],
         ];
 
@@ -122,7 +122,7 @@ it('publishes the security requirement for a route authenticated under either al
  */
 it('keys a route fragment on the files its middleware classes declare', function (): void {
     $document = app(DocumentConfigFactory::class)
-        ->make('default', (array) config('docuccino.documents.default'), 'skeleton');
+        ->make('default', documentSettings(), 'skeleton');
 
     $context = app(RouteContextBuilder::class)->build(
         new RouteDescriptor(['GET', 'HEAD'], '/api/app-aliased/own-authenticator', middleware: [ApplicationAuthenticate::using('web')]),

@@ -22,7 +22,7 @@ it('says nothing on the workbench by default', function (): void {
 it('reports the workbench operations with no prose once lint.descriptions is enabled', function (): void {
     bindStubEngine();
     $result = generateDocument(function (array $raw): array {
-        config()->set('docuccino.lint.descriptions.enabled', true);
+        setBuild('lint.descriptions.enabled', true);
 
         return $raw;
     });
@@ -42,8 +42,8 @@ it('reports the workbench operations with no prose once lint.descriptions is ena
 it('silences a finding through the config safelist', function (): void {
     bindStubEngine();
     $result = generateDocument(function (array $raw): array {
-        config()->set('docuccino.lint.descriptions.enabled', true);
-        config()->set('docuccino.lint.descriptions.allow', ['GET /api/ping', 'POST /api/tickets']);
+        setBuild('lint.descriptions.enabled', true);
+        setBuild('lint.descriptions.allow', ['GET /api/ping', 'POST /api/tickets']);
 
         return $raw;
     });
@@ -70,7 +70,7 @@ it('warns on a route name a generated client cannot name a method after', functi
 it('warns on a tag the document declares no entry for', function (): void {
     bindStubEngine();
     $result = generateDocument(function (array $raw): array {
-        config()->set('docuccino.lint.tags.enabled', true);
+        setBuild('lint.tags.enabled', true);
         $raw['tags']['definitions'] = [['name' => 'Invoices', 'description' => 'Billing documents.']];
 
         return $raw;
@@ -87,7 +87,7 @@ it('turns each rule off through its own off-switch', function (string $key, stri
     $result = generateDocument(function (array $raw) use ($key): array {
         // Every rule ON but the one under test, so the row proves its switch and not its default.
         foreach (['descriptions', 'operation_ids', 'tags'] as $rule) {
-            config()->set('docuccino.lint.'.$rule.'.enabled', $rule !== $key);
+            setBuild('lint.'.$rule.'.enabled', $rule !== $key);
         }
         $raw['tags']['definitions'] = [['name' => 'Invoices']];
 
@@ -114,9 +114,9 @@ it('moves no byte of the emitted document, whatever the rules are set to', funct
     $quiet = generateDocument($declare)->document->toArray();
 
     $loud = generateDocument(function (array $raw) use ($declare): array {
-        config()->set('docuccino.lint.descriptions.enabled', true);
-        config()->set('docuccino.lint.tags.enabled', true);
-        config()->set('docuccino.lint.operation_ids.enabled', false);
+        setBuild('lint.descriptions.enabled', true);
+        setBuild('lint.tags.enabled', true);
+        setBuild('lint.operation_ids.enabled', false);
 
         return $declare($raw);
     })->document->toArray();
@@ -145,8 +145,8 @@ it('reports the prose and tag holes a webhook has once their rules are enabled',
     bindStubEngine();
 
     $result = generateDocument(withLintWebhooks(static function (array $raw): array {
-        config()->set('docuccino.lint.descriptions.enabled', true);
-        config()->set('docuccino.lint.tags.enabled', true);
+        setBuild('lint.descriptions.enabled', true);
+        setBuild('lint.tags.enabled', true);
         $raw['tags']['definitions'] = [['name' => 'Invoices', 'description' => 'Billing documents.']];
 
         return $raw;

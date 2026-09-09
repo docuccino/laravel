@@ -46,7 +46,7 @@ it('honours the --fail-on matrix against the broken route', function (string $fa
  */
 it('lets info gate a build whose loudest report is a recovery', function (string $failOn, bool $fails): void {
     app()->instance(TypeEngine::class, WorkbenchEngine::make());
-    config()->set('docuccino.documents.default.routes.include', ['api/widget-query']);
+    setBuild('documents.default.routes.include', ['api/widget-query']);
     $out = sys_get_temp_dir().'/docuccino-failon-'.uniqid().'.json';
 
     $command = $this->artisan('docuccino:export', ['--out' => $out, '--fail-on' => $failOn]);
@@ -117,7 +117,7 @@ it('isolates an engine exception to a skeleton while siblings document normally'
     );
     app()->instance(TypeEngine::class, $engine);
 
-    $config = app(DocumentConfigFactory::class)->make('default', (array) config('docuccino.documents.default'), 'skeleton');
+    $config = app(DocumentConfigFactory::class)->make('default', documentSettings(), 'skeleton');
     $result = app(DocumentGenerator::class)->generate($config, $engine);
     $document = $result->document->toArray();
 

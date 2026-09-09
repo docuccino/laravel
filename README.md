@@ -66,7 +66,8 @@ Then:
 php artisan docuccino:install
 ```
 
-It publishes `config/docuccino.php` (never replacing one you already have), reports how many of your
+It publishes `docuccino.yaml` and `config/docuccino.php` (never replacing one you already have),
+reports how many of your
 routes the default `api/*` pattern matches and which prefixes they sit under when none do, says
 whether the engine is installed, and offers a first export.
 

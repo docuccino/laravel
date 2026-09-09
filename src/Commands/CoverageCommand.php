@@ -34,6 +34,8 @@ final class CoverageCommand extends Command
     use GuardsEnabled;
     use IteratesDocuments;
     use PrintsSections;
+    use RefusesUnreadConfig;
+    use RendersDiagnostics;
 
     /**
      * How far apart the logs may be written before it is worth saying so, in seconds.
@@ -54,7 +56,7 @@ final class CoverageCommand extends Command
 
     public function handle(DocumentBuilder $builder): int
     {
-        if ($this->abortIfDisabled()) {
+        if ($this->abortIfDisabled() || $this->abortIfConfigUnread()) {
             return self::FAILURE;
         }
 

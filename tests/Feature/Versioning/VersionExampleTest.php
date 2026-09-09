@@ -30,7 +30,7 @@ beforeEach(function (): void {
         $documents[$key]['routes']['include'] = ['api/versioned-forms*'];
     }
 
-    config()->set('docuccino.documents', $documents);
+    setDocuments($documents);
 
     bindStubEngine();
 });
@@ -83,7 +83,7 @@ it("reports nothing when the build's own example lint reads a version document",
     // The other oracle, on the build rather than on the artifact: `lint.examples` runs LAST, so it sees
     // the document this transformer produced rather than the one the code publishes. Off by default,
     // which is why it did not catch this on its own — a user who turns it on now hears about it.
-    config()->set('docuccino.lint.examples', ['enabled' => true, 'allow' => []]);
+    setBuild('lint.examples', ['enabled' => true, 'allow' => []]);
 
     $codes = array_map(
         static fn (Diagnostic $diagnostic): string => $diagnostic->code,
@@ -129,7 +129,7 @@ it('leaves the examples of a schema the change never names alone', function (): 
     $router = app('router');
     $router->get('api/widgets', [ExamplesController::class, 'show']);
 
-    config()->set('docuccino.documents.v2026-06-01.routes.include', ['api/versioned-forms*', 'api/widgets']);
+    setBuild('documents.v2026-06-01.routes.include', ['api/versioned-forms*', 'api/widgets']);
 
     $older = generateDocument(key: 'v2026-06-01')->document->toArray();
 

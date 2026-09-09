@@ -15,7 +15,7 @@ use Docuccino\Laravel\Support\AuthMiddlewareDetector;
 /**
  * The security layer (design §Auth detection). `#[Unauthenticated]` marks an operation public by
  * clearing its requirement — an empty `security: []` beats any document-level default. Otherwise a
- * middleware match against `auto_detect_middleware` applies the document's `security.default` at the
+ * middleware match against `auth_middleware` applies the document's `security.default` at the
  * integration layer, leaving attributes and config free to override.
  *
  * Only the per-operation requirement is decided here; the scheme catalogue and any document-wide

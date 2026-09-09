@@ -19,7 +19,7 @@ use Workbench\App\Http\Controllers\FormController;
  * one signal that decides the implicit 401 AND the per-operation security requirement — what a reader of
  * one spelling costs is stated in {@see AuthMiddlewareNames}.
  *
- * `auto_detect_middleware` + a `security.default` + error responses is the population that decides both
+ * `auth_middleware` + a `security.default` + error responses is the population that decides both
  * of those facts, and no committed document stood in it, which is why nothing said so.
  */
 beforeEach(function (): void {
@@ -30,14 +30,14 @@ beforeEach(function (): void {
     $router->get('api/spelling/by-alias', [FormController::class, 'index'])->middleware('auth:web');
     $router->get('api/spelling/by-class', [FormController::class, 'index'])->middleware(Authenticate::using('web'));
 
-    config()->set('docuccino.documents', [
+    setDocuments([
         'spelling' => [
             'info' => ['title' => 'Auth Spelling', 'version' => '1.0.0'],
             'routes' => ['include' => ['api/spelling/*']],
             'error_responses' => 'default',
             'security' => [
                 'schemes' => ['bearer' => ['type' => 'http', 'scheme' => 'bearer']],
-                'auto_detect_middleware' => 'auth*',
+                'auth_middleware' => 'auth*',
                 'default' => [['bearer' => []]],
             ],
         ],
@@ -47,7 +47,7 @@ beforeEach(function (): void {
 function spellingDocument(): array
 {
     /** @var array<string, mixed> $raw */
-    $raw = config('docuccino.documents.spelling');
+    $raw = documentSettings('spelling');
     $config = app(DocumentConfigFactory::class)->make('spelling', $raw, 'skeleton');
 
     return app(DocumentGenerator::class)->generate($config, app(TypeEngine::class))->document->toArray();

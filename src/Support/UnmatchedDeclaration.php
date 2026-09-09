@@ -162,8 +162,8 @@ final class UnmatchedDeclaration
     {
         $listing = NameList::of($configured);
 
-        // Reachable: `documents` can be configured empty, and then a build has no document to run at all
-        // — which is a configuration problem this message must not misreport as a spelling one.
+        // A build's configured set always names at least the `default` document, so this half is what
+        // keeps the renderer total over the list it is given rather than trailing off after "are .".
         return $listing === null
             ? 'No documents are configured at all.'
             : sprintf('The configured documents are %s.', $listing);

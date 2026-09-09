@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Support;
 
+use Docuccino\Core\Config\ConfigFile;
 use Docuccino\Core\Patch\Layer;
 
 /**
@@ -54,7 +55,7 @@ final class OverrideHint
     public static function for(string $nodeLabel, string $field, Layer $winner): string
     {
         if ($winner === Layer::Config) {
-            return 'config is the top rung — edit config/docuccino.php';
+            return 'config is the top rung — edit '.ConfigFile::NAME;
         }
 
         if ($winner === Layer::Overlay) {

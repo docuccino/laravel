@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Testing;
 
+use Docuccino\Core\Config\ConfigFile;
 use RuntimeException;
 
 /**
@@ -37,8 +38,9 @@ final class UnreadableContract extends RuntimeException
     public static function unknownDocument(string $key): self
     {
         return new self(sprintf(
-            'No document "%s" is configured in config/docuccino.php.',
+            'No document "%s" is configured in %s.',
             $key,
+            ConfigFile::NAME,
         ));
     }
 }

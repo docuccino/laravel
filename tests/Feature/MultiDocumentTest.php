@@ -23,7 +23,7 @@ beforeEach(function (): void {
     $router = app('router');
     $router->get('api/admin/panel', [AdminController::class, 'panel']);
 
-    config()->set('docuccino.documents', [
+    setDocuments([
         'default' => [
             'info' => ['title' => 'API Documentation', 'version' => '1.0.0'],
             'routes' => ['include' => ['api/*']],
@@ -41,7 +41,7 @@ beforeEach(function (): void {
 function buildDocument(string $key): array
 {
     /** @var array<string, mixed> $raw */
-    $raw = config('docuccino.documents.'.$key);
+    $raw = documentSettings($key);
     $config = app(DocumentConfigFactory::class)->make($key, $raw, 'skeleton');
 
     return app(DocumentGenerator::class)->generate($config, app(TypeEngine::class))->document->toArray();
@@ -70,8 +70,8 @@ it('exports every document by default (export-all)', function (): void {
     $defaultOut = sys_get_temp_dir().'/docuccino-default-'.uniqid().'.json';
     $adminOut = sys_get_temp_dir().'/docuccino-admin-'.uniqid().'.json';
 
-    config()->set('docuccino.documents.default.export.path', $defaultOut);
-    config()->set('docuccino.documents.admin.export.path', $adminOut);
+    setBuild('documents.default.export.path', $defaultOut);
+    setBuild('documents.admin.export.path', $adminOut);
 
     // No document argument → every document is exported to its own configured path.
     $this->artisan('docuccino:export')->assertSuccessful();

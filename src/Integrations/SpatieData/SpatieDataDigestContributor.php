@@ -20,11 +20,15 @@ final class SpatieDataDigestContributor implements EnvironmentDigestContributor
 
     public function digest(): string
     {
-        return implode('|', [
-            'wrap:'.$this->string('data.wrap'),
-            'input-mapper:'.$this->string('data.name_mapping_strategy.input'),
-            'output-mapper:'.$this->string('data.name_mapping_strategy.output'),
-            'date-format:'.$this->string('data.date_format'),
+        return implode("\0", [
+            'wrap',
+            $this->string('data.wrap'),
+            'input-mapper',
+            $this->string('data.name_mapping_strategy.input'),
+            'output-mapper',
+            $this->string('data.name_mapping_strategy.output'),
+            'date-format',
+            $this->string('data.date_format'),
         ]);
     }
 

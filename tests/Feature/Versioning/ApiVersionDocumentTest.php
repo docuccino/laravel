@@ -30,7 +30,7 @@ beforeEach(function (): void {
     $router->middleware(DowngradeToPinnedApiVersion::class)
         ->get('api/versioned-forms', [VersionedFormController::class, 'index']);
 
-    config()->set('docuccino.documents', versionedFormDocuments());
+    setDocuments(versionedFormDocuments());
 });
 
 it('publishes the field the code publishes today in the version the rename shipped in', function (): void {
@@ -100,7 +100,7 @@ it('refuses to derive a version from an info.version nobody wrote, and says so',
  * `1.0.0`, the likeliest first semver version there is, must not be locked out of the feature.
  */
 it('derives a version for a document whose version really is 1.0.0', function (): void {
-    config()->set('docuccino.documents', [
+    setDocuments([
         'v1' => [
             'info' => ['title' => 'Forms API', 'version' => '1.0.0'],
             'routes' => ['include' => ['api/versioned-forms']],
@@ -160,7 +160,7 @@ it('declares the version header on every operation, enumerating every configured
  * rather than falling to the sort-key minting's digit-prefix last resort.
  */
 it('orders and names a semver enum as versions rather than as bytes', function (): void {
-    config()->set('docuccino.documents', [
+    setDocuments([
         'v1_9' => [
             'info' => ['title' => 'Forms API', 'version' => '1.9.0'],
             'routes' => ['include' => ['api/versioned-forms']],
@@ -187,7 +187,7 @@ it('orders and names a semver enum as versions rather than as bytes', function (
 it('never publishes an enum that leaves out the version the document defaults to', function (): void {
     // A build whose document is not in the `documents` bag — a programmatic one, a key mid-rename —
     // would otherwise publish a `default` its own `enum` refuses, which marks a working request invalid.
-    config()->set('docuccino.documents', ['v2026-09-01' => versionedFormDocuments()['v2026-09-01']]);
+    setDocuments(['v2026-09-01' => versionedFormDocuments()['v2026-09-01']]);
 
     $document = generateDocument(static function (array $raw): array {
         $raw['info']['version'] = '2027-03-01';

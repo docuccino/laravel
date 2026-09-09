@@ -12,7 +12,7 @@ use Illuminate\Console\Command;
 /**
  * Forgets the cached payload for a document (or every document), the inverse of {@see CacheCommand}.
  * `--fragments` additionally empties the per-operation fragment store, which is shared by every
- * document and survives `docuccino.cache.enabled` being turned off — it is the supported recovery
+ * document and survives `cache.enabled` being turned off — it is the supported recovery
  * from a fragment store you no longer trust.
  */
 final class ClearCommand extends Command

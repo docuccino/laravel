@@ -87,7 +87,7 @@ it('reports each fallback a document discovers, hosts included', function (): vo
 it('says nothing about a fallback the document already excluded', function (): void {
     // An omission the author asked for is not news. An excluded route never reaches discovery, so it is
     // not reported as dropped on top of being filtered.
-    config()->set('docuccino.documents.default.routes.exclude', ['api/{fallbackPlaceholder}']);
+    setBuild('documents.default.routes.exclude', ['api/{fallbackPlaceholder}']);
 
     [$document, $diagnostics] = ($this->fallbackDocument)(function (Router $router): void {
         $router->get('api/zz-reports', [ReportController::class, 'index']);

@@ -292,8 +292,8 @@
   "x-docuccino": {
     "document": {
       "id": "doc:spelling",
-      "configHash": "f678e6d067f92572e3483e57f852f62abab3dabc7cd5be31952efb3f25119d73",
-      "contentHash": "5eb80691a95a443ba27194bd879fd25f16973e35fadaea687debc029329eeba9"
+      "configHash": "d45f9ec9ecbb16025a4f461fe3930d42d91e02270892c582a516693901e6961b",
+      "contentHash": "2dfec7e080f294b6b333a6509fdd6c0b200447d5c54329e0d542ce4152893597"
     },
     "generator": {
       "name": "docuccino/laravel",

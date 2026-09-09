@@ -2,7 +2,11 @@
 
 declare(strict_types=1);
 
+use Docuccino\Core\Config\ConfigFile;
 use Docuccino\Laravel\Config\ConfigPublisher;
+use Docuccino\Laravel\Config\ConfigPublishers;
+use Docuccino\Laravel\DocuccinoServiceProvider;
+use Illuminate\Support\ServiceProvider;
 
 /**
  * The one write the package makes outside an export path. It has to be a byte copy — the shipped file
@@ -54,3 +58,43 @@ it('reports a failure instead of writing half a file', function (string $source,
         fn (): string => '/dev/null/docuccino/docuccino.php',
     ],
 ]);
+
+/*
+ * And `vendor:publish` writes the same configuration `docuccino:install` does.
+ *
+ * Asserted rather than assumed because the two are separate mechanisms with one job: the framework's
+ * config file rides `hasConfigFile()`, the build configuration is registered beside it, and the
+ * command has its own list. A tag that copied one of the two would hand an author viewer wiring and
+ * nothing that shapes a document — and the way to discover the build surface is to read the file.
+ */
+it('publishes both configuration files under the docuccino-config tag', function (): void {
+    $paths = ServiceProvider::pathsToPublish(DocuccinoServiceProvider::class, 'docuccino-config');
+    $package = dirname(__DIR__, 2);
+
+    // Keyed by SOURCE, and the two registrations spell their own package path differently — spatie's
+    // `hasConfigFile()` resolves it through `src/..`. So the sources are checked as the files they
+    // resolve to and the targets as the literals an author ends up with.
+    expect(array_map(realpath(...), array_keys($paths)))->toBe([
+        $package.'/config/docuccino.php',
+        $package.'/config/'.ConfigFile::NAME,
+    ])
+        ->and(array_values($paths))->toBe([
+            config_path('docuccino.php'),
+            base_path(ConfigFile::NAME),
+        ]);
+});
+
+it('writes the same targets the install command does', function (): void {
+    // The invariant behind the pair, stated over the two lists rather than over either one: an author
+    // who publishes and an author who installs have to end up with the same two files.
+    $published = array_values(ServiceProvider::pathsToPublish(DocuccinoServiceProvider::class, 'docuccino-config'));
+    $installed = array_map(
+        static fn (ConfigPublisher $publisher): string => $publisher->target(),
+        app(ConfigPublishers::class)->all(),
+    );
+
+    sort($published);
+    sort($installed);
+
+    expect($installed)->toHaveCount(2)->and($published)->toBe($installed);
+});

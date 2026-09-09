@@ -35,7 +35,7 @@ it('fails for an unknown document', function (): void {
  */
 it('applies the --fail-on floor on top of a valid document', function (string $failOn, bool $fails): void {
     bindStubEngine();
-    config()->set('docuccino.documents.default.routes.include', ['api/widget-query']);
+    setBuild('documents.default.routes.include', ['api/widget-query']);
 
     $command = $this->artisan('docuccino:validate', ['--fail-on' => $failOn]);
     $fails ? $command->assertFailed() : $command->assertSuccessful();

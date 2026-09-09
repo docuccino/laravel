@@ -50,7 +50,7 @@ it('unwraps a real JsonResponse<payload> into the emitted response schema', func
     app()->instance(TypeEngine::class, $engine);
 
     /** @var array<string, mixed> $raw */
-    $raw = config('docuccino.documents.default');
+    $raw = documentSettings();
     $config = app(DocumentConfigFactory::class)->make('default', $raw, 'skeleton');
     $document = app(DocumentGenerator::class)->generate($config, $engine)->document->toArray();
 

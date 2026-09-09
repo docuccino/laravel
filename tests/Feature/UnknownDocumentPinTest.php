@@ -20,7 +20,7 @@ use Illuminate\Routing\Router;
  * keep out. These pin what is reported, once per key, and that it reaches the build's diagnostics.
  */
 beforeEach(function (): void {
-    config()->set('docuccino.documents', [
+    setDocuments([
         'default' => [
             'info' => ['title' => 'API Documentation', 'version' => '1.0.0'],
             'routes' => ['include' => ['api/*']],
@@ -127,7 +127,7 @@ function pinMessages(string $key): array
     app()->instance(TypeEngine::class, WorkbenchEngine::make());
 
     /** @var array<string, mixed> $raw */
-    $raw = config('docuccino.documents.'.$key);
+    $raw = documentSettings($key);
     $config = app(DocumentConfigFactory::class)->make($key, $raw, 'skeleton');
     $result = app(DocumentGenerator::class)->generate($config, app(TypeEngine::class));
 

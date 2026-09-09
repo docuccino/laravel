@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
+use Docuccino\Laravel\Config\BuildConfig;
 use Docuccino\Laravel\Support\MachineDependentValue;
 use Docuccino\Laravel\Tests\Fixtures\TagNames\Admin\ReportController as AdminReportController;
 use Docuccino\Laravel\Tests\Fixtures\TagNames\Api\ReportController as ApiReportController;
@@ -33,7 +34,7 @@ beforeEach(function (): void {
 });
 
 afterEach(function (): void {
-    $path = config('docuccino.cache.path');
+    $path = app(BuildConfig::class)->raw('cache.path');
     if (is_string($path)) {
         removeFragmentCacheDir($path);
     }

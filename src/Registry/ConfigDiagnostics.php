@@ -12,6 +12,8 @@ use Docuccino\Core\Support\Hydrate;
 use Docuccino\Core\Support\PlainText;
 use Docuccino\Laravel\Config\ConfigPaths;
 use Docuccino\Laravel\Config\ConfiguredFlags;
+use Docuccino\Laravel\Config\ConfiguredKeywords;
+use Docuccino\Laravel\Config\ConfiguredTagMapper;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderConfig;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParameters;
 
@@ -23,17 +25,14 @@ use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParameters;
  *   switch does nothing.
  * - An `integrations.<key>` bag naming neither a toggle nor an always-on producer — a typo, so the
  *   whole bag under it is read by nobody.
- * - An unknown `tags.default_strategy`, which {@see DocumentConfig::tagDefaultStrategy()} coerces to
- *   `controller`.
- * - An `error_responses` value outside the two the key accepts, which reads as `default`. Every other
- *   value the build could be handed here would otherwise change what a document says about every error
- *   in it without a word — null included, which is what an unset `env()` puts under a key an author
- *   deliberately wrote. Only an ABSENT key is silent, and it resolves to `none` rather than to this.
  * - An `integrations.query_builder.filter_descriptions` key naming no filter kind. The sentence under it
  *   can never be reached, so the override looks like it did nothing.
  * - A `representation.examples.formats` sample that is not a string. `format` is a string keyword, so
  *   nothing could publish it; the same code covers a sample a field's own rules reject, which only the
  *   build can find out.
+ * - A `tags.mapper` that named a mapper and got none, which {@see ConfiguredTagMapper} dropped so the
+ *   tags stay as the code wrote them. Reported HERE and resolved THERE, off the one condition: a name
+ *   in the bag and no mapper beside it.
  * - A `tags.definitions` `parent` that {@see DocumentConfig::tagDefinitions()} dropped, because it
  *   names no defined tag or would close a cycle — OAS 3.2 allows neither.
  * - A path-like key pointing outside the app base path. {@see ConfigPaths} can't relativise it, so it
@@ -42,6 +41,9 @@ use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParameters;
  *   nothing instead ({@see ConfigPaths::unholdable()}), so this is what says the path was dropped.
  * - An on/off switch in this document's bag holding something that is no switch — the one reading
  *   refuses it rather than coercing, and {@see ConfiguredFlags} is what says so.
+ * - A closed-set keyword in this document's bag holding a value outside its set — `error_responses`,
+ *   `tags.default_strategy`, the `representation` policy keywords, `versioning`, `viewer.source`. Same
+ *   reading, same refusal, one code: {@see ConfiguredKeywords}.
  *
  * @internal
  */
@@ -50,17 +52,12 @@ final class ConfigDiagnostics
     /** Producers with no `enabled` toggle, i.e. absent from {@see IntegrationToggles}. Fixed order. */
     private const ALWAYS_ON = ['validation', 'form_request', 'framework_errors', 'inferred_handler'];
 
-    private const VALID_TAG_STRATEGIES = ['controller', 'none'];
-
-    /** Everything `error_responses` accepts. Anything else is read as the first of them. */
-    private const VALID_ERROR_RESPONSES = ['default', 'none'];
-
     /**
      * @return list<Diagnostic>
      */
     public static function for(DocumentConfig $document): array
     {
-        $diagnostics = ConfiguredFlags::forDocument($document);
+        $diagnostics = [...ConfiguredFlags::forDocument($document), ...ConfiguredKeywords::forDocument($document)];
 
         foreach (self::ALWAYS_ON as $key) {
             if (array_key_exists('enabled', $document->integration($key))) {
@@ -91,38 +88,11 @@ final class ConfigDiagnostics
             );
         }
 
-        // Asked by presence: a key holding null is an author who named it, and only an absent key is silent.
-        if (array_key_exists('error_responses', $document->raw)) {
-            $configured = $document->raw['error_responses'];
-
-            if (! in_array($configured, self::VALID_ERROR_RESPONSES, true)) {
-                // A WARNING, like the other two here that drop something the author wrote rather than
-                // merely ignoring a switch: what this key names is the whole document's error contract,
-                // so a value read as something else changes the body of every error response in it.
-                $diagnostics[] = new Diagnostic(
-                    severity: Severity::Warning,
-                    code: 'config.unknown-error-responses',
-                    message: sprintf(
-                        "error_responses is %s, which names no error-response strategy — the document is built as if it said 'default'.",
-                        is_string($configured) ? "'".PlainText::of($configured)."'" : get_debug_type($configured),
-                    ),
-                    help: "Valid values are 'default' (the framework's own error shapes, and the implicit "
-                        ."responses) and 'none'. The shape your own exception handling returns is read from "
-                        .'your code either way, and is published over both.',
-                );
-            }
-        }
-
-        $strategy = $document->tags['default_strategy'] ?? null;
-        if (is_string($strategy) && ! in_array($strategy, self::VALID_TAG_STRATEGIES, true)) {
-            $diagnostics[] = new Diagnostic(
-                severity: Severity::Info,
-                code: 'config.unknown-tag-strategy',
-                message: sprintf(
-                    "Unknown tags.default_strategy '%s' — falling back to 'controller' (valid values: controller, none).",
-                    $strategy,
-                ),
-            );
+        // Not a closed-set keyword and so not {@see ConfiguredKeywords}' to report: `tags.mapper` names a
+        // CLASS, and the four ways that fails are read off the name rather than off a set of values.
+        $unusableMapper = ConfiguredTagMapper::diagnose($document->key, $document->tags, $document->tagMapper);
+        if ($unusableMapper !== null) {
+            $diagnostics[] = $unusableMapper;
         }
 
         foreach ($document->tagParentIssues() as $issue) {

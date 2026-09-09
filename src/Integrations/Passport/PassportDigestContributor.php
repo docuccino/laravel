@@ -29,16 +29,20 @@ final class PassportDigestContributor implements EnvironmentDigestContributor
 
         $scopes = $this->runtime->scopes;
         ksort($scopes);
-        $records = [];
+        $parts = [
+            'appurl',
+            $appUrl,
+            'path',
+            is_string($path) ? $path : '',
+            'grants',
+            ($this->runtime->passwordGrant ? 'password' : '').($this->runtime->implicitGrant ? 'implicit' : ''),
+            'scopes',
+        ];
         foreach ($scopes as $id => $description) {
-            $records[] = $id.'=>'.$description;
+            $parts[] = (string) $id;
+            $parts[] = $description;
         }
 
-        return implode('|', [
-            'appurl:'.$appUrl,
-            'path:'.(is_string($path) ? $path : ''),
-            'scopes:'.implode(',', $records),
-            'grants:'.($this->runtime->passwordGrant ? 'password' : '').($this->runtime->implicitGrant ? 'implicit' : ''),
-        ]);
+        return implode("\0", $parts);
     }
 }

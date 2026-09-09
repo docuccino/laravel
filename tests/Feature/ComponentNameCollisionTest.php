@@ -161,8 +161,8 @@ it('still reports the collision on a warm fragment-cache build', function (): vo
     // A warm hit restores components instead of registering them, so a registration-time report would
     // vanish from a build whose bytes still carry the suffix. The fragment replays it instead.
     $dir = sys_get_temp_dir().'/docuccino-fragments-'.uniqid('', true);
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', $dir);
+    setBuild('cache.enabled', true);
+    setBuild('cache.path', $dir);
 
     $cold = collisionDocument();
     $warm = collisionDocument();

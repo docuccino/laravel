@@ -88,7 +88,7 @@ it('follows what the user neon SAYS, not just where it points', function (): voi
     $engine = new NullTypeEngine;
     $root = sys_get_temp_dir().'/docuccino-neon-key-'.uniqid('', true);
     mkdir($root, 0o755, true);
-    $config = ['mode' => 'in-process', 'neon' => 'phpstan.neon'];
+    $config = ['mode' => 'in-process', 'config' => 'phpstan.neon'];
 
     $unconfigured = buildFingerprint(['mode' => 'in-process'], basePath: $root)->digest($engine);
     // Configured but not yet written: the key already moved, because the path is in the config bag.

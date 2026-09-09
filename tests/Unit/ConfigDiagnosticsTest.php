@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
+use Docuccino\Core\Extensions\Contracts\TagMapper;
+use Docuccino\Laravel\Config\ConfiguredFlags;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParameters;
 use Docuccino\Laravel\Registry\ConfigDiagnostics;
 use Docuccino\Laravel\Registry\IntegrationToggles;
+use Docuccino\Laravel\Tests\Fixtures\Tags\StatefulTagMapper;
 
 /**
  * The config-shape info diagnostics (design §9, B7): the silent no-ops the config surface used to
@@ -21,6 +24,11 @@ function configDoc(array $integrations = [], array $tags = [], array $representa
     }
     if ($representation !== []) {
         $raw['representation'] = $representation;
+    }
+    // The raw bag is the whole of what the document was configured with, so a modelled section is in
+    // BOTH — which is what the config factory builds and what the readers that scan the raw bag see.
+    if ($tags !== []) {
+        $raw['tags'] = $tags;
     }
 
     return new DocumentConfig('default', [], tags: $tags, representation: $representation, raw: $raw);
@@ -87,6 +95,14 @@ it('does not flag a key some integration actually reads', function (string $key)
     ]),
 ]);
 
+/**
+ * `error_responses` reports under the one code the whole keyword family reports under, and no longer
+ * under a name of its own. The fact is not specific to this key — a value outside a closed set, so the
+ * documented default was used — and the remedy is not either: write one of the values the message
+ * lists. A code per setting made an author who wanted to accept the family list every one of them, and
+ * had this key warning where `tags.default_strategy` next to it merely informed, for no reason anyone
+ * could state.
+ */
 it('warns, and names what was built instead, for an error_responses value that is not one of the two', function (mixed $configured, string $named): void {
     // The key decides what EVERY error response in the document says, so a value nothing recognises is
     // reported rather than quietly read as one of them — including a shape (an array, say) that once meant
@@ -95,18 +111,18 @@ it('warns, and names what was built instead, for an error_responses value that i
 
     expect($diagnostics)->toHaveCount(1)
         ->and($diagnostics[0]->severity)->toBe(Severity::Warning)
-        ->and($diagnostics[0]->code)->toBe('config.unknown-error-responses')
+        ->and($diagnostics[0]->code)->toBe('config.unknown-value')
         ->and($diagnostics[0]->message)->toContain($named)
-        ->and($diagnostics[0]->message)->toContain("as if it said 'default'")
-        ->and($diagnostics[0]->help)->toContain("'default'");
+        ->and($diagnostics[0]->message)->toContain('read as "default", its default')
+        ->and($diagnostics[0]->help)->toBe('Write one of: "default", "none".');
 })->with([
-    'a strategy name nothing recognises' => ['problem-details', "'problem-details'"],
-    'a misspelling' => ['defualt', "'defualt'"],
-    'an array where a strategy name belongs' => [['preset' => 'problem-details'], 'array'],
-    'a boolean' => [false, 'bool'],
-    // The key an author wrote with an `env()` behind it that came back empty. It is a PRESENT key, so it
-    // reads as `default` like every other unrecognised value — only deleting the key gets you `none`.
-    'an unset env()' => [null, 'null'],
+    'a strategy name nothing recognises' => ['problem-details', 'the text "problem-details"'],
+    'a misspelling' => ['defualt', 'the text "defualt"'],
+    'an array where a strategy name belongs' => [['preset' => 'problem-details'], 'a map'],
+    'a boolean' => [false, 'the boolean false'],
+    // The key written with nothing after the colon. It is a PRESENT key, so it reads as `default` like
+    // every other unrecognised value — only deleting the key gets you `none`.
+    'a key with nothing after the colon' => [null, 'empty'],
 ]);
 
 it('says nothing about the two error_responses values there are, or about a document that sets neither', function (): void {
@@ -117,18 +133,66 @@ it('says nothing about the two error_responses values there are, or about a docu
         ->and(ConfigDiagnostics::for(configDoc()))->toBe([]);
 });
 
-it('emits an info diagnostic for an unknown tags.default_strategy value', function (): void {
+/**
+ * And a WARNING where it used to inform, for the reason its neighbours warn: the build did not ignore a
+ * switch nobody reads, it discarded an instruction somebody wrote — every operation with no `#[Group]`
+ * is tagged by this, so a value read as something else regroups the whole document. What the severity
+ * is a function of is the KIND of defect, not the setting's blast radius; that is what
+ * {@see ConfiguredFlags} settled for the switches, where the master switch
+ * and `viewer.cdn` both warn.
+ */
+it('warns for an unknown tags.default_strategy value', function (): void {
     $diagnostics = ConfigDiagnostics::for(configDoc(tags: ['default_strategy' => 'wibble']));
 
     expect($diagnostics)->toHaveCount(1)
-        ->and($diagnostics[0]->severity)->toBe(Severity::Info)
-        ->and($diagnostics[0]->code)->toBe('config.unknown-tag-strategy')
-        ->and($diagnostics[0]->message)->toContain('wibble');
+        ->and($diagnostics[0]->severity)->toBe(Severity::Warning)
+        ->and($diagnostics[0]->code)->toBe('config.unknown-value')
+        ->and($diagnostics[0]->message)->toBe(
+            'tags.default_strategy is the text "wibble", which is none of the values it takes'
+            .' — it is read as "controller", its default.',
+        );
 });
 
 it('does not flag a known tags.default_strategy value', function (string $strategy): void {
     expect(ConfigDiagnostics::for(configDoc(tags: ['default_strategy' => $strategy])))->toBe([]);
 })->with(['controller', 'none']);
+
+/*
+ * `tags.mapper` names a collaborator, and a name is four things it can be: no name at all, a name
+ * nothing loads, a name that loads and is no mapper, and a mapper the container could not build. The
+ * document is truthful in all four — its tags are the ones the code wrote — so each is a WARNING saying
+ * the key did not take, and the message says which of the four it was.
+ */
+
+it('warns, and says which of the four states it is in, for a tags.mapper that produced no mapper', function (mixed $configured, string $expected): void {
+    // No mapper beside a name in the bag is the whole condition, which is what a resolved document with
+    // an unusable `tags.mapper` looks like ({@see ConfiguredTagMapper}).
+    $diagnostics = ConfigDiagnostics::for(configDoc(tags: ['mapper' => $configured]));
+
+    expect($diagnostics)->toHaveCount(1)
+        ->and($diagnostics[0]->severity)->toBe(Severity::Warning)
+        ->and($diagnostics[0]->code)->toBe('config.tag-mapper-unusable')
+        ->and($diagnostics[0]->message)->toContain($expected)
+        ->and($diagnostics[0]->message)->toContain('documents.default.tags.mapper');
+})->with([
+    'not a string at all' => [123, 'is int rather than the name of a class'],
+    'an empty string' => ['', "is '' rather than the name of a class"],
+    'whitespace' => ['   ', 'rather than the name of a class'],
+    'a name nothing loads' => ['Not\\A\\Real\\Mapper', 'is neither an autoloadable class nor a name the container has bound'],
+    'a class that is no mapper' => [stdClass::class, 'does not implement '.TagMapper::class],
+    'a mapper the container cannot build' => [StatefulTagMapper::class, 'the container could not build'],
+]);
+
+it('says nothing about a document that names no tags.mapper, or one whose mapper resolved', function (): void {
+    // The other half: a bag with no `mapper` key is silent, and so is one whose mapper is right there.
+    expect(ConfigDiagnostics::for(configDoc(tags: ['map' => ['a' => 'b']])))->toBe([])
+        ->and(ConfigDiagnostics::for(new DocumentConfig(
+            'default',
+            [],
+            tags: ['mapper' => StatefulTagMapper::class],
+            tagMapper: new StatefulTagMapper('V1'),
+        )))->toBe([]);
+});
 
 it('emits an info diagnostic for a tag parent that no definition declares', function (): void {
     $diagnostics = ConfigDiagnostics::for(configDoc(tags: ['definitions' => [

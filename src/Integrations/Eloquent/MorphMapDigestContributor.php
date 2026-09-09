@@ -35,16 +35,18 @@ final class MorphMapDigestContributor implements EnvironmentDigestContributor
         ksort($resolved);
         ksort($morphMap);
 
-        $records = [];
+        $parts = ['morph'];
         foreach ($morphMap as $alias => $fqcn) {
-            $records[] = $alias.'=>'.$fqcn;
+            $parts[] = (string) $alias;
+            $parts[] = $fqcn;
         }
 
-        $aliases = [];
+        $parts[] = 'aliases';
         foreach ($resolved as $fqcn => $alias) {
-            $aliases[] = $fqcn.'=>'.$alias;
+            $parts[] = $fqcn;
+            $parts[] = $alias;
         }
 
-        return 'morph:'.implode(',', $records).'|aliases:'.implode(',', $aliases);
+        return implode("\0", $parts);
     }
 }

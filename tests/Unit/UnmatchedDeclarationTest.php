@@ -88,9 +88,9 @@ it('quotes the status the author wrote, twice, and reads it back the same', func
 });
 
 it('says no documents are configured rather than naming an empty list', function (): void {
-    // Reachable: `documents` can be configured empty, and a message that trailed off after "The
-    // configured documents are ." would read as a bug in us rather than as the configuration problem
-    // it is.
+    // A build's configured set always names at least `default`, so this is the renderer being total
+    // over the list it is handed: a message that trailed off after "The configured documents are ."
+    // would read as a bug in us rather than as the configuration problem it is.
     expect(UnmatchedDeclaration::document('admn', ['GET api/things'], [], stranded: true)->message)
         ->toContain('No documents are configured at all.');
 });

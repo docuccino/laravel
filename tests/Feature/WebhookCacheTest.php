@@ -33,7 +33,7 @@ it('emits and reports the same warm as cold, degradations included', function ()
     // The degraded directory on purpose: equal-and-silent is equality that proves nothing, and the
     // diagnostics here span both halves — one raised while BUILDING a webhook (and so cached with it)
     // and two raised while DISCOVERING one (and so recomputed every build).
-    config()->set('docuccino.documents.default.webhooks.dir', 'tests/Fixtures/Webhooks/Degraded');
+    setBuild('documents.default.webhooks.dir', 'tests/Fixtures/Webhooks/Degraded');
 
     $routes = static function (Router $router): void {
         $router->get('api/forms', [FormController::class, 'index']);
@@ -55,7 +55,7 @@ it('emits and reports the same warm as cold, degradations included', function ()
 
 it('keys a webhook fragment on the files it was built from', function (): void {
     $dir = fragmentCacheDir('warm');
-    config()->set('docuccino.documents.default.webhooks.dir', 'workbench/app/Webhooks');
+    setBuild('documents.default.webhooks.dir', 'workbench/app/Webhooks');
 
     // The payload class's own files reach the manifest through `SchemaContext::dependsOn()`, which the
     // class mapper feeds from the engine's `ClassMetadata` — so the stub has to answer with them the
@@ -96,7 +96,7 @@ it('keeps a webhook to itself when an unrelated one is added beside it', functio
             Anchor::class => new ClassMetadata(Anchor::class, [new PropertyMetadata('id', ScalarT::int())]),
             Neighbour::class => new ClassMetadata(Neighbour::class, [new PropertyMetadata('reference', ScalarT::string())]),
         ]));
-        config()->set('docuccino.documents.default.webhooks.dir', $dir);
+        setBuild('documents.default.webhooks.dir', $dir);
 
         $document = emittedArray(generateDocument());
 
@@ -129,7 +129,7 @@ it('keeps a webhook to itself when an unrelated one is added beside it', functio
  */
 it('drains a warm webhook fragment\'s notes into its collector', function (): void {
     $dir = fragmentCacheDir('warm');
-    config()->set('docuccino.documents.default.webhooks.dir', 'workbench/app/Webhooks');
+    setBuild('documents.default.webhooks.dir', 'workbench/app/Webhooks');
     app()->instance(TypeEngine::class, WorkbenchEngine::make());
 
     // Registered ahead of BOTH builds. The resolved extension set is digested into the fragment-cache

@@ -38,6 +38,8 @@ final class DiffCommand extends Command
 {
     use GuardsEnabled;
     use ReadsCommittedArtifact;
+    use RefusesUnreadConfig;
+    use RendersDiagnostics;
     use StringOptions;
 
     protected $signature = 'docuccino:diff
@@ -59,7 +61,7 @@ final class DiffCommand extends Command
 
     public function handle(DocumentBuilder $builder, TypeEngine $engine): int
     {
-        if ($this->abortIfDisabled()) {
+        if ($this->abortIfDisabled() || $this->abortIfConfigUnread()) {
             return self::FAILURE;
         }
 

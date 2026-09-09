@@ -70,7 +70,7 @@ it('serves the generated OpenAPI JSON', function (): void {
 it('projects a tag hierarchy as x-tagGroups through the spec endpoint', function (string $driver): void {
     config()->set('docuccino.documents.default.viewer.gate', 'viewApiDocs');
     config()->set('docuccino.documents.default.viewer.driver', $driver);
-    config()->set('docuccino.documents.default.tags.definitions', [
+    setBuild('documents.default.tags.definitions', [
         ['name' => 'Billing'],
         ['name' => 'Invoices', 'parent' => 'Billing'],
     ]);
@@ -159,8 +159,10 @@ it('404s a viewer route whose document is no longer configured', function (): vo
     config()->set('docuccino.documents.default.viewer.gate', 'viewApiDocs');
     Gate::before(static fn ($user = null): bool => true);
 
-    // The route was registered at boot but the document has since gone, so hasDocument() is false.
-    config()->set('docuccino.documents', []);
+    // The route was registered at boot for `default` and docuccino.yaml has since been rewritten to
+    // name a different document, so hasDocument() is false. Which is a renamed document key with its
+    // viewer entry left behind under the old one — the shape `config.viewer-orphan` warns about.
+    setDocuments(['admin' => ['info' => ['title' => 'Admin', 'version' => '1.0.0']]]);
 
     $this->get('/docs/api.json')->assertNotFound();
 });
@@ -175,12 +177,12 @@ it('serves source=artifact, re-emitting a UIR artifact as OpenAPI', function ():
     file_put_contents($artifact, (new UirEmitter)->emit(
         UirDocument::fromArray(
             app(DocumentGenerator::class)->generate(
-                app(DocumentConfigFactory::class)->make('default', (array) config('docuccino.documents.default'), 'skeleton'),
+                app(DocumentConfigFactory::class)->make('default', documentSettings(), 'skeleton'),
                 app(TypeEngine::class),
             )->document->toArray(),
         ),
     ));
-    config()->set('docuccino.documents.default.export.path', $artifact);
+    setBuild('documents.default.export.path', $artifact);
 
     $body = $this->get('/docs/api.json')->assertOk()->getContent();
 
@@ -217,11 +219,11 @@ it('serves an artifact the empty objects it holds, so the viewer and the export 
 
     $artifact = sys_get_temp_dir().'/docuccino-empty-object-'.uniqid().'.json';
     file_put_contents($artifact, (new UirEmitter)->emit($document));
-    config()->set('docuccino.documents.default.export.path', $artifact);
+    setBuild('documents.default.export.path', $artifact);
 
     $body = $this->get('/docs/api.json')->assertOk()->getContent();
 
-    $config = app(DocumentConfigFactory::class)->make('default', (array) config('docuccino.documents.default'), 'skeleton');
+    $config = app(DocumentConfigFactory::class)->make('default', documentSettings(), 'skeleton');
 
     expect($body)->toContain('"example": {}')
         ->and($body)->not->toContain('"example": []')
@@ -236,7 +238,7 @@ it('warns rather than building when the artifact is missing', function (): void 
     config()->set('docuccino.documents.default.viewer.gate', 'viewApiDocs');
     config()->set('docuccino.documents.default.viewer.source', 'artifact');
     $missing = sys_get_temp_dir().'/does-not-exist-'.uniqid().'.json';
-    config()->set('docuccino.documents.default.export.path', $missing);
+    setBuild('documents.default.export.path', $missing);
     Gate::before(static fn ($user = null): bool => true);
 
     // `artifact` is chosen so no request ever re-analyses, so the empty body stands — but the log now
@@ -263,7 +265,7 @@ it('picks the best servable target whatever order the list is written in', funct
         file_put_contents($path, sprintf('{"openapi":"served-%s"}', $format));
         $configured[] = ['format' => $format, 'path' => $path];
     }
-    config()->set('docuccino.documents.default.export', ['targets' => $configured]);
+    setBuild('documents.default.export', ['targets' => $configured]);
 
     // 3.2 is the most faithful thing the viewer can serve, so it wins regardless of list order.
     expect($this->get('/docs/api.json')->assertOk()->getContent())->toContain('served-openapi-3.2');
@@ -283,7 +285,7 @@ it('skips a YAML target rather than serving YAML as application/json', function 
     file_put_contents($dir.'/openapi.yaml', "openapi: 3.2.0\n");
     file_put_contents($dir.'/api.uir.json', '{"uir":"1.0.0","openapi":"3.2.0","info":{"title":"T","version":"1"},"paths":{}}');
 
-    config()->set('docuccino.documents.default.export', ['targets' => [
+    setBuild('documents.default.export', ['targets' => [
         ['format' => 'openapi-3.2', 'path' => $dir.'/openapi.yaml'],
         ['format' => 'uir', 'path' => $dir.'/api.uir.json'],
     ]]);
@@ -301,7 +303,7 @@ it('generates rather than serving bytes the viewer cannot read', function (): vo
     Gate::before(static fn ($user = null): bool => true);
 
     // Every target is YAML, so nothing here is servable — generating beats an unreadable body.
-    config()->set('docuccino.documents.default.export', ['targets' => [
+    setBuild('documents.default.export', ['targets' => [
         ['format' => 'openapi-3.2', 'path' => sys_get_temp_dir().'/nope-'.uniqid().'.yaml'],
     ]]);
 

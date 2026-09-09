@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use Docuccino\Core\Config\ConfigFile;
 use Docuccino\Laravel\Config\ConfigPublisher;
+use Docuccino\Laravel\Config\ConfigPublishers;
 use Docuccino\Laravel\Engine\EnginePackage;
+use Docuccino\Laravel\Tests\Support\BuildSettings;
 use Illuminate\Routing\RouteCollection;
 use Illuminate\Support\Facades\Artisan;
 
@@ -18,21 +21,36 @@ use Illuminate\Support\Facades\Artisan;
  * expectations are one-per-written-line: two substrings of the SAME line satisfy one expectation
  * between them, and this command reports several facts per line on purpose.
  */
+/**
+ * Redirect both writes into one temp project and hand back [docuccino.yaml, config/docuccino.php] —
+ * the pair, in the order the command reports them.
+ *
+ * @return array{0: string, 1: string}
+ */
+function installTargets(): array
+{
+    $root = sys_get_temp_dir().'/docuccino-install-'.bin2hex(random_bytes(8));
+    $settings = $root.'/'.ConfigFile::NAME;
+    $framework = $root.'/config/docuccino.php';
+
+    app()->instance(ConfigPublishers::class, new ConfigPublishers([
+        new ConfigPublisher(source: dirname(__DIR__, 2).'/config/'.ConfigFile::NAME, target: $settings),
+        new ConfigPublisher(source: dirname(__DIR__, 2).'/config/docuccino.php', target: $framework),
+    ]));
+
+    return [$settings, $framework];
+}
+
+/** The framework half's target, for the tests whose subject is that one file. */
 function installTarget(): string
 {
-    $target = sys_get_temp_dir().'/docuccino-install-'.bin2hex(random_bytes(8)).'/config/docuccino.php';
-
-    app()->instance(ConfigPublisher::class, new ConfigPublisher(
-        source: dirname(__DIR__, 2).'/config/docuccino.php',
-        target: $target,
-    ));
-
-    return $target;
+    return installTargets()[1];
 }
 
 function removeInstallTarget(string $target): void
 {
     @unlink($target);
+    @unlink(dirname($target, 2).'/'.ConfigFile::NAME);
     @rmdir(dirname($target));
     @rmdir(dirname($target, 2));
 }
@@ -42,22 +60,127 @@ function shippedConfig(): string
     return (string) file_get_contents(dirname(__DIR__, 2).'/config/docuccino.php');
 }
 
-it('publishes the config, reports the routes it matched, and says what to do next', function (): void {
-    $target = installTarget();
+function shippedSettings(): string
+{
+    return (string) file_get_contents(dirname(__DIR__, 2).'/config/'.ConfigFile::NAME);
+}
+
+it('publishes both config files, reports the routes it matched, and says what to do next', function (): void {
+    [$settings, $framework] = installTargets();
     $this->withoutMockingConsoleOutput();
 
     expect($this->artisan('docuccino:install', ['--no-export' => true]))->toBe(0);
 
     expect(Artisan::output())
-        ->toContain('Published '.$target)
+        ->toContain('Published '.$settings)
+        ->toContain('Published '.$framework)
         ->toContain('(include: api/*)')
         ->toContain('The inference engine is')
         // The one path printed as the project names it rather than as this machine stores it.
         ->toContain('Commit docs/openapi.json')
         ->toContain('http://localhost/docs/api')
-        ->and(file_get_contents($target))->toBe(shippedConfig());
+        // Byte-for-byte the shipped files, both of them: an install is a copy, not a render.
+        ->and(file_get_contents($settings))->toBe(shippedSettings())
+        ->and(file_get_contents($framework))->toBe(shippedConfig());
 
-    removeInstallTarget($target);
+    removeInstallTarget($framework);
+});
+
+it('never replaces a docuccino.yaml somebody already wrote', function (): void {
+    [$settings, $framework] = installTargets();
+    $this->withoutMockingConsoleOutput();
+    mkdir(dirname($settings), 0755, true);
+    file_put_contents($settings, "documents: {}\n");
+
+    expect($this->artisan('docuccino:install', ['--no-export' => true]))->toBe(0);
+
+    expect(Artisan::output())
+        ->toContain($settings.' is already there, and was left exactly as it is')
+        // The half it is missing still gets written.
+        ->toContain('Published '.$framework)
+        ->and(file_get_contents($settings))->toBe("documents: {}\n");
+
+    removeInstallTarget($framework);
+});
+
+it('replaces docuccino.yaml only when --force asks for it', function (): void {
+    [$settings, $framework] = installTargets();
+    $this->withoutMockingConsoleOutput();
+    mkdir(dirname($settings), 0755, true);
+    file_put_contents($settings, "documents: {}\n");
+
+    expect($this->artisan('docuccino:install', ['--no-export' => true, '--force' => true]))->toBe(0);
+
+    expect(Artisan::output())->toContain('Replaced '.$settings)
+        ->and(file_get_contents($settings))->toBe(shippedSettings());
+
+    removeInstallTarget($framework);
+});
+
+/**
+ * An unmigrated application, with the publishers AND the project root pointed at one temp root — in a
+ * real install they are the same directory, and the migration writes to the root rather than through a
+ * publisher.
+ *
+ * @return array{0: string, 1: string}
+ */
+function unmigratedInstallRoot(): array
+{
+    $root = sys_get_temp_dir().'/docuccino-install-'.bin2hex(random_bytes(8));
+    mkdir($root.'/config', 0755, true);
+    app()->setBasePath($root);
+
+    app()->instance(ConfigPublishers::class, new ConfigPublishers([
+        new ConfigPublisher(source: dirname(__DIR__, 2).'/config/'.ConfigFile::NAME, target: $root.'/'.ConfigFile::NAME),
+        new ConfigPublisher(source: dirname(__DIR__, 2).'/config/docuccino.php', target: $root.'/config/docuccino.php'),
+    ]));
+
+    BuildSettings::none();
+    config()->set('docuccino.documents.default.routes.include', ['api/v7/*']);
+    config()->set('docuccino.on_route_error', 'omit');
+
+    return [$root.'/'.ConfigFile::NAME, $root];
+}
+
+it('writes docuccino.yaml from the settings an application already has, not from the defaults', function (): void {
+    // Build settings in `config/docuccino.php` are a decision somebody made, the same way an existing
+    // file is. Publishing defaults over them would put a file on disk that stops the build refusing
+    // and documents something else — and the warning that follows would then say to delete the only
+    // copy of what its author configured.
+    [$settings, $root] = unmigratedInstallRoot();
+    $this->withoutMockingConsoleOutput();
+
+    try {
+        expect($this->artisan('docuccino:install', ['--no-export' => true]))->toBe(0);
+
+        expect(Artisan::output())
+            ->toContain('config/docuccino.php holds 2 build settings the build no longer reads')
+            ->toContain('Wrote docuccino.yaml')
+            ->and(file_get_contents($settings))->not->toBe(shippedSettings())
+            ->and((string) file_get_contents($settings))->toContain('api/v7/*')
+            ->and((string) file_get_contents($settings))->toContain('on_route_error: omit');
+    } finally {
+        @unlink($settings);
+        @unlink($root.'/config/docuccino.php');
+        @rmdir($root.'/config');
+        @rmdir($root);
+    }
+});
+
+it('publishes the shipped defaults over an unmigrated application only when --force asks', function (): void {
+    [$settings, $root] = unmigratedInstallRoot();
+    $this->withoutMockingConsoleOutput();
+
+    try {
+        expect($this->artisan('docuccino:install', ['--no-export' => true, '--force' => true]))->toBe(0);
+
+        expect(file_get_contents($settings))->toBe(shippedSettings());
+    } finally {
+        @unlink($settings);
+        @unlink($root.'/config/docuccino.php');
+        @rmdir($root.'/config');
+        @rmdir($root);
+    }
 });
 
 /**
@@ -88,9 +211,9 @@ it('never replaces a config somebody already wrote, and says how to ask for that
     expect($this->artisan('docuccino:install', ['--no-export' => true]))->toBe(0);
 
     expect(Artisan::output())
-        ->toContain('is already there, and was left exactly as it is')
+        ->toContain($target.' is already there, and was left exactly as it is')
         ->toContain('Pass --force to replace it')
-        ->not->toContain('Published')
+        ->not->toContain('Published '.$target)
         ->and(file_get_contents($target))->toBe("<?php return ['mine' => true];\n");
 
     removeInstallTarget($target);
@@ -128,10 +251,12 @@ it('runs twice with the same result and the same file', function (): void {
 it('fails when the config cannot be written', function (): void {
     $this->withoutMockingConsoleOutput();
 
-    app()->instance(ConfigPublisher::class, new ConfigPublisher(
-        source: dirname(__DIR__, 2).'/config/docuccino.php',
-        target: '/dev/null/docuccino/config/docuccino.php',
-    ));
+    app()->instance(ConfigPublishers::class, new ConfigPublishers([
+        new ConfigPublisher(
+            source: dirname(__DIR__, 2).'/config/'.ConfigFile::NAME,
+            target: '/dev/null/docuccino/'.ConfigFile::NAME,
+        ),
+    ]));
 
     expect($this->artisan('docuccino:install', ['--no-export' => true]))->toBe(1)
         ->and(Artisan::output())
@@ -146,7 +271,7 @@ it('fails when the config cannot be written', function (): void {
 it('names the prefixes an application really uses when the pattern matches nothing', function (): void {
     $target = installTarget();
     $this->withoutMockingConsoleOutput();
-    config()->set('docuccino.documents.default.routes.include', ['nope/*']);
+    setBuild('documents.default.routes.include', ['nope/*']);
 
     expect($this->artisan('docuccino:install', ['--no-export' => true]))->toBe(0);
 
@@ -181,7 +306,7 @@ it('reports the engine the same way an export warns about it', function (bool $i
 
     app()->instance(EnginePackage::class, new EnginePackage(static fn (string $class): bool => $installed));
     if ($mode !== null) {
-        config()->set('docuccino.engine.mode', $mode);
+        setBuild('engine.mode', $mode);
     }
 
     expect($this->artisan('docuccino:install', ['--no-export' => true]))->toBe(0)
@@ -219,7 +344,7 @@ it('exports without interaction, and reports where the artifact went', function 
     $target = installTarget();
     $this->withoutMockingConsoleOutput();
     $artifact = sys_get_temp_dir().'/docuccino-install-export-'.bin2hex(random_bytes(8)).'.json';
-    config()->set('docuccino.documents.default.export.path', $artifact);
+    setBuild('documents.default.export.path', $artifact);
 
     expect($this->artisan('docuccino:install', ['--no-interaction' => true]))->toBe(0)
         ->and(Artisan::output())->toContain('Wrote '.$artifact)
@@ -246,7 +371,7 @@ it('fails when the first export fails', function (): void {
     bindStubEngine();
     $target = installTarget();
     $this->withoutMockingConsoleOutput();
-    config()->set('docuccino.documents.default.export.path', '/dev/null/nope/openapi.json');
+    setBuild('documents.default.export.path', '/dev/null/nope/openapi.json');
 
     expect($this->artisan('docuccino:install', ['--no-interaction' => true]))->toBe(1)
         ->and(Artisan::output())->toContain('Could not create');

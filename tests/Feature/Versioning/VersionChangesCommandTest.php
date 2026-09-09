@@ -53,7 +53,7 @@ beforeEach(function (): void {
     $router = app('router');
     $router->get('api/versioned-forms', [VersionedFormController::class, 'index']);
 
-    config()->set('docuccino.documents', ['v' => [
+    setDocuments(['v' => [
         'info' => ['title' => 'Forms API', 'version' => '2026-09-01'],
         'routes' => ['include' => ['api/versioned-forms']],
         'error_responses' => 'none',
@@ -207,7 +207,7 @@ it('derives the older document from what it wrote, back to the artifact it was h
 
     $this->artisan('docuccino:version-changes', ['old' => $old, 'document' => 'v'])->assertSuccessful();
 
-    config()->set('docuccino.documents.v.info.version', '2026-06-01');
+    setBuild('documents.v.info.version', '2026-06-01');
 
     expect(currentFormData())->toBe(publishedFormData());
 
@@ -271,7 +271,7 @@ it('uses the packaged stub when the application published none, and it still rou
         ->expectsOutputToContain('from the packaged stub.')
         ->assertSuccessful();
 
-    config()->set('docuccino.documents.v.info.version', '2026-06-01');
+    setBuild('documents.v.info.version', '2026-06-01');
 
     expect(currentFormData()['properties'])->toHaveKey('name');
 
@@ -347,7 +347,7 @@ it('reports the destination it chose and why, for every class it writes', functi
     $old = publishedArtifact();
     mkdir($this->root.'/modules/Billing/Versions', 0755, true);
 
-    config()->set('docuccino.documents.v.api_version.changes', ['changes', 'modules/*/Versions']);
+    setBuild('documents.v.api_version.changes', ['changes', 'modules/*/Versions']);
 
     $this->artisan('docuccino:version-changes', ['old' => $old, 'document' => 'v'])
         ->expectsOutputToContain('into changes — the first configured change directory; no configured module holds Workbench\\App\\Data\\FormData.')
@@ -363,7 +363,7 @@ it('writes into the directory --in names, and refuses one that is not configured
     $old = publishedArtifact();
     mkdir($this->root.'/modules/Billing/Versions', 0755, true);
 
-    config()->set('docuccino.documents.v.api_version.changes', ['changes', 'modules/*/Versions']);
+    setBuild('documents.v.api_version.changes', ['changes', 'modules/*/Versions']);
     file_put_contents(
         $this->root.'/composer.json',
         (string) json_encode(['autoload' => ['psr-4' => [
@@ -404,7 +404,7 @@ it('refuses a directory no PSR-4 prefix covers, because nothing would ever load 
 
 it('refuses a document that configures no changes directory', function (): void {
     $old = publishedArtifact();
-    config()->set('docuccino.documents.v.api_version', []);
+    setBuild('documents.v.api_version', []);
 
     $this->artisan('docuccino:version-changes', ['old' => $old, 'document' => 'v'])
         ->expectsOutputToContain('configures no api_version.changes directory')
@@ -480,7 +480,7 @@ it('refuses when it is disabled, when the document is unknown, and when the arti
 
 it('refuses a document with no version to scaffold against, unless --since names one', function (): void {
     $old = publishedArtifact();
-    config()->set('docuccino.documents.v.info', ['title' => 'Forms API']);
+    setBuild('documents.v.info', ['title' => 'Forms API']);
 
     $this->artisan('docuccino:version-changes', ['old' => $old, 'document' => 'v'])
         ->expectsOutputToContain('states no version to scaffold against')

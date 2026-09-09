@@ -41,7 +41,7 @@ it('documents from docblocks and attributes with no engine installed, and warns 
 });
 
 it('reports engine presence per mode', function (string $mode, string $expected): void {
-    config()->set('docuccino.engine.mode', $mode);
+    setBuild('engine.mode', $mode);
     app()->instance(EnginePackage::class, engineLessPackage());
 
     $result = app(DocumentBuilder::class)->build('default', new NullTypeEngine);

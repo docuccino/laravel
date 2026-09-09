@@ -34,7 +34,7 @@ beforeEach(function (): void {
         ->post('api/versioned-forms', [VersionedFormController::class, 'store']);
     $router->get('api/versioned-search', [VersionedFormController::class, 'search']);
 
-    config()->set('docuccino.documents', versionedRequestDocuments());
+    setDocuments(versionedRequestDocuments());
 });
 
 afterEach(function (): void {
@@ -184,7 +184,7 @@ it('passes a request the application turned away, where the version documents th
     // The shipped setting, beside the two documents that opt out of error responses.
     $documents = versionedRequestDocuments();
     $documents['d2026-06-01'] = [...$documents['r2026-06-01'], 'error_responses' => 'default'];
-    config()->set('docuccino.documents', $documents);
+    setDocuments($documents);
 
     /** @var Router $router */
     $router = app('router');

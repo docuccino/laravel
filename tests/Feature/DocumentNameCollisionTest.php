@@ -98,8 +98,8 @@ it('reports nothing when the document derives no default tag at all', function (
 
 it('still reports the merged tag on a warm fragment-cache build', function (): void {
     $dir = sys_get_temp_dir().'/docuccino-tags-'.uniqid('', true);
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', $dir);
+    setBuild('cache.enabled', true);
+    setBuild('cache.path', $dir);
 
     $routes = static function ($router): void {
         $router->get('api/zz-api-reports', [ApiReportController::class, 'index']);
@@ -159,8 +159,8 @@ it('reports no duplicate operationId when every route publishes its own', functi
 it('still reports the duplicate operationId on a warm fragment-cache build', function (): void {
     // The operationId is on the cached fragment, so this survives where a per-route report would not.
     $dir = sys_get_temp_dir().'/docuccino-opids-'.uniqid('', true);
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', $dir);
+    setBuild('cache.enabled', true);
+    setBuild('cache.path', $dir);
 
     $routes = static function ($router): void {
         $router->get('api/zz-api-reports', [ApiReportController::class, 'index']);

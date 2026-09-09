@@ -844,8 +844,8 @@
   "x-docuccino": {
     "document": {
       "id": "doc:page-size",
-      "configHash": "637e4a23321c724b53784561a1e0b25888774b087cfe0e17084afd04fd81ce35",
-      "contentHash": "15ae99a610578e191673fc3cb5fedd7efbe25404e3683f7e45098e60ac93bb65"
+      "configHash": "0902620ee05e979fb634964a8073c35becef86a216e111fc8b3a10b9f3472468",
+      "contentHash": "f90e11b4642b6f24c7fc0b772a51ec53e7a282bd21f374aa9d92fef999caedc5"
     },
     "generator": {
       "name": "docuccino/laravel",

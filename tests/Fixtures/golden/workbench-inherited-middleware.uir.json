@@ -470,8 +470,8 @@
   "x-docuccino": {
     "document": {
       "id": "doc:inherited",
-      "configHash": "d03ffa58b84eab9081ac6472f6c23ddc4a8eadf0abb53e10dbe2aa48f80731fd",
-      "contentHash": "b4d1991609a89ecf627a1fd76ee390fe2fd55db46ac0c1bdc8c5ebececaed945"
+      "configHash": "cce2a42d4124cc46880ec88e69cec15582e42b7779214f12309684b594ce76a3",
+      "contentHash": "e5fc43930a49ec21c58cec960f0f7c7d6b76eb1f4801ee4915b50fed2ad92e97"
     },
     "generator": {
       "name": "docuccino/laravel",

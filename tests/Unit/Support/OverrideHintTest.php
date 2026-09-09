@@ -66,7 +66,7 @@ it('says what the rung means where nothing above it is worth naming', function (
 })->with([
     'attribute' => [Layer::Attribute, 'edit the attribute above, or outrank it with an overlay'],
     'overlay' => [Layer::Overlay, 'edit the overlay that set it; only config outranks an overlay'],
-    'config' => [Layer::Config, 'config is the top rung — edit config/docuccino.php'],
+    'config' => [Layer::Config, 'config is the top rung — edit docuccino.yaml'],
 ]);
 
 /** Every rung below the attribute layer gets the same shape of answer, naming its own rung. */

@@ -123,7 +123,7 @@ it('creates a request body from attributes when none was inferred', function ():
  */
 it('sorts the attribute body extension behind every built-in request-body recoverer', function (): void {
     /** @var array<string, mixed> $raw */
-    $raw = config('docuccino.documents.default');
+    $raw = documentSettings();
     $document = app(DocumentConfigFactory::class)->make('default', $raw, 'skeleton');
     $resolved = app(ExtensionRegistry::class)->resolve(app(), DefaultExtensions::all($document), []);
 

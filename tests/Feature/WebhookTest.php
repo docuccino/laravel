@@ -199,7 +199,7 @@ it('pins a webhook to the documents #[InDocs] names', function (): void {
     // The document the pin names has to EXIST for this to be a test of pinning: with `internal`
     // unconfigured the webhook would be absent because the key names nothing, which is a different fact
     // and now has a diagnostic of its own.
-    config()->set('docuccino.documents.internal', ['info' => ['title' => 'Internal', 'version' => '1.0.0']]);
+    setBuild('documents.internal', ['info' => ['title' => 'Internal', 'version' => '1.0.0']]);
 
     $result = generateDocument(withWebhooksIn('tests/Fixtures/Webhooks/Pinned'));
 

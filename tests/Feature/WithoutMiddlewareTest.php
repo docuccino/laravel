@@ -95,7 +95,7 @@ beforeEach(function (): void {
 
 it('drops excluded middleware from the resolved route descriptor', function (): void {
     $document = app(DocumentConfigFactory::class)
-        ->make('default', (array) config('docuccino.documents.default'), 'skeleton');
+        ->make('default', documentSettings(), 'skeleton');
 
     $middlewareByUri = [];
     foreach (app(LaravelRouteResolver::class)->resolve($document) as $descriptor) {
@@ -157,7 +157,7 @@ it('publishes the 401 and the security requirement for exactly the routes that s
     $document = generateDocument(static function (array $raw): array {
         $raw['security'] = [
             'schemes' => ['bearer' => ['type' => 'http', 'scheme' => 'bearer']],
-            'auto_detect_middleware' => 'auth*',
+            'auth_middleware' => 'auth*',
             'default' => [['bearer' => []]],
         ];
 

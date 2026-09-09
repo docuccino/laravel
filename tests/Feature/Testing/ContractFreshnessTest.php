@@ -17,7 +17,7 @@ beforeEach(function (): void {
         mkdir($this->dir, 0755, true);
     }
 
-    config()->set('docuccino.documents.default.export.targets', [['format' => 'uir', 'path' => $this->artifact]]);
+    setBuild('documents.default.export.targets', [['format' => 'uir', 'path' => $this->artifact]]);
     bindStubEngine();
 });
 

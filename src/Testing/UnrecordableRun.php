@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Testing;
 
+use Docuccino\Core\Config\ConfigFile;
 use Docuccino\Core\Examples\UnlockableRecording;
 use RuntimeException;
 
@@ -45,9 +46,12 @@ final class UnrecordableRun extends RuntimeException
     {
         return new self(sprintf(
             "There is nowhere to write response recordings for the \"%s\" document.\n".
-            "Say where they live in config/docuccino.php:\n".
-            "    'examples' => ['recordings' => 'docs/recordings'],\n".
+            "Say where they live in %s, under documents.%s:\n".
+            "    examples:\n".
+            "      recordings: 'docs/recordings'\n".
             "Or name a directory at the call site: ApiContract::record('docs/recordings').",
+            $document,
+            ConfigFile::NAME,
             $document,
         ));
     }

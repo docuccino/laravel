@@ -50,7 +50,7 @@ final class ExtensionRegistry
      * Called once per build.
      *
      * @param  list<class-string|object>  $defaults  the built-in extensions
-     * @param  list<class-string|object>  $configExtensions  from `config('docuccino.extensions')`
+     * @param  list<class-string|object>  $configExtensions  from the `extensions` list of `docuccino.yaml`
      */
     public function resolve(Container $container, array $defaults, array $configExtensions): ResolvedExtensions
     {
@@ -84,7 +84,7 @@ final class ExtensionRegistry
      * an application re-skins `scalar` without also having to replace the routes.
      *
      * @param  list<class-string|object>  $defaults  the built-in drivers
-     * @param  list<class-string|object>  $configExtensions  from `config('docuccino.extensions')`
+     * @param  list<class-string|object>  $configExtensions  from the `extensions` list of `docuccino.yaml`
      * @return array<string, Viewer>
      */
     public function viewers(Container $container, array $defaults, array $configExtensions): array

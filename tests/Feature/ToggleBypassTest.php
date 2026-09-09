@@ -35,7 +35,7 @@ use Docuccino\Laravel\Registry\ExtensionRegistry;
 function resolvedWith(string $integration, bool $enabled): ResolvedExtensions
 {
     /** @var array<string, mixed> $raw */
-    $raw = config('docuccino.documents.default');
+    $raw = documentSettings();
     $raw['integrations'][$integration]['enabled'] = $enabled;
 
     $document = app(DocumentConfigFactory::class)->make('default', $raw, 'skeleton');

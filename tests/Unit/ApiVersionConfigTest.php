@@ -83,7 +83,7 @@ it('publishes X-Api-Version unless the document names another header', function 
 ]);
 
 it('reads the closed set of versions off the documents themselves, sorted', function (): void {
-    config()->set('docuccino.documents', [
+    setDocuments([
         'later' => ['api_version' => [], 'info' => ['version' => '2026-12-01']],
         'earlier' => ['api_version' => [], 'info' => ['version' => '2026-06-01']],
         // A document that is not a version contributes nothing, and neither does one that declares
@@ -102,7 +102,7 @@ it('reads the closed set of versions off the documents themselves, sorted', func
  * an operation's header enum publishes.
  */
 it('orders the set as versions rather than as bytes', function (): void {
-    config()->set('docuccino.documents', [
+    setDocuments([
         'ten' => ['api_version' => [], 'info' => ['version' => '1.10.0']],
         'nine' => ['api_version' => [], 'info' => ['version' => '1.9.0']],
         'two' => ['api_version' => [], 'info' => ['version' => '1.2.0']],
@@ -112,7 +112,7 @@ it('orders the set as versions rather than as bytes', function (): void {
 });
 
 it('falls back to byte order only for a set no version grammar reads', function (): void {
-    config()->set('docuccino.documents', [
+    setDocuments([
         'b' => ['api_version' => [], 'info' => ['version' => 'beta']],
         'a' => ['api_version' => [], 'info' => ['version' => '2026-06-01']],
     ]);
@@ -122,7 +122,7 @@ it('falls back to byte order only for a set no version grammar reads', function 
 });
 
 it('enumerates nothing when the application configures no version', function (): void {
-    config()->set('docuccino.documents', ['default' => ['info' => ['version' => '1.0.0']]]);
+    setDocuments(['default' => ['info' => ['version' => '1.0.0']]]);
 
     expect((new ConfiguredDocuments)->apiVersions())->toBe([]);
 });

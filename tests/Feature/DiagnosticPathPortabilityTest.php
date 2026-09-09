@@ -84,7 +84,7 @@ it('publishes no machine path in an overlay warning', function (): void {
     $dir = sys_get_temp_dir().'/docuccino-overlay-portability-'.uniqid();
     mkdir($dir);
     file_put_contents($dir.'/broken.yaml', "overlay: 1.0.0\nactions: [ { target: '\$' }\n");
-    config()->set('docuccino.documents.default.overlays', [$dir.'/*.yaml']);
+    setBuild('documents.default.overlays', [$dir.'/*.yaml']);
 
     $warnings = diagnosticsCoded(
         app(DocumentBuilder::class)->build('default', WorkbenchEngine::make())->diagnostics,

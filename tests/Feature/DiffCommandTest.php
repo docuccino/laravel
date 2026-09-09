@@ -119,7 +119,7 @@ it('detects a removed operation as breaking', function (): void {
 
 it('fails a breaking change under semver enforcement without a major bump', function (): void {
     bindStubEngine();
-    config()->set('docuccino.documents.default.versioning', 'semver');
+    setBuild('documents.default.versioning', 'semver');
 
     $old = writeArtifact(withExtraOperation(...));
 
@@ -131,7 +131,7 @@ it('fails a breaking change under semver enforcement without a major bump', func
 
 it('passes enforcement when there are no breaking changes', function (): void {
     bindStubEngine();
-    config()->set('docuccino.documents.default.versioning', 'semver');
+    setBuild('documents.default.versioning', 'semver');
 
     $old = writeArtifact();
 
@@ -175,7 +175,7 @@ it('fails when the old artifact is missing', function (): void {
 
 it('fails a breaking change under date-version enforcement without a newer date', function (): void {
     bindStubEngine();
-    config()->set('docuccino.documents.default.versioning', 'date');
+    setBuild('documents.default.versioning', 'date');
 
     $old = writeArtifact(withExtraOperation(...));
 
@@ -187,7 +187,7 @@ it('fails a breaking change under date-version enforcement without a newer date'
 
 it('passes enforcement for a purely additive (non-breaking) change', function (): void {
     bindStubEngine();
-    config()->set('docuccino.documents.default.versioning', 'semver');
+    setBuild('documents.default.versioning', 'semver');
 
     // The old side is missing an operation the current document has → an addition, not a removal.
     $old = writeArtifact(function (array $uir): array {
@@ -316,7 +316,7 @@ it('hands --format=json to the machine reading it byte for byte', function (): v
 
 it('neutralises Symfony markup in a version string the policy reports back', function (): void {
     bindStubEngine();
-    config()->set('docuccino.documents.default.versioning', 'semver');
+    setBuild('documents.default.versioning', 'semver');
 
     $old = writeArtifact(function (array $uir): array {
         $info = is_array($uir['info'] ?? null) ? $uir['info'] : [];
@@ -359,7 +359,7 @@ it('rejects a git ref that starts with a dash', function (): void {
 
 it('passes enforcement for an annotation-only change, and still fails once a real break joins it', function (): void {
     bindStubEngine();
-    config()->set('docuccino.documents.default.versioning', 'semver');
+    setBuild('documents.default.versioning', 'semver');
 
     $old = writeArtifact(withEditedSchemaDescription(...));
 

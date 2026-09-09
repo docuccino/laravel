@@ -62,7 +62,7 @@ beforeEach(function (): void {
     $router->get('api/versioned-forms', [VersionedFormController::class, 'index']);
     $router->get('api/versioned-forms/archived', [VersionedFormController::class, 'archived']);
 
-    config()->set('docuccino.documents', ['v' => [
+    setDocuments(['v' => [
         'info' => ['title' => 'Forms API', 'version' => '2026-09-01'],
         'routes' => ['include' => ['api/versioned-forms*']],
         'error_responses' => 'none',
@@ -240,7 +240,7 @@ it('derives the older document from what it wrote, in scope and out of scope bot
 
     $this->artisan('docuccino:version-changes', ['old' => $old, 'document' => 'v'])->assertSuccessful();
 
-    config()->set('docuccino.documents.v.info.version', '2026-06-01');
+    setBuild('documents.v.info.version', '2026-06-01');
     $derived = partialScopeHead();
 
     /** @var array<string, mixed> $published */
@@ -270,7 +270,7 @@ it('emits no scope when the change covers every operation that publishes the sch
         ->toContain("#[RenamedResponseField(schema: FormData::class, from: 'name', to: 'title')]")
         ->not->toContain('AppliesTo');
 
-    config()->set('docuccino.documents.v.info.version', '2026-06-01');
+    setBuild('documents.v.info.version', '2026-06-01');
     $derived = partialScopeHead();
 
     // No fork, so the component itself carries the older shape and both operations still point at it —
@@ -297,7 +297,7 @@ it('widens rather than narrows for an operation whose old shape it cannot vouch 
         ->toContain("#[RenamedResponseField(schema: FormData::class, from: 'name', to: 'title')]")
         ->not->toContain('AppliesTo');
 
-    config()->set('docuccino.documents.v.info.version', '2026-06-01');
+    setBuild('documents.v.info.version', '2026-06-01');
     $derived = partialScopeHead();
 
     // Both operations get the older shape, which is what both of them published.

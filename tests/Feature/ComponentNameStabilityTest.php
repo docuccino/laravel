@@ -194,7 +194,7 @@ it('gives the plain name back to the survivor when the route that contested it i
     app('router')->setRoutes(new RouteCollection);
     $warm = ssoDocument(sides: ['write']);
 
-    config()->set('docuccino.cache.enabled', false);
+    setBuild('cache.enabled', false);
     app('router')->setRoutes(new RouteCollection);
     $cold = ssoDocument(sides: ['write']);
 

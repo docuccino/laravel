@@ -66,7 +66,7 @@ it('emits the page-size document byte-identical to its committed golden', functi
     ));
 
     /** @var array<string, mixed> $raw */
-    $raw = config('docuccino.documents.default');
+    $raw = documentSettings();
     $raw['info'] = ['title' => 'Paged List API', 'version' => '1.0.0'];
     $raw['routes'] = ['include' => ['api/paged/*']];
 

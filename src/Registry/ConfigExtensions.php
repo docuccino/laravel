@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Registry;
 
+use Docuccino\Core\Config\ConfigFile;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
+use Docuccino\Laravel\Config\BuildConfig;
 
 /**
- * The `docuccino.extensions` list, read the same way wherever it is read — the build and the viewer's
- * driver lookup both merge it in, so a typo there means one warning, not two answers.
+ * The `extensions` list out of `docuccino.yaml`, read the same way wherever it is read — the build and
+ * the viewer's driver lookup both merge it in, so a typo there means one warning, not two answers.
  *
  * @internal
  */
@@ -22,20 +24,19 @@ final class ConfigExtensions
      * namespace is a silent no-op — the document simply loses whatever that extension does. A warning,
      * not info: the author asked for behaviour the build could not give them.
      *
-     * @return array{0: list<class-string|object>, 1: list<Diagnostic>}
+     * Class-strings and nothing else. A configuration FILE can name a class; it cannot hold a
+     * constructed one, and the parser refuses the tag that would pretend otherwise. An extension that
+     * has to be built by hand — a closure over test state, a stub with a constructor argument — goes
+     * in through `Docuccino::extend()`, which is where an instance has always belonged.
+     *
+     * @return array{0: list<class-string>, 1: list<Diagnostic>}
      */
     public static function read(): array
     {
         $out = [];
         $diagnostics = [];
 
-        foreach ((array) config('docuccino.extensions', []) as $extension) {
-            if (is_object($extension)) {
-                $out[] = $extension;
-
-                continue;
-            }
-
+        foreach ((array) app(BuildConfig::class)->raw('extensions') as $extension) {
             if (is_string($extension) && class_exists($extension)) {
                 $out[] = $extension;
 
@@ -46,9 +47,12 @@ final class ConfigExtensions
                 severity: Severity::Warning,
                 code: 'config.extension-missing',
                 message: is_string($extension)
-                    ? sprintf('docuccino.extensions lists "%s", which no autoloadable class defines — it contributed nothing to this document.', $extension)
-                    : sprintf('docuccino.extensions holds a %s where a class-string or an extension instance was expected — it contributed nothing to this document.', get_debug_type($extension)),
-                help: 'Check the class name and its namespace in config/docuccino.php, and that the class is autoloadable (composer dump-autoload).',
+                    ? sprintf('extensions lists "%s", which no autoloadable class defines — it contributed nothing to this document.', $extension)
+                    : sprintf('extensions holds a %s where a class-string was expected — it contributed nothing to this document.', get_debug_type($extension)),
+                help: sprintf(
+                    'Check the class name and its namespace in %s, and that the class is autoloadable (composer dump-autoload). An extension you have to construct yourself goes in through Docuccino::extend().',
+                    ConfigFile::NAME,
+                ),
             );
         }
 

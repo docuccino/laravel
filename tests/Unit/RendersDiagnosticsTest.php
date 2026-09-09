@@ -122,7 +122,7 @@ it('cannot be made to forge a diagnostic line from help', function (): void {
  * every line it covers has to say so where the line is read.
  */
 it('marks a diagnostic the accepted list covers, and totals them under the block', function (): void {
-    config()->set('docuccino.diagnostics.accept', ['demo.code']);
+    setBuild('diagnostics.accept', ['demo.code']);
 
     $output = Console::render([Console::diagnostic('fine', 'GET api/orders'), Console::diagnostic('also fine')]);
 
@@ -131,7 +131,7 @@ it('marks a diagnostic the accepted list covers, and totals them under the block
 });
 
 it('marks nothing, and totals nothing, where the list names another code', function (): void {
-    config()->set('docuccino.diagnostics.accept', ['other.code']);
+    setBuild('diagnostics.accept', ['other.code']);
 
     $output = Console::render([Console::diagnostic('fine', 'GET api/orders')]);
 
@@ -139,7 +139,7 @@ it('marks nothing, and totals nothing, where the list names another code', funct
 });
 
 it('never marks an error accepted, however the list reads', function (): void {
-    config()->set('docuccino.diagnostics.accept', ['demo.code']);
+    setBuild('diagnostics.accept', ['demo.code']);
 
     $error = new Diagnostic(severity: Severity::Error, code: 'demo.code', message: 'gone');
 

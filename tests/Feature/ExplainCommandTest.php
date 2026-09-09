@@ -234,8 +234,8 @@ it('publishes an empty trail as an empty field list rather than a crash', functi
  * answer, so the spellings are shown against a placeholder and the exit code is the same 1.
  */
 it('answers a route query against a document that published nothing', function (): void {
-    config()->set('docuccino.documents.empty', config('docuccino.documents.default'));
-    config()->set('docuccino.documents.empty.routes.include', ['api/no-route-answers-this']);
+    setBuild('documents.empty', documentSettings());
+    setBuild('documents.empty.routes.include', ['api/no-route-answers-this']);
 
     $exit = Artisan::call('docuccino:explain', ['route' => 'api/nowhere', 'document' => 'empty']);
     $output = Artisan::output();
@@ -247,8 +247,8 @@ it('answers a route query against a document that published nothing', function (
 });
 
 it('names the document an answer is about when several are configured', function (): void {
-    config()->set('docuccino.documents.public', config('docuccino.documents.default'));
-    config()->set('docuccino.documents.public.routes.include', ['api/tickets']);
+    setBuild('documents.public', documentSettings());
+    setBuild('documents.public.routes.include', ['api/tickets']);
 
     $exit = Artisan::call('docuccino:explain', ['route' => 'POST /api/tickets']);
     $output = Artisan::output();
@@ -260,8 +260,8 @@ it('names the document an answer is about when several are configured', function
 });
 
 it('explains one document when the argument names one', function (): void {
-    config()->set('docuccino.documents.public', config('docuccino.documents.default'));
-    config()->set('docuccino.documents.public.routes.include', ['api/tickets']);
+    setBuild('documents.public', documentSettings());
+    setBuild('documents.public.routes.include', ['api/tickets']);
 
     $exit = Artisan::call('docuccino:explain', ['route' => 'POST /api/tickets', 'document' => 'public']);
 

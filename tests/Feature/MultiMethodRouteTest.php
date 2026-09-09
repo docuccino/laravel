@@ -20,7 +20,7 @@ beforeEach(function (): void {
 function buildMultiMethod(): array
 {
     /** @var array<string, mixed> $raw */
-    $raw = config('docuccino.documents.default');
+    $raw = documentSettings();
     $config = app(DocumentConfigFactory::class)->make('default', $raw, 'skeleton');
 
     return app(DocumentGenerator::class)->generate($config, app(TypeEngine::class))->document->toArray();

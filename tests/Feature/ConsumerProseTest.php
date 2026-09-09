@@ -30,7 +30,7 @@ function describeRoutes(callable $routes): array
     $router = app('router');
     $routes($router);
 
-    $config = app(DocumentConfigFactory::class)->make('default', (array) config('docuccino.documents.default'), 'skeleton');
+    $config = app(DocumentConfigFactory::class)->make('default', documentSettings(), 'skeleton');
 
     return (function () use ($config) {
         $result = app(DocumentGenerator::class)->generate($config, app(TypeEngine::class));
@@ -76,7 +76,7 @@ it('emits the same bytes whether the described file is CRLF or LF', function ():
     $router = app('router');
     $router->get('api/described', [DescribedController::class, 'index']);
 
-    $config = app(DocumentConfigFactory::class)->make('default', (array) config('docuccino.documents.default'), 'skeleton');
+    $config = app(DocumentConfigFactory::class)->make('default', documentSettings(), 'skeleton');
 
     $emit = static function () use ($config): string {
         $document = app(DocumentGenerator::class)->generate($config, app(TypeEngine::class))->document;
@@ -116,7 +116,7 @@ it('says so when a #[Description(file:)] names a file that is not there', functi
  * object missing its description and no reason why.
  */
 it('says so when info.description.file does not name a path inside the application', function (): void {
-    config()->set('docuccino.documents.default.info.description', ['file' => '../../../etc/passwd']);
+    setBuild('documents.default.info.description', ['file' => '../../../etc/passwd']);
 
     $result = app(DocumentBuilder::class)->build('default', WorkbenchEngine::make());
 
@@ -130,7 +130,7 @@ it('says so when info.description.file does not name a path inside the applicati
 });
 
 it('says so when info.description.file names a file that is not there', function (): void {
-    config()->set('docuccino.documents.default.info.description', ['file' => 'resources/docs/nowhere.md']);
+    setBuild('documents.default.info.description', ['file' => 'resources/docs/nowhere.md']);
 
     $result = app(DocumentBuilder::class)->build('default', WorkbenchEngine::make());
 
@@ -146,7 +146,7 @@ it('says so when info.description.file names a file that is not there', function
 it('says so when info.description.file holds a byte no filesystem path can', function (): void {
     // The third refusal `ConfinedPath` makes, and the one that used to be indistinguishable from the
     // other two. It is a refusal like a traversal, not an absence, so it reports as one.
-    config()->set('docuccino.documents.default.info.description', ['file' => "resources/docs\0/api.md"]);
+    setBuild('documents.default.info.description', ['file' => "resources/docs\0/api.md"]);
 
     $result = app(DocumentBuilder::class)->build('default', WorkbenchEngine::make());
 
@@ -163,12 +163,12 @@ it('says nothing about an info.description.file it read, or one nobody configure
     $absolute = base_path('docuccino-configured-description.md');
     file_put_contents($absolute, "Prose for whoever reads the document.\n");
 
-    config()->set('docuccino.documents.default.info.description', ['file' => 'docuccino-configured-description.md']);
+    setBuild('documents.default.info.description', ['file' => 'docuccino-configured-description.md']);
     $read = app(DocumentBuilder::class)->build('default', WorkbenchEngine::make());
 
     @unlink($absolute);
 
-    config()->set('docuccino.documents.default.info.description', 'Written inline.');
+    setBuild('documents.default.info.description', 'Written inline.');
     $inline = app(DocumentBuilder::class)->build('default', WorkbenchEngine::make());
 
     foreach ([$read, $inline] as $result) {

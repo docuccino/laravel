@@ -6,6 +6,7 @@ namespace Docuccino\Laravel;
 
 use Closure;
 use Composer\InstalledVersions;
+use Docuccino\Core\Config\ConfigFile;
 use Docuccino\Core\Content\ContentCompiler;
 use Docuccino\Core\Examples\ExampleRedaction;
 use Docuccino\Core\Examples\RecordedExampleAudit;
@@ -17,6 +18,7 @@ use Docuccino\Core\Lint\LintRuleOptions;
 use Docuccino\Core\Lint\MissingDescriptionLint;
 use Docuccino\Core\Lint\OperationIdStyleLint;
 use Docuccino\Core\Lint\SensitiveFieldLint;
+use Docuccino\Core\Lint\SensitiveFieldLintOptions;
 use Docuccino\Core\Lint\UndocumentedTagLint;
 use Docuccino\Core\Lint\UnpinnedRedirectLint;
 use Docuccino\Core\Lint\VacuousUnionLint;
@@ -33,13 +35,17 @@ use Docuccino\Laravel\Commands\ExplainCommand;
 use Docuccino\Laravel\Commands\ExportCommand;
 use Docuccino\Laravel\Commands\InstallCommand;
 use Docuccino\Laravel\Commands\MemoryLimitOption;
+use Docuccino\Laravel\Commands\MigrateConfigCommand;
 use Docuccino\Laravel\Commands\ValidateCommand;
 use Docuccino\Laravel\Commands\VersionChangesCommand;
 use Docuccino\Laravel\Commands\WatchCommand;
+use Docuccino\Laravel\Config\BuildConfig;
 use Docuccino\Laravel\Config\ConfigPublisher;
+use Docuccino\Laravel\Config\ConfigPublishers;
 use Docuccino\Laravel\Config\ConfiguredFlags;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
 use Docuccino\Laravel\Config\LeakageOptions;
+use Docuccino\Laravel\Config\ViewerConfig;
 use Docuccino\Laravel\Engine\ConsoleBuild;
 use Docuccino\Laravel\Engine\EnginePackage;
 use Docuccino\Laravel\Engine\TypeEngineFactory;
@@ -74,6 +80,7 @@ use Docuccino\Laravel\Routing\VendorRoutePolicy;
 use Docuccino\Laravel\Runtime\DocumentCache;
 use Docuccino\Laravel\Support\GateDenial;
 use Docuccino\Laravel\Support\GatePoliciesDigestContributor;
+use Docuccino\Laravel\Support\LeakageDigestContributor;
 use Docuccino\Laravel\Versioning\Scaffold\ChangeStub;
 use Docuccino\Laravel\Versioning\VersionChangeCollector;
 use Docuccino\Laravel\Watch\ArtisanBuildRunner;
@@ -119,6 +126,7 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             ->hasConfigFile()
             ->hasCommands([
                 InstallCommand::class,
+                MigrateConfigCommand::class,
                 ExportCommand::class,
                 ValidateCommand::class,
                 DiffCommand::class,
@@ -134,6 +142,15 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
     public function packageRegistered(): void
     {
         $this->app->singleton(ExtensionRegistry::class);
+
+        // The tool's own configuration file, read once per build. Not `scoped`: the read is what every
+        // document of one command shares, and a fresh read per document would report the same refusals
+        // once per document. The project root is this application's base path, which is the one thing
+        // core cannot work out for itself.
+        $this->app->singleton(
+            BuildConfig::class,
+            static fn (Application $app): BuildConfig => new BuildConfig(ConfigFile::read($app->basePath())),
+        );
 
         // The resolver reflects each route while filtering and stashes it here for the context builder
         // to read back O(1). Scoped, so both share one index per build and it resets between builds.
@@ -167,12 +184,19 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             static fn (Application $app): GatePoliciesDigestContributor => new GatePoliciesDigestContributor(self::gateResolver($app)),
         );
 
-        // `docuccino:install` publishes the same file, from the same place, that
-        // `vendor:publish --tag=docuccino-config` does.
-        $this->app->bind(ConfigPublisher::class, fn (Application $app): ConfigPublisher => new ConfigPublisher(
-            source: dirname(__DIR__).'/config/docuccino.php',
-            target: $app->configPath('docuccino.php'),
-        ));
+        // What `docuccino:install` writes: the tool's own configuration at the project root first,
+        // because that is the file an author edits, and the framework's own second — the same file,
+        // from the same place, that `vendor:publish --tag=docuccino-config` writes.
+        $this->app->bind(ConfigPublishers::class, fn (Application $app): ConfigPublishers => new ConfigPublishers([
+            new ConfigPublisher(
+                source: dirname(__DIR__).'/config/'.ConfigFile::NAME,
+                target: $app->basePath(ConfigFile::NAME),
+            ),
+            new ConfigPublisher(
+                source: dirname(__DIR__).'/config/docuccino.php',
+                target: $app->configPath('docuccino.php'),
+            ),
+        ]));
 
         // Provenance `source.file` paths are relative to the app base path (design §4); the resolver
         // falls back to a composer-root walk for files outside it (the workbench).
@@ -230,8 +254,7 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
         // The OperationFragment cache (design §10): filesystem, off by default. The store resolves the
         // directory once for both the cache that writes it and the command that clears it.
         $this->app->bind(FragmentStore::class, function (Application $app): FragmentStore {
-            /** @var array<string, mixed> $cache */
-            $cache = (array) config('docuccino.cache', []);
+            $cache = $app->make(BuildConfig::class)->cache();
             $path = is_string($cache['path'] ?? null) ? $cache['path'] : $app->storagePath('docuccino/fragments');
 
             return new FragmentStore(
@@ -255,8 +278,7 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
         // What that cache keys on beyond config and routes: the engine that resolved, its
         // output-shaping config and the app's locked dependencies.
         $this->app->bind(BuildFingerprint::class, function (Application $app): BuildFingerprint {
-            /** @var array<string, mixed> $engine */
-            $engine = (array) config('docuccino.engine', []);
+            $engine = $app->make(BuildConfig::class)->engine();
 
             return new BuildFingerprint($engine, $app->basePath(), $app->make(EnginePackage::class));
         });
@@ -266,10 +288,9 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             ->give(fn (): string => $this->app->basePath());
 
         // `docuccino:watch`. The watch set reads the same fragment store a build writes, and the
-        // engine bag is in because `engine.neon` is a file a build reads and nothing else watches.
+        // engine bag is in because `engine.config` is a file a build reads and nothing else watches.
         $this->app->bind(WatchSet::class, function (Application $app): WatchSet {
-            /** @var array<string, mixed> $engine */
-            $engine = (array) config('docuccino.engine', []);
+            $engine = $app->make(BuildConfig::class)->engine();
 
             return new WatchSet(
                 $app->make(DocumentBuilder::class),
@@ -307,23 +328,25 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             ->give(fn (): string => $this->app->basePath());
 
         // The data-leakage lint itself is framework-agnostic core; the adapter just maps
-        // docuccino.lint.leakage.* onto its options.
+        // the `lint.leakage` bag onto its options.
         $this->app->bind(SensitiveFieldLint::class, static fn (): SensitiveFieldLint => new SensitiveFieldLint(
             LeakageOptions::fromConfig(self::leakageConfig()),
         ));
 
         // Recorded examples read the same heuristics table, minus its off switch: turning a report off
         // is not a request to publish credentials.
-        $this->app->bind(ExampleRedaction::class, static fn (): ExampleRedaction => new ExampleRedaction(
-            LeakageOptions::fromConfig(self::leakageConfig(), honourSwitch: false),
-        ));
+        $this->app->bind(ExampleRedaction::class, static fn (): ExampleRedaction => new ExampleRedaction(self::redactionOptions()));
+
+        // …and the contributor that keys the fragment cache on them reads the SAME options, so what is
+        // digested is what the redaction decides on.
+        $this->app->bind(LeakageDigestContributor::class, static fn (): LeakageDigestContributor => new LeakageDigestContributor(self::redactionOptions()));
 
         $this->app->when([RecordedExampleAudit::class, RecordedExamplesExtension::class])
             ->needs('$basePath')
             ->give(fn (): string => $this->app->basePath());
 
         // The completeness lints share one options shape, so they share one reader; each is core, and
-        // the adapter only maps its docuccino.lint.<key> bag onto it.
+        // the adapter only maps its `lint.<key>` bag onto it.
         $this->app->bind(MissingDescriptionLint::class, static fn (): MissingDescriptionLint => new MissingDescriptionLint(self::lintRule('descriptions')));
         $this->app->bind(OperationIdStyleLint::class, static fn (): OperationIdStyleLint => new OperationIdStyleLint(self::lintRule('operation_ids')));
         $this->app->bind(UndocumentedTagLint::class, static fn (): UndocumentedTagLint => new UndocumentedTagLint(self::lintRule('tags')));
@@ -424,8 +447,7 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
         // otherwise built from config, degrading to null on boot failure. Deferred, because commands
         // method-inject a TypeEngine and a fully cached build never asks it anything (LazyTypeEngine).
         $this->app->bind(TypeEngine::class, static function (Application $app): TypeEngine {
-            /** @var array<string, mixed> $config */
-            $config = (array) config('docuccino.engine', []);
+            $config = $app->make(BuildConfig::class)->engine();
 
             return $app->make(TypeEngineFactory::class)->deferred($config);
         });
@@ -506,18 +528,26 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
     }
 
     /**
+     * The leakage options every reader that must not honour the off switch shares — the redaction that
+     * decides whether a recorded example publishes, and {@see LeakageDigestContributor}, which keys the
+     * fragment cache on that decision. One expression, because two of them could disagree about the
+     * switch and only the cache would notice.
+     */
+    private static function redactionOptions(): SensitiveFieldLintOptions
+    {
+        return LeakageOptions::fromConfig(self::leakageConfig(), honourSwitch: false);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private static function leakageConfig(): array
     {
-        /** @var array<string, mixed> $leakage */
-        $leakage = (array) config('docuccino.lint.leakage', []);
-
-        return $leakage;
+        return app(BuildConfig::class)->section('lint.leakage');
     }
 
     /**
-     * One `docuccino.lint.<key>` bag as rule options. The rule's own answer when the key is absent
+     * One `lint.<key>` bag as rule options. The rule's own answer when the key is absent
      * comes from {@see ConfiguredFlags::LINT_DEFAULTS}, so a config file predating the rule keeps
      * whatever shipped with it.
      *
@@ -525,8 +555,7 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
      */
     private static function lintRule(string $key): LintRuleOptions
     {
-        /** @var array<string, mixed> $rule */
-        $rule = (array) config('docuccino.lint.'.$key, []);
+        $rule = app(BuildConfig::class)->section('lint.'.$key);
         $allow = is_array($rule['allow'] ?? null) ? array_values(array_filter($rule['allow'], 'is_string')) : [];
 
         return new LintRuleOptions(
@@ -586,6 +615,21 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
         // resolve the engine, and this listener is the last hook early enough (see MemoryLimitOption).
         Event::listen(CommandStarting::class, MemoryLimitOption::capture(...));
 
+        // The BUILD configuration, joining the framework config `hasConfigFile()` already put under
+        // this tag. Both of them, because the tag names the package's configuration and the package's
+        // configuration is two files: on its own, `config/docuccino.php` hands an author viewer wiring
+        // and a cache store and nothing that shapes a document, and the whole way to discover the
+        // build surface is to read the shipped file. `docuccino:install` writes these same two targets
+        // ({@see ConfigPublishers}); two writers with two different answers to "what is the
+        // configuration" is the drift this line exists to avoid.
+        //
+        // Ahead of the off-switch on purpose: publishing a config file is how an application turns
+        // that switch back on, so it cannot be a thing the switch takes away.
+        $this->publishes(
+            [dirname(__DIR__).'/config/'.ConfigFile::NAME => $this->app->basePath(ConfigFile::NAME)],
+            'docuccino-config',
+        );
+
         // The scaffold template, publishable the way every other publishable file in Laravel is. Not on
         // `docuccino:install`: that command runs once and idempotently, while editing a stub is a
         // repeatable act somebody takes when they want their own — so it rides `vendor:publish`, which
@@ -600,15 +644,11 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             return;
         }
 
-        /** @var array<string, mixed> $documents */
-        $documents = (array) config('docuccino.documents', []);
-
-        foreach ($documents as $key => $document) {
-            if (! is_array($document)) {
-                continue;
-            }
-
-            $viewer = is_array($document['viewer'] ?? null) ? $document['viewer'] : [];
+        // The framework's config, not `docuccino.yaml`: this runs on EVERY application boot, and a
+        // boot that had to parse a project file to decide whether to register a route would fail on a
+        // file somebody is halfway through editing. Boot therefore knows nothing about which documents
+        // the build defines — {@see ConfigSplit} is what reports a viewer naming one that is gone.
+        foreach (ViewerConfig::all() as $key => $viewer) {
             $route = $viewer['route'] ?? null;
             if (! is_string($route) || $route === '') {
                 continue;
@@ -617,13 +657,13 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             $base = '/'.ltrim($route, '/');
             $middleware = self::viewerMiddleware($viewer);
 
-            Route::get($base, [DocsController::class, 'show'])->middleware($middleware)->defaults('document', (string) $key);
-            Route::get($base.'.json', [DocsController::class, 'spec'])->middleware($middleware)->defaults('document', (string) $key);
+            Route::get($base, [DocsController::class, 'show'])->middleware($middleware)->defaults('document', $key);
+            Route::get($base.'.json', [DocsController::class, 'spec'])->middleware($middleware)->defaults('document', $key);
             Route::get($base.'/assets/{asset}.js', [DocsController::class, 'asset'])
                 ->middleware($middleware)
                 ->where('asset', '[A-Za-z0-9_-]+')
-                ->defaults('document', (string) $key);
-            Route::get($base.'/reload', [DocsController::class, 'reload'])->middleware($middleware)->defaults('document', (string) $key);
+                ->defaults('document', $key);
+            Route::get($base.'/reload', [DocsController::class, 'reload'])->middleware($middleware)->defaults('document', $key);
         }
     }
 

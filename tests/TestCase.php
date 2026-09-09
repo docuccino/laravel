@@ -8,6 +8,7 @@ use Docuccino\Laravel\DocuccinoServiceProvider;
 use Docuccino\Laravel\Testing\AssertsApiContract;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Gadget;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Widget;
+use Docuccino\Laravel\Tests\Support\BuildSettings;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
@@ -51,13 +52,31 @@ abstract class TestCase extends Orchestra
     {
         $app['config']->set('app.key', 'base64:AckfSECXIvnK5r28GVIWUAxmbBSjTsmF0FYqwoDL18E=');
 
-        // api/moderated-forms documents authorization requirements, so the default document opts into the
-        // spatie/laravel-permission integration. Doing it here rather than in the shipped config keeps the
-        // opt-in default for real apps while the permission goldens stay byte-stable.
-        $app['config']->set('docuccino.documents.default.integrations.permission.enabled', true);
+        // The framework config is left exactly as testbench loaded it — the shipped
+        // `config/docuccino.php`, whole. That is the point rather than an omission: the file carries
+        // only what boot and a viewer request read, so every test in the suite runs on the real split
+        // instead of on a trimmed copy of it, and a `config.stale-php-keys` warning firing anywhere is
+        // a defect in the shipped file rather than an artefact of this harness.
 
         // The morph map the /api/attachments discriminator resolves its aliases from.
         Relation::morphMap(['widget' => Widget::class, 'gadget' => Gadget::class], false);
+    }
+
+    /**
+     * Every test starts on the shipped `docuccino.yaml`, read the way the product reads it
+     * ({@see BuildSettings}). Bound here rather than in `defineEnvironment()` because the provider
+     * registers its own binding afterwards and would win.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        BuildSettings::boot();
+
+        // api/moderated-forms documents authorization requirements, so the default document opts into
+        // the spatie/laravel-permission integration. Doing it here rather than in the shipped file
+        // keeps the opt-in default for real apps while the permission goldens stay byte-stable.
+        BuildSettings::set('documents.default.integrations.permission.enabled', true);
     }
 
     protected function defineRoutes($router): void

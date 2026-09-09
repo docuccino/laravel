@@ -51,7 +51,7 @@ beforeEach(function (): void {
 
 it('subtracts a route\'s middleware through the application\'s alias map, not the framework\'s', function (): void {
     $document = app(DocumentConfigFactory::class)
-        ->make('default', (array) config('docuccino.documents.default'), 'skeleton');
+        ->make('default', documentSettings(), 'skeleton');
 
     $middleware = [];
     foreach (app(LaravelRouteResolver::class)->resolve($document) as $descriptor) {
@@ -79,7 +79,7 @@ it('publishes the 401 and the requirement for the routes the application really 
     $document = generateDocument(static function (array $raw): array {
         $raw['security'] = [
             'schemes' => ['bearer' => ['type' => 'http', 'scheme' => 'bearer']],
-            'auto_detect_middleware' => 'auth*',
+            'auth_middleware' => 'auth*',
             'default' => [['bearer' => []]],
         ];
 

@@ -34,7 +34,7 @@ beforeEach(function (): void {
     $router->get('api/secure/dual-by-class', [FormController::class, 'index'])
         ->middleware([Authenticate::using('sanctum'), 'Laravel\\Sanctum\\Http\\Middleware\\EnsureFrontendRequestsAreStateful']);
 
-    config()->set('docuccino.documents', [
+    setDocuments([
         'public' => [
             'info' => ['title' => 'Public API', 'version' => '1.0.0'],
             'routes' => ['include' => ['api/secure/*']],
@@ -50,7 +50,7 @@ beforeEach(function (): void {
 function securedGolden(string $key, string $file): void
 {
     /** @var array<string, mixed> $raw */
-    $raw = config('docuccino.documents.'.$key);
+    $raw = documentSettings($key);
     $config = app(DocumentConfigFactory::class)->make($key, $raw, 'skeleton');
     $document = app(DocumentGenerator::class)->generate($config, app(TypeEngine::class))->document->toArray();
 
@@ -67,14 +67,14 @@ it('emits the internal (dual-mode) document byte-identical to its golden', funct
 
 it('lists only the bearer token publicly but both modes internally', function (): void {
     /** @var array<string, mixed> $publicRaw */
-    $publicRaw = config('docuccino.documents.public');
+    $publicRaw = documentSettings('public');
     $public = app(DocumentGenerator::class)->generate(
         app(DocumentConfigFactory::class)->make('public', $publicRaw, 'skeleton'),
         app(TypeEngine::class),
     )->document->toArray();
 
     /** @var array<string, mixed> $internalRaw */
-    $internalRaw = config('docuccino.documents.internal');
+    $internalRaw = documentSettings('internal');
     $internal = app(DocumentGenerator::class)->generate(
         app(DocumentConfigFactory::class)->make('internal', $internalRaw, 'skeleton'),
         app(TypeEngine::class),

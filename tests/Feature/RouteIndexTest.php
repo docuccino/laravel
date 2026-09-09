@@ -25,7 +25,7 @@ it('records each resolved route in the shared index for O(1) reuse by the builde
     expect(app(ResolvedRouteIndex::class))->toBe($index);
 
     $document = app(DocumentConfigFactory::class)
-        ->make('default', (array) config('docuccino.documents.default'), 'skeleton');
+        ->make('default', documentSettings(), 'skeleton');
 
     $descriptors = iterator_to_array(app(LaravelRouteResolver::class)->resolve($document), false);
 
@@ -51,7 +51,7 @@ it('locates the route for the host the descriptor names when the index missed', 
     app('router')->domain('b.example.com')->get('api/zz-locate', [AdminReportController::class, 'index']);
 
     $document = app(DocumentConfigFactory::class)
-        ->make('default', (array) config('docuccino.documents.default'), 'skeleton');
+        ->make('default', documentSettings(), 'skeleton');
 
     $context = app(RouteContextBuilder::class)->build(
         new RouteDescriptor(['GET', 'HEAD'], '/api/zz-locate', domain: $domain),

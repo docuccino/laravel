@@ -32,7 +32,7 @@ beforeEach(function (): void {
     $router->middleware(DowngradeToPinnedApiVersion::class.':entries')
         ->get('api/versioned-entries', [VersionedEntryController::class, 'index']);
 
-    config()->set('docuccino.documents', versionedEntryDocuments());
+    setDocuments(versionedEntryDocuments());
 });
 
 afterEach(function (): void {

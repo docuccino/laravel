@@ -149,7 +149,7 @@ it('publishes hints in an OpenAPI artifact only when export.mock_faker_key names
     app()->instance(TypeEngine::class, mockHintEngine()());
 
     if ($key !== null) {
-        config()->set('docuccino.documents.default.export.mock_faker_key', $key);
+        setBuild('documents.default.export.mock_faker_key', $key);
     }
 
     $out = sys_get_temp_dir().'/docuccino-mock-'.uniqid().'.json';

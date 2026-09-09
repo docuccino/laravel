@@ -28,18 +28,18 @@ final class RateLimiterDigestContributor implements EnvironmentDigestContributor
         try {
             $reflection = new ReflectionObject($this->limiters);
             if (! $reflection->hasProperty('limiters')) {
-                return 'rate-limiters:';
+                return 'rate-limiters';
             }
 
             $value = $reflection->getProperty('limiters')->getValue($this->limiters);
             if (! is_array($value)) {
-                return 'rate-limiters:';
+                return 'rate-limiters';
             }
 
             $names = array_map(strval(...), array_keys($value));
             sort($names);
 
-            return 'rate-limiters:'.implode(',', $names);
+            return implode("\0", ['rate-limiters', ...$names]);
         } catch (Throwable) {
             return '';
         }

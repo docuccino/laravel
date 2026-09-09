@@ -63,7 +63,7 @@ function stubScoringRulesEngine(): StubTypeEngine
  */
 function generateWith(TypeEngine $engine): array
 {
-    $raw = config('docuccino.documents.default');
+    $raw = documentSettings();
     $config = app(DocumentConfigFactory::class)->make('default', is_array($raw) ? $raw : [], 'skeleton');
 
     return app(DocumentGenerator::class)->generate($config, $engine)->document->toArray();
@@ -208,7 +208,7 @@ it('reaches the nested key a dotted #[BodyParameter] names, and settles the cont
 it('stops asking about the container a declaration answered, and keeps asking about the one it did not', function (): void {
     app('router')->post('api/scoring', [NestedBodyParameterController::class, 'update']);
 
-    $raw = config('docuccino.documents.default');
+    $raw = documentSettings();
     $config = app(DocumentConfigFactory::class)->make('default', is_array($raw) ? $raw : [], 'skeleton');
     $result = app(DocumentGenerator::class)->generate($config, stubScoringRulesEngine());
 

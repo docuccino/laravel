@@ -7,7 +7,7 @@ namespace Docuccino\Laravel\Config;
 use Docuccino\Core\Lint\SensitiveFieldLintOptions;
 
 /**
- * `docuccino.lint.leakage` as the core options object.
+ * The `lint.leakage` bag as the core options object.
  *
  * One reader, because three things now depend on the same answer: the leakage lint, the redaction the
  * response recorder applies on the way out, and the re-check the build runs over a committed

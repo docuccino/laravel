@@ -6,6 +6,7 @@ namespace Docuccino\Laravel\Support;
 
 use Closure;
 use Docuccino\Core\Extensions\Context\RouteContext;
+use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Illuminate\Contracts\Auth\Access\Gate;
 use Illuminate\Support\Str;
 use ReflectionClass;
@@ -75,8 +76,13 @@ final class GateDenial
             return null;
         }
 
-        // The model's own file decides part of the resolution — a `#[UsePolicy]` attribute lives there.
-        $this->recordClassFile($context, $model);
+        // A `#[UsePolicy]` attribute decides part of the resolution, and the model's own file is only
+        // where the FIRST of the two attribute branches looks: Laravel 13 walks the parents too
+        // ({@see GateInternals::resolutionBranches()}), so adding the attribute to a base model changes
+        // which policy the gate resolves to. Recorded on every version rather than behind the branch,
+        // because the hierarchy is the honest answer to where the fact can be WRITTEN and over-keying
+        // only costs a rebuild.
+        $context->recordDependencyFiles(DeclarationFiles::of($model));
 
         // Whatever the resolution answers, and not only where it answered nothing: the guesser is asked
         // BEFORE the fallback to a parent class's registration, so a policy can be found with the

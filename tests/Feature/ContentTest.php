@@ -114,8 +114,8 @@ it('keeps content out of the fragment cache key (a prose edit does not invalidat
     mkdir($dir, 0777, true);
     file_put_contents($dir.'/index.md', "---\ntitle: Index\n---\nOriginal body.\n");
 
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', $cache);
+    setBuild('cache.enabled', true);
+    setBuild('cache.path', $cache);
 
     generateDocument(withContent($dir));
     $before = glob($cache.'/*') ?: [];

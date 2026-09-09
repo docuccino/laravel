@@ -48,7 +48,7 @@ function configuredSwitchSites(): array
         ],
         'lint.<rule>.enabled' => [
             function (mixed $v): bool {
-                config()->set('docuccino.lint.descriptions.enabled', $v);
+                setBuild('lint.descriptions.enabled', $v);
 
                 return switchLintEnabled(app(MissingDescriptionLint::class));
             },
@@ -56,7 +56,7 @@ function configuredSwitchSites(): array
         ],
         'cache.enabled' => [
             function (mixed $v): bool {
-                config()->set('docuccino.cache.enabled', $v);
+                setBuild('cache.enabled', $v);
 
                 return app(FragmentStore::class)->enabled;
             },
@@ -236,9 +236,12 @@ function switchFrontmatterHiddenAbsent(): bool
  * opt-out switch is on until someone turns it off, an opt-in one is off until someone turns it on.
  */
 it('reports the default each reader actually used', function (): void {
+    // `viewer` is passed ONLY as the viewer bag, and deliberately not planted in the raw bag too: the
+    // raw bag is `docuccino.yaml`'s document, which has no `viewer` in it, and the viewer bag is the
+    // framework config's. A refusal looked for in the wrong one of the two can never fire, and a
+    // document carrying it in both would let that pass.
     $document = switchDocument([
         'routes' => ['include_vendor' => 'no'],
-        'viewer' => ['cdn' => 'no'],
         'representation' => [
             'enums' => ['components' => 'no'],
             'errors' => ['components' => 'no'],
@@ -267,6 +270,14 @@ it('reports the default each reader actually used', function (): void {
     ]);
 });
 
+it('finds no viewer switch in the bag the other file fills', function (): void {
+    // The failure this replaced: `viewer.cdn` was looked for in the raw bag, which stopped carrying a
+    // `viewer` when the build started reading `docuccino.yaml` — so a refused value in
+    // `config/docuccino.php` was silently used as its default. A `viewer` written into the raw bag is
+    // not configuration at all, and reporting one would tell an author to fix a file that says nothing.
+    expect(ConfiguredFlags::forDocument(switchDocument(['viewer' => ['cdn' => 'no']])))->toBe([]);
+});
+
 /**
  * `lint.<rule>.enabled` defaults are a hand-written table, and a rule bound with no entry in it
  * would have no default to read. The source of truth for which rules exist is the shipped config
@@ -275,8 +286,12 @@ it('reports the default each reader actually used', function (): void {
 it('holds a lint default for every lint rule the shipped config declares', function (): void {
     require_once dirname(__DIR__, 4).'/tools/config-reference-sync.php';
 
+    // Read out of the BUILD configuration, because that is where lint lives: `config/docuccino.php`
+    // keeps only what boot reads, and asking it for lint rules would agree with an empty table.
+    $settings = (string) file_get_contents(dirname(__DIR__, 2).'/config/'.CONFIG_REFERENCE_SETTINGS);
+
     $declared = [];
-    foreach (config_reference_declared_keys((string) file_get_contents(dirname(__DIR__, 2).'/config/docuccino.php')) as $key) {
+    foreach (config_reference_yaml_keys($settings) as $key) {
         if (preg_match('/^lint\.([a-z_]+)\.enabled$/', $key, $matches) === 1) {
             $declared[] = $matches[1];
         }
@@ -292,7 +307,7 @@ it('holds a lint default for every lint rule the shipped config declares', funct
 });
 
 it('keeps the sensitive-field lint reading the same switch', function (): void {
-    config()->set('docuccino.lint.leakage.enabled', 'no');
+    setBuild('lint.leakage.enabled', 'no');
 
     // 'no' is refused, so the lint keeps its default — which for leakage is ON.
     expect(switchLintEnabled(app(SensitiveFieldLint::class)))->toBeTrue()

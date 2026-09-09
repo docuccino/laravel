@@ -169,8 +169,8 @@
   "x-docuccino": {
     "document": {
       "id": "doc:default",
-      "configHash": "659447541f72bdfeed0047efa8f740c207f95b62aa282ddd4fdd4c8d916d58f8",
-      "contentHash": "41e9fb616ecb81262903ba31d1ef6e5664ec29eecd4355d0585b4fb7288a2777"
+      "configHash": "475ee8855167f04f15c984c46a77e63136bc0e3e4f1951f0705d0efe8ba76cac",
+      "contentHash": "18f4b592928c52403a69591a7d92c332643bf351bd1b11c2a9d73abe43114437"
     },
     "generator": {
       "name": "docuccino/laravel",

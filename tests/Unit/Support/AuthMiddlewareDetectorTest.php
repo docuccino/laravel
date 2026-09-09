@@ -12,7 +12,7 @@ use Docuccino\Laravel\Support\AuthMiddlewareDetector;
 use Illuminate\Auth\Middleware\Authenticate;
 
 /**
- * The `security.auto_detect_middleware` pattern, over the whole grammar it is written in. Every row is
+ * The `security.auth_middleware` pattern, over the whole grammar it is written in. Every row is
  * asserted for BOTH spellings of the same middleware against one expectation, because a pattern that
  * means different things for `auth:web` and for `Authenticate::using('web')` is the defect this reader
  * exists to prevent — and the pattern decides the implicit 401 and the security requirement together.

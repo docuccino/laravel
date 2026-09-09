@@ -23,18 +23,20 @@ final class RenderCallbackDigestContributor implements EnvironmentDigestContribu
         try {
             $reflector = new HandlerReflector($this->handler);
 
-            $records = [];
+            $parts = ['render'];
             foreach ($reflector->renderCallbacks() as $callback) {
                 // For a method-backed callback, file+line is the class file plus the method's declaration
                 // line, so editing the renderer re-documents the tier; the method name catches a re-bind to
                 // a different method in the same file.
-                $records[] = $callback->exceptionType.'@'.$callback->file.':'.$callback->line
-                    .($callback->method !== null ? '#'.$callback->method : '');
+                $parts[] = $callback->exceptionType;
+                $parts[] = $callback->file;
+                $parts[] = (string) $callback->line;
+                $parts[] = $callback->method ?? '';
             }
 
             // An unanalysable callback still changes the tier's shape (it now reports a skip), so its label
             // goes in too; otherwise adding or removing one wouldn't invalidate the fragments.
-            return 'render:'.implode(',', $records).'|skipped:'.implode(',', $reflector->skipped());
+            return implode("\0", [...$parts, 'skipped', ...$reflector->skipped()]);
         } catch (Throwable) {
             return '';
         }

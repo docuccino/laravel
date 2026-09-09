@@ -25,7 +25,7 @@ function targetsDir(): string
 
 function configureTargets(array $targets): void
 {
-    config()->set('docuccino.documents.default.export', ['targets' => $targets]);
+    setBuild('documents.default.export', ['targets' => $targets]);
 }
 
 it('writes every configured target from a single build', function (): void {
@@ -72,7 +72,7 @@ it('illustrates a format in the collection with the sample the document configur
     // the built-in table here would leave one document disagreeing with itself.
     $dir = targetsDir();
     configureTargets([['format' => 'postman', 'path' => $dir.'/collection.json']]);
-    config()->set('docuccino.documents.default.representation.examples.formats', ['date-time' => '2030-06-01T12:00:00Z']);
+    setBuild('documents.default.representation.examples.formats', ['date-time' => '2030-06-01T12:00:00Z']);
 
     $this->artisan('docuccino:export')->assertSuccessful();
 
@@ -149,7 +149,7 @@ it('finds the override target by format, not by position', function (): void {
     $dir = targetsDir();
 
     foreach ([['a', 'openapi-3.1', 'openapi-3.2'], ['b', 'openapi-3.2', 'openapi-3.1']] as [$run, $first, $second]) {
-        config()->set('docuccino.documents.default.export', ['targets' => [
+        setBuild('documents.default.export', ['targets' => [
             ['format' => $first, 'path' => $dir.'/'.$run.'-'.$first.'.json'],
             ['format' => $second, 'path' => $dir.'/'.$run.'-'.$second.'.json'],
         ]]);
@@ -191,8 +191,8 @@ it('refuses when two documents would write the same file', function (): void {
     $dir = targetsDir();
     $shared = $dir.'/shared.json';
 
-    config()->set('docuccino.documents.default.export', ['targets' => [['format' => 'openapi-3.2', 'path' => $shared]]]);
-    config()->set('docuccino.documents.admin', [
+    setBuild('documents.default.export', ['targets' => [['format' => 'openapi-3.2', 'path' => $shared]]]);
+    setBuild('documents.admin', [
         'info' => ['title' => 'Admin', 'version' => '1.0.0'],
         'routes' => ['include' => ['api/admin/*']],
         'export' => ['targets' => [['format' => 'openapi-3.2', 'path' => $shared]]],
@@ -207,7 +207,7 @@ it('refuses when two documents would write the same file', function (): void {
 
 it('says a leftover export.path writes nothing, and still exports', function (): void {
     $dir = targetsDir();
-    config()->set('docuccino.documents.default.export', [
+    setBuild('documents.default.export', [
         'path' => $dir.'/ignored.json',
         'targets' => [['format' => 'uir', 'path' => $dir.'/api.uir.json']],
     ]);

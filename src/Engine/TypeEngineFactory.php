@@ -45,7 +45,7 @@ final readonly class TypeEngineFactory
      * that answers every route from its fragment cache asks none, and must not pay a PHPStan boot to
      * do it. This is what the container binding hands out; {@see make()} is the eager build.
      *
-     * @param  array<string, mixed>  $config  the `docuccino.engine` config array
+     * @param  array<string, mixed>  $config  the `engine` bag
      */
     public function deferred(array $config): TypeEngine
     {
@@ -63,7 +63,7 @@ final readonly class TypeEngineFactory
      * one side, a real analyser on the other — and the analyser's own version reaches the key through
      * the app's `composer.lock`.
      *
-     * @param  array<string, mixed>  $config  the `docuccino.engine` config array
+     * @param  array<string, mixed>  $config  the `engine` bag
      */
     public function engineIdentity(array $config): string
     {
@@ -73,7 +73,7 @@ final readonly class TypeEngineFactory
     }
 
     /**
-     * @param  array<string, mixed>  $config  the `docuccino.engine` config array
+     * @param  array<string, mixed>  $config  the `engine` bag
      */
     public function make(array $config): TypeEngine
     {
@@ -110,14 +110,14 @@ final readonly class TypeEngineFactory
             vendorPath: $this->basePath.'/vendor',
             primePaths: $this->primePaths($descendPaths),
             descendPaths: $descendPaths,
-            configFile: EngineNeon::path($config, $this->basePath),
+            configFile: EngineConfigFile::path($config, $this->basePath),
         );
     }
 
     /**
      * The configured mode; anything unrecognised runs in-process.
      *
-     * @param  array<string, mixed>  $config  the `docuccino.engine` config array
+     * @param  array<string, mixed>  $config  the `engine` bag
      */
     private function mode(array $config): TypeEngineMode
     {

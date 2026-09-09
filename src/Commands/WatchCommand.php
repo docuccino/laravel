@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Commands;
 
+use Docuccino\Core\Config\ConfigFile;
 use Docuccino\Laravel\Pipeline\DocumentBuilder;
-use Docuccino\Laravel\Pipeline\FragmentStore;
 use Docuccino\Laravel\Support\TerminalText;
 use Docuccino\Laravel\Watch\ArtisanBuildRunner;
 use Docuccino\Laravel\Watch\BuildRunner;
@@ -15,7 +15,6 @@ use Docuccino\Laravel\Watch\ChangeSummary;
 use Docuccino\Laravel\Watch\WatchSet;
 use Docuccino\Laravel\Watch\WatchSignal;
 use Illuminate\Console\Command;
-use Illuminate\Foundation\Application;
 
 /**
  * Rebuilds documentation as the files a build actually depends on change, and pushes a refresh to an
@@ -34,6 +33,8 @@ final class WatchCommand extends Command
 {
     use GuardsEnabled;
     use IteratesDocuments;
+    use RefusesUnreadConfig;
+    use RendersDiagnostics;
 
     protected $signature = 'docuccino:watch
         {document? : The configured document key (defaults to every document)}
@@ -45,9 +46,9 @@ final class WatchCommand extends Command
     /** Set from a signal handler; every loop in here checks it rather than exiting where it stands. */
     private bool $stopping = false;
 
-    public function handle(DocumentBuilder $builder, WatchSet $watched, WatchSignal $signal, BuildToken $tokens, BuildRunner $runner, Application $app, FragmentStore $fragments): int
+    public function handle(DocumentBuilder $builder, WatchSet $watched, WatchSignal $signal, BuildToken $tokens, BuildRunner $runner): int
     {
-        if ($this->abortIfDisabled()) {
+        if ($this->abortIfDisabled() || $this->abortIfConfigUnread()) {
             return self::FAILURE;
         }
 
@@ -58,25 +59,12 @@ final class WatchCommand extends Command
             return self::FAILURE;
         }
 
-        if ($documents === []) {
-            $this->error('No documents are configured, so there is nothing to watch.');
-
-            return self::FAILURE;
-        }
-
         $this->listenForInterrupt();
 
         $this->line(sprintf(
             'Watching %s. Press Ctrl+C to stop.',
             TerminalText::of(implode(', ', $documents)),
         ));
-
-        // Up front rather than with the rest of the watch-set report: it is knowable before the first
-        // build, and it is the one thing worth stopping to fix before sitting through one.
-        $pinnedOff = self::fragmentCacheIsPinnedOff($app, $fragments);
-        if ($pinnedOff) {
-            $this->warnFragmentCacheIsPinnedOff();
-        }
 
         $poller = new ChangePoller($watched, $interval);
         $published = null;
@@ -95,7 +83,7 @@ final class WatchCommand extends Command
 
                 $roots = $watched->roots($documents);
                 if (! $announced) {
-                    $this->reportWatchSet($watched, $roots, $pinnedOff);
+                    $this->reportWatchSet($watched, $roots);
                     $announced = true;
                 }
 
@@ -124,22 +112,15 @@ final class WatchCommand extends Command
      * zero when no fragment was stored, and a watch set with no operation files in it cannot notice
      * a controller changing.
      *
-     * $pinnedOff only decides which advice is worth giving here — it has already been said, since a
-     * count alone does not give it away: fragments left behind by an earlier session read as a
-     * healthy watch set right up until the first edit that should have rebuilt and didn't.
-     *
      * @param  list<string>  $roots
      */
-    private function reportWatchSet(WatchSet $watched, array $roots, bool $pinnedOff): void
+    private function reportWatchSet(WatchSet $watched, array $roots): void
     {
         $operations = count($watched->operationFiles());
 
         if ($operations === 0) {
             $this->warn('No operation fragments were stored, so only config, routes, content, webhooks and overlays are watched — editing a controller will not rebuild.');
-
-            if (! $pinnedOff) {
-                $this->line('<fg=gray>The fragment cache could not be turned on for the build. Check that docuccino.cache.path is writable, or set docuccino.cache.enabled to true.</>');
-            }
+            $this->line(sprintf('<fg=gray>The fragment cache could not be turned on for the build. Check that cache.path is writable in %s, or set cache.enabled to true.</>', ConfigFile::NAME));
 
             return;
         }
@@ -149,29 +130,6 @@ final class WatchCommand extends Command
             $operations,
             count($roots) - $operations,
         ));
-    }
-
-    /**
-     * Said before the first build rather than after it, because it makes every rebuild in the session
-     * a cold one and there is a two-command fix.
-     */
-    private function warnFragmentCacheIsPinnedOff(): void
-    {
-        $this->warn('Your configuration is cached, so this session cannot turn the fragment cache on: DOCUCCINO_FRAGMENT_CACHE was read when you cached, and each rebuild reads the baked value rather than the one set for it.');
-        $this->line('<fg=gray>Rebuilds will re-analyse everything and store nothing, so editing a controller will not rebuild. Run `php artisan config:clear`, or set DOCUCCINO_FRAGMENT_CACHE=true and cache again.</>');
-    }
-
-    /**
-     * Whether a rebuild's fragment cache is off in a way this session cannot fix.
-     *
-     * `config:cache` bakes `env('DOCUCCINO_FRAGMENT_CACHE')` in at cache time, so the env override
-     * {@see ArtisanBuildRunner} hands the child process is read by nothing. The store is consulted
-     * as well as the cache flag because it holds exactly the value the child will read: where the
-     * flag was baked TRUE the session works, and the warning stays quiet.
-     */
-    private static function fragmentCacheIsPinnedOff(Application $app, FragmentStore $fragments): bool
-    {
-        return $app->configurationIsCached() && ! $fragments->enabled;
     }
 
     /**

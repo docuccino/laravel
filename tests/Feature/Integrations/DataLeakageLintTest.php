@@ -46,7 +46,7 @@ it('does not mutate the emitted document (diagnostics only)', function (): void 
 
     $withoutLint = generateDocument(function (array $raw): array {
         // Turning the lint off must not change the document body — only the diagnostics.
-        config()->set('docuccino.lint.leakage.enabled', false);
+        setBuild('lint.leakage.enabled', false);
 
         return $raw;
     })->document->toArray();
@@ -56,7 +56,7 @@ it('does not mutate the emitted document (diagnostics only)', function (): void 
 
 it('silences a property via the config safelist', function (): void {
     $diagnostics = leakageDiagnostics(function (array $raw): array {
-        config()->set('docuccino.lint.leakage.allow', ['secret']);
+        setBuild('lint.leakage.allow', ['secret']);
 
         return $raw;
     });
@@ -67,7 +67,7 @@ it('silences a property via the config safelist', function (): void {
 
 it('turns off entirely via the config off-switch', function (): void {
     $diagnostics = leakageDiagnostics(function (array $raw): array {
-        config()->set('docuccino.lint.leakage.enabled', false);
+        setBuild('lint.leakage.enabled', false);
 
         return $raw;
     });
@@ -78,7 +78,7 @@ it('turns off entirely via the config off-switch', function (): void {
 it('flags an extra property via a custom lint.leakage.patterns heuristic', function (): void {
     // `title` is not sensitive by default; a custom pattern merged over the built-in table flags it.
     $diagnostics = leakageDiagnostics(function (array $raw): array {
-        config()->set('docuccino.lint.leakage.patterns', ['title' => 'a document title']);
+        setBuild('lint.leakage.patterns', ['title' => 'a document title']);
 
         return $raw;
     });
@@ -96,7 +96,7 @@ it('warns about a query parameter whose name matches a heuristic', function (): 
     // moves — so the heuristic is the one the config adds, over `dry_run`: an `in: query` parameter
     // recovered from a `#[QueryParameter]` on WidgetController::store.
     $diagnostics = leakageDiagnostics(function (array $raw): array {
-        config()->set('docuccino.lint.leakage.patterns', ['dryrun' => 'a dry-run flag']);
+        setBuild('lint.leakage.patterns', ['dryrun' => 'a dry-run flag']);
 
         return $raw;
     });
@@ -108,8 +108,8 @@ it('warns about a query parameter whose name matches a heuristic', function (): 
         ->and($messages)->toContain('/paths//api/widgets/post/parameters/')
         // And the parameter half honours the same safelist the property half does.
         ->and(implode("\n", array_map(static fn ($d): string => $d->message, leakageDiagnostics(function (array $raw): array {
-            config()->set('docuccino.lint.leakage.patterns', ['dryrun' => 'a dry-run flag']);
-            config()->set('docuccino.lint.leakage.allow', ['dry_run']);
+            setBuild('lint.leakage.patterns', ['dryrun' => 'a dry-run flag']);
+            setBuild('lint.leakage.allow', ['dry_run']);
 
             return $raw;
         }))))->not->toContain('dry_run');

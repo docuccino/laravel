@@ -9,6 +9,7 @@ use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\ViewerContext;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Support\JsonValue;
+use Docuccino\Laravel\Config\ViewerConfig;
 use Docuccino\Laravel\Pipeline\DocumentBuilder;
 use Docuccino\Laravel\Runtime\DocumentCache;
 use Docuccino\Laravel\Support\Paths;
@@ -145,8 +146,7 @@ final class DocsController
         $config = $this->config($document);
         $this->authorize($config);
 
-        $source = $config->viewer['source'] ?? 'generate';
-        $json = match ($source) {
+        $json = match (ViewerConfig::source($config->viewer)) {
             'artifact' => $this->fromArtifact($config, $engine),
             'cache' => $cache->get($document, $this->drivers->formatFor($config)) ?? $this->coldCacheFallback($config, $engine),
             default => $this->generate($config, $engine),

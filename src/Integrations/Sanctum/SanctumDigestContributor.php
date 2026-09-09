@@ -24,6 +24,6 @@ final class SanctumDigestContributor implements EnvironmentDigestContributor
     {
         $cookie = $this->config->get('session.cookie');
 
-        return 'session-cookie:'.(is_string($cookie) ? $cookie : '');
+        return implode("\0", ['session-cookie', is_string($cookie) ? $cookie : '']);
     }
 }

@@ -43,27 +43,32 @@ it('reads no dependency out of an entry it cannot make sense of', function (): v
     ]);
 });
 
-it('watches config, routes and the lock file whatever the fragments say', function (): void {
-    expect($this->watched->documentRoots(['default']))->toContain(
-        $this->fixture->path('config'),
-        $this->fixture->path('routes'),
-        $this->fixture->path('composer.json'),
-        $this->fixture->path('composer.lock'),
-    );
+it('watches the configuration file, config, routes and the lock file whatever the fragments say', function (): void {
+    // `docuccino.yaml` by name, and whether or not it is there: the file appearing is exactly the edit
+    // a watch session has to notice, and a session that missed it would keep rebuilding the document
+    // its author had just stopped configuring.
+    expect(is_file($this->fixture->path('docuccino.yaml')))->toBeFalse()
+        ->and($this->watched->documentRoots(['default']))->toContain(
+            $this->fixture->path('docuccino.yaml'),
+            $this->fixture->path('config'),
+            $this->fixture->path('routes'),
+            $this->fixture->path('composer.json'),
+            $this->fixture->path('composer.lock'),
+        );
 });
 
-it('adds the content directory, the overlay files and the engine neon a document configures', function (): void {
+it('adds the content directory, the overlay files and the analyser config a document configures', function (): void {
     mkdir($this->fixture->path('content'), 0755, true);
     file_put_contents($this->fixture->path('overlay.yaml'), "overlay: 1.0.0\n");
 
-    config()->set('docuccino.documents.default.content.dir', 'content');
-    config()->set('docuccino.documents.default.overlays', ['overlay.yaml']);
+    setBuild('documents.default.content.dir', 'content');
+    setBuild('documents.default.overlays', ['overlay.yaml']);
 
     $watched = new WatchSet(
         app(DocumentBuilder::class),
         new FragmentStore(true, $this->fixture->path('fragments')),
         $this->fixture->root,
-        ['neon' => 'phpstan.neon'],
+        ['config' => 'phpstan.neon'],
     );
 
     expect($watched->documentRoots(['default']))->toContain(
@@ -74,7 +79,7 @@ it('adds the content directory, the overlay files and the engine neon a document
 });
 
 it('never watches an artifact the build writes', function (): void {
-    config()->set('docuccino.documents.default.export.path', 'docs/openapi.json');
+    setBuild('documents.default.export.path', 'docs/openapi.json');
 
     expect($this->watched->roots(['default']))
         ->toContain($this->fixture->path('app/InvoiceController.php'))
@@ -110,10 +115,10 @@ it('watches nothing for a configured path no filesystem call can accept', functi
     // The second reader of the same overlay globs, and the one with no diagnostics channel of its own:
     // `glob()` raised here too, so `docuccino:watch` died on a config value the build had already
     // refused. Refusing once at the config boundary is what makes both readers safe from one place.
-    config()->set('docuccino.documents.default.overlays', ["resources\0/overlays/*.yaml"]);
-    config()->set('docuccino.documents.default.content.dir', "resources\0/docs");
-    config()->set('docuccino.documents.default.webhooks.dir', "app\0/Webhooks");
-    config()->set('docuccino.documents.default.api_version.changes', ["app\0/Api/Versions"]);
+    setBuild('documents.default.overlays', ["resources\0/overlays/*.yaml"]);
+    setBuild('documents.default.content.dir', "resources\0/docs");
+    setBuild('documents.default.webhooks.dir', "app\0/Webhooks");
+    setBuild('documents.default.api_version.changes', ["app\0/Api/Versions"]);
 
     $roots = $this->watched->documentRoots(['default']);
 
@@ -124,7 +129,7 @@ it('watches nothing for a configured path no filesystem call can accept', functi
 
 it('adds the version-changes directory, so a change written mid-session registers', function (): void {
     mkdir($this->fixture->path('app/Api/Versions'), 0755, true);
-    config()->set('docuccino.documents.default.api_version.changes', ['app/Api/Versions']);
+    setBuild('documents.default.api_version.changes', ['app/Api/Versions']);
 
     $roots = $this->watched->documentRoots(['default']);
     expect($roots)->toContain($this->fixture->path('app/Api/Versions'));
@@ -138,7 +143,7 @@ it('adds the version-changes directory, so a change written mid-session register
 
 it('adds the webhook directory, and as a directory so a class created mid-session registers', function (): void {
     mkdir($this->fixture->path('app/Webhooks'), 0755, true);
-    config()->set('docuccino.documents.default.webhooks.dir', 'app/Webhooks');
+    setBuild('documents.default.webhooks.dir', 'app/Webhooks');
 
     $roots = $this->watched->documentRoots(['default']);
     expect($roots)->toContain($this->fixture->path('app/Webhooks'));

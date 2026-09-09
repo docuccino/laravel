@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Docuccino\Laravel\Commands\MemoryLimitOption;
+use Docuccino\Laravel\Config\BuildConfig;
 use Docuccino\Laravel\Engine\ConsoleBuild;
 use Docuccino\Laravel\Engine\EnginePackage;
 use Docuccino\Laravel\Engine\LazyTypeEngine;
@@ -74,9 +75,12 @@ it('names both levers, and the current ceiling, in the out-of-memory notice', fu
     $text = OutOfMemoryNotice::text('128M');
 
     expect($text)->toContain('128M')
-        ->and($text)->toContain('docuccino.engine.memory_limit')
+        ->and($text)->toContain('engine.memory_limit in docuccino.yaml')
         ->and($text)->toContain('--memory-limit=2G')
-        ->and($text)->toContain('docuccino.engine.project_paths');
+        ->and($text)->toContain('engine.project_paths')
+        // The settings moved out of the framework config, so a notice still sending an author there
+        // names a file that no longer holds either lever.
+        ->and($text)->not->toContain('config/docuccino.php');
 });
 
 it('declares the flag on every command that builds a document', function (string $command): void {
@@ -87,8 +91,8 @@ it('does not offer the flag on the command that builds nothing', function (): vo
     expect(Artisan::all()['docuccino:clear']->getDefinition()->hasOption('memory-limit'))->toBeFalse();
 });
 
-it('captures the flag into the engine config the factory reads', function (): void {
-    config(['docuccino.engine.memory_limit' => null]);
+it('captures the flag into the engine bag the factory reads', function (): void {
+    setBuild('engine.memory_limit', '512M');
 
     MemoryLimitOption::capture(new CommandStarting(
         'docuccino:export',
@@ -96,11 +100,26 @@ it('captures the flag into the engine config the factory reads', function (): vo
         new NullOutput,
     ));
 
-    expect(config('docuccino.engine.memory_limit'))->toBe('3G');
+    // The flag wins over the configured ceiling, which is the whole point of the two being one lever.
+    expect(MemoryLimitOption::requested())->toBe('3G')
+        ->and(app(BuildConfig::class)->engine()['memory_limit'])->toBe('3G');
+});
+
+it('leaves the configured ceiling alone when no flag was passed', function (): void {
+    setBuild('engine.memory_limit', '512M');
+
+    MemoryLimitOption::capture(new CommandStarting(
+        'docuccino:export',
+        new ArrayInput([]),
+        new NullOutput,
+    ));
+
+    expect(MemoryLimitOption::requested())->toBeNull()
+        ->and(app(BuildConfig::class)->engine()['memory_limit'])->toBe('512M');
 });
 
 it('ignores the flag for commands that are not ours', function (): void {
-    config(['docuccino.engine.memory_limit' => null]);
+    setBuild('engine.memory_limit', '512M');
 
     MemoryLimitOption::capture(new CommandStarting(
         'migrate',
@@ -108,7 +127,8 @@ it('ignores the flag for commands that are not ours', function (): void {
         new NullOutput,
     ));
 
-    expect(config('docuccino.engine.memory_limit'))->toBeNull();
+    expect(MemoryLimitOption::requested())->toBeNull()
+        ->and(app(BuildConfig::class)->engine()['memory_limit'])->toBe('512M');
 });
 
 // --- Who may move the process ceiling ---------------------------------------
@@ -164,4 +184,24 @@ it('leaves the process ceiling alone when it may not tune it', function (): void
 
     expect($factory->mayTuneProcess())->toBeFalse()
         ->and(ini_get('memory_limit'))->toBe($before);
+});
+
+it('is quoted verbatim by the troubleshooting page that reproduces it', function (): void {
+    // The page shows this notice inside a fence, so the two drift silently — and did: it went on
+    // naming the config path the settings left while the YAML example below it named the new file.
+    // Only the two lever lines are pinned, because they are the half that names a setting.
+    $page = file_get_contents(
+        dirname(__DIR__, 4).'/website/src/content/docs/laravel/guides/troubleshooting.mdx',
+    );
+
+    $levers = array_values(array_filter(
+        explode("\n", OutOfMemoryNotice::text('128M')),
+        static fn (string $line): bool => str_starts_with(ltrim($line), '* '),
+    ));
+
+    expect($levers)->toHaveCount(2);
+
+    foreach ($levers as $lever) {
+        expect($page)->toContain(trim($lever));
+    }
 });

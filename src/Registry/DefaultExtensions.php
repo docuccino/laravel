@@ -44,6 +44,7 @@ use Docuccino\Laravel\Integrations\Support\AuthConfigDigestContributor;
 use Docuccino\Laravel\Integrations\Validation\ValidationIntegration;
 use Docuccino\Laravel\Routing\LaravelRouteResolver;
 use Docuccino\Laravel\Support\GatePoliciesDigestContributor;
+use Docuccino\Laravel\Support\LeakageDigestContributor;
 use Docuccino\Laravel\Versioning\ApiVersionTransformer;
 
 /**
@@ -88,6 +89,10 @@ final class DefaultExtensions
             // reads them off the booted app rather than off any file a route records. What the reading
             // does and does not run is stated in GateInternals.
             GatePoliciesDigestContributor::class,
+            // The leakage safelist decides whether a recorded example is published at all, and it is
+            // Docuccino's own top-level config: no document's config bag holds it, so nothing else keys
+            // a fragment on it.
+            LeakageDigestContributor::class,
             AttributeOverridesExtension::class,
             // Reads a committed file of responses a test suite recorded; nothing is executed here.
             RecordedExamplesExtension::class,

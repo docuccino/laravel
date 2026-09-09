@@ -45,6 +45,7 @@ final class ExplainCommand extends Command
     use GuardsEnabled;
     use IteratesDocuments;
     use PrintsSections;
+    use RefusesUnreadConfig;
     use RendersDiagnostics;
     use StringOptions;
 
@@ -67,7 +68,7 @@ final class ExplainCommand extends Command
 
     public function handle(DocumentBuilder $builder, TypeEngine $engine, Router $router): int
     {
-        if ($this->abortIfDisabled()) {
+        if ($this->abortIfDisabled() || $this->abortIfConfigUnread()) {
             return self::FAILURE;
         }
 

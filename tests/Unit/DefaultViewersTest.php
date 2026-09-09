@@ -7,6 +7,7 @@ use Docuccino\Core\Extensions\Context\ViewerContext;
 use Docuccino\Core\Extensions\Contracts\Viewer;
 use Docuccino\Core\Extensions\Contracts\ViewerAssets;
 use Docuccino\Core\Extensions\Contracts\ViewerSpecVersion;
+use Docuccino\Laravel\Facades\Docuccino;
 use Docuccino\Laravel\Registry\ExtensionRegistry;
 use Docuccino\Laravel\Viewer\DefaultViewers;
 use Docuccino\Laravel\Viewer\RedocViewer;
@@ -131,8 +132,9 @@ $versionedViewer = static function (?string $version): Viewer {
 };
 
 it('serves every declared spec version its own emitter, and an unknown one the newest', function (?string $declared, string $format) use ($versionedViewer): void {
-    // `docuccino.extensions` takes an instance as readily as a class-string, so the stub goes in whole.
-    config()->set('docuccino.extensions', [$versionedViewer($declared)]);
+    // A constructed stub goes in through the registry: the configuration FILE names classes, and this
+    // one is built with the version under test.
+    Docuccino::extend($versionedViewer($declared));
 
     $drivers = new ViewerDrivers(app(ExtensionRegistry::class), app());
     $config = new DocumentConfig('default', [], viewer: ['driver' => 'stub']);

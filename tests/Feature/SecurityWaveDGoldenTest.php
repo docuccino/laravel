@@ -52,7 +52,7 @@ beforeEach(function (): void {
     $router->get('api/wave-d/partner-by-class', [FormController::class, 'index'])
         ->middleware(Authenticate::using('partner'));
 
-    config()->set('docuccino.documents', [
+    setDocuments([
         'wave-d-auth' => [
             'info' => ['title' => 'Wave D Auth', 'version' => '1.0.0'],
             'routes' => ['include' => ['api/wave-d/*']],
@@ -67,7 +67,7 @@ afterEach(function (): void {
 
 it('emits the Wave-D auth document byte-identical to its golden', function (): void {
     /** @var array<string, mixed> $raw */
-    $raw = config('docuccino.documents.wave-d-auth');
+    $raw = documentSettings('wave-d-auth');
     $config = app(DocumentConfigFactory::class)->make('wave-d-auth', $raw, 'skeleton');
     $document = app(DocumentGenerator::class)->generate($config, app(TypeEngine::class))->document->toArray();
 

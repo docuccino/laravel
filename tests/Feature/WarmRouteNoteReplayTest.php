@@ -135,7 +135,7 @@ it('emits the deferral-summary document and its diagnostics byte-identically, co
     $warm = assertWarmEqualsCold($deferring, $deferring, $engine);
 
     // The cache directories the helper used are gone by now, so this build is genuinely cold.
-    config()->set('docuccino.cache.enabled', false);
+    setBuild('cache.enabled', false);
     $cold = localityBuild($deferring, $engine);
 
     foreach (['warm' => $warm, 'cold' => $cold] as $build) {

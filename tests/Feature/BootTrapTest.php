@@ -55,13 +55,13 @@ it('re-resolves the registry on every build (build → extend → build)', funct
 });
 
 it('merges class-string extensions from config at build time', function (): void {
-    config()->set('docuccino.extensions', [LateBoundMarker::class]);
+    setBuild('extensions', [LateBoundMarker::class]);
 
     expect(titleOf())->toBe('LATE-BOUND');
 });
 
 it('says nothing about a config extension that resolves', function (): void {
-    config()->set('docuccino.extensions', [LateBoundMarker::class]);
+    setBuild('extensions', [LateBoundMarker::class]);
 
     expect(extensionDiagnostics())->toBe([]);
 });
@@ -69,24 +69,24 @@ it('says nothing about a config extension that resolves', function (): void {
 it('warns about a config extension no autoloadable class defines', function (): void {
     // `Foo::class` still evaluates to the string when the class is missing, so a typo'd namespace is a
     // build that quietly does less than the config asked for.
-    config()->set('docuccino.extensions', ['App\\Docs\\InvoceTotalsExtension']);
+    setBuild('extensions', ['App\\Docs\\InvoceTotalsExtension']);
 
     $diagnostics = extensionDiagnostics();
 
     expect($diagnostics)->toHaveCount(1)
         ->and($diagnostics[0]->severity)->toBe(Severity::Warning)
         ->and($diagnostics[0]->message)->toContain('App\\Docs\\InvoceTotalsExtension')
-        ->and($diagnostics[0]->help)->toContain('config/docuccino.php');
+        ->and($diagnostics[0]->help)->toContain('docuccino.yaml');
 });
 
 it('warns about a config extensions entry that is no kind of extension', function (): void {
-    config()->set('docuccino.extensions', [42]);
+    setBuild('extensions', [42]);
 
     expect(extensionDiagnostics()[0]->message)->toContain('holds a int');
 });
 
 it('reports a missing config extension on the CLI too', function (): void {
-    config()->set('docuccino.extensions', ['App\\Docs\\Missing']);
+    setBuild('extensions', ['App\\Docs\\Missing']);
 
     $this->artisan('docuccino:export', ['--out' => sys_get_temp_dir().'/docuccino-ext-'.uniqid().'.json'])
         ->expectsOutputToContain('config.extension-missing')

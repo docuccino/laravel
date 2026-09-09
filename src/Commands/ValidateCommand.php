@@ -20,6 +20,7 @@ final class ValidateCommand extends Command
     use FailsOnSeverity;
     use GuardsEnabled;
     use IteratesDocuments;
+    use RefusesUnreadConfig;
     use RendersDiagnostics;
 
     protected $signature = 'docuccino:validate
@@ -31,7 +32,7 @@ final class ValidateCommand extends Command
 
     public function handle(DocumentBuilder $builder, TypeEngine $engine): int
     {
-        if ($this->abortIfDisabled() || ! $this->validateFailOn()) {
+        if ($this->abortIfDisabled() || $this->abortIfConfigUnread() || ! $this->validateFailOn()) {
             return self::FAILURE;
         }
 

@@ -45,7 +45,7 @@ function modularModuleGlob(): string
  */
 function modularFormSchema(array $changes): array
 {
-    config()->set('docuccino.documents', ['v' => [
+    setDocuments(['v' => [
         'info' => ['title' => 'Forms API', 'version' => '2026-06-01'],
         'routes' => ['include' => ['api/versioned-forms']],
         'error_responses' => 'none',

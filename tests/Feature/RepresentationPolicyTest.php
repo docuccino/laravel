@@ -15,7 +15,7 @@ it('derives controller-method operationIds when the policy asks for it', functio
     app()->instance(TypeEngine::class, WorkbenchEngine::make());
 
     /** @var array<string, mixed> $raw */
-    $raw = config('docuccino.documents.default');
+    $raw = documentSettings();
     $raw['representation']['operation_id'] = 'controller-method';
 
     $config = app(DocumentConfigFactory::class)->make('default', $raw, 'skeleton');
@@ -29,7 +29,7 @@ it('leaves operationIds to the route-name strategy by default', function (): voi
     app()->instance(TypeEngine::class, WorkbenchEngine::make());
 
     /** @var array<string, mixed> $raw */
-    $raw = config('docuccino.documents.default');
+    $raw = documentSettings();
 
     $config = app(DocumentConfigFactory::class)->make('default', $raw, 'skeleton');
     $document = app(DocumentGenerator::class)->generate($config, app(TypeEngine::class))->document->toArray();

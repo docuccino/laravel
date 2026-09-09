@@ -21,8 +21,8 @@ beforeEach(function (): void {
 
     file_put_contents($this->artifact, (new UirEmitter)->emit(generateDocument()->document));
 
-    config()->set('docuccino.documents.default.export.targets', [['format' => 'uir', 'path' => $this->artifact]]);
-    config()->set('docuccino.documents.default.coverage.log', $this->logs);
+    setBuild('documents.default.export.targets', [['format' => 'uir', 'path' => $this->artifact]]);
+    setBuild('documents.default.coverage.log', $this->logs);
 
     $index = ContractIndex::fromJson((string) file_get_contents($this->artifact));
     $this->operations = $index->operations();

@@ -47,18 +47,35 @@ final class GatePoliciesDigestContributor implements EnvironmentDigestContributo
         $records = [];
         $shadowable = [];
         foreach ($internals->policies as $class => $policy) {
-            $record = $class.'=>'.(is_string($policy) ? $policy : get_debug_type($policy));
-            $records[] = $record;
+            $resolved = is_string($policy) ? $policy : get_debug_type($policy);
+            $records[$class] = $resolved;
             if (GateInternals::shadowable($class)) {
-                $shadowable[] = $record;
+                $shadowable[$class] = $resolved;
             }
         }
-        sort($records);
+        ksort($records);
 
-        return 'gate-policies:'.implode(',', $records)
-            .'|subclass-order:'.implode(',', $shadowable)
-            .'|guesser:'.($internals->guesser ? 'y' : 'n')
-            .'|before:'.$internals->beforeHooks
-            .'|after:'.$internals->afterHooks;
+        $parts = ['gate-policies'];
+        foreach ($records as $class => $resolved) {
+            $parts[] = (string) $class;
+            $parts[] = $resolved;
+        }
+
+        // Registration order, deliberately unsorted — {@see GateInternals::shadowable()} says why.
+        $parts[] = 'subclass-order';
+        foreach ($shadowable as $class => $resolved) {
+            $parts[] = (string) $class;
+            $parts[] = $resolved;
+        }
+
+        return implode("\0", [
+            ...$parts,
+            'guesser',
+            $internals->guesser ? 'y' : 'n',
+            'before',
+            (string) $internals->beforeHooks,
+            'after',
+            (string) $internals->afterHooks,
+        ]);
     }
 }

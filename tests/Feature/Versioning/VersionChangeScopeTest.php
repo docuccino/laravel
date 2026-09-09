@@ -39,10 +39,10 @@ function scopedVersionDocument(?string $dir): array
 }
 
 it('renames the shared component in place when the scope covers every operation that publishes it', function (): void {
-    config()->set('docuccino.documents', ['v' => scopedVersionDocument('tests/Fixtures/Versioning/ScopedAll')]);
+    setDocuments(['v' => scopedVersionDocument('tests/Fixtures/Versioning/ScopedAll')]);
     $scoped = generateDocument(key: 'v')->document->toArray();
 
-    config()->set('docuccino.documents', ['v' => scopedVersionDocument('workbench/app/Api/Versions')]);
+    setDocuments(['v' => scopedVersionDocument('workbench/app/Api/Versions')]);
     $unscoped = generateDocument(key: 'v')->document->toArray();
 
     // Both operations keep the shared `$ref`, and the component itself carries the older name.
@@ -62,7 +62,7 @@ it('renames the shared component in place when the scope covers every operation 
 });
 
 it('inlines the older shape at the operations in scope and leaves the component to the rest', function (): void {
-    config()->set('docuccino.documents', ['v' => scopedVersionDocument('tests/Fixtures/Versioning/Scoped')]);
+    setDocuments(['v' => scopedVersionDocument('tests/Fixtures/Versioning/Scoped')]);
 
     $document = generateDocument(key: 'v')->document->toArray();
 
@@ -87,7 +87,7 @@ it('inlines the older shape at the operations in scope and leaves the component 
  * would rename a type in somebody's generated client. An inline schema registers no name at all.
  */
 it('mints no new component name for the operations it forks', function (): void {
-    config()->set('docuccino.documents', ['v' => scopedVersionDocument('tests/Fixtures/Versioning/Scoped')]);
+    setDocuments(['v' => scopedVersionDocument('tests/Fixtures/Versioning/Scoped')]);
 
     $document = generateDocument(key: 'v')->document->toArray();
 
@@ -101,7 +101,7 @@ it('mints no new component name for the operations it forks', function (): void 
  * and `provenanceOf()` answered about a node with different properties than the one asked about.
  */
 it('gives the forked copy an identity of its own, so both nodes stay findable', function (): void {
-    config()->set('docuccino.documents', ['v' => scopedVersionDocument('tests/Fixtures/Versioning/Scoped')]);
+    setDocuments(['v' => scopedVersionDocument('tests/Fixtures/Versioning/Scoped')]);
 
     $document = generateDocument(key: 'v')->document->toArray();
 
@@ -124,7 +124,7 @@ it('gives the forked copy an identity of its own, so both nodes stay findable', 
  * survive.
  */
 it('mints the same forked identity from the same component and operation', function (): void {
-    config()->set('docuccino.documents', ['v' => scopedVersionDocument('tests/Fixtures/Versioning/Scoped')]);
+    setDocuments(['v' => scopedVersionDocument('tests/Fixtures/Versioning/Scoped')]);
 
     $forked = static fn (): string => generateDocument(key: 'v')->document->toArray()['paths']['/api/versioned-forms']['get']['responses']['200']['content']['application/json']['schema']['items']['x-docuccino']['id'];
 
@@ -138,7 +138,7 @@ it('mints the same forked identity from the same component and operation', funct
 });
 
 it('emits a valid document once it has forked one', function (): void {
-    config()->set('docuccino.documents', ['v' => scopedVersionDocument('tests/Fixtures/Versioning/Scoped')]);
+    setDocuments(['v' => scopedVersionDocument('tests/Fixtures/Versioning/Scoped')]);
 
     $result = generateDocument(key: 'v');
 
@@ -152,7 +152,7 @@ it('emits a valid document once it has forked one', function (): void {
 });
 
 it('says nothing about scope while forking a document that asked for one', function (): void {
-    config()->set('docuccino.documents', ['v' => scopedVersionDocument('tests/Fixtures/Versioning/Scoped')]);
+    setDocuments(['v' => scopedVersionDocument('tests/Fixtures/Versioning/Scoped')]);
 
     $codes = array_map(
         static fn (Diagnostic $diagnostic): string => $diagnostic->code,
@@ -167,7 +167,7 @@ it('says nothing about scope while forking a document that asked for one', funct
  * named was renamed months later and the change silently stopped applying. So it is said out loud.
  */
 it('reports a scope that names no operation publishing the schema, and applies nothing', function (): void {
-    config()->set('docuccino.documents', ['v' => scopedVersionDocument('tests/Fixtures/Versioning/ScopedNowhere')]);
+    setDocuments(['v' => scopedVersionDocument('tests/Fixtures/Versioning/ScopedNowhere')]);
 
     $result = generateDocument(key: 'v');
     $document = $result->document->toArray();
@@ -195,7 +195,7 @@ it('reports a scope that names no operation publishing the schema, and applies n
  * reader nothing the first had not, and noise is what trains people to stop reading the channel.
  */
 it('says a scope that names nothing once, however many renames it carries', function (): void {
-    config()->set('docuccino.documents', ['v' => scopedVersionDocument('tests/Fixtures/Versioning/ScopedNowhereTwice')]);
+    setDocuments(['v' => scopedVersionDocument('tests/Fixtures/Versioning/ScopedNowhereTwice')]);
 
     $versioning = array_values(array_filter(
         generateDocument(key: 'v')->diagnostics,
@@ -207,7 +207,7 @@ it('says a scope that names nothing once, however many renames it carries', func
 });
 
 it('names an operation by its operationId as readily as by its signature', function (): void {
-    config()->set('docuccino.documents', ['v' => scopedVersionDocument('tests/Fixtures/Versioning/ScopedById')]);
+    setDocuments(['v' => scopedVersionDocument('tests/Fixtures/Versioning/ScopedById')]);
 
     $document = generateDocument(key: 'v')->document->toArray();
     $items = static fn (string $path): array => $document['paths'][$path]['get']['responses']['200']['content']['application/json']['schema']['items'];

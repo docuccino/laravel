@@ -48,6 +48,8 @@ final class VersionChangesCommand extends Command
     use GuardsEnabled;
     use PrintsSections;
     use ReadsCommittedArtifact;
+    use RefusesUnreadConfig;
+    use RendersDiagnostics;
     use StringOptions;
 
     protected $signature = 'docuccino:version-changes
@@ -70,7 +72,7 @@ final class VersionChangesCommand extends Command
 
     public function handle(DocumentBuilder $builder, TypeEngine $engine): int
     {
-        if ($this->abortIfDisabled()) {
+        if ($this->abortIfDisabled() || $this->abortIfConfigUnread()) {
             return self::FAILURE;
         }
 

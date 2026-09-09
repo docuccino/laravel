@@ -104,7 +104,7 @@ it('invalidates fragments when the engine descend paths change', function (): vo
     $engine->analyzeCount = 0;
 
     // Widening what the engine descends into changes what inference can recover for any route.
-    config()->set('docuccino.engine.project_paths', ['app', 'modules']);
+    setBuild('engine.project_paths', ['app', 'modules']);
     generateDocument();
 
     expect($engine->analyzeCount)->toBeGreaterThan(0);
@@ -119,7 +119,7 @@ it('keeps the fragments warm when only the engine memory limit changes', functio
     $engine->analyzeCount = 0;
 
     // A process ceiling cannot change a documented byte — `--memory-limit` must not cost a rebuild.
-    config()->set('docuccino.engine.memory_limit', '2G');
+    setBuild('engine.memory_limit', '2G');
     generateDocument();
 
     expect($engine->analyzeCount)->toBe(0);

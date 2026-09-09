@@ -491,7 +491,7 @@ it('publishes the recorded names on the shared error component, cold and warm al
     // `document.configHash`, so a random path would churn the golden on every run.
     $dir = base_path('docs/recordings-shared-error-golden');
     @mkdir($dir, 0777, true);
-    config()->set('docuccino.documents.default.examples.recordings', $dir);
+    setBuild('documents.default.examples.recordings', $dir);
 
     $routes = static function (Router $router, array $actions): void {
         foreach ($actions as $action) {

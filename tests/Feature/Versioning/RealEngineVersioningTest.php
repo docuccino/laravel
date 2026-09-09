@@ -56,7 +56,7 @@ function snapshotVersionDocument(string $version): array
         classes: $classes,
     ));
 
-    config()->set('docuccino.documents', ['v' => [
+    setDocuments(['v' => [
         'info' => ['title' => 'Snapshots', 'version' => $version],
         'routes' => ['include' => ['api/forms']],
         'error_responses' => 'none',

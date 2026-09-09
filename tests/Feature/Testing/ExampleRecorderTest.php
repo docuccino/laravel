@@ -411,7 +411,7 @@ it('says where to put recordings when the document does not, before anything has
     // have published, not held back until somebody gets round to naming one.
     expect(fn () => ApiContract::assertions()->assertValidResponse(
         contractResponse('GET', '/api/forms', body: '[]'),
-    ))->toThrow(UnrecordableRun::class, "'examples' => ['recordings' => 'docs/recordings']");
+    ))->toThrow(UnrecordableRun::class, 'recordings: \'docs/recordings\'');
 });
 
 it('records nothing for an artifact that carries no identities', function (): void {

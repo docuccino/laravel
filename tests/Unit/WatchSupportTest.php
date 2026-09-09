@@ -57,7 +57,7 @@ it('reads anything that is not a digest as no signal at all', function (string $
 
 it('digests what the build wrote, so an artifact that did not move keeps its token', function (): void {
     $fixture = WatchFixture::make();
-    config()->set('docuccino.documents.default.export.path', $fixture->path('docs/openapi.json'));
+    setBuild('documents.default.export.path', $fixture->path('docs/openapi.json'));
 
     $tokens = new BuildToken(app(DocumentBuilder::class), $fixture->root);
     $before = $tokens->of(['default']);

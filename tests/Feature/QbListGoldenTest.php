@@ -29,7 +29,7 @@ it('emits the flagship QB list document byte-identical to its committed golden',
     $router->get('api/qb-list', [QbListController::class, 'index']);
 
     /** @var array<string, mixed> $raw */
-    $raw = config('docuccino.documents.default');
+    $raw = documentSettings();
     $raw['info'] = ['title' => 'QB List API', 'version' => '1.0.0'];
     $raw['routes'] = ['include' => ['api/qb-list']];
     // Declare the QB subclass's custom paginating terminal so it is recovered for BOTH the page

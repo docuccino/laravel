@@ -17,7 +17,7 @@ it('emits a secured document byte-identical to its committed golden', function (
     app()->instance(TypeEngine::class, WorkbenchEngine::make());
 
     /** @var array<string, mixed> $raw */
-    $raw = config('docuccino.documents.default');
+    $raw = documentSettings();
     $raw['info'] = ['title' => 'Secured API', 'version' => '1.0.0'];
     $raw['security'] = [
         'schemes' => [

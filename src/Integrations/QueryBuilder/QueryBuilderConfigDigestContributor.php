@@ -24,7 +24,8 @@ final class QueryBuilderConfigDigestContributor implements EnvironmentDigestCont
 
     public function digest(): string
     {
-        return 'query-builder:'.implode(',', [
+        return implode("\0", [
+            'query-builder',
             $this->config->filter,
             $this->config->sort,
             $this->config->include,
@@ -35,6 +36,11 @@ final class QueryBuilderConfigDigestContributor implements EnvironmentDigestCont
             $this->config->existsSuffix,
             // The delimiter decides whether lists carry the comma-array contract at all.
             $this->config->delimiter,
+            // Whether the bag was there at all, which is a fact of its own and not a value: publishing
+            // the package's config file writes its DEFAULTS, so every value above can stay identical
+            // while the per-route "config was not readable" diagnostic stops being raised. Without this
+            // an author who followed that diagnostic's own advice would rebuild and still be told it.
+            $this->config->recovered ? 'published' : 'defaulted',
         ]);
     }
 }

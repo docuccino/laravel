@@ -35,7 +35,7 @@ function orderedVersionDocument(string $dir, string $version, ?string $versionin
 }
 
 it('undoes a semver chain newest first, which a bytewise order would walk backwards', function (string $version, string $field): void {
-    config()->set('docuccino.documents', ['v' => orderedVersionDocument('tests/Fixtures/Versioning/Semver', $version)]);
+    setDocuments(['v' => orderedVersionDocument('tests/Fixtures/Versioning/Semver', $version)]);
 
     $result = generateDocument(key: 'v');
     $schema = $result->document->toArray()['components']['schemas']['FormData'];
@@ -58,7 +58,7 @@ it('undoes a semver chain newest first, which a bytewise order would walk backwa
 it('takes the order the document names over the one its versions look like', function (): void {
     // Read as dates these versions are unreadable, so a document that SAYS `date` gets no order at all —
     // which proves the keyword is what decided, not the shape of the strings.
-    config()->set('docuccino.documents', ['v' => orderedVersionDocument('tests/Fixtures/Versioning/Semver', '0.9.0', 'date')]);
+    setDocuments(['v' => orderedVersionDocument('tests/Fixtures/Versioning/Semver', '0.9.0', 'date')]);
 
     $result = generateDocument(key: 'v');
     $codes = array_map(static fn (Diagnostic $d): string => $d->code, $result->diagnostics);
@@ -69,7 +69,7 @@ it('takes the order the document names over the one its versions look like', fun
 });
 
 it('applies nothing when the versions in play are neither all dates nor all semver', function (): void {
-    config()->set('docuccino.documents', ['v' => orderedVersionDocument('tests/Fixtures/Versioning/Mixed', '1.2.0')]);
+    setDocuments(['v' => orderedVersionDocument('tests/Fixtures/Versioning/Mixed', '1.2.0')]);
 
     $result = generateDocument(key: 'v');
     $unordered = array_values(array_filter(
@@ -86,7 +86,7 @@ it('applies nothing when the versions in play are neither all dates nor all semv
 });
 
 it('says nothing about ordering for a document that declares no change at all', function (): void {
-    config()->set('docuccino.documents', ['v' => [
+    setDocuments(['v' => [
         'info' => ['title' => 'Forms API', 'version' => 'whenever'],
         'routes' => ['include' => ['api/versioned-forms']],
         'error_responses' => 'none',

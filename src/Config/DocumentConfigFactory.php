@@ -5,20 +5,19 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Config;
 
 use Docuccino\Core\Extensions\Context\DocumentConfig;
-use Docuccino\Core\Extensions\Contracts\TagMapper;
 use Docuccino\Core\Support\ConfiguredFlag;
+use Docuccino\Core\Support\ConfiguredKeyword;
 use Docuccino\Core\Support\ConfinedPath;
 use Docuccino\Core\Support\Hydrate;
 use Docuccino\Core\Support\LineEndings;
 use Docuccino\Laravel\Registry\ConfigDiagnostics;
-use Docuccino\Laravel\Tags\PrefixTagMapper;
 use Illuminate\Contracts\Container\Container;
 
 /**
- * Builds a framework-agnostic {@see DocumentConfig} from one `config('docuccino.documents.*')` entry:
+ * Builds a framework-agnostic {@see DocumentConfig} from one `documents.*` entry of `docuccino.yaml`:
  * relativises every path-like key ({@see ConfigPaths}), reads `info.description.file` into its contents
- * so the pipeline never touches the filesystem, and resolves the tag mapper (a container-resolved
- * `tags.mapper`, else {@see PrefixTagMapper} over `tags.map`) and the route filter
+ * so the pipeline never touches the filesystem, and resolves the two collaborators a document names by
+ * class — the tag mapper ({@see ConfiguredTagMapper}) and the route filter
  * ({@see ConfiguredRouteFilter}).
  */
 final readonly class DocumentConfigFactory
@@ -61,7 +60,7 @@ final readonly class DocumentConfigFactory
             routeExclude: Hydrate::stringList($routes['exclude'] ?? []),
             routeFilter: (new ConfiguredRouteFilter($this->container))->resolve($key, $routes),
             includeVendor: ConfiguredFlag::read($routes, 'include_vendor', false)->on,
-            authMiddleware: is_string($security['auto_detect_middleware'] ?? null) ? $security['auto_detect_middleware'] : null,
+            authMiddleware: is_string($security['auth_middleware'] ?? null) ? $security['auth_middleware'] : null,
             errorResponses: self::errorResponses($config),
             // A glob holding a NUL byte raises out of `glob()` and takes the build with it, so it never
             // reaches one — the same refusal every other path key gets, reported by ConfigDiagnostics.
@@ -73,9 +72,17 @@ final readonly class DocumentConfigFactory
             security: $security,
             tags: $tags,
             representation: Hydrate::map($config['representation'] ?? []),
-            viewer: Hydrate::map($config['viewer'] ?? []),
-            versioning: is_string($config['versioning'] ?? null) ? $config['versioning'] : 'none',
-            tagMapper: $this->resolveTagMapper($tags),
+            // The one member that comes from the OTHER file: the viewer is framework-owned, because
+            // boot and every viewer request read it ({@see ViewerConfig}). It shapes no emitted byte,
+            // so carrying it here lets the runtime ask the document config and not the config files.
+            viewer: ViewerConfig::for($key),
+            versioning: ConfiguredKeyword::read(
+                $config,
+                'versioning',
+                DocumentConfig::VERSIONING_DEFAULT,
+                DocumentConfig::VERSIONING_POLICIES,
+            )->keyword,
+            tagMapper: (new ConfiguredTagMapper($this->container))->resolve($tags),
             raw: $config,
         );
     }
@@ -86,40 +93,25 @@ final readonly class DocumentConfigFactory
      * Absent and present-but-null are deliberately different readings. A document that never names the
      * key has expressed nothing, and `none` is the documented fallback it gets — the shipped file says
      * `default`, so a second document inherits none of the first's errors. A key that IS present has an
-     * author behind it, and `env('DOCUCCINO_ERRORS')` with the variable unset is exactly that: an intent
+     * author behind it, and a key written with nothing after the colon is exactly that: an intent
      * expressed and unreadable. Reading it as `none` would take every 4xx and 5xx out of the document
      * without a word, so it degrades the way every other value outside the set does — as the shipped
-     * `default`, with {@see ConfigDiagnostics} naming it.
+     * `default`, with {@see ConfiguredKeywords} naming it.
      *
      * @param  array<string, mixed>  $config
      */
     private static function errorResponses(array $config): string
     {
         if (! array_key_exists('error_responses', $config)) {
-            return 'none';
+            return DocumentConfig::ERROR_RESPONSES_ABSENT;
         }
 
-        return $config['error_responses'] === 'none' ? 'none' : 'default';
-    }
-
-    /**
-     * A `tags.mapper` class-string is container-resolved so custom mappers get constructor DI; else a
-     * non-empty `tags.map` builds a {@see PrefixTagMapper}. Null means tags pass through unchanged.
-     *
-     * @param  array<string, mixed>  $tags
-     */
-    private function resolveTagMapper(array $tags): ?TagMapper
-    {
-        $mapper = $tags['mapper'] ?? null;
-        if (is_string($mapper) && $mapper !== '') {
-            $resolved = $this->container->make($mapper);
-
-            return $resolved instanceof TagMapper ? $resolved : null;
-        }
-
-        $map = Hydrate::stringMap($tags['map'] ?? null);
-
-        return $map === [] ? null : new PrefixTagMapper($map);
+        return ConfiguredKeyword::read(
+            $config,
+            'error_responses',
+            DocumentConfig::ERROR_RESPONSES_DEFAULT,
+            DocumentConfig::ERROR_RESPONSES,
+        )->keyword;
     }
 
     /**
@@ -145,8 +137,13 @@ final readonly class DocumentConfigFactory
             }
         }
 
-        $info['title'] = is_string($info['title'] ?? null) ? $info['title'] : 'API Documentation';
-        $info['version'] = Hydrate::stringOr($info['version'] ?? DocumentConfig::DEFAULT_VERSION, DocumentConfig::DEFAULT_VERSION);
+        // Refused rather than coerced, both of them, and for the reason the configuration reader that
+        // REPORTS them gives: `version: 1.10` parses to the float 1.1, and a coercing read publishes
+        // "1.1" — a version number nobody wrote, in a document somebody's client is pinned to. The
+        // fallback here is the one {@see \Docuccino\Laravel\Pipeline\DocumentBuilder::config()}
+        // names in that report, so the diagnostic and the document say the same thing.
+        $info['title'] = is_string($info['title'] ?? null) ? $info['title'] : DocumentConfig::DEFAULT_TITLE;
+        $info['version'] = is_string($info['version'] ?? null) ? $info['version'] : DocumentConfig::DEFAULT_VERSION;
 
         return $info;
     }

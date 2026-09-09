@@ -34,7 +34,7 @@ beforeEach(function (): void {
     $router->middleware(DowngradeToPinnedApiVersion::class)
         ->get('api/versioned-forms', [VersionedFormController::class, 'index']);
 
-    config()->set('docuccino.documents', versionedFormDocuments());
+    setDocuments(versionedFormDocuments());
 });
 
 afterEach(function (): void {

@@ -39,7 +39,7 @@ beforeEach(function (): void {
     $router->get('api/versioned-forms', [VersionedFormController::class, 'index']);
     $router->get('api/versioned-forms/archived', [VersionedFormController::class, 'archived']);
 
-    config()->set('docuccino.documents', versionedFormDocuments());
+    setDocuments(versionedFormDocuments());
 });
 
 /**

@@ -35,7 +35,7 @@ beforeEach(function (): void {
 it('refuses a document switch spelled no, uses the default, and says so', function (): void {
     // A default-ON switch: `!== false` used to read this as ON too, by accident, and the coercing
     // reader read it as ON on purpose. The answer here has to be the DEFAULT, reported.
-    config()->set('docuccino.documents.default.representation.errors.components', 'no');
+    setBuild('documents.default.representation.errors.components', 'no');
 
     $found = refusalDiagnostics();
 
@@ -54,7 +54,7 @@ it('refuses a document switch spelled no, uses the default, and says so', functi
 it('refuses an install switch spelled no, uses the default, and says so', function (): void {
     // The one a cast turned ON: `(bool) 'no'` is true, so this switch used to enable the fragment
     // cache for an author who had written it off.
-    config()->set('docuccino.cache.enabled', 'no');
+    setBuild('cache.enabled', 'no');
 
     $found = refusalDiagnostics();
 
@@ -65,7 +65,7 @@ it('refuses an install switch spelled no, uses the default, and says so', functi
 });
 
 it('refuses a lint switch spelled off, uses the rule default, and says so', function (): void {
-    config()->set('docuccino.lint.operation_ids.enabled', 'off');
+    setBuild('lint.operation_ids.enabled', 'off');
 
     $found = refusalDiagnostics();
 
@@ -75,7 +75,7 @@ it('refuses a lint switch spelled off, uses the rule default, and says so', func
 });
 
 it('refuses an integration switch and names the integration', function (): void {
-    config()->set('docuccino.documents.default.integrations.permission.enabled', 'yes');
+    setBuild('documents.default.integrations.permission.enabled', 'yes');
 
     $found = refusalDiagnostics();
 
@@ -86,10 +86,10 @@ it('refuses an integration switch and names the integration', function (): void 
 });
 
 it('says nothing at all about a configuration whose switches are switches', function (): void {
-    config()->set('docuccino.documents.default.representation.errors.components', false);
-    config()->set('docuccino.cache.enabled', true);
+    setBuild('documents.default.representation.errors.components', false);
+    setBuild('cache.enabled', true);
     config()->set('docuccino.enabled', true);
-    config()->set('docuccino.documents.default.integrations.permission.enabled', true);
+    setBuild('documents.default.integrations.permission.enabled', true);
 
     expect(refusalDiagnostics())->toBe([]);
 });
@@ -101,9 +101,9 @@ it('says nothing about the switches the shipped configuration ships with', funct
 });
 
 it('reports every refused switch, not just the first', function (): void {
-    config()->set('docuccino.cache.enabled', 'no');
-    config()->set('docuccino.lint.tags.enabled', 'no');
-    config()->set('docuccino.documents.default.routes.include_vendor', 'no');
+    setBuild('cache.enabled', 'no');
+    setBuild('lint.tags.enabled', 'no');
+    setBuild('documents.default.routes.include_vendor', 'no');
 
     expect(refusalDiagnostics())->toHaveCount(3);
 });
@@ -114,8 +114,8 @@ it('reports every refused switch, not just the first', function (): void {
  * tells the author more than "that is not a switch" would.
  */
 it('does not also refuse a switch that nothing reads', function (): void {
-    config()->set('docuccino.documents.default.integrations.validation.enabled', 'no');
-    config()->set('docuccino.documents.default.integrations.santcum.enabled', 'no');
+    setBuild('documents.default.integrations.validation.enabled', 'no');
+    setBuild('documents.default.integrations.santcum.enabled', 'no');
 
     $codes = array_map(
         static fn (Diagnostic $diagnostic): string => $diagnostic->code,
@@ -133,7 +133,7 @@ it('does not also refuse a switch that nothing reads', function (): void {
  * says the value was unreadable, and one message saying so beats two disagreeing about what was meant.
  */
 it('keeps a refused switch out of what counts as explicitly set', function (): void {
-    config()->set('docuccino.documents.default.integrations.spatie_data.enabled', 'no');
+    setBuild('documents.default.integrations.spatie_data.enabled', 'no');
 
     $document = app(DocumentBuilder::class)->config('default');
 

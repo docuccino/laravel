@@ -11,7 +11,7 @@ use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
  * engine package suppresses this warning in favour of its own — see EngineLessTest.)
  */
 it('warns and runs in-process when the mode is not one it knows', function (string $mode): void {
-    config()->set('docuccino.engine.mode', $mode);
+    setBuild('engine.mode', $mode);
 
     $result = app(DocumentBuilder::class)->build('default', WorkbenchEngine::make());
 
@@ -30,7 +30,7 @@ it('warns and runs in-process when the mode is not one it knows', function (stri
 ]);
 
 it('stays silent on the modes it knows', function (string $mode): void {
-    config()->set('docuccino.engine.mode', $mode);
+    setBuild('engine.mode', $mode);
 
     $result = app(DocumentBuilder::class)->build('default', WorkbenchEngine::make());
 

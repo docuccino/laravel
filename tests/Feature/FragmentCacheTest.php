@@ -88,7 +88,7 @@ it('invalidates fragments when the document config changes', function (): void {
     $engine->analyzeCount = 0;
 
     // A representation policy change alters the document configHash → every key changes → miss.
-    config()->set('docuccino.documents.default.representation.operation_id', 'controller-method');
+    setBuild('documents.default.representation.operation_id', 'controller-method');
     generateDocument()->document;
 
     expect($engine->analyzeCount)->toBeGreaterThan(0);
@@ -104,7 +104,7 @@ it('keeps fragments warm when only the export destination changes', function ():
 
     // `export` says where artifacts land, never what they hold. Re-pointing it must not re-fingerprint
     // the document: a filename should not cost a full re-analysis, nor move a single emitted byte.
-    config()->set('docuccino.documents.default.export.path', 'build/somewhere-else.json');
+    setBuild('documents.default.export.path', 'build/somewhere-else.json');
     $warm = (new UirEmitter)->emit(generateDocument()->document);
 
     expect($warm)->toBe($cold)
@@ -146,7 +146,7 @@ it('keeps fragments warm when only the viewer wiring changes, and cold when shap
 
     // The other direction, off the same warm store: a key that DOES shape the document still busts it.
     // Without this the row would also pass if nothing keyed the cache at all.
-    config()->set('docuccino.documents.default.representation.operation_id', 'controller-method');
+    setBuild('documents.default.representation.operation_id', 'controller-method');
     generateDocument();
 
     expect($engine->analyzeCount)->toBeGreaterThan(0);
@@ -401,6 +401,29 @@ it('invalidates fragments when the query-builder delimiter changes (booted-app c
     expect($engine->analyzeCount)->toBeGreaterThan(0);
 });
 
+it('invalidates fragments when a package config appears holding the values it already had', function (string $key, array $bag, string $code): void {
+    fragmentCacheDir('fragments');
+    $engine = new CountingTypeEngine(WorkbenchEngine::make());
+    app()->instance(TypeEngine::class, $engine);
+
+    // A per-route diagnostic gated on whether the package's bag was READABLE, which rides the fragment.
+    $cold = generateDocument();
+    expect(diagnosticsCoded($cold->diagnostics, $code))->not->toBe([]);
+    $engine->analyzeCount = 0;
+
+    // `vendor:publish` writes the package's own DEFAULTS, so every value the digest reads stays where it
+    // was and only the fact that a bag exists at all has changed. Digesting the values alone left an
+    // author who followed that diagnostic's own advice rebuilding and still being told it.
+    config()->set($key, $bag);
+    $warm = generateDocument();
+
+    expect($engine->analyzeCount)->toBeGreaterThan(0)
+        ->and(diagnosticsCoded($warm->diagnostics, $code))->toBe([]);
+})->with([
+    'query-builder' => ['query-builder', ['parameters' => []], 'query-builder.default-config'],
+    'json-api-paginate' => ['json-api-paginate', ['default_size' => 30], 'json-api-paginate.default-config'],
+]);
+
 it('invalidates fragments when a format example sample is configured', function (): void {
     fragmentCacheDir('fragments');
     $engine = new CountingTypeEngine(WorkbenchEngine::make());
@@ -412,7 +435,7 @@ it('invalidates fragments when a format example sample is configured', function 
     // A format sample moves the synthesized `example` on every property carrying that format, and it is
     // part of `representation` — so `document.configHash` is the hash that already covers it, exactly as
     // it covers `representation.operation_id`. A warm fragment must not serve the old sample.
-    config()->set('docuccino.documents.default.representation.examples.formats', ['email' => 'jane@example.com']);
+    setBuild('documents.default.representation.examples.formats', ['email' => 'jane@example.com']);
     generateDocument()->document;
 
     expect($engine->analyzeCount)->toBeGreaterThan(0);
@@ -429,7 +452,7 @@ it('invalidates fragments when a query-builder filter description is configured'
     // The overridden prose is Docuccino's OWN per-document config, so it rides `document.configHash`
     // rather than the query-builder environment digest — but it reshapes every filter description all
     // the same, and a warm fragment holding the default sentence would serve stale bytes.
-    config()->set('docuccino.documents.default.integrations.query_builder.filter_descriptions', [
+    setBuild('documents.default.integrations.query_builder.filter_descriptions', [
         'exact' => 'Matches `%field%` exactly.',
     ]);
     generateDocument()->document;
@@ -463,7 +486,7 @@ it('keys auth config whether or not an auth package is installed', function (): 
     // the set for a document with every integration turned off, or an app running only one of them is
     // covered by accident.
     /** @var array<string, mixed> $raw */
-    $raw = config('docuccino.documents.default');
+    $raw = documentSettings();
     foreach (['sanctum', 'passport'] as $integration) {
         $raw['integrations'][$integration]['enabled'] = false;
     }
@@ -478,7 +501,7 @@ it('gates each integration environment-digest contributor with its integration',
     // The spatie-data digest contributor is contributed when the integration is enabled and omitted when
     // the document disables it, so a disabled integration's globals never key the cache.
     /** @var array<string, mixed> $raw */
-    $raw = config('docuccino.documents.default');
+    $raw = documentSettings();
     $factory = app(DocumentConfigFactory::class);
 
     $enabled = DefaultExtensions::all($factory->make('default', $raw, 'skeleton'));
@@ -514,7 +537,7 @@ it('invalidates every fragment when one extension INSTANCE is reconfigured', fun
 
     $build = static function (string $title) use ($engine): void {
         /** @var array<string, mixed> $raw */
-        $raw = config('docuccino.documents.default');
+        $raw = documentSettings();
         $config = app(DocumentConfigFactory::class)->make('default', $raw, 'skeleton');
         app(DocumentGenerator::class)->generate($config, $engine, [new ConfiguredMarker($title)]);
     };
@@ -580,8 +603,8 @@ it('serves each document its own identities when two documents shape alike', fun
     // which `configHash` excludes on purpose. Their operations are still different nodes — every id is
     // minted from the document id — so neither may be served the other's fragments.
     /** @var array<string, mixed> $base */
-    $base = config('docuccino.documents.default');
-    config()->set('docuccino.documents', [
+    $base = documentSettings();
+    setDocuments([
         'public' => [...$base, 'export' => ['targets' => [['format' => 'json', 'path' => 'docs/openapi.json']]]],
         'public-yaml' => [...$base, 'export' => ['targets' => [['format' => 'yaml', 'path' => 'docs/openapi.yaml']]]],
     ]);

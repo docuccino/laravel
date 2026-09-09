@@ -13,7 +13,7 @@ use Docuccino\Laravel\Watch\WatchSignal;
  */
 beforeEach(function (): void {
     $this->fixture = WatchFixture::make();
-    config()->set('docuccino.cache.path', $this->fixture->path('fragments'));
+    setBuild('cache.path', $this->fixture->path('fragments'));
 
     // See WatchViewerTest: the shipped signal path is shared by every worker, so each run gets one
     // of its own rather than switching a peer's reload endpoint on.
@@ -51,13 +51,16 @@ it('refuses an interval that is not a number of seconds', function (string $inte
         ->assertExitCode(1);
 })->with(['a word' => ['soon'], 'zero' => ['0'], 'negative' => ['-1'], 'empty' => ['']]);
 
-it('refuses to watch an installation with no documents', function (): void {
-    config()->set('docuccino.documents', []);
+it('watches the default document when the configuration names none', function (): void {
+    // There is no such thing as an installation with no documents: a configuration that names none
+    // resolves to the one `default` document, so the watcher has something to watch rather than a
+    // refusal. This is the guard on that invariant reaching the command — the loop used to stop here.
+    setDocuments([]);
     scriptWatch(1);
 
     $this->artisan('docuccino:watch')
-        ->expectsOutputToContain('nothing to watch')
-        ->assertExitCode(1);
+        ->expectsOutputToContain('Watching default.')
+        ->assertExitCode(0);
 });
 
 it('builds, publishes a refresh, and takes the refresh channel away again on exit', function (): void {
@@ -91,36 +94,30 @@ it('says how much it is watching when the fragments name files', function (): vo
         ->assertExitCode(0);
 });
 
-it('warns that a controller edit will not rebuild when nothing was stored', function (): void {
-    // A store the build wrote nothing to — which is what a cached config, or a fragment cache the
-    // env override could not reach, looks like from here.
+it('warns that a controller edit will not rebuild when nothing was stored, and names the settings', function (): void {
+    // A store the build wrote nothing to — the fragment cache off, or its directory unwritable.
     array_map('unlink', glob($this->fixture->path('fragments/*.json')) ?: []);
     scriptWatch(1);
 
     $this->artisan('docuccino:watch')
         ->expectsOutputToContain('No operation fragments were stored')
+        // One substring, because the two settings and the file are one printed line and Mockery
+        // consumes one expectation per write.
+        ->expectsOutputToContain('cache.path is writable in docuccino.yaml, or set cache.enabled to true')
         ->assertExitCode(0);
 });
 
-it('says that a cached configuration pins the fragment cache off, and how to unpin it', function (): void {
-    // What `php artisan config:cache` leaves behind: the memo Application::configurationIsCached()
-    // answers from, with docuccino.cache.enabled baked to the env default of false.
+it('says nothing about a cached configuration, which cannot reach the fragment cache either way', function (): void {
+    // `config:cache` bakes what the config repository holds, and `cache.enabled` is not in it: the
+    // build reads the setting out of docuccino.yaml and the env override out of the environment the
+    // rebuild is handed. So a cached configuration is not a state this session has to warn about.
     app()->instance('config_loaded_from_cache', true);
-    scriptWatch(1);
-
-    $this->artisan('docuccino:watch')
-        ->expectsOutputToContain('Your configuration is cached')
-        ->expectsOutputToContain('php artisan config:clear')
-        ->assertExitCode(0);
-});
-
-it('says nothing about a cached configuration that baked the fragment cache on', function (): void {
-    app()->instance('config_loaded_from_cache', true);
-    config()->set('docuccino.cache.enabled', true);
+    array_map('unlink', glob($this->fixture->path('fragments/*.json')) ?: []);
     scriptWatch(1);
 
     $this->artisan('docuccino:watch')
         ->doesntExpectOutputToContain('Your configuration is cached')
+        ->doesntExpectOutputToContain('config:clear')
         ->assertExitCode(0);
 });
 
@@ -163,7 +160,7 @@ it('rebuilds when a watched file moves', function (): void {
 
 it('rebuilds when a webhook class appears where the directory had none', function (): void {
     mkdir($this->fixture->path('webhooks'), 0755, true);
-    config()->set('docuccino.documents.default.webhooks.dir', $this->fixture->path('webhooks'));
+    setBuild('documents.default.webhooks.dir', $this->fixture->path('webhooks'));
     $this->fixture->storeFragment([$this->fixture->path('app/InvoiceController.php')], 'watched');
 
     $created = $this->fixture->path('webhooks/InvoicePaid.php');

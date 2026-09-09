@@ -8,10 +8,11 @@ use Docuccino\Core\Support\AtomicFile;
 use Docuccino\Core\Support\Directory;
 
 /**
- * Copies the shipped `config/docuccino.php` into the application — the one write `docuccino:install`
- * performs. Same bytes `vendor:publish --tag=docuccino-config` writes; it is a seam of its own so the
- * command can tell "already there" from "just written" BEFORE it decides anything, which is what
- * makes overwriting an existing file an explicit request rather than a side effect.
+ * Copies one shipped configuration file into the application — `docuccino.yaml` at the project root,
+ * or the framework's `config/docuccino.php` ({@see ConfigPublishers} pairs them). Same bytes
+ * `vendor:publish --tag=docuccino-config` writes; it is a seam of its own so the command can tell
+ * "already there" from "just written" BEFORE it decides anything, which is what makes overwriting an
+ * existing file an explicit request rather than a side effect.
  *
  * @internal
  */

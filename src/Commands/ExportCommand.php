@@ -37,6 +37,7 @@ final class ExportCommand extends Command
     use FailsOnSeverity;
     use GuardsEnabled;
     use IteratesDocuments;
+    use RefusesUnreadConfig;
     use RendersDiagnostics;
     use StringOptions;
 
@@ -54,7 +55,7 @@ final class ExportCommand extends Command
 
     public function handle(DocumentBuilder $builder, TypeEngine $engine): int
     {
-        if ($this->abortIfDisabled()) {
+        if ($this->abortIfDisabled() || $this->abortIfConfigUnread()) {
             return self::FAILURE;
         }
 

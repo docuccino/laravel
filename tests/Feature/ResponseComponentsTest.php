@@ -91,8 +91,8 @@ it('rolls back a response component registered by a route that then throws', fun
 
 it('restores a response component from a warm cache hit without touching the engine', function (): void {
     $dir = sys_get_temp_dir().'/docuccino-respcache-'.uniqid('', true);
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', $dir);
+    setBuild('cache.enabled', true);
+    setBuild('cache.path', $dir);
 
     $engine = new CountingTypeEngine(WorkbenchEngine::make());
     app()->instance(TypeEngine::class, $engine);

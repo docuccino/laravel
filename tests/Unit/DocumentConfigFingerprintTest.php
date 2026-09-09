@@ -16,7 +16,7 @@ use Docuccino\Laravel\Config\DocumentConfigFactory;
 function fingerprintForDescription(string $path): string
 {
     /** @var array<string, mixed> $raw */
-    $raw = config('docuccino.documents.default');
+    $raw = documentSettings();
     $raw['info'] = ['title' => 'Fingerprint', 'version' => '1.0.0', 'description' => ['file' => $path]];
 
     return app(DocumentConfigFactory::class)->make('default', $raw, 'skeleton')->hash();
@@ -49,7 +49,7 @@ it('carries the contents BESIDE the path, not instead of it', function (): void 
     file_put_contents($path, "Prose.\n");
 
     /** @var array<string, mixed> $raw */
-    $raw = config('docuccino.documents.default');
+    $raw = documentSettings();
     $raw['info'] = ['title' => 'Fingerprint', 'version' => '1.0.0', 'description' => ['file' => $path]];
     $config = app(DocumentConfigFactory::class)->make('default', $raw, 'skeleton');
 
@@ -66,7 +66,7 @@ it('reads the same prose from a CRLF file as from an LF one', function (): void 
     $path = base_path('docuccino-fingerprint-crlf.md');
 
     /** @var array<string, mixed> $raw */
-    $raw = config('docuccino.documents.default');
+    $raw = documentSettings();
     $raw['info'] = ['title' => 'Fingerprint', 'version' => '1.0.0', 'description' => ['file' => $path]];
 
     file_put_contents($path, "First line.\r\n\r\nSecond line.\r\n");

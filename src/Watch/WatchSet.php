@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Watch;
 
+use Docuccino\Core\Config\ConfigFile;
 use Docuccino\Core\Extensions\Context\ExportTarget;
-use Docuccino\Laravel\Engine\EngineNeon;
+use Docuccino\Laravel\Engine\EngineConfigFile;
 use Docuccino\Laravel\Pipeline\DocumentBuilder;
 use Docuccino\Laravel\Pipeline\FragmentStore;
 use Docuccino\Laravel\Support\Paths;
@@ -39,7 +40,7 @@ use SplFileInfo;
 final readonly class WatchSet
 {
     /**
-     * @param  array<string, mixed>  $engineConfig  the `docuccino.engine` bag, for the `neon` file it may name
+     * @param  array<string, mixed>  $engineConfig  the `engine` bag, for the analyser config file it may name
      */
     public function __construct(
         private DocumentBuilder $builder,
@@ -69,15 +70,20 @@ final readonly class WatchSet
     public function documentRoots(array $documents): array
     {
         $roots = [
+            // The file a build reads its own configuration from. Watched by name at the project root,
+            // because a watch session that missed it would keep rebuilding the document the author had
+            // just stopped configuring — and it is watched whether or not it is THERE, since the file
+            // appearing is exactly the edit a session has to notice.
+            $this->path(ConfigFile::NAME),
             $this->path('config'),
             $this->path('routes'),
             $this->path('composer.json'),
             $this->path('composer.lock'),
         ];
 
-        $neon = EngineNeon::path($this->engineConfig, $this->basePath);
-        if ($neon !== null) {
-            $roots[] = $neon;
+        $analyser = EngineConfigFile::path($this->engineConfig, $this->basePath);
+        if ($analyser !== null) {
+            $roots[] = $analyser;
         }
 
         foreach ($documents as $key) {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Commands;
 
+use Docuccino\Core\Config\ConfigFile;
 use Docuccino\Core\Diagnostics\AcceptedCodes;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\DiagnosticCollector;
@@ -133,7 +134,7 @@ trait FailsOnSeverity
             return $exit;
         }
 
-        $this->renderDiagnostics('config/docuccino.php', $stale);
+        $this->renderDiagnostics(ConfigFile::NAME, $stale);
 
         return $this->failsOnAny($stale) ? self::FAILURE : $exit;
     }

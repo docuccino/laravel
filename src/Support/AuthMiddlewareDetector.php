@@ -9,7 +9,7 @@ use Docuccino\Core\Support\Glob;
 
 /**
  * "Is this route behind auth middleware": does any of its middleware match the document's
- * `security.auto_detect_middleware` wildcard (default `auth*`, so `auth:sanctum` and friends count).
+ * `security.auth_middleware` wildcard (default `auth*`, so `auth:sanctum` and friends count).
  * Shared by the security layer and the implicit-401 synthesis so both key off one signal — which is
  * why reading the wrong spelling of one middleware costs what {@see AuthMiddlewareNames} describes.
  *

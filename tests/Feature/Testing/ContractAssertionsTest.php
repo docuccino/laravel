@@ -251,7 +251,7 @@ it('refuses a document key nothing configures', function (): void {
 });
 
 it('reads the document’s own uir export target when the suite names no path', function (): void {
-    config()->set('docuccino.documents.default.export.targets', [
+    setBuild('documents.default.export.targets', [
         ['format' => 'openapi-3.2', 'path' => 'docs/openapi.json'],
         ['format' => 'uir', 'path' => 'docs/api.uir.json'],
     ]);
@@ -260,7 +260,7 @@ it('reads the document’s own uir export target when the suite names no path', 
 });
 
 it('falls back to whatever the document does write when it writes no uir', function (): void {
-    config()->set('docuccino.documents.default.export.targets', [
+    setBuild('documents.default.export.targets', [
         ['format' => 'openapi-3.1', 'path' => 'docs/openapi-3.1.json'],
     ]);
 

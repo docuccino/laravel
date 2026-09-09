@@ -37,7 +37,7 @@ final class ConfigPaths
      * deterministic.
      *
      * Not here on purpose: the `viewer` bag, `servers[].url` and `integrations.passport.url` aren't
-     * filesystem paths; `cache.path`, `engine.project_paths` and `engine.neon` are, but live outside
+     * filesystem paths; `cache.path`, `engine.project_paths` and `engine.config` are, but live outside
      * the per-document bag so they never reach a `configHash` or any emitted byte.
      *
      * @var array<string, PathShape>

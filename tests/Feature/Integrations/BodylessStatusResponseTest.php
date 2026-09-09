@@ -135,8 +135,8 @@ it('warns rather than silently dropping a body an attribute deliberately named u
 
 it('keeps a cold build byte-identical to a warm one when an attribute names a body under a 204', function (): void {
     $dir = sys_get_temp_dir().'/docuccino-bodyless-fragments-'.uniqid('', true);
-    config()->set('docuccino.cache.enabled', true);
-    config()->set('docuccino.cache.path', $dir);
+    setBuild('cache.enabled', true);
+    setBuild('cache.path', $dir);
 
     app('router')->delete('api/bodyless-attribute', [BodylessAttributeController::class, 'destroy']);
     app()->instance(TypeEngine::class, WorkbenchEngine::make(classOverrides: [

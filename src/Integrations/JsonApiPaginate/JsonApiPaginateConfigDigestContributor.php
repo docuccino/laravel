@@ -18,7 +18,8 @@ final class JsonApiPaginateConfigDigestContributor implements EnvironmentDigestC
 
     public function digest(): string
     {
-        return 'json-api-paginate:'.implode(',', [
+        return implode("\0", [
+            'json-api-paginate',
             $this->config->pageParameter,
             $this->config->numberParameter,
             $this->config->sizeParameter,
@@ -27,6 +28,10 @@ final class JsonApiPaginateConfigDigestContributor implements EnvironmentDigestC
             (string) $this->config->defaultSize,
             (string) $this->config->maxResults,
             $this->config->mode,
+            // As for the Query Builder contributor: `vendor:publish` writes the package's own defaults,
+            // so the bag going from absent to present moves no value above it and still silences a
+            // per-route diagnostic that rides the fragment.
+            $this->config->recovered ? 'published' : 'defaulted',
         ]);
     }
 }

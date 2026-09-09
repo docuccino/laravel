@@ -28,12 +28,16 @@ final class AuthConfigDigestContributor implements EnvironmentDigestContributor
         $guards = AuthGuardDrivers::map($this->config->get('auth.guards'));
         ksort($guards);
 
-        $records = [];
+        $parts = [
+            'default-guard',
+            AuthGuardDrivers::defaultGuard($this->config->get('auth.defaults.guard')),
+            'guards',
+        ];
         foreach ($guards as $name => $driver) {
-            $records[] = $name.'=>'.$driver;
+            $parts[] = (string) $name;
+            $parts[] = $driver;
         }
 
-        return 'guards:'.implode(',', $records)
-            .'|default-guard:'.AuthGuardDrivers::defaultGuard($this->config->get('auth.defaults.guard'));
+        return implode("\0", $parts);
     }
 }

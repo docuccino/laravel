@@ -20,6 +20,7 @@ final class CacheCommand extends Command
 {
     use GuardsEnabled;
     use IteratesDocuments;
+    use RefusesUnreadConfig;
     use RendersDiagnostics;
 
     protected $signature = 'docuccino:cache
@@ -30,7 +31,7 @@ final class CacheCommand extends Command
 
     public function handle(DocumentBuilder $builder, TypeEngine $engine, DocumentCache $cache, ViewerDrivers $drivers): int
     {
-        if ($this->abortIfDisabled()) {
+        if ($this->abortIfDisabled() || $this->abortIfConfigUnread()) {
             return self::FAILURE;
         }
 

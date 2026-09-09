@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Emit\UirEmitter;
 use Docuccino\Core\Extensions\Contracts\TagMapper;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
 use Docuccino\Laravel\Tags\PrefixTagMapper;
+use Docuccino\Laravel\Tests\Fixtures\Tags\StatefulTagMapper;
 
 /*
  * Tag mapping (design §Multiple documents): `tags.map`/`tags.mapper` rewrite operation tags and
@@ -130,6 +132,44 @@ it('resolves a custom tags.mapper class-string from the container', function ():
 
     expect($document['paths']['/api/forms']['get']['tags'])->toBe(['FORMS']);
 });
+
+it('degrades to unmapped tags, and says so, for a tags.mapper the container cannot produce', function (mixed $configured): void {
+    // What the build DOES, against what ConfigDiagnostics says about it. Every one of these used to be
+    // silent or worse: a name nothing loads came out of the container as a raw framework exception, and
+    // a class that is no mapper was dropped with the diagnostic list byte-identical to a clean build.
+    $result = generateDocument(static function (array $raw) use ($configured): array {
+        $raw['tags']['mapper'] = $configured;
+
+        return $raw;
+    });
+
+    $reported = diagnosticsCoded($result->diagnostics, 'config.tag-mapper-unusable');
+
+    expect($result->document->toArray()['paths']['/api/forms']['get']['tags'])->toBe(['Forms'])
+        ->and($reported)->toHaveCount(1)
+        ->and($reported[0]->severity)->toBe(Severity::Warning);
+})->with([
+    'a name nothing loads' => ['Not\\A\\Real\\Mapper'],
+    'a class that is no mapper' => [stdClass::class],
+    // Implements the contract and takes a string the container has no way to supply.
+    'a mapper the container cannot build' => [StatefulTagMapper::class],
+    'not a string at all' => [123],
+]);
+
+it('does not fall through to tags.map for a tags.mapper it could not produce, whatever the key held', function (mixed $configured): void {
+    // `mapper` present means `mapper` decides. Honouring the other key would publish a third taxonomy —
+    // neither what the author configured nor what their code wrote — under a line saying the first of
+    // those was dropped, which is the one thing the message must not be able to lie about.
+    $config = app(DocumentConfigFactory::class)->make('default', [
+        'tags' => ['mapper' => $configured, 'map' => ['Forms' => 'Form Management']],
+    ], 'skeleton');
+
+    expect($config->tagMapper)->toBeNull();
+})->with([
+    'a class that is no mapper' => [stdClass::class],
+    'not a string at all' => [123],
+    'an empty string' => [''],
+]);
 
 it('leaves tags untouched and emits no document tags by default', function (): void {
     $document = stubDocumentArray(static fn (array $raw): array => $raw);
