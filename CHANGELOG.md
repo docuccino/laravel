@@ -7,6 +7,41 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.15.0
+
+### Breaking changes
+
+- read a document keyword as the set it declares, not as any string ([#425](https://github.com/docuccino/docuccino/pull/425))
+  - `config.unknown-error-responses` and `config.unknown-tag-strategy` are retired into a single `config.unknown-value` (warning), so a `diagnostics.accept` list naming either of the old codes will report them as accepted-but-never-emitted; replace both with `config.unknown-value`. An unrecognised value for `documents.*.error_responses`, `tags.default_strategy`, `versioning`, `on_route_error`, `representation.filters`, `representation.nullable`, `representation.operation_id`, `representation.enums.naming` or a document's `viewer.source` is now refused and reported rather than passed through, so a document that was silently carrying a bogus keyword now builds from the documented default and says so.
+- name the setting that says which requests are authenticated, not the mechanism ([#420](https://github.com/docuccino/docuccino/pull/420))
+  - `documents.*.security.auto_detect_middleware` is renamed to `documents.*.security.auth_middleware`. The old spelling is not read and is not reported — it lives in `config/docuccino.php`, whose build keys this release already stops reading and reports wholesale as `config.not-migrated` or `config.stale-php-keys`. Use the new name in `docuccino.yaml`; behaviour, default (`auth*`) and position under `security` are unchanged, and `document.configHash` moves once for any document that sets it.
+- read a build's configuration from the tool's own file ([#417](https://github.com/docuccino/docuccino/pull/417))
+  - build configuration moves out of `config/docuccino.php` into a `docuccino.yaml` at the project root, and the keys left behind are **no longer read**. Everything a build reads moves — each document's `info`, `servers`, `routes`, `security`, `error_responses`, `tags`, `api_version`, `webhooks`, `content`, `examples`, `coverage`, `overlays`, `representation`, `versioning`, `integrations` and `export`, plus top-level `extensions`, `lint`, `diagnostics`, `engine`, `on_route_error`, `cache.enabled` and `cache.path`. `enabled`, each document's `viewer` bag and `cache.store` stay in `config/docuccino.php`, because the service provider reads them when the application boots and when the viewer serves a request. Run `php artisan docuccino:install` to write the new file. An application that has not migrated is reported rather than silently ignored: `config.not-migrated` where no `docuccino.yaml` exists, and `config.stale-php-keys` where one does and leftovers remain. There is no merge and no precedence between the two files — a build key in `config/docuccino.php` has no effect at all.
+- name a route filter by class, and drop the key that could never be cached ([#415](https://github.com/docuccino/docuccino/pull/415))
+  - `documents.*.routes.closure` is removed. Move the predicate into a class implementing `Docuccino\Core\Extensions\Contracts\RouteFilter` and name that class under `documents.*.routes.filter`; it is resolved from the container, so whatever the closure closed over becomes a constructor dependency. Then delete the `closure` line — no configuration file has a form for a callable, so there is nothing the key can hold that a build will honour. `DocumentConfig::$routeFilter` is now `?RouteFilter` rather than a `mixed` callable slot, so an extension that read it and called it as a callable calls `includes()` instead.
+
+### Features
+
+- write the configuration file from the one it replaces ([#424](https://github.com/docuccino/docuccino/pull/424))
+- report a ->can() gate that publishes a 403 no request can provoke ([#393](https://github.com/docuccino/docuccino/pull/393))
+- rename a request field and a parameter across an API version ([#385](https://github.com/docuccino/docuccino/pull/385))
+
+### Bug fixes
+
+- read every branch a policy resolves through, not the four one major had ([#422](https://github.com/docuccino/docuccino/pull/422))
+- refuse a configuration value the build cannot read, instead of defaulting in silence ([#429](https://github.com/docuccino/docuccino/pull/429))
+- key a fragment on the code and configuration that shaped it ([#426](https://github.com/docuccino/docuccino/pull/426))
+- key a fragment on the mapper that shaped it, not the name it was resolved by ([#423](https://github.com/docuccino/docuccino/pull/423))
+- refuse a build whose configuration could not be read, rather than exiting clean ([#419](https://github.com/docuccino/docuccino/pull/419))
+- keep in the framework config only what boot and a request need ([#418](https://github.com/docuccino/docuccino/pull/418))
+- read every configured switch one way, and refuse a value that names none ([#412](https://github.com/docuccino/docuccino/pull/412))
+- read the middleware a route inherits, which a console build never saw ([#408](https://github.com/docuccino/docuccino/pull/408))
+- read the authentication middleware by every name a route can give it ([#402](https://github.com/docuccino/docuccino/pull/402))
+- key a digest on the order its reader resolves in, not only on the pairs it holds ([#401](https://github.com/docuccino/docuccino/pull/401))
+- report a ->can() gate only where the policy body is one its reader owns ([#397](https://github.com/docuccino/docuccino/pull/397))
+- publish the status an exception pins in its own constructor, not a 500 ([#395](https://github.com/docuccino/docuccino/pull/395))
+- refuse a path-parameter rename, and name the operation that refused one ([#387](https://github.com/docuccino/docuccino/pull/387))
+
 ## v0.14.1
 
 ### Bug fixes
