@@ -25,9 +25,9 @@ function enumColumnSchema(): array
 }
 
 /**
- * Dataset coverage over the representation-policy expression of every recovered fact kind, in BOTH
- * the default (bracketed / comma) and alternative (deepObject / array) styles — the semantic facts
- * are identical, only the OAS expression changes (design §Representation policies).
+ * Coverage over the representation-policy expression of every recovered fact kind, in both the
+ * default (bracketed) and the alternative (deepObject) filter style — the semantic facts are
+ * identical, only the OAS expression changes (design §Representation policies).
  */
 function factsWith(callable $mutate): QueryBuilderFacts
 {
@@ -44,7 +44,7 @@ function bracketedPolicy(): RepresentationPolicy
 
 function deepObjectPolicy(): RepresentationPolicy
 {
-    return new RepresentationPolicy(filterStyle: 'deepObject', listStyle: 'array');
+    return new RepresentationPolicy(filterStyle: 'deepObject');
 }
 
 it('expresses filters as flat bracketed params by default, with kind descriptions', function (): void {
@@ -80,13 +80,13 @@ it('expresses filters as a single deepObject param under the deepObject policy',
         ]);
 });
 
-it('expresses sort as a comma-serialised enum array under either list style', function (RepresentationPolicy $policy): void {
+it('expresses sort as a comma-serialised enum array', function (): void {
     $facts = factsWith(function (QueryBuilderFacts $f): void {
         $f->sorts = [new QbEntry('name', 'default'), new QbEntry('created_at', 'field')];
         $f->defaultSorts = ['name'];
     });
 
-    $specs = (new QueryBuilderParameters)->build($facts, $policy);
+    $specs = (new QueryBuilderParameters)->build($facts, bracketedPolicy());
 
     expect($specs)->toHaveCount(1);
     expect($specs[0]->name)->toBe('sort')
@@ -103,10 +103,7 @@ it('expresses sort as a comma-serialised enum array under either list style', fu
             ],
             'default' => ['name'],
         ]);
-})->with([
-    'comma' => [new RepresentationPolicy],
-    'array' => [new RepresentationPolicy(listStyle: 'array')],
-]);
+});
 
 it('composes several default sorts into an array default, a descending one as written', function (): void {
     $facts = factsWith(function (QueryBuilderFacts $f): void {
@@ -306,12 +303,12 @@ it('strips the descending prefix off an allow-listed sort name and dedupes both 
         ->and($spec->description)->toBe('Sort by: name (prefix `-` for descending).');
 });
 
-it('expresses include as a comma-serialised enum array under either list style', function (RepresentationPolicy $policy): void {
+it('expresses include as a comma-serialised enum array', function (): void {
     $facts = factsWith(function (QueryBuilderFacts $f): void {
         $f->includes = [new QbEntry('author', 'relationship'), new QbEntry('comments', 'relationship')];
     });
 
-    $specs = (new QueryBuilderParameters)->build($facts, $policy);
+    $specs = (new QueryBuilderParameters)->build($facts, bracketedPolicy());
 
     expect($specs[0]->name)->toBe('include')
         ->and($specs[0]->style)->toBe('form')
@@ -325,10 +322,7 @@ it('expresses include as a comma-serialised enum array under either list style',
                 'x-enumNames' => ['Author', 'Comments'],
             ],
         ]);
-})->with([
-    'comma' => [new RepresentationPolicy],
-    'array' => [new RepresentationPolicy(listStyle: 'array')],
-]);
+});
 
 /**
  * The include enum mirrors Spatie's own allow-list expansion: a bare string legalizes its cumulative

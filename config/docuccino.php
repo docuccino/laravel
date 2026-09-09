@@ -133,7 +133,6 @@ return [
             // codegen tools expect; change one only if your consumers prefer the alternative.
             'representation' => [
                 'filters' => 'bracketed',       // bracketed: one filter[status] param | deepObject: a single `filter` object
-                'lists' => 'comma',             // sort/include documentation style; both keywords emit the ?sort=a,b comma form
                 'nullable' => 'type-array',     // type-array: type: [string, null] | anyof: a {type: null} branch
                 'operation_id' => 'route-name', // route-name | controller-method (InvoiceController@store)
                 // 'enums' => [

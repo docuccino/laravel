@@ -457,8 +457,8 @@
   "x-docuccino": {
     "document": {
       "id": "doc:qb-list",
-      "configHash": "1edeaae56db4a2b033327b1bfaeb6849be83d1f8b74fa3ab5a22a0a79f6f1a1b",
-      "contentHash": "9cf73d5deb4720cf075f901a4ee94c320d05f01e5b1dded40221378e440cd7c7"
+      "configHash": "e2f4c4b4a1a2fd6c541a88d41852ed9ec68dc3487dc776d2116e33281da9b25c",
+      "contentHash": "d81c6d4816d28ed1248c24f7b4348d6ac4c334e956c40f53936e963618ed5e43"
     },
     "generator": {
       "name": "docuccino/laravel",

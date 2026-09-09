@@ -163,7 +163,7 @@ it('turns the real-engine harvest into bracketed query parameters', function ():
 it('turns the real-engine harvest into a deepObject filter param under the deepObject policy', function (): void {
     $specs = (new QueryBuilderParameters)->build(
         factsFromRealHarvest(),
-        new RepresentationPolicy(filterStyle: 'deepObject', listStyle: 'array'),
+        new RepresentationPolicy(filterStyle: 'deepObject'),
     );
 
     $filter = array_values(array_filter($specs, static fn (QueryParameterSpec $s): bool => $s->name === 'filter'));
