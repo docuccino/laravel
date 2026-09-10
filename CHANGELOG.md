@@ -7,6 +7,13 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.16.0
+
+### Breaking changes
+
+- descend into the source roots the application declares ([#442](https://github.com/docuccino/docuccino/pull/442))
+  - `Docuccino\Core\Inference\TypeEngineBuilder::build()` takes a new `array $declaredPaths = []` parameter — the descend scope before the host narrowed it, which the engine uses as the yardstick for whether a declined hop is the host's own narrowing (reportable) or the engine's containment (not). It is optional and empty means "no yardstick, report nothing", so a host that ignores it keeps working; but any third-party IMPLEMENTOR of the interface must add the parameter to match the signature. The one in-repo caller passes it by name, and a positional caller that previously passed `$configFile` sixth now hits a TypeError rather than misbehaving silently.
+
 ## v0.15.0
 
 ### Breaking changes
