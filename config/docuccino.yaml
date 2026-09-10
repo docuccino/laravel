@@ -253,10 +253,11 @@ engine:
   # `-1` isn't accepted here. `--memory-limit` on the build commands overrides it.
   # memory_limit: '2G'
   # Directories the engine descends into for interprocedural analysis (throw classification, inline
-  # `Validator::make(...)` rules). Every PSR-4 source root in your composer.json — a modular
-  # `Modules\…` root included — is already loaded so helpers there resolve; widen this only to
-  # broaden that descent. Vendor code is never analysed.
-  project_paths: ['app']
+  # `Validator::make(...)` rules). Defaults to every PSR-4 source root your composer.json declares
+  # under `autoload` — a modular `Modules\…` root included — so an error raised a hop below a
+  # controller is documented wherever that code lives. Set this to narrow descent to part of your
+  # application; `autoload-dev` roots and vendor code are never descended into either way.
+  # project_paths: ['app']
   # Your own analyser configuration file, included by the one the engine writes, so the extensions
   # and stubs you already maintain shape your documentation too. Relative to the base path; a file
   # that isn't there warns and inference runs without it.

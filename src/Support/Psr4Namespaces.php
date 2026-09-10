@@ -17,8 +17,10 @@ use JsonException;
  * refusal rather than a guess: writing an unloadable class would look exactly like a change nobody
  * declared.
  *
- * `autoload-dev` counts too. A modular application maps its modules wherever it maps them, and which
- * of the two sections a prefix sits in is not this class's business.
+ * `autoload-dev` counts too for a namespace and for keeping bodies intact: a modular application maps
+ * its modules wherever it maps them, and a helper a test root declares still has to reflect. It does
+ * NOT count for what the analyser walks into, which is why {@see shipped()} exists — one reader, two
+ * questions, and the decision about which section answers which lives here rather than at the callers.
  *
  * @internal
  */
@@ -44,9 +46,14 @@ final class Psr4Namespaces
 
         foreach (self::roots($basePath) as $prefix => $roots) {
             foreach ($roots as $root) {
-                // `./app/` and `app/` are one directory to composer, so they are one here.
-                $root = trim($root, './');
+                $root = self::relativeRoot($root);
 
+                if ($root === null) {
+                    continue;
+                }
+
+                // A root at the package itself covers every directory in it, and the tail is the whole
+                // relative path — `App\` => `''` maps `app/Http` to `App\app\Http`.
                 if ($root !== '' && $relative !== $root && ! str_starts_with($relative, $root.'/')) {
                     continue;
                 }
@@ -89,6 +96,62 @@ final class Psr4Namespaces
      */
     public static function roots(string $basePath): array
     {
+        return self::psr4($basePath, ['autoload', 'autoload-dev']);
+    }
+
+    /**
+     * The `psr-4` map of the `autoload` section alone: the roots the application SHIPS, which is what
+     * the analyser is entitled to walk into. A test root is code the API does not serve, so descending
+     * into it costs analysis time and can document nothing — while it still has to be readable, which
+     * is {@see roots()}'s answer and not this one.
+     *
+     * @return array<string, list<string>>
+     */
+    public static function shipped(string $basePath): array
+    {
+        return self::psr4($basePath, ['autoload']);
+    }
+
+    /**
+     * One `psr-4` root as a path relative to the package root: `/`-separated, `.` and `..` segments
+     * folded away, no trailing slash. `''` is the package root itself, which is a legal map — what it
+     * MEANS is the caller's question, since a namespace can be rooted there while an analysis scope
+     * cannot. `null` is a root that climbs out of the package, which no caller here can answer for.
+     *
+     * A prefix has to be a prefix, which is why this folds segments rather than trimming characters:
+     * `ltrim($dir, './')` strips a CHARACTER SET, so `.hidden/src` arrives as `hidden/src` and
+     * `../shared/src` as `shared/src` — each a directory the application never mapped, and the second
+     * one silently relocated inside the base path.
+     */
+    public static function relativeRoot(string $directory): ?string
+    {
+        $segments = [];
+
+        foreach (explode('/', $directory) as $segment) {
+            if ($segment === '' || $segment === '.') {
+                continue;
+            }
+
+            if ($segment !== '..') {
+                $segments[] = $segment;
+
+                continue;
+            }
+
+            if (array_pop($segments) === null) {
+                return null;
+            }
+        }
+
+        return implode('/', $segments);
+    }
+
+    /**
+     * @param  list<string>  $sections
+     * @return array<string, list<string>>
+     */
+    private static function psr4(string $basePath, array $sections): array
+    {
         $contents = @file_get_contents(rtrim($basePath, '/').'/composer.json');
 
         if ($contents === false) {
@@ -105,7 +168,7 @@ final class Psr4Namespaces
         $manifest = Hydrate::map(is_array($decoded) ? $decoded : null);
         $map = [];
 
-        foreach (['autoload', 'autoload-dev'] as $section) {
+        foreach ($sections as $section) {
             $psr4 = Hydrate::map(Hydrate::map($manifest[$section] ?? null)['psr-4'] ?? null);
 
             foreach ($psr4 as $prefix => $roots) {

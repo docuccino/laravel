@@ -80,7 +80,15 @@ it('names both levers, and the current ceiling, in the out-of-memory notice', fu
         ->and($text)->toContain('engine.project_paths')
         // The settings moved out of the framework config, so a notice still sending an author there
         // names a file that no longer holds either lever.
-        ->and($text)->not->toContain('config/docuccino.php');
+        ->and($text)->not->toContain('config/docuccino.php')
+        // And the second lever is a key the template ships commented out, whose default is WIDER than
+        // the `['app']` that used to ship — so this fires exactly where the wide default is the likely
+        // cause, and an author sent to "narrow engine.project_paths" would be looking for a line that
+        // is not in their file. The notice has to say what the default is, and that narrowing is a key
+        // to write.
+        ->and($text)->toContain('unset by default')
+        ->and($text)->toContain('every PSR-4 source root your')
+        ->and($text)->toContain('writing it and naming fewer');
 });
 
 it('declares the flag on every command that builds a document', function (string $command): void {

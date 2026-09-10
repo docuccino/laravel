@@ -119,3 +119,80 @@ it('reports the roots exactly as composer.json writes them', function (): void {
 
     expect(Psr4Namespaces::roots($base))->toBe(['App\\' => ['./app/', 'stubs/']]);
 });
+
+it('reports the shipped roots without the dev ones, and both sections through roots()', function (): void {
+    // The two questions one reader answers. Descent may only enter what the application ships, so a
+    // `Tests\` root has to be absent from `shipped()` and present in `roots()` — the same file read
+    // twice, because two readers of it is two opinions about which directories the analyser walks.
+    $base = psr4Tree([
+        'autoload' => ['psr-4' => ['App\\' => 'app/', 'Modules\\' => 'modules/']],
+        'autoload-dev' => ['psr-4' => ['Tests\\' => 'tests/']],
+    ]);
+
+    expect(Psr4Namespaces::shipped($base))->toBe(['App\\' => ['app/'], 'Modules\\' => ['modules/']])
+        ->and(Psr4Namespaces::roots($base))->toBe([
+            'App\\' => ['app/'],
+            'Modules\\' => ['modules/'],
+            'Tests\\' => ['tests/'],
+        ]);
+});
+
+it('ships nothing when a composer.json cannot be read', function (): void {
+    // The fallback the descend default rests on: no map means no derived scope, and the caller keeps
+    // the historical `app/` rather than descending nowhere.
+    $absent = rtrim(sys_get_temp_dir(), '/').'/docuccino-psr4-absent-'.getmypid();
+
+    expect(Psr4Namespaces::shipped($absent))->toBe([]);
+});
+
+it('ships a prefix a dev section also maps, without folding the dev root in', function (): void {
+    // One prefix in both sections is the shape that would silently widen descent if the two maps were
+    // merged before the split — the dev root arrives under a key `shipped()` already has.
+    $base = psr4Tree([
+        'autoload' => ['psr-4' => ['App\\' => 'app/']],
+        'autoload-dev' => ['psr-4' => ['App\\' => 'stubs/']],
+    ]);
+
+    expect(Psr4Namespaces::shipped($base))->toBe(['App\\' => ['app/']])
+        ->and(Psr4Namespaces::roots($base))->toBe(['App\\' => ['app/', 'stubs/']]);
+});
+
+it('folds a root segment by segment rather than trimming characters off it', function (string $written, ?string $expected): void {
+    // `ltrim($dir, './')` strips a CHARACTER SET, not a `./` prefix — so `.build/src` arrived as
+    // `build/src` and `../shared/src` as `shared/src`, each naming a directory the application never
+    // mapped and the second one silently relocated inside the base path.
+    expect(Psr4Namespaces::relativeRoot($written))->toBe($expected);
+})->with([
+    'a plain root' => ['app', 'app'],
+    'a trailing slash' => ['app/', 'app'],
+    'a leading ./' => ['./app/', 'app'],
+    'a nested root' => ['modules/Billing/src/', 'modules/Billing/src'],
+    'a leading /' => ['/app', 'app'],
+    'a dot-prefixed directory' => ['.build/src', '.build/src'],
+    'a dot-suffixed directory' => ['src.old/', 'src.old'],
+    'an interior . segment' => ['app/./Http', 'app/Http'],
+    'an interior .. segment' => ['modules/Billing/../Shared', 'modules/Shared'],
+    'the base itself' => ['.', ''],
+    'the base as ./' => ['./', ''],
+    'the base as an empty string' => ['', ''],
+    'the base as a bare slash' => ['/', ''],
+    'a parent hop' => ['../shared/src', null],
+    'a hop out through a real directory' => ['app/../../escape', null],
+]);
+
+it('resolves a namespace under a root written at the package itself', function (): void {
+    // A legal map, and PSR-4 really does root `App\app\Http` at `./app/Http` — the caller decides what
+    // the base means, which is why the normaliser answers `''` here rather than refusing.
+    $base = psr4Tree(['autoload' => ['psr-4' => ['App\\' => './']]]);
+
+    expect(Psr4Namespaces::for($base, $base.'/app/Http'))->toBe('App\\app\\Http');
+});
+
+it('does not answer for a directory a dot-prefixed root only looks like it covers', function (): void {
+    // `.build/src` and `build/src` are two directories; the trim made them one, and a class scaffolded
+    // into the second came out under a namespace nothing loads it from.
+    $base = psr4Tree(['autoload' => ['psr-4' => ['Build\\' => '.build/src']]]);
+
+    expect(Psr4Namespaces::for($base, $base.'/.build/src/Api'))->toBe('Build\\Api')
+        ->and(Psr4Namespaces::for($base, $base.'/build/src/Api'))->toBeNull();
+});

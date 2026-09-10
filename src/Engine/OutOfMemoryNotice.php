@@ -9,7 +9,10 @@ use Docuccino\Core\Config\ConfigFile;
 /**
  * Turns an out-of-memory fatal during in-process inference into an explanation. PHP can't catch memory
  * exhaustion, so a shutdown handler is the only place left to say anything: it recognises the fatal by
- * message and names both levers — the ceiling itself, and how wide `project_paths` sends the analyser.
+ * message and names both levers — the ceiling itself, and how wide the analyser is sent. The second is a
+ * key the shipped template leaves commented out, and its default is WIDER than the `['app']` that used to
+ * ship, so the wording says what the default is and that narrowing means writing the key rather than
+ * editing a line already in the reader's file.
  *
  * Console only, and armed at most once; a normal shutdown, or any other fatal, prints nothing.
  */
@@ -60,9 +63,10 @@ final class OutOfMemoryNotice
 
               * Raise the ceiling — set engine.memory_limit in {$file} (e.g. '2G'), or pass
                 --memory-limit=2G to this command.
-              * Narrow the analysis — engine.project_paths, in the same file, decides how far
-                interprocedural descent goes, and a wide value costs memory. Vendor code is never
-                analyzed.
+              * Narrow the analysis — engine.project_paths, in the same file, bounds interprocedural
+                descent. It is unset by default, which descends into every PSR-4 source root your
+                composer.json declares, so writing it and naming fewer of them costs memory back.
+                Vendor code is never analyzed.
 
             Set DOCUCCINO_ENGINE=null to document from docblocks and attributes alone.
 

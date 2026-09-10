@@ -7,7 +7,6 @@ namespace Docuccino\Laravel\Engine;
 use Docuccino\Core\Inference\NullTypeEngine;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Support\GeneratedDirectory;
-use Docuccino\Laravel\Support\Psr4Namespaces;
 
 /**
  * Builds the configured {@see TypeEngine} (design §Inference). `null` mode skips analysis entirely, and
@@ -16,6 +15,9 @@ use Docuccino\Laravel\Support\Psr4Namespaces;
  * {@see NullTypeEngine} on any container/Larastan boot failure, so callers always get a total engine and
  * the build survives. An unrecognised mode runs in-process rather than throwing — a typo, or a mode this
  * version no longer has, must not fail a build (the document reports it: `engine.mode-unknown`).
+ *
+ * The two directory sets the analyser runs with come from {@see AnalysisScopes}, which reads the app's
+ * own autoload map for both.
  *
  * Process-wide side effects (the memory ceiling, the out-of-memory shutdown notice) are confined to a
  * {@see ConsoleBuild}: the viewer resolves a `TypeEngine` on any `.json` request — including
@@ -95,21 +97,27 @@ final readonly class TypeEngineFactory
             $this->applyMemoryLimit($config);
         }
 
-        $descendPaths = $this->projectPaths($config);
+        $scopes = new AnalysisScopes($this->basePath);
+        $descendPaths = $scopes->descend($config);
 
         GeneratedDirectory::ensure($this->tmpDir);
 
-        // PRIME scope is wider than DESCEND scope on purpose: PHPStan strips the bodies of files it
-        // doesn't analyse, so a class a trace hops into must be primed even though descent
-        // (throws/inline-rules) stays confined to `project_paths`. The vendor dir is passed so traces
-        // can hop into primed classes outside the descend scope while never following vendor code
-        // itself (design §4).
+        // PRIME scope is at least as wide as DESCEND scope on purpose: PHPStan strips the bodies of
+        // files it doesn't analyse, so a class a trace hops into must be primed even where descent
+        // (throws/inline-rules) may not enter it. The two differ by the app's `autoload-dev` roots by
+        // default, and by however far `project_paths` narrows descent where it is written. The vendor
+        // dir is passed so traces can hop into primed classes outside the descend scope while never
+        // following vendor code itself (design §4).
         return $builder->build(
             projectRoot: $this->basePath,
             tmpDir: $this->tmpDir,
             vendorPath: $this->basePath.'/vendor',
-            primePaths: $this->primePaths($descendPaths),
+            primePaths: $scopes->prime($descendPaths),
             descendPaths: $descendPaths,
+            // What descent would cover with nothing configured. The engine walks by `descendPaths`
+            // alone; this is only how it tells a hop THIS application closed from one the engine closes
+            // for everybody, and so which of them is worth a notice.
+            declaredPaths: $scopes->declared(),
             configFile: EngineConfigFile::path($config, $this->basePath),
         );
     }
@@ -146,53 +154,5 @@ final readonly class TypeEngineFactory
         }
 
         OutOfMemoryNotice::arm();
-    }
-
-    /**
-     * @param  array<string, mixed>  $config
-     * @return list<string>
-     */
-    private function projectPaths(array $config): array
-    {
-        $paths = $config['project_paths'] ?? ['app'];
-        if (! is_array($paths)) {
-            $paths = ['app'];
-        }
-
-        $out = [];
-        foreach ($paths as $path) {
-            if (is_string($path)) {
-                $out[] = $this->basePath.'/'.ltrim($path, '/');
-            }
-        }
-
-        return $out === [] ? [$this->basePath.'/app'] : $out;
-    }
-
-    /**
-     * Directories whose `.php` bodies stay intact: the descend paths plus every local PSR-4 source root
-     * from the app's `composer.json` (`autoload` + `autoload-dev`), so a class in a modular namespace
-     * isn't body-stripped. Vendor roots never appear — composer's `autoload.psr-4` maps only the app's
-     * own dirs. An unreadable composer.json falls back to the descend paths.
-     *
-     * The map comes from {@see Psr4Namespaces}, which the scaffold command reads for the namespace a
-     * generated class carries: one reader, so the two cannot disagree about what the application maps.
-     *
-     * @param  list<string>  $descendPaths
-     * @return list<string>
-     */
-    private function primePaths(array $descendPaths): array
-    {
-        $paths = $descendPaths;
-
-        foreach (Psr4Namespaces::roots($this->basePath) as $dirs) {
-            foreach ($dirs as $dir) {
-                if ($dir !== '') {
-                    $paths[] = $this->basePath.'/'.rtrim(ltrim($dir, './'), '/');
-                }
-            }
-        }
-
-        return array_values(array_unique(array_filter($paths, is_dir(...))));
     }
 }
