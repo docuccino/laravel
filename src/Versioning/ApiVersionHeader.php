@@ -13,7 +13,6 @@ use Docuccino\Core\Extensions\Schema\ComponentNames;
 use Docuccino\Core\Extensions\Schema\EnumDecoration;
 use Docuccino\Core\Identity\IdentityGenerator;
 use Docuccino\Core\Support\Arr;
-use Docuccino\Core\Support\PlainText;
 use Docuccino\Core\Versioning\VersionOrder;
 use Docuccino\Laravel\Config\ConfiguredDocuments;
 use Docuccino\Laravel\Support\ListValueNames;
@@ -175,8 +174,8 @@ final readonly class ApiVersionHeader
             code: 'components.name-collision',
             message: sprintf(
                 'A component in components.parameters already holds the name "%s", so the API version header was published under a name derived from its own instead (%s).',
-                PlainText::of($base),
-                PlainText::of($published),
+                $base,
+                $published,
             ),
             help: 'The component already holding the name was published before this ran and cannot move. Rename it, or name the header something else with api_version.header, and the version parameter publishes under a plain name again.',
         )];

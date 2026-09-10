@@ -14,7 +14,6 @@ use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Identity\IdentityGenerator;
 use Docuccino\Core\Support\Glob;
-use Docuccino\Core\Support\PlainText;
 
 /**
  * Turns the document a build just assembled into the document for the API version it declares: every
@@ -55,11 +54,11 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
                 code: 'versioning.version-unstated',
                 message: sprintf(
                     'The "%s" document declares api_version but states no info.version, so it was not derived as an API version.',
-                    PlainText::of($config->key),
+                    $config->key,
                 ),
                 help: sprintf(
                     'Set documents.%s.info.version to the version this document describes — that value IS the API version.',
-                    PlainText::of($config->key),
+                    $config->key,
                 ),
             ));
 
@@ -217,8 +216,8 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
             if (self::sharedWithExcluded($reaching[$index], $reaching, $matched)) {
                 self::reportOnce($context, VerbDiagnostics::unforkable($change, sprintf(
                     'the operation "%s" is published through a path item it shares with operations the scope leaves out, so it cannot be given a copy of the schema for %s and was left at the shape the code publishes',
-                    PlainText::of($reaching[$index]['signature'] ?? implode('/', $reaching[$index]['keys'])),
-                    PlainText::of($verb->schema()),
+                    $reaching[$index]['signature'] ?? implode('/', $reaching[$index]['keys']),
+                    $verb->schema(),
                 )), $said);
 
                 continue;
@@ -298,7 +297,7 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
             if (self::sharedWithExcluded($site, $sites, $matched)) {
                 self::reportOnce($context, VerbDiagnostics::unnarrowable($change, sprintf(
                     'the operation "%s" is published through a path item it shares with operations the scope leaves out, so %s cannot be renamed for it alone and was left at the name the code gives it',
-                    PlainText::of($site['signature'] ?? implode('/', $site['keys'])),
+                    $site['signature'] ?? implode('/', $site['keys']),
                     $verb->declares(),
                 )), $said);
 
@@ -476,8 +475,8 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
             // and reports the same way, because it is the same fact.
             self::reportOnce($context, VerbDiagnostics::unforkable($change, sprintf(
                 'a copy of the schema for %s would point back at the shared component, so the operation "%s" cannot be given one and was left at the shape the code publishes',
-                PlainText::of($verb->schema()),
-                PlainText::of($site['signature'] ?? implode('/', $site['keys'])),
+                $verb->schema(),
+                $site['signature'] ?? implode('/', $site['keys']),
             )), $said);
 
             return $doc;

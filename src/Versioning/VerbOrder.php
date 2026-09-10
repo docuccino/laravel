@@ -13,7 +13,6 @@ use Docuccino\Attributes\Versioning\RenamedRequestField;
 use Docuccino\Attributes\Versioning\RenamedResponseField;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Extensions\Context\AttributeSet;
-use Docuccino\Core\Support\PlainText;
 use Docuccino\Laravel\Support\ParameterLocations;
 
 /**
@@ -195,7 +194,7 @@ final class VerbOrder
         if ($in === null) {
             $diagnostics[] = VersionChangeCollector::unapplicable($class, sprintf(
                 'one of its #[RenamedParameter] declarations says `in: "%s"`, which names no parameter location',
-                PlainText::of($rename->in),
+                $rename->in,
             ), sprintf('A parameter is in one of %s, spelled in any case.', ParameterLocations::quoted()));
 
             return null;
@@ -212,7 +211,7 @@ final class VerbOrder
         if ($in === 'path') {
             $diagnostics[] = VersionChangeCollector::unapplicable($class, sprintf(
                 'one of its #[RenamedParameter] declarations renames the path parameter "%s", and a path parameter is named by the URL template it stands under rather than by anything a client sends',
-                PlainText::of($pair['to']),
+                $pair['to'],
             ), 'Nothing on the wire carries a path parameter\'s name, so no older version accepted it under another one. Rename a `query`, `header` or `cookie` parameter, and where the URL itself changed, publish the older one as a route of its own.');
 
             return null;
@@ -247,7 +246,7 @@ final class VerbOrder
             $diagnostics[] = VersionChangeCollector::unapplicable($class, sprintf(
                 'one of its %s declarations renames "%s" to itself',
                 $declaration,
-                PlainText::of($from),
+                $from,
             ));
 
             return null;

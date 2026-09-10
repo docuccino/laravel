@@ -7,7 +7,6 @@ namespace Docuccino\Laravel\Versioning;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Identity\IdentityGenerator;
-use Docuccino\Core\Support\PlainText;
 
 /**
  * The three required-ness verbs as the transformer applies them, which is one edit with two switches:
@@ -128,10 +127,10 @@ final readonly class RequiredEdit implements VersionVerb
             code: 'versioning.change-target-unchanged',
             message: sprintf(
                 '%s declares that the %s field "%s" of %s became %s, and the schema already publishes it as %s, so this version says what the code says.',
-                PlainText::of($change->class),
+                $change->class,
                 $this->facet->noun(),
-                PlainText::of($this->field),
-                PlainText::of($this->schema),
+                $this->field,
+                $this->schema,
                 $this->became(),
                 $this->was(),
             ),
@@ -148,9 +147,9 @@ final readonly class RequiredEdit implements VersionVerb
     {
         return VerbDiagnostics::targetMissing($change, sprintf(
             'names "%s", which the %sschema for %s no longer publishes',
-            PlainText::of($this->field),
+            $this->field,
             $this->facet->schemaQualifier(),
-            PlainText::of($this->schema),
+            $this->schema,
         ), 'field');
     }
 }

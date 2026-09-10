@@ -661,17 +661,18 @@ it('documents a route whose exception mistyped the attribute, and prints no path
         ->and($document['paths']['/api/zz-declared-first']['get']['responses'])->toHaveKey('409');
 });
 
-it('quotes a refused name exactly as the attribute wrote it', function (): void {
-    // Nothing validated the string an attribute carries, and the diagnostic reporting it goes to a JSON
-    // report and to the emitted document as well as to a terminal. It states what it read; the console
-    // escapes at the write (`RendersDiagnostics`), which is the only reader that needs it to.
+it('quotes a refused name as text rather than as the control sequence it was', function (): void {
+    // Nothing validated the string an attribute carries, and the diagnostic reporting it is published
+    // under `x-docuccino.diagnostics` as well as printed. The document is not a terminal we render, so
+    // the sequence is made visible where the diagnostic is built rather than at any one reader.
     $result = declaringBuild([
         'first' => [EscapedNameException::class, 409],
         'second' => [EscapedNameException::class, 409],
     ]);
     $rejected = diagnosticsCoded($result->diagnostics, 'attribute.error-component-invalid');
 
-    expect($rejected[0]->message)->toContain("Not\x1B[31mFound");
+    expect($rejected[0]->message)->toContain('Not\x1B[31mFound')
+        ->and($rejected[0]->message)->not->toContain("\x1b");
 });
 
 it('does not let a name it refused contest one it accepted', function (): void {

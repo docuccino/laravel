@@ -8,7 +8,6 @@ use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Extensions\Contracts\TagMapper;
 use Docuccino\Core\Support\Hydrate;
-use Docuccino\Core\Support\PlainText;
 use Docuccino\Laravel\Tags\PrefixTagMapper;
 use Illuminate\Contracts\Container\Container;
 use Throwable;
@@ -95,7 +94,7 @@ final readonly class ConfiguredTagMapper
         return self::dropped($key, sprintf(
             "documents.%s.tags.mapper names '%s', which %s",
             $key,
-            PlainText::of($named),
+            $named,
             self::why($named),
         ));
     }
@@ -144,6 +143,6 @@ final readonly class ConfiguredTagMapper
     /** A value named the way a reader can compare it against what they wrote. */
     private static function describe(mixed $value): string
     {
-        return is_string($value) ? "'".PlainText::of($value)."'" : get_debug_type($value);
+        return is_string($value) ? "'".$value."'" : get_debug_type($value);
     }
 }

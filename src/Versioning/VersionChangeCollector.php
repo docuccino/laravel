@@ -10,7 +10,6 @@ use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Extensions\Context\AttributeSet;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
-use Docuccino\Core\Support\PlainText;
 use Docuccino\Core\Versioning\VersionOrder;
 use Docuccino\Laravel\Routing\AttributeCollector;
 use Docuccino\Laravel\Support\DeclaredClasses;
@@ -103,7 +102,7 @@ final readonly class VersionChangeCollector
         if ($stated !== null && ! $order->reads($stated)) {
             return $this->unordered(sprintf(
                 'This document\'s version "%s" is not a %s version, so %d declared change(s) could not be placed in order and none was applied.',
-                PlainText::of($stated),
+                $stated,
                 $order->name(),
                 count($changes),
             ), $changes, $diagnostics);
@@ -119,7 +118,7 @@ final readonly class VersionChangeCollector
 
             $diagnostics[] = self::unapplicable($change->class, sprintf(
                 'its version "%s" is not a %s version, so nothing can tell whether it shipped before or after this document\'s',
-                PlainText::of($change->since),
+                $change->since,
                 $order->name(),
             ), 'Write the version the way this document writes its own — `2026-09-01` for a date order, `1.2.0` for semver.');
         }
@@ -183,7 +182,7 @@ final readonly class VersionChangeCollector
         return new Diagnostic(
             severity: Severity::Warning,
             code: 'versioning.change-invalid',
-            message: sprintf('%s was skipped: %s.', PlainText::of($class), $problem),
+            message: sprintf('%s was skipped: %s.', $class, $problem),
             help: $help ?? 'A change declares what the API did BEFORE its version: `to:` is the field name in the code today, `from:` the one older versions publish.',
         );
     }

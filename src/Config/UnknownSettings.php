@@ -7,7 +7,6 @@ namespace Docuccino\Laravel\Config;
 use Docuccino\Core\Config\ConfigFile;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
-use Docuccino\Core\Support\PlainText;
 use Docuccino\Laravel\Registry\ConfigDiagnostics;
 
 /**
@@ -150,7 +149,7 @@ final class UnknownSettings
             // fire on anything but a key an author typed.
             message: sprintf(
                 '%s names no setting Docuccino reads, so nothing written under it does anything.',
-                PlainText::of($entry['written']),
+                $entry['written'],
             ),
             help: self::help($entry['written'], $entry['path']),
         );
@@ -177,8 +176,8 @@ final class UnknownSettings
         if ($misplaced !== null) {
             return sprintf(
                 'The setting called %s sits at %s — check the indentation of the block this key opens, which is what moves a whole bag under the wrong parent.',
-                PlainText::of(self::leaf($path)),
-                PlainText::of($misplaced),
+                self::leaf($path),
+                $misplaced,
             );
         }
 
@@ -273,7 +272,7 @@ final class UnknownSettings
             }
         }
 
-        return PlainText::of(implode('.', $segments));
+        return implode('.', $segments);
     }
 
     private static function parent(string $path): string

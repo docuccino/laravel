@@ -8,7 +8,6 @@ use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Support\NameList;
-use Docuccino\Core\Support\PlainText;
 use Illuminate\Routing\Router;
 use ReflectionClass;
 use Throwable;
@@ -128,7 +127,7 @@ final class MiddlewareAliases
                 }
             }
         } catch (Throwable $failure) {
-            $reason = PlainText::of($failure->getMessage());
+            $reason = $failure->getMessage();
         }
 
         if ($report !== null) {

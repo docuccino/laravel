@@ -7,7 +7,6 @@ namespace Docuccino\Laravel\Versioning;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Document\ChangedFieldExamples;
 use Docuccino\Core\Identity\IdentityGenerator;
-use Docuccino\Core\Support\PlainText;
 use Docuccino\Laravel\Support\ParameterLocations;
 
 /**
@@ -54,7 +53,7 @@ final readonly class ParameterRenameEdit implements OperationVerb
 
     public function declares(): string
     {
-        return sprintf('the %s parameter "%s"', $this->in, PlainText::of($this->to));
+        return sprintf('the %s parameter "%s"', $this->in, $this->to);
     }
 
     public function apply(array $operation, string $scope, IdentityGenerator $identity, VerbOutcome &$outcome): array
@@ -127,10 +126,10 @@ final readonly class ParameterRenameEdit implements OperationVerb
     {
         return VersionChangeCollector::unapplicable($change->class, sprintf(
             'the operation "%s" already declares a %s parameter called "%s", so renaming "%s" onto it would collapse two parameters into one',
-            PlainText::of($operation),
+            $operation,
             $this->in,
-            PlainText::of($this->from),
-            PlainText::of($this->to),
+            $this->from,
+            $this->to,
         ));
     }
 

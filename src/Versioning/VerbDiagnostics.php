@@ -6,7 +6,6 @@ namespace Docuccino\Laravel\Versioning;
 
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
-use Docuccino\Core\Support\PlainText;
 
 /**
  * Every report a verb owes that is not particular to what that verb does: a schema this document
@@ -37,8 +36,8 @@ final class VerbDiagnostics
             code: 'versioning.schema-unresolved',
             message: sprintf(
                 '%s names %s, which this document publishes no %sschema for, so the change was skipped and this version is left at the current shape.',
-                PlainText::of($change->class),
-                PlainText::of($verb->schema()),
+                $change->class,
+                $verb->schema(),
                 $verb->facet()->schemaQualifier(),
             ),
             help: 'Name the class whose shape the document actually publishes — a change can only rewrite a schema this document contains.',
@@ -57,9 +56,9 @@ final class VerbDiagnostics
             code: 'versioning.scope-matches-nothing',
             message: sprintf(
                 '%s is scoped with #[AppliesTo], and this document publishes the %sschema for %s for no operation at all, so the scope names nothing and the change was applied to nothing.',
-                PlainText::of($change->class),
+                $change->class,
                 $verb->facet()->schemaQualifier(),
-                PlainText::of($verb->schema()),
+                $verb->schema(),
             ),
             help: 'Check the document publishes that schema for the operations you named — a scoped change never edits a schema the scope cannot reach.',
         );
@@ -76,7 +75,7 @@ final class VerbDiagnostics
         return self::selectorDecidedNothing(
             $change,
             $selector,
-            sprintf(' %s for, so that part of the change applies to nothing.', PlainText::of($verb->schema())),
+            sprintf(' %s for, so that part of the change applies to nothing.', $verb->schema()),
             self::NAME_THE_OPERATION.' — and check the document publishes that schema for it.',
         );
     }
@@ -138,7 +137,7 @@ final class VerbDiagnostics
             code: 'versioning.change-target-missing',
             message: sprintf(
                 '%s %s, so this version still says what the code says.',
-                PlainText::of($change->class),
+                $change->class,
                 $clause,
             ),
             help: sprintf(
@@ -157,8 +156,8 @@ final class VerbDiagnostics
             code: 'versioning.scope-matches-nothing',
             message: sprintf(
                 '%s is scoped to "%s", which names no operation this document publishes%s',
-                PlainText::of($change->class),
-                PlainText::of($selector),
+                $change->class,
+                $selector,
                 $consequence,
             ),
             help: $help,
@@ -171,7 +170,7 @@ final class VerbDiagnostics
         return new Diagnostic(
             severity: Severity::Warning,
             code: 'versioning.scope-unforkable',
-            message: sprintf('%s could not be narrowed as written: %s.', PlainText::of($change->class), $problem),
+            message: sprintf('%s could not be narrowed as written: %s.', $change->class, $problem),
             help: $help,
         );
     }

@@ -8,7 +8,6 @@ use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Document\ChangedFieldExamples;
 use Docuccino\Core\Identity\IdentityGenerator;
-use Docuccino\Core\Support\PlainText;
 
 /**
  * `#[RemovedResponseField]` as the transformer applies it: the field the change deleted goes back into
@@ -177,10 +176,10 @@ final readonly class RemovedEdit implements VersionVerb
             code: 'versioning.example-dropped',
             message: sprintf(
                 '%s puts the required field "%s" back on %s, and the example at %s does not carry it, so it was dropped rather than published failing its own schema.',
-                PlainText::of($change->class),
-                PlainText::of($this->field),
-                PlainText::of($this->schema),
-                PlainText::of($pointer),
+                $change->class,
+                $this->field,
+                $this->schema,
+                $pointer,
             ),
             help: 'A consumer copies an example and sends it back, so one this version\'s schema '
                 .'rejects is worse than none. Pin an example carrying the field beside the schema, or '
@@ -196,9 +195,9 @@ final readonly class RemovedEdit implements VersionVerb
             code: 'versioning.change-target-unchanged',
             message: sprintf(
                 '%s declares that the response field "%s" of %s was removed, and the schema still publishes it, so this version says what the code says.',
-                PlainText::of($change->class),
-                PlainText::of($this->field),
-                PlainText::of($this->schema),
+                $change->class,
+                $this->field,
+                $this->schema,
             ),
             help: '#[RemovedResponseField] names a field the code no longer has — read the other way round it describes a removal nobody made. Retire the declaration if the field came back.',
         );
@@ -212,10 +211,10 @@ final readonly class RemovedEdit implements VersionVerb
             code: 'versioning.type-unresolved',
             message: sprintf(
                 '%s puts the field "%s" back on %s with the type "%s", which this document publishes no schema for and which is not an OpenAPI type name, so the field was published with no shape at all.',
-                PlainText::of($change->class),
-                PlainText::of($this->field),
-                PlainText::of($this->schema),
-                PlainText::of($this->type),
+                $change->class,
+                $this->field,
+                $this->schema,
+                $this->type,
             ),
             help: sprintf(
                 'Name a class this document publishes a response schema for, or one of %s — each may be suffixed `[]` for a list of them or `?` for one that may be null. Leave `type:` out to publish the field with no shape on purpose.',

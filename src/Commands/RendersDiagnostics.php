@@ -112,6 +112,8 @@ trait RendersDiagnostics
      * Where the code is written up, under its first appearance only. A build that reports one code two
      * hundred times has one link to follow, not two hundred: the line is worth its place because it is
      * proportional to the codes a reader actually met, never to how loudly they fired.
+     *
+     * The only unguttered line at this indent, which is what makes it ours: see {@see renderHelp()}.
      */
     private function renderReference(string $code): void
     {
@@ -129,8 +131,11 @@ trait RendersDiagnostics
      * down the left edge.
      *
      * Help is the one value here allowed to carry line breaks: they become layout rather than the escape
-     * {@see TerminalText} would otherwise show. That stays safe because every help line is indented past
-     * any diagnostic line, so text lifted out of an application can add lines but never forge one.
+     * {@see TerminalText} would otherwise show. So a line of it is the one line in this output whose
+     * SHAPE an application chooses, and every one of them is guttered — indented past any diagnostic
+     * line, and marked past the reference line beneath it, which sits at the same indent and colour.
+     * The marker goes on the application's lines rather than on ours for the reason it has to: content
+     * can reproduce a marker we put on our own line, and cannot remove one we put on theirs.
      */
     private function renderHelp(?string $help): void
     {
@@ -141,7 +146,7 @@ trait RendersDiagnostics
         foreach (explode("\n", str_replace(["\r\n", "\r"], "\n", $help)) as $line) {
             $line = rtrim($line);
 
-            $this->line($line === '' ? '' : sprintf('      <fg=gray>%s</>', TerminalText::of($line)));
+            $this->line($line === '' ? '' : sprintf('      <fg=gray>- %s</>', TerminalText::of($line)));
         }
     }
 }

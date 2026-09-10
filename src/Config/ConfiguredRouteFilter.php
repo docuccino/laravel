@@ -8,7 +8,6 @@ use Docuccino\Core\Config\ConfigFile;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Extensions\Contracts\RouteFilter;
-use Docuccino\Core\Support\PlainText;
 use Illuminate\Contracts\Container\Container;
 use Throwable;
 
@@ -44,11 +43,6 @@ final readonly class ConfiguredRouteFilter
      */
     public function resolve(string $key, array $routes): ?RouteFilter
     {
-        // The document key is the application's own name, the same as the class name below it already
-        // escaped here. The console renderer's own escape does not cover it: this refusal is an
-        // EXCEPTION, and its message is what a caller that lets it through prints. Escaped once, so
-        // every refusal below carries it escaped rather than four of the five.
-        $name = PlainText::of($key);
         $configured = $routes['filter'] ?? null;
 
         if ($configured === null) {
@@ -56,9 +50,9 @@ final readonly class ConfiguredRouteFilter
         }
 
         if (! is_string($configured) || trim($configured) === '') {
-            throw $this->refuse($name, sprintf(
+            throw $this->refuse($key, sprintf(
                 'documents.%s.routes.filter is %s rather than the name of a class implementing %s.',
-                $name,
+                $key,
                 self::describe($configured),
                 RouteFilter::class,
             ));
@@ -67,29 +61,29 @@ final readonly class ConfiguredRouteFilter
         $class = trim($configured);
 
         if (! class_exists($class) && ! interface_exists($class)) {
-            throw $this->refuse($name, sprintf(
+            throw $this->refuse($key, sprintf(
                 "documents.%s.routes.filter names '%s', which is not an autoloadable class.",
-                $name,
-                PlainText::of($class),
+                $key,
+                $class,
             ));
         }
 
         try {
             $resolved = $this->container->make($class);
         } catch (Throwable $failure) {
-            throw $this->refuse($name, sprintf(
+            throw $this->refuse($key, sprintf(
                 "documents.%s.routes.filter names '%s', which the container could not build: %s.",
-                $name,
-                PlainText::of($class),
-                PlainText::of($failure->getMessage()),
+                $key,
+                $class,
+                $failure->getMessage(),
             ), $failure);
         }
 
         if (! $resolved instanceof RouteFilter) {
-            throw $this->refuse($name, sprintf(
+            throw $this->refuse($key, sprintf(
                 "documents.%s.routes.filter names '%s', which does not implement %s.",
-                $name,
-                PlainText::of($class),
+                $key,
+                $class,
                 RouteFilter::class,
             ));
         }
@@ -97,7 +91,7 @@ final readonly class ConfiguredRouteFilter
         return $resolved;
     }
 
-    /** `$name` arrives escaped, because it is the application's own document key. */
+    /** `$name` is the application's own document key. */
     private function refuse(string $name, string $message, ?Throwable $previous = null): UnusableRouteFilterException
     {
         return new UnusableRouteFilterException(
@@ -114,6 +108,6 @@ final readonly class ConfiguredRouteFilter
     /** A value named the way a reader can compare it against what they wrote. */
     private static function describe(mixed $value): string
     {
-        return is_string($value) ? "'".PlainText::of($value)."'" : get_debug_type($value);
+        return is_string($value) ? "'".$value."'" : get_debug_type($value);
     }
 }

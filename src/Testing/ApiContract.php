@@ -35,6 +35,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  *
  * State is static because a test suite is one run against one contract, and threading a repository
  * through every test case buys nothing. {@see reset()} puts it back.
+ *
+ * A failure here is a PHPUnit message, not a diagnostic, and no renderer of ours stands between it and
+ * the terminal — so a name lifted out of the artifact goes through {@see PlainText} at the site that
+ * writes it.
  */
 final class ApiContract
 {

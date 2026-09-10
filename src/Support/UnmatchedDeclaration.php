@@ -9,7 +9,6 @@ use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Provenance\Source;
 use Docuccino\Core\Support\NameList;
-use Docuccino\Core\Support\PlainText;
 
 /**
  * The one report for an author-supplied name that matched nothing — `#[IgnoreParam]` naming a parameter
@@ -48,8 +47,8 @@ final class UnmatchedDeclaration
     public static function parameter(IgnoreParam $ignore, array $published, ?Source $source, ?string $routeSignature): Diagnostic
     {
         $declaration = $ignore->in === null
-            ? sprintf('#[IgnoreParam(name: "%s")]', PlainText::of($ignore->name))
-            : sprintf('#[IgnoreParam(name: "%s", in: "%s")]', PlainText::of($ignore->name), PlainText::of($ignore->in));
+            ? sprintf('#[IgnoreParam(name: "%s")]', $ignore->name)
+            : sprintf('#[IgnoreParam(name: "%s", in: "%s")]', $ignore->name, $ignore->in);
 
         return new Diagnostic(
             severity: Severity::Warning,
@@ -102,7 +101,7 @@ final class UnmatchedDeclaration
             code: 'attribute.in-docs-unknown',
             message: sprintf(
                 '#[InDocs] names the document "%s", which is not configured, so the key pins nothing%s. It is written on %s. %s',
-                PlainText::of($key),
+                $key,
                 $stranded ? ', and every route below is left out of every document' : '',
                 NameList::of($routes) ?? 'no route',
                 self::configured($configured),
@@ -130,8 +129,8 @@ final class UnmatchedDeclaration
             code: 'attribute.path-parameter-unmatched',
             message: sprintf(
                 '#[PathParameter(name: "%s")] documented nothing: this route\'s template has no {%s} segment, and a path parameter OpenAPI has no template variable for would make the document invalid. %s',
-                PlainText::of($name),
-                PlainText::of($name),
+                $name,
+                $name,
                 self::template($template),
             ),
             source: $source,

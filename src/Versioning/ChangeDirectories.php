@@ -8,7 +8,6 @@ use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Support\ConfinedPath;
-use Docuccino\Core\Support\PlainText;
 use Docuccino\Laravel\Support\Paths;
 
 /**
@@ -67,7 +66,7 @@ final class ChangeDirectories
                 $diagnostics[] = new Diagnostic(
                     severity: Severity::Warning,
                     code: 'versioning.dir-escapes-base',
-                    message: sprintf('The version-changes directory "%s" does not name a path inside the application and was ignored.', PlainText::of($configured)),
+                    message: sprintf('The version-changes directory "%s" does not name a path inside the application and was ignored.', $configured),
                 );
 
                 continue;
@@ -79,7 +78,7 @@ final class ChangeDirectories
                 $diagnostics[] = new Diagnostic(
                     severity: Severity::Warning,
                     code: 'versioning.dir-escapes-base',
-                    message: sprintf('The version-changes directory "%s" matched a path outside the application, which was ignored.', PlainText::of($configured)),
+                    message: sprintf('The version-changes directory "%s" matched a path outside the application, which was ignored.', $configured),
                 );
             }
 
@@ -87,7 +86,7 @@ final class ChangeDirectories
                 $diagnostics[] = new Diagnostic(
                     severity: Severity::Warning,
                     code: 'versioning.dir-missing',
-                    message: sprintf('The configured version-changes directory "%s" does not exist.', PlainText::of($configured)),
+                    message: sprintf('The configured version-changes directory "%s" does not exist.', $configured),
                     help: 'Create it or drop the entry from documents.*.api_version.changes.',
                 );
             }

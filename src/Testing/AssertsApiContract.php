@@ -30,6 +30,9 @@ use Symfony\Component\HttpFoundation\Response;
  * `ApiContract::registerMacros()` puts the three exchange assertions on `TestResponse` too, if you
  * prefer `$this->getJson(…)->assertValidResponse()` to wrapping the call. {@see assertValidWebhook()}
  * has no response to hang off, so it stays a method.
+ *
+ * Paths and git output interpolated into a failure go through {@see PlainText} for the reason
+ * {@see ApiContract} gives: a PHPUnit message reaches a terminal with nothing of ours in between.
  */
 trait AssertsApiContract
 {

@@ -8,7 +8,6 @@ use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Document\ChangedFieldExamples;
 use Docuccino\Core\Identity\IdentityGenerator;
-use Docuccino\Core\Support\PlainText;
 
 /**
  * `#[RenamedResponseField]` and `#[RenamedRequestField]` as the transformer applies them: the property
@@ -108,15 +107,15 @@ final readonly class RenameEdit implements VersionVerb
             VerbOutcome::Declined => VersionChangeCollector::unapplicable($change->class, sprintf(
                 'the %sschema for %s already publishes a field called "%s", so renaming "%s" onto it would collapse two fields into one',
                 $this->facet->schemaQualifier(),
-                PlainText::of($this->schema),
-                PlainText::of($this->from),
-                PlainText::of($this->to),
+                $this->schema,
+                $this->from,
+                $this->to,
             )),
             VerbOutcome::Absent => VerbDiagnostics::targetMissing($change, sprintf(
                 'renames "%s", which the %sschema for %s no longer publishes',
-                PlainText::of($this->to),
+                $this->to,
                 $this->facet->schemaQualifier(),
-                PlainText::of($this->schema),
+                $this->schema,
             ), 'field'),
             VerbOutcome::Unresolved => VerbDiagnostics::schemaUnresolved($change, $this),
         };
@@ -137,10 +136,10 @@ final readonly class RenameEdit implements VersionVerb
             code: 'versioning.example-dropped',
             message: sprintf(
                 '%s renames "%s" on %s, and the example at %s could not be rewritten to the shape this version publishes, so it was dropped.',
-                PlainText::of($change->class),
-                PlainText::of($this->to),
-                PlainText::of($this->schema),
-                PlainText::of($pointer),
+                $change->class,
+                $this->to,
+                $this->schema,
+                $pointer,
             ),
             help: 'A consumer copies an example and sends it back, so one this version\'s schema '
                 .'rejects is worse than none. The rewrite stops where the schema does not settle on '

@@ -6,7 +6,6 @@ namespace Docuccino\Laravel\Support;
 
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
-use Docuccino\Core\Support\PlainText;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Routing\Router;
@@ -97,7 +96,7 @@ final class MiddlewareRegistrations
         try {
             $this->app->make(Kernel::class);
         } catch (Throwable $failure) {
-            $this->failure = self::unreadable(PlainText::of($failure->getMessage()));
+            $this->failure = self::unreadable($failure->getMessage());
         }
     }
 

@@ -9,7 +9,6 @@ use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\RepresentationPolicy;
 use Docuccino\Core\Support\Hydrate;
-use Docuccino\Core\Support\PlainText;
 use Docuccino\Laravel\Config\ConfigPaths;
 use Docuccino\Laravel\Config\ConfiguredFlags;
 use Docuccino\Laravel\Config\ConfiguredKeywords;
@@ -153,7 +152,7 @@ final class ConfigDiagnostics
                 message: sprintf(
                     '%s contains a NUL byte, which no filesystem path can hold, so nothing read it — %s.',
                     $rejected['key'],
-                    PlainText::of($rejected['path']),
+                    $rejected['path'],
                 ),
                 help: 'Write the path in single quotes, or escape the backslash — "\0" in a double-quoted PHP string is a NUL byte, not the two characters it looks like.',
             );

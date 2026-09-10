@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Support;
 
+use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Support\PlainText;
 use Symfony\Component\Console\Formatter\OutputFormatter;
 
@@ -17,8 +18,11 @@ use Symfony\Component\Console\Formatter\OutputFormatter;
  * Order matters where both halves apply: {@see PlainText} first, so the NUL the formatter's own
  * trailing-backslash escape inserts is consumed as it writes rather than escaped into view.
  *
- * Escaping belongs here, at the render boundary, rather than at the producer: the same value goes to JSON
- * and document outputs too, where `json_encode` escapes already and a second pass only garbles it.
+ * The MARKUP half belongs here, at the render boundary, and nowhere else: nothing but a console writer
+ * interprets it, and a value on its way to JSON or to a document output would only be garbled by it. The
+ * other half is not the render boundary's to own, because the same text is published as well as printed
+ * — {@see Diagnostic} states that once, for the fields a diagnostic carries, and this is idempotent over
+ * text that has already been through it.
  *
  * @internal
  */

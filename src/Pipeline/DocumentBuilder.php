@@ -19,7 +19,6 @@ use Docuccino\Core\Provenance\RootRelativeSourcePathResolver;
 use Docuccino\Core\Support\ConfiguredKeyword;
 use Docuccino\Core\Support\ConfinedPath;
 use Docuccino\Core\Support\Hydrate;
-use Docuccino\Core\Support\PlainText;
 use Docuccino\Laravel\Config\BuildConfig;
 use Docuccino\Laravel\Config\ConfiguredDocuments;
 use Docuccino\Laravel\Config\ConfiguredFlags;
@@ -207,7 +206,7 @@ final class DocumentBuilder
                 code: 'description-file.escapes-base-path',
                 message: sprintf(
                     'info.description.file "%s" does not name a path inside the application and was rejected, so the document has no description.',
-                    PlainText::of($path),
+                    $path,
                 ),
                 help: ConfinedPath::CONFIG_FILE_ESCAPED_HELP,
             )];
@@ -222,7 +221,7 @@ final class DocumentBuilder
             code: 'description-file.missing',
             message: sprintf(
                 'info.description.file "%s" could not be read, so the document has no description.',
-                PlainText::of($path),
+                $path,
             ),
             help: ConfinedPath::CONFIG_FILE_MISSING_HELP,
         )];
@@ -251,7 +250,7 @@ final class DocumentBuilder
             code: 'config.path-rejected',
             message: sprintf(
                 'cache.path contains a NUL byte, which no filesystem path can hold, so the fragment cache is off and every route was rebuilt — %s.',
-                PlainText::of($configured),
+                $configured,
             ),
             help: 'Write the path in single quotes, or escape the backslash — "\0" in a double-quoted PHP string is a NUL byte, not the two characters it looks like.',
         )];

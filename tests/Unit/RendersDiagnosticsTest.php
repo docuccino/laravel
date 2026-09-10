@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Docuccino\Core\Diagnostics\Diagnostic;
+use Docuccino\Core\Diagnostics\DiagnosticDocs;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Laravel\Tests\Support\DiagnosticConsole as Console;
 
@@ -75,7 +76,7 @@ it('prints help under the message it belongs to', function (): void {
     )]);
 
     expect($output)->toContain("    [warning] demo.code: The inference engine is not installed.\n"
-        ."      Install it where you generate: composer require --dev docuccino/inference-phpstan.\n");
+        ."      - Install it where you generate: composer require --dev docuccino/inference-phpstan.\n");
 });
 
 it('gives a diagnostic that states no help the page that documents it', function (): void {
@@ -89,13 +90,13 @@ it('gives a diagnostic that states no help the page that documents it', function
 it('indents every line of a multi-line help, and keeps the blank line between paragraphs', function (): void {
     $output = Console::render([Console::diagnostic('fine', help: "First do this.\n\nThen do that.")]);
 
-    expect($output)->toContain("    [warning] demo.code: fine\n      First do this.\n\n      Then do that.\n");
+    expect($output)->toContain("    [warning] demo.code: fine\n      - First do this.\n\n      - Then do that.\n");
 });
 
 it('reads a lone carriage return as a line break rather than an escape', function (): void {
     // Windows and classic-Mac line endings are layout too; anything else in help still gets escaped.
     expect(Console::render([Console::diagnostic('fine', help: "one\r\ntwo\rthree")]))
-        ->toContain("      one\n      two\n      three\n");
+        ->toContain("      - one\n      - two\n      - three\n");
 });
 
 it('escapes help as readily as a message, since help quotes an exception', function (): void {
@@ -113,8 +114,32 @@ it('cannot be made to forge a diagnostic line from help', function (): void {
     // injected line still lands deeper than the four spaces a real diagnostic sits at.
     $output = Console::render([Console::diagnostic('fine', help: "ok\n[error] fake.code: shipped")]);
 
-    expect($output)->toContain('      [error] fake.code: shipped')
+    expect($output)->toContain('      - [error] fake.code: shipped')
         ->and($output)->not->toContain("\n    [error] fake.code: shipped");
+});
+
+it('lays a whole diagnostic out with its help guttered and its reference not', function (): void {
+    // The block byte for byte, because the two kinds of line are told apart by their shape and nothing
+    // else: a row that only checked the help text would pass on a layout that had lost the distinction.
+    $output = Console::render([Console::diagnostic('fine', 'GET api/orders', help: "Do this.\nThen this.")]);
+
+    expect($output)->toBe("\nDiagnostics for default:\n  GET api/orders\n    [warning] demo.code: fine\n"
+        ."      - Do this.\n      - Then this.\n      https://docs.docuccino.app/laravel/reference/diagnostics/\n");
+});
+
+it('cannot be made to forge the reference line from help either', function (): void {
+    // The line under a diagnostic is where the reader is invited to go and read what the code means, and
+    // it is the tool's own. Help sits at the same indent and the same colour, and a newline in it is
+    // layout by design — so without a gutter on the application's lines the two are the same line, and a
+    // path or a config key quoted into help can hand the reader a link that is not ours to give.
+    $forged = 'https://docs.docuccino.example/laravel/reference/diagnostics/';
+
+    $output = Console::render([Console::diagnostic('fine', help: 'Read this.'."\n".$forged)]);
+
+    expect($output)->toContain("\n      - ".$forged."\n")
+        ->and($output)->not->toContain("\n      ".$forged."\n")
+        // The real one is the unguttered line, and still reads exactly as it did.
+        ->and($output)->toContain("\n      ".DiagnosticDocs::PAGE."\n");
 });
 
 /*
