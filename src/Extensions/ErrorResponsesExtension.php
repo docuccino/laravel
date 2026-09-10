@@ -209,14 +209,22 @@ final class ErrorResponsesExtension implements OperationExtension
     }
 
     /**
-     * The throw site (first call-chain frame), falling back to the action when the engine had no usable
-     * location — so an explicit throw carries a source just like a synthesized one, never none.
+     * Where this response came from: the site the `throw` is written at — the LAST call-chain frame —
+     * named by the exception it raises, and the action where the engine had no usable location, so a
+     * throw carries a source just like a synthesized one, never none.
+     *
+     * Both halves answer the reader's question rather than the build's. The LAST frame because the first
+     * is the action, which the operation already names: a trail pointing there says where the operation
+     * is, not where its status came from — and the deepest frame is the site the engine's own notice
+     * names, which the two were documented to agree on and did not. The EXCEPTION as the symbol because
+     * it is the identifier nothing else on the screen carries: the method is readable off the file and
+     * line, and which class the response is about is not guessable at all.
      */
     private function throwSource(RouteContext $context, ThrownException $throw): ?Source
     {
-        $frame = $throw->callChain[0] ?? null;
+        $frame = $throw->callChain === [] ? null : $throw->callChain[count($throw->callChain) - 1];
         if ($frame !== null && $frame->location->file !== '') {
-            return $context->sourceAt($frame->location, $frame->symbol === '' ? null : $frame->symbol);
+            return $context->sourceAt($frame->location, $throw->exceptionFqcn);
         }
 
         return $context->actionSource();

@@ -44,12 +44,17 @@ final class DefaultExceptionToResponse implements ExceptionToResponse
         ComponentRegistry $components,
     ): ResponseDraft {
         // A status nothing read is keyed at the exception's shared classification rather than at a number
-        // this tier picks, so every tier that may also publish this error keys it the same way.
-        $status = $exception->httpStatusHint === null
-            ? FrameworkExceptionTable::classification($exception->exceptionFqcn)
-            : (string) $exception->httpStatusHint;
+        // this tier picks, so every tier that may also publish this error keys it the same way — and the
+        // one call also says whether the key is a reading or a stand-in, so a placeholder cannot reach
+        // the document with nothing able to account for it.
+        $placed = FrameworkExceptionTable::place(
+            $exception->httpStatusHint === null ? null : (string) $exception->httpStatusHint,
+            $exception->exceptionFqcn,
+        );
+        $status = $placed['status'];
 
         $draft = new ResponseDraft($status);
+        $draft->recordStatusPlacement($placed['unplaced']);
         // The contribution must carry the fallback producer (matching producer() above), or an
         // inference/integration response for the same status would tie instead of winning.
         $contribution = Contribution::forProducer('fallback', $context->actionSource());

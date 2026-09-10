@@ -203,7 +203,7 @@ final class ExplainCommand extends Command
             $this->json([
                 'status' => 'explained',
                 'operation' => $match->toArray(),
-                'nodes' => [(new ExplainedNode($node->label, $node->pointer, [$trail], $node->ref))->toArray()],
+                'nodes' => [(new ExplainedNode($node->label, $node->pointer, [$trail], $node->ref, $node->facts))->toArray()],
                 'diagnostics' => array_map(static fn (Diagnostic $diagnostic): array => $diagnostic->toArray(), $diagnostics),
             ]);
 

@@ -90,10 +90,16 @@ final class HandlerResponseBuilder
             // that would assert a different media type over it. With neither there is nothing to keep,
             // which the one guard below answers for this branch too: a classification is never a status
             // HTTP forbids a body on, so the guard reduces to exactly "no body and no media type here".
-            $status = self::foldStatus($statusArg, $payload, $members, $exception->httpStatusHint)
-                ?? FrameworkExceptionTable::classification($exception->exceptionFqcn);
+            // …and the same call says whether the key it hands back is a reading or a stand-in, which is
+            // what stops this tier publishing a placeholder the document cannot account for.
+            $placed = FrameworkExceptionTable::place(
+                self::foldStatus($statusArg, $payload, $members, $exception->httpStatusHint),
+                $exception->exceptionFqcn,
+            );
+            $status = $placed['status'];
 
             $draft = new ResponseDraft($status);
+            $draft->recordStatusPlacement($placed['unplaced']);
 
             // Nothing recovered: no body, and a status the throw already carried. Answering anyway would
             // publish an error response with no `content` — which says the error returns NOTHING, a claim

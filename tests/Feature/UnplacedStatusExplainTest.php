@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
+use Docuccino\Core\Draft\ResponseDraft;
 use Docuccino\Core\Inference\ActionAnalysis;
 use Docuccino\Core\Inference\Frame;
 use Docuccino\Core\Inference\SourceLocation;
@@ -20,21 +21,23 @@ use Workbench\App\Http\Controllers\FormController;
  * read, and `docuccino:explain` named the action's own line and stopped there — exactly where the
  * reader's question starts.
  *
- * The trail cannot answer the rest of it. A contribution records the producer, the rung, the value and
- * one source; it has no room for which exception, or for which fold gave up, and inventing a field for
- * either would put engine vocabulary into a document surface. What DOES carry all three is the notice
- * the build raises about the same throw — so the command prints what the build reported about the
- * operation under its trail, and the two halves meet on one screen.
+ * The trail now answers the half it can. Its source names the EXCEPTION and the line the `throw` is
+ * written at — the deepest frame of the call chain, which is the site the notice names too — and the
+ * response says whether its status is a reading or a stand-in. Which FOLD gave up is the one thing a
+ * contribution has nowhere to put, and that is what the notice is for, so the command prints what the
+ * build reported about the operation under its trail and the two halves meet on one screen.
  */
 function unplacedStatusEngine(): TypeEngine
 {
     $throw = new ThrownException(
         exceptionFqcn: 'Workbench\\App\\Exceptions\\ExportConflictException',
         httpStatusHint: null,
-        callChain: [new Frame(
-            'FormController::index',
-            new SourceLocation('app/Http/Controllers/FormController.php', 31),
-        )],
+        // The action first, the site the `throw` is written at last — a call away from the action,
+        // which is the part the trail used to point past.
+        callChain: [
+            new Frame('FormController::index', new SourceLocation('app/Http/Controllers/FormController.php', 31)),
+            new Frame('ExportProbeQuery::probe', new SourceLocation('app/Services/ExportProbeQuery.php', 22)),
+        ],
         confidence: ThrowConfidence::Certain,
         disposition: ThrowDisposition::Signal,
     );
@@ -108,4 +111,51 @@ it('says nothing about an operation the build reported nothing for', function ()
     $payload = json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR);
 
     expect($payload['diagnostics'])->toBe([]);
+});
+
+/**
+ * The half the trail carries on its own, which is what a reader is left with when the notice is not
+ * owed: the class the response is about, the line it is raised at, and that the status is a stand-in
+ * rather than something the code says. Held to the contract — a reader must be able to tell a claim
+ * from a placeholder without knowing which tier keyed it — rather than to a rendering.
+ */
+it('names the exception and calls the status a stand-in in the trail itself', function (): void {
+    $exit = Artisan::call('docuccino:explain', [
+        'route' => 'GET /api/forms',
+        'document' => 'default',
+    ]);
+    $output = Artisan::output();
+
+    expect($exit)->toBe(0)
+        ->and($output)->toContain('Workbench\\App\\Exceptions\\ExportConflictException')
+        ->and($output)->toContain('app/Services/ExportProbeQuery.php:22')
+        ->and($output)->toContain('this status is a stand-in');
+});
+
+/**
+ * And machine-readably, which is the form a build gate needs: one member on the node, present exactly
+ * where the status was not read. A gate spelled "no operation publishes a status nothing read" has
+ * something to ask for.
+ */
+it('publishes the stand-in as data a gate can read', function (): void {
+    Artisan::call('docuccino:explain', [
+        'route' => 'GET /api/forms',
+        'document' => 'default',
+        '--json' => true,
+    ]);
+
+    /** @var array{nodes: list<array{label: string, facts?: array<string, mixed>}>} $payload */
+    $payload = json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR);
+
+    $marked = [];
+    foreach ($payload['nodes'] as $node) {
+        if (($node['facts'][ResponseDraft::STATUS_UNPLACED] ?? null) === true) {
+            $marked[] = $node['label'];
+        }
+    }
+
+    // More than one node came back, so a mark on exactly one of them is a distinction rather than the
+    // only row there was. Both answers side by side on two 500s is what the golden holds.
+    expect(array_column($payload['nodes'], 'label'))->toBe(['operation', 'responses.500'])
+        ->and($marked)->toBe(['responses.500']);
 });

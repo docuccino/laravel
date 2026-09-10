@@ -15,6 +15,8 @@ namespace Docuccino\Laravel\Integrations\Support;
  * "Unauthorized" (§15.5.2), not "Unauthenticated" — Laravel's own message wording is not the reason
  * phrase — and 413 is "Content Too Large" (§15.5.14), the name RFC 9110 gave what RFC 7231 called
  * "Payload Too Large".
+ *
+ * @phpstan-type PlacedStatus array{status: string, unplaced: bool}
  */
 final class FrameworkExceptionTable
 {
@@ -148,9 +150,34 @@ final class FrameworkExceptionTable
      */
     public static function classification(string $fqcn): string
     {
+        return self::place(null, $fqcn)['status'];
+    }
+
+    /**
+     * Where an error response is keyed, and whether that key is a reading or a stand-in — ONE
+     * expression, because the two answers have to agree. The status a response is PUBLISHED under and
+     * the build's account of WHY were computed from different facts, and a document could then carry a
+     * placeholder nothing could explain; keyed off one call they cannot come apart.
+     *
+     * `$read` is whatever the calling tier managed to read — the throw's own status hint, the number a
+     * render path folded — and null where nothing did. A stand-in is exactly "nothing read one and this
+     * table knows no row either", which is the only way {@see UNPLACED_STATUS} is ever the answer: a
+     * class the table DOES know is filed at the status its own constructor pins, and an exception that
+     * is no `HttpException` at all reaches a tier already carrying the 500 the framework really sends.
+     *
+     * @return PlacedStatus
+     */
+    public static function place(?string $read, string $fqcn): array
+    {
+        if ($read !== null) {
+            return ['status' => $read, 'unplaced' => false];
+        }
+
         $facts = self::match($fqcn);
 
-        return $facts === null ? self::UNPLACED_STATUS : $facts['status'];
+        return $facts === null
+            ? ['status' => self::UNPLACED_STATUS, 'unplaced' => true]
+            : ['status' => $facts['status'], 'unplaced' => false];
     }
 
     /** The reason phrase for a status, or a generic `Error` when unlisted. */

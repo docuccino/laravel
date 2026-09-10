@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Support;
 
+use Docuccino\Core\Draft\ResponseDraft;
 use Docuccino\Core\Patch\Layer;
 use Docuccino\Core\Provenance\Explain\ExplainedNode;
 use Docuccino\Core\Provenance\Explain\FieldContribution;
@@ -92,6 +93,11 @@ final class ProvenanceReport
             $lines[] = '';
             $lines[] = $this->nodeLine($node);
 
+            $standIn = self::standInLine($node);
+            if ($standIn !== null) {
+                $lines[] = $standIn;
+            }
+
             // One integration usually writes a whole parameter or response from one place, and
             // repeating that line — or the same remedy — under every field of it buries the fields.
             // Where the node has exactly one story to tell, it is told once at the top instead.
@@ -128,7 +134,11 @@ final class ProvenanceReport
      */
     public function field(ExplainedNode $node, FieldTrail $trail): array
     {
-        $lines = ['', $this->nodeLine($node), '  '.TerminalText::of($trail->field)];
+        $standIn = self::standInLine($node);
+        $lines = array_values(array_filter(
+            ['', $this->nodeLine($node), $standIn, '  '.TerminalText::of($trail->field)],
+            static fn (?string $line): bool => $line !== null,
+        ));
 
         foreach ($trail->contributions as $contribution) {
             $lines[] = sprintf(
@@ -203,6 +213,21 @@ final class ProvenanceReport
         }
 
         return $lines;
+    }
+
+    /**
+     * The one thing a status cannot say about itself: that nothing read it. A response filed under a
+     * stand-in looks exactly like one whose number the code states, and a reader who cannot tell them
+     * apart either trusts a placeholder or deletes a real answer — both of which have happened. The
+     * fact is the build's own ({@see ResponseDraft::STATUS_UNPLACED}), read back rather than guessed at.
+     */
+    private static function standInLine(ExplainedNode $node): ?string
+    {
+        if (($node->facts[ResponseDraft::STATUS_UNPLACED] ?? null) !== true) {
+            return null;
+        }
+
+        return '  <fg=yellow>! this status is a stand-in: nothing read one for the error filed here</>';
     }
 
     private function nodeLine(ExplainedNode $node): string

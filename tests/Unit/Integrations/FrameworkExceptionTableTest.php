@@ -236,3 +236,54 @@ it('publishes the RFC 9110 401 phrase in both places a consumer meets it', funct
 
 /** A subclass of ModelNotFoundException, to prove subtype-aware matching. */
 class FixtureMissingModelException extends ModelNotFoundException {}
+
+/**
+ * The two answers that must agree, taken off ONE call — where the response is keyed, and whether that
+ * key is a reading or a stand-in.
+ *
+ * The rule is written out here rather than read back off the table, because a guard that asks the code
+ * for its own rule agrees with whatever the code does. Stated from the contract: a status the calling
+ * tier READ is published as read, whatever number it is; a status nothing read is the class's own
+ * framework status where the table has one, and only where it has none is the answer a stand-in. So a
+ * 500 is three different facts and exactly one of them is a placeholder.
+ */
+it('says where an error is keyed and whether that key was read, in one answer', function (?string $read, string $fqcn, string $status, bool $unplaced): void {
+    expect(FrameworkExceptionTable::place($read, $fqcn))->toBe(['status' => $status, 'unplaced' => $unplaced]);
+})->with([
+    // READ. The number came from the code, so nothing about the class can overrule it — including the
+    // one case a table row would have answered differently.
+    'a status the code states' => ['423', 'App\\Exceptions\\LedgerRejected', '423', false],
+    'a 500 the code states' => ['500', 'App\\Exceptions\\LedgerRejected', '500', false],
+    'an exception that is no HTTP error, which the framework answers 500 for' => ['500', 'RuntimeException', '500', false],
+    'a reading over a class the table knows' => ['404', 'Symfony\\Component\\HttpKernel\\Exception\\ConflictHttpException', '404', false],
+
+    // NOTHING READ, but the table knows the class: its own constructor pins the number, so the document
+    // states a fact rather than standing in for one.
+    'a framework class the table knows' => [null, 'Symfony\\Component\\HttpKernel\\Exception\\ConflictHttpException', '409', false],
+    'a subclass of one it knows' => [null, 'Illuminate\\Http\\Exceptions\\ThrottleRequestsException', '429', false],
+
+    // NOTHING READ and no row either: the only way the unplaced status is ever the answer.
+    'an application HttpException subclass' => [null, 'App\\Exceptions\\LedgerRejected', '500', true],
+    'the framework HttpException base, which takes any status' => [null, 'Symfony\\Component\\HttpKernel\\Exception\\HttpException', '500', true],
+]);
+
+/**
+ * The guard executed rather than asserted: the shape it should refuse, refused. `classification()` is
+ * the older spelling of the same rule and every tier that publishes an unread status keys through it,
+ * so the two answering differently would be the defect this file exists to prevent — one tier standing
+ * in where another read.
+ */
+it('answers the older spelling of the same question identically', function (): void {
+    $classes = [...FrameworkExceptionTable::exceptions(), 'RuntimeException', 'App\\Exceptions\\LedgerRejected'];
+
+    foreach ($classes as $fqcn) {
+        expect(FrameworkExceptionTable::place(null, $fqcn)['status'])->toBe(FrameworkExceptionTable::classification($fqcn));
+    }
+
+    // …and the loop is worth something: the corpus really holds both answers, so an agreement over one
+    // of them is not what just passed.
+    $unplaced = array_map(static fn (string $f): bool => FrameworkExceptionTable::place(null, $f)['unplaced'], $classes);
+
+    expect($unplaced)->toContain(true)
+        ->and($unplaced)->toContain(false);
+});
