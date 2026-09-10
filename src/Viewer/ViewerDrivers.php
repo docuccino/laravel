@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Viewer;
 
+use Docuccino\Core\Diagnostics\Diagnostic;
+use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Document\UirDocument;
 use Docuccino\Core\Emit\EmitOptions;
 use Docuccino\Core\Emit\EmitReport;
@@ -120,8 +122,12 @@ final class ViewerDrivers
         );
 
         // A warning in the report means something a client would have relied on is gone; anything
-        // quieter is a note about what the older minor cannot express.
-        $report->warnings() === [] ? Log::info($message) : Log::warning($message);
+        // quieter is a note about what the older minor cannot express. Asked as "warning or louder"
+        // rather than through `warnings()`, which means warnings exactly — an emitter that reports the
+        // artifact itself is invalid is the loudest thing in here and would otherwise log at info.
+        $loud = array_filter($report->diagnostics, static fn (Diagnostic $d): bool => $d->severity->atLeast(Severity::Warning));
+
+        $loud === [] ? Log::info($message) : Log::warning($message);
     }
 
     /**

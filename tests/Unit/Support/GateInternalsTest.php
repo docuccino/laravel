@@ -40,7 +40,10 @@ it('walks every branch the installed framework resolves a policy through', funct
     $start = (int) $method->getStartLine();
     $source = implode('', array_slice(is_array($lines) ? $lines : [], $start - 1, (int) $method->getEndLine() - $start + 1));
 
-    $framework = preg_match_all('/return \$this->resolvePolicy\(/', $source);
+    // Counted off the parsed method rather than one spelling of the call: a branch that resolves
+    // through a nullsafe hop, over a fluent line break, or into a local before returning is the same
+    // branch, and a pattern blind to it leaves the mirror agreeing with a short count.
+    $framework = phpMethodCallCount("<?php\n\nclass GatePolicyProbe\n{\n".$source."\n}\n", 'resolvePolicy');
 
     // A scan that stopped recognising its shapes must fail rather than pass: the exact map, the
     // `#[UsePolicy]` attribute, the conventional name and a registration on a parent type are four

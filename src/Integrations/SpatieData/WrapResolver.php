@@ -4,13 +4,9 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\SpatieData;
 
+use Docuccino\Core\Diagnostics\Diagnostic;
+use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Laravel\Integrations\Support\ParsedClassFile;
-use PhpParser\Node\Expr;
-use PhpParser\Node\Expr\ClassConstFetch;
-use PhpParser\Node\Expr\MethodCall;
-use PhpParser\Node\Expr\Variable;
-use PhpParser\Node\Identifier;
-use PhpParser\Node\Name;
 use PhpParser\Node\Scalar\String_;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\Node\Stmt\Return_;
@@ -20,29 +16,49 @@ use ReflectionMethod;
 
 /**
  * Resolves the wrap key spatie nests a response payload under — `{ "data": <payload> }` by default.
- * Precedence mirrors spatie's `ContextableData`/`Wrap`: an explicit `withoutWrapping()` in the class beats
- * everything, then a class-level `defaultWrap()` override, then the global `config('data.wrap')` injected by
- * the service provider, else unwrapped.
+ * Precedence mirrors spatie's `ContextableData`/`Wrap`: a class that renders ITSELF unwrapped beats
+ * everything, then a class-level `defaultWrap()` override, then the global `config('data.wrap')`
+ * injected by the service provider, else unwrapped.
  *
- * Both class-level reads are static AST reads over method bodies, never invoked — the class's own file for
- * the unwrapping scan, and whichever file *declares* `defaultWrap()` for the key, which is the trait's file
- * when the override arrives through one. The base `Data` class doesn't define `defaultWrap()`, so
- * `method_exists` being true already means a real override. Answers are memoised per FQCN, since a document
- * asks for the same class once per operation that returns it. {@see DataSchema} applies the key at the
- * response root only — deliberately, since a nested Data property publishes a shared `$ref` that must
- * not carry one caller's envelope. Spatie itself does wrap a nested COLLECTION, which is a divergence
- * {@see NestedCollectionWrap} reports rather than one this class resolves.
+ * > Every question here is asked of the {@see WrapReason}s standing for the class and of nothing else.
+ * > The envelope comes off where a reason that unwraps the ROOT stands; wrapping still executes under
+ * > the root unless one that PROPAGATES does. A reason that settles neither — the read saw the
+ * > vocabulary and could not attribute it — leaves both open: the class keeps the envelope its
+ * > configuration gives it and the author is told ({@see diagnose()}), and the nested report goes
+ * > quiet rather than guess which switch it was.
+ *
+ * That fall is a choice, not the obvious one — omitting an envelope that is there and publishing one
+ * that is not cost a client the same runtime failure. It falls this way because with `data.wrap`
+ * configured the envelope is what the framework puts on EVERY root Data response: keeping it asserts
+ * only the configuration, which was read, while dropping it would assert an override that was not.
+ *
+ * Reads are static AST reads over method bodies, never invoked, and over the class's OWN declarations
+ * — a file may hold more than one class. Two things they do not reach: an unwrapping inherited from a
+ * parent or a trait, and a runtime `wrap('key')`. The key's read is the one that follows a file rather
+ * than a class, since `defaultWrap()` may arrive through a trait; the base `Data` declares none, so
+ * `method_exists` being true already means a real override. Answers are memoised per FQCN.
+ *
+ * {@see DataSchema} applies the key at the response root only — deliberately, since a nested Data
+ * property publishes a shared `$ref` that must not carry one caller's envelope. Spatie itself does wrap
+ * a nested COLLECTION, which is a divergence {@see NestedCollectionWrap} reports rather than one this
+ * class resolves.
  */
 final class WrapResolver
 {
-    /** Spatie's transformation-level wrapping switch, matched post-NameResolver so an alias can't hide it. */
-    private const WRAP_EXECUTION_TYPE = 'Spatie\\LaravelData\\Support\\Wrapping\\WrapExecutionType';
-
     /** @var array<string, string|null> FQCN → resolved wrap key */
     private array $keys = [];
 
-    /** @var array<string, array<string, ClassMethod>> file → its class-method nodes */
+    /** @var array<string, WrapUncertainty|null> FQCN → why the envelope is unsettled, if it is */
+    private array $unsettled = [];
+
+    /** @var array<string, array<string, WrapReason>> FQCN → the reasons its own source raises */
+    private array $standing = [];
+
+    /** @var array<string, array<string, ClassMethod>> file → every class-method node in it */
     private array $parsed = [];
+
+    /** @var array<string, array<string, ClassMethod>> file + FQCN → the method nodes that class declares */
+    private array $declared = [];
 
     public function __construct(private readonly ?string $globalWrap = null) {}
 
@@ -68,88 +84,168 @@ final class WrapResolver
             return $this->globalWrap;
         }
 
-        if (! array_key_exists($fqcn, $this->keys)) {
-            $this->keys[$fqcn] = $this->resolve($fqcn);
-        }
+        $this->decide($fqcn);
 
         return $this->keys[$fqcn];
     }
 
-    private function resolve(string $fqcn): ?string
+    /**
+     * The diagnostic a root whose envelope could not be settled earns, or null where it was settled.
+     *
+     * It is only ever raised where an envelope IS published under doubt: with no wrap configured and no
+     * override there is no envelope either way, so there would be nothing for a reader to act on.
+     */
+    public function diagnose(string $fqcn): ?Diagnostic
     {
-        if (! class_exists($fqcn)) {
-            return $this->globalWrap;
-        }
+        $this->decide($fqcn);
 
-        $file = (new ReflectionClass($fqcn))->getFileName();
+        $unsettled = $this->unsettled[$fqcn];
+        $key = $this->keys[$fqcn];
 
-        if ($file !== false && self::disablesWrapping($this->methods($file))) {
+        if ($unsettled === null || $key === null) {
             return null;
         }
 
-        return $this->defaultWrap($fqcn) ?? $this->globalWrap;
+        return new Diagnostic(
+            severity: Severity::Warning,
+            code: 'spatie-data.root-wrap-unsettled',
+            message: sprintf(
+                '%s is documented with a {"%s": … } response envelope because `data.wrap` resolves to it, but %s — so whether the envelope is really sent could not be established.',
+                $fqcn,
+                $key,
+                $unsettled->because(),
+            ),
+            help: $unsettled->help(),
+        );
     }
 
     /**
-     * Whether the class renders ITSELF through `withoutWrapping()`. A class that strips the envelope on its
-     * way to a response is unwrapped however `config('data.wrap')` is set — documenting the global key over
-     * the top would describe a body the class explicitly removes. The canonical case is an RFC 9457 problem
-     * document: it has to sit at the root, so a globally-wrapped app calls `withoutWrapping()` for it.
+     * Whether spatie's wrapping still EXECUTES for values nested inside this class's root.
      *
-     * The receiver decides it. Spatie puts `withoutWrapping()` on paginated collections and on
-     * `TransformationContextFactory` too, so a class unwrapping a NESTED collection
-     * (`$this->items->withoutWrapping()`) says nothing about its own root — only a call chained straight off
-     * `$this` does.
+     * This is the axis {@see WrapReason::propagates()} carries, not the one {@see key()} reads: a
+     * class that takes only its OWN envelope off still sends a wrapped nested collection, and
+     * {@see NestedCollectionWrap} has to hear about it.
      *
-     * @param  array<string, ClassMethod>  $methods
+     * An unreadable `defaultWrap()` never reaches this answer — that is doubt about the root's KEY,
+     * and a nested collection takes the global one whatever the class named.
      */
-    private static function disablesWrapping(array $methods): bool
+    public function wrapsNested(string $fqcn): bool
     {
-        foreach ($methods as $method) {
-            $body = $method->stmts ?? [];
+        $this->decide($fqcn);
 
-            foreach ((new NodeFinder)->findInstanceOf($body, MethodCall::class) as $call) {
-                if ($call->name instanceof Identifier
-                    && $call->name->toString() === 'withoutWrapping'
-                    && self::rootedInThis($call->var)) {
-                    return true;
-                }
-            }
+        return self::nestedStaysWrapped($this->standing[$fqcn]);
+    }
 
-            // The other spelling, for a class that builds its own response and disables wrapping on the
-            // transformation instead: `withWrapExecutionType(WrapExecutionType::Disabled)`.
-            foreach ((new NodeFinder)->findInstanceOf($body, ClassConstFetch::class) as $fetch) {
-                if ($fetch->class instanceof Name
-                    && $fetch->class->toString() === self::WRAP_EXECUTION_TYPE
-                    && $fetch->name instanceof Identifier
-                    && $fetch->name->toString() === 'Disabled') {
-                    return true;
-                }
+    /** Fills the memos for a class. */
+    private function decide(string $fqcn): void
+    {
+        if (array_key_exists($fqcn, $this->keys)) {
+            return;
+        }
+
+        $this->keys[$fqcn] = $this->globalWrap;
+        $this->unsettled[$fqcn] = null;
+        $this->standing[$fqcn] = [];
+
+        if (! class_exists($fqcn)) {
+            return;
+        }
+
+        $file = (new ReflectionClass($fqcn))->getFileName();
+        $standing = $this->standing[$fqcn] = WrapSightings::standing($file === false ? [] : $this->methodsOf($file, $fqcn));
+
+        if (self::dropsEnvelope($standing)) {
+            $this->keys[$fqcn] = null;
+
+            return;
+        }
+
+        $overridden = method_exists($fqcn, 'defaultWrap');
+        $declared = $overridden ? $this->defaultWrap($fqcn) : null;
+
+        $this->keys[$fqcn] = $declared ?? $this->globalWrap;
+        $this->unsettled[$fqcn] = match (true) {
+            $overridden && $declared === null => WrapUncertainty::DefaultWrapNotLiteral,
+            self::leavesItInDoubt($standing) => WrapUncertainty::DisablingNotAttributed,
+            default => null,
+        };
+    }
+
+    /**
+     * Whether the envelope comes off. Only a reason that unwraps the root authorises it, and strength
+     * does not enter — the reason that settles nothing does not unwrap the root in the first place.
+     *
+     * @param  array<string, WrapReason>  $standing
+     */
+    private static function dropsEnvelope(array $standing): bool
+    {
+        foreach ($standing as $reason) {
+            if ($reason->unwrapsRoot()) {
+                return true;
             }
         }
 
         return false;
     }
 
-    /** Whether a receiver chain is `$this` plus method hops only — a property or static hop is somebody else. */
-    private static function rootedInThis(Expr $receiver): bool
+    /**
+     * Whether the envelope this class keeps is nonetheless in doubt. A reason stands that settles
+     * nothing, so the read saw the vocabulary and could not say whose it was — and nothing settled the
+     * root either way, since a reading that names its receiver decides it whatever else stands.
+     *
+     * @param  array<string, WrapReason>  $standing
+     */
+    private static function leavesItInDoubt(array $standing): bool
     {
-        while ($receiver instanceof MethodCall) {
-            $receiver = $receiver->var;
+        if (self::dropsEnvelope($standing)) {
+            return false;
         }
 
-        return $receiver instanceof Variable && $receiver->name === 'this';
+        foreach ($standing as $reason) {
+            if (! $reason->isConclusive()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
-    /** The literal an overridden `defaultWrap()` returns, or null when there's none or it's dynamic. */
+    /**
+     * Whether values nested under the root are still wrapped. A reason that propagates takes them
+     * bare with the root; one that settles nothing takes the answer away entirely, because half the
+     * switches it could have been do reach down here — so the report goes quiet rather than name a
+     * divergence that may not exist.
+     *
+     * @param  array<string, WrapReason>  $standing
+     */
+    private static function nestedStaysWrapped(array $standing): bool
+    {
+        foreach ($standing as $reason) {
+            if ($reason->propagates() || ! $reason->isConclusive()) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** The literal an overridden `defaultWrap()` returns, or null when it's dynamic. */
     private function defaultWrap(string $fqcn): ?string
     {
-        if (! method_exists($fqcn, 'defaultWrap')) {
+        $method = new ReflectionMethod($fqcn, 'defaultWrap');
+        $file = $method->getFileName();
+
+        if ($file === false) {
             return null;
         }
 
-        $file = (new ReflectionMethod($fqcn, 'defaultWrap'))->getFileName();
-        $node = $file === false ? null : ($this->methods($file)['defaultWrap'] ?? null);
+        // The declaring OWNER, so a sibling class in the same file cannot answer for this one. A trait
+        // reports the using class as its declarer while naming the trait's file, which matches nothing
+        // there — so that read falls back to the file, where the method name is the only key there is.
+        $owner = $method->getDeclaringClass()->getName();
+        $node = $this->methodsOf($file, $owner)['defaultWrap']
+            ?? $this->methods($file)['defaultWrap']
+            ?? null;
 
         return $node === null ? null : self::literalReturn($node);
     }
@@ -160,6 +256,14 @@ final class WrapResolver
     private function methods(string $file): array
     {
         return $this->parsed[$file] ??= ParsedClassFile::methods($file);
+    }
+
+    /**
+     * @return array<string, ClassMethod>
+     */
+    private function methodsOf(string $file, string $fqcn): array
+    {
+        return $this->declared[$file.'::'.$fqcn] ??= ParsedClassFile::methodsOf($file, $fqcn);
     }
 
     /** The first `return '<literal>';` in a body, or null when every return is dynamic. */

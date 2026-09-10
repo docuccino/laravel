@@ -364,8 +364,9 @@ final class ExplainCommand extends Command
         $this->newLine();
         $this->line('<fg=gray>Every build records the whole trail — `--provenance` only decides how much of it</>');
         $this->line('<fg=gray>survives into an exported artifact, and this command builds its own document. So</>');
-        $this->line('<fg=gray>nothing wrote a field here through the precedence guard: an action that could not</>');
-        $this->line('<fg=gray>be reflected is documented as a skeleton, and a skeleton has nothing to explain.</>');
+        $this->line('<fg=gray>nothing wrote a field here through the precedence guard. Every operation the build</>');
+        $this->line('<fg=gray>itself produces writes at least its operationId, so this one came from an overlay:</>');
+        $this->line('<fg=gray>it is published as written, and there are no layers behind it to explain.</>');
     }
 
     /**

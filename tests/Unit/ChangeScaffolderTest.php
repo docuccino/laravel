@@ -447,11 +447,11 @@ it('classifies every parameter code the differ mints, or says which of them owe 
         'parameter.description-changed' => 'prose about a parameter neither side moved, so there is no departure to pair an arrival with',
     ];
 
+    // Read off the token stream, not matched inside a pair of single quotes: the same code written with
+    // double quotes, or carrying a digit, was invisible to the pattern that used to stand here — and a
+    // code the reader cannot see is a code the union below never asks about.
     $source = (string) file_get_contents(dirname(__DIR__, 3).'/core/src/Diff/DocumentDiffer.php');
-    preg_match_all("/'(parameter\\.[a-z-]+)'/", $source, $matches);
-
-    $minted = array_values(array_unique($matches[1]));
-    sort($minted, SORT_STRING);
+    $minted = phpStringLiterals($source, 'parameter.');
 
     $constant = (new ReflectionClass(ChangeScaffolder::class))->getReflectionConstant('PARAMETER_MOVES');
 

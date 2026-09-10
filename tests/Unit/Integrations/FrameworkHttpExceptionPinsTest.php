@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Composer\InstalledVersions;
 use Docuccino\Laravel\Integrations\Support\FrameworkExceptionTable;
 use Docuccino\Laravel\Integrations\Support\ParsedClassFile;
+use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Name;
 use PhpParser\Node\Scalar\Int_;
@@ -39,14 +40,22 @@ const PINNING_PACKAGES = [
 ];
 
 /**
- * Every installed class that extends `HttpException` DIRECTLY and pins a literal status in its own
- * constructor, mapped to the status it pins — read off the vendor source, never off the table.
+ * Every installed class that extends `HttpException` DIRECTLY, sorted into what its own constructor does
+ * with the status: `pinned` maps it to the literal number, `unpinned` names the ones that pin nothing at
+ * all, and `unreadable` the ones that hand `parent::__construct` a status this cannot fold.
  *
- * @return array<string, string>
+ * The three-way split IS the guard. A single "the pins" answer conflates "pins nothing, so the table owes
+ * it nothing" with "pins something I could not read", and the second silently leaves a class outside the
+ * comparison — indistinguishable from a pass, and invisible to an aggregate floor, because a class added
+ * upstream with a constant status keeps the count where it already was.
+ *
+ * @return array{pinned: array<string, string>, unpinned: list<string>, unreadable: list<string>}
  */
-function frameworkHttpExceptionPins(): array
+function frameworkHttpExceptionCandidates(): array
 {
-    $pins = [];
+    $pinned = [];
+    $unpinned = [];
+    $unreadable = [];
 
     foreach (PINNING_PACKAGES as [$package, $sourceDir, $prefix]) {
         $root = rtrim((string) InstalledVersions::getInstallPath($package), '/');
@@ -78,24 +87,41 @@ function frameworkHttpExceptionPins(): array
                 continue;
             }
 
-            $status = frameworkPinnedStatus($path);
-            if ($status !== null) {
-                $pins[$fqcn] = $status;
-            }
+            $argument = frameworkParentStatusArgument($path);
+
+            match (true) {
+                $argument === null => $unpinned[] = $fqcn,
+                $argument instanceof Int_ => $pinned[$fqcn] = (string) $argument->value,
+                default => $unreadable[] = $fqcn,
+            };
         }
     }
 
-    ksort($pins);
+    ksort($pinned);
+    sort($unpinned);
+    sort($unreadable);
 
-    return $pins;
+    return ['pinned' => $pinned, 'unpinned' => $unpinned, 'unreadable' => $unreadable];
 }
 
 /**
- * The literal status a class's own constructor hands `parent::__construct`, or null where it declares
- * no constructor (nothing is pinned, so there is nothing to hold the table to) or hands something this
- * cannot fold.
+ * Every installed direct `HttpException` child that pins a literal status, mapped to the status it pins —
+ * read off the vendor source, never off the table.
+ *
+ * @return array<string, string>
  */
-function frameworkPinnedStatus(string $file): ?string
+function frameworkHttpExceptionPins(): array
+{
+    return frameworkHttpExceptionCandidates()['pinned'];
+}
+
+/**
+ * The expression a class's own constructor hands `parent::__construct` as the STATUS, or null where it
+ * declares no constructor or makes no parent call. Selected by NAME when the call uses named arguments
+ * and by position otherwise: reading `args[0]` regardless would answer with a message for
+ * `parent::__construct(message: $m, statusCode: 404)`, which is worse than not answering.
+ */
+function frameworkParentStatusArgument(string $file): ?Expr
 {
     $constructor = ParsedClassFile::methods($file)['__construct'] ?? null;
     if ($constructor === null) {
@@ -107,10 +133,25 @@ function frameworkPinnedStatus(string $file): ?string
             continue;
         }
 
-        $first = $call->args[0] ?? null;
-        if ($first?->value instanceof Int_) {
-            return (string) $first->value->value;
+        $named = null;
+        $first = null;
+        $position = 0;
+        foreach ($call->getArgs() as $argument) {
+            if ($argument->name !== null) {
+                if ($argument->name->toString() === 'statusCode') {
+                    $named = $argument->value;
+                }
+
+                continue;
+            }
+
+            if ($position === 0) {
+                $first = $argument->value;
+            }
+            $position++;
         }
+
+        return $named ?? $first;
     }
 
     return null;
@@ -144,11 +185,18 @@ it('classifies every installed HttpException subclass at the status it pins', fu
 
     // A scan that matched nothing must fail rather than pass forever. Both packages really do ship
     // these — sixteen and three at the versions this was written against — so a walk that stopped
-    // seeing them, or a package that moved to constants this cannot fold, is the defect. Stated as a
-    // floor rather than an equality so that a class ADDED upstream fails on the line below, which
-    // names it, rather than here on a count that does not.
+    // seeing them is the defect. Stated as a floor rather than an equality so that a class ADDED
+    // upstream fails on the line below, which names it, rather than here on a count that does not.
     expect(count($symfony))->toBeGreaterThanOrEqual(16)
         ->and(count($laravel))->toBeGreaterThanOrEqual(3);
+
+    // And the floor is not what covers a class the reader could not read: one added upstream with a
+    // constant status keeps the count exactly where it already was. So the residue is asserted instead —
+    // every direct child either pins a number this folds or pins nothing at all, and nineteen of
+    // nineteen pin a number today.
+    $candidates = frameworkHttpExceptionCandidates();
+    expect($candidates['unreadable'])->toBe([])
+        ->and($candidates['unpinned'])->toBe([]);
 
     expect(frameworkPinDisagreements($pins, FrameworkExceptionTable::classification(...)))->toBe([]);
 });
@@ -175,4 +223,46 @@ it('names every status it pins, so no error goes out described as a bare Error',
         expect(FrameworkExceptionTable::reason($status))->not->toBe('Error')
             ->and(FrameworkExceptionTable::componentName($status))->not->toBeNull();
     }
+});
+
+it('reads the status argument where a constructor puts it, and refuses one it cannot fold', function (string $body, ?string $status): void {
+    // The reader's own two directions, executed rather than promised. `args[0]` regardless of naming
+    // answers a MESSAGE for the named-out-of-position spelling — a wrong answer, which is worse than the
+    // silent drop it replaced — and a status behind a constant must come back as unreadable so the guard
+    // above fails instead of quietly leaving the class out of the comparison.
+    $file = tempnam(sys_get_temp_dir(), 'pins').'.php';
+    file_put_contents($file, "<?php\n\nnamespace Probe;\n\nfinal class Pinner extends \\Exception\n{\n    public const STATUS = 404;\n\n    public function __construct()\n    {\n        ".$body."\n    }\n}\n");
+
+    $argument = frameworkParentStatusArgument($file);
+    unlink($file);
+
+    expect($argument instanceof Int_ ? (string) $argument->value : null)->toBe($status);
+})->with([
+    'a positional literal' => ['parent::__construct(418, $message);', '418'],
+    'a named literal in the first position' => ['parent::__construct(statusCode: 418);', '418'],
+    'a named literal out of position' => ["parent::__construct(message: 'nope', statusCode: 418);", '418'],
+    'a class constant' => ['parent::__construct(self::STATUS);', null],
+    'a negative literal' => ['parent::__construct(-1);', null],
+    'a variable' => ['parent::__construct($status);', null],
+    'no parent call at all' => ['$this->code = 418;', null],
+]);
+
+it('sorts a class with no constructor apart from one whose status it cannot fold', function (): void {
+    // The two reasons the reader answers "nothing here", which the single-answer version could not tell
+    // apart: one owes the table nothing, the other is a class the comparison never sees.
+    $write = static function (string $class): string {
+        $file = tempnam(sys_get_temp_dir(), 'pins').'.php';
+        file_put_contents($file, "<?php\n\nnamespace Probe;\n\n".$class);
+
+        return $file;
+    };
+
+    $none = $write("final class Bare extends \\Exception\n{\n}\n");
+    $folds = $write("final class Folds extends \\Exception\n{\n    public function __construct()\n    {\n        parent::__construct(409);\n    }\n}\n");
+
+    expect(frameworkParentStatusArgument($none))->toBeNull()
+        ->and(frameworkParentStatusArgument($folds))->toBeInstanceOf(Int_::class);
+
+    unlink($none);
+    unlink($folds);
 });

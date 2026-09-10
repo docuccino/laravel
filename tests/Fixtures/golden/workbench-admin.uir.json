@@ -31,9 +31,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.admin.panel",
         "summary": "Admin panel snapshot.",
         "tags": [
           "Admin"
@@ -149,7 +157,7 @@
     "document": {
       "id": "doc:admin",
       "configHash": "f7ea3a4314fc0a4ece2303d4e9a87bb93318ea2d6fd4c67951fa4bab3284a741",
-      "contentHash": "3f3ffe04002150d3f054cf1c662cb2f2101b366a70aff7f47eefe1f12349be37"
+      "contentHash": "d933007772756502c45ca9d257ceaf17fd273e259b9229f110be194bb4b80e05"
     },
     "generator": {
       "name": "docuccino/laravel",

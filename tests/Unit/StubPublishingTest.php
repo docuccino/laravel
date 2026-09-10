@@ -17,21 +17,6 @@ use Workbench\App\Data\FormData;
  * that as "there is no stub to edit".
  */
 
-/**
- * Every `{{ … }}` a stub carries, in either spelling.
- *
- * @return list<string>
- */
-function stubPlaceholders(string $path): array
-{
-    preg_match_all('/\{\{\s*([a-z]+)\s*\}\}/', (string) file_get_contents($path), $matches);
-
-    $names = array_values(array_unique($matches[1]));
-    sort($names, SORT_STRING);
-
-    return $names;
-}
-
 it('publishes the packaged stub under the docuccino-stubs tag', function (): void {
     $paths = ServiceProvider::pathsToPublish(DocuccinoServiceProvider::class, 'docuccino-stubs');
 

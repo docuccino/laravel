@@ -53,6 +53,10 @@ final class SanctumAbilitiesExtension implements OperationExtension
     /**
      * Middleware requirements first, then `#[Abilities]` ones — the attribute is an all-of requirement.
      *
+     * Keyed by what a requirement SAYS rather than by where it was met, so an ability stated by both the
+     * middleware and the attribute, or by two spellings of one middleware, is one requirement; two that
+     * differ anywhere are two the server enforces separately and both are published.
+     *
      * @return list<AbilityRequirement>
      */
     private function requirements(RouteContext $context): array
@@ -61,26 +65,30 @@ final class SanctumAbilitiesExtension implements OperationExtension
         foreach ($context->route->middleware as $middleware) {
             $requirement = $this->parser->parse($middleware);
             if ($requirement !== null) {
-                $requirements[] = $requirement;
+                $requirements[json_encode($requirement->toArray(), JSON_THROW_ON_ERROR)] = $requirement;
             }
         }
 
         foreach ($context->attributes->all(Abilities::class) as $attribute) {
             if ($attribute->abilities !== []) {
-                $requirements[] = new AbilityRequirement(AbilityRequirement::ALL, $attribute->abilities);
+                $requirement = new AbilityRequirement(AbilityRequirement::ALL, $attribute->abilities);
+                $requirements[json_encode($requirement->toArray(), JSON_THROW_ON_ERROR)] = $requirement;
             }
         }
 
-        return $requirements;
+        return array_values($requirements);
     }
 
     /**
+     * One line per distinct sentence: a single-ability requirement reads the same whichever way `match`
+     * reads it, so an `any` and an `all` over one ability say one thing and say it once.
+     *
      * @param  list<AbilityRequirement>  $requirements
      */
     private function appendDescription(OperationDraft $operation, array $requirements, Contribution $contribution): void
     {
-        $lines = implode("\n\n", array_map(static fn (AbilityRequirement $r): string => $r->describe(), $requirements));
+        $sentences = array_unique(array_map(static fn (AbilityRequirement $r): string => $r->describe(), $requirements));
 
-        DescriptionAppender::append($operation, $lines, $contribution);
+        DescriptionAppender::append($operation, implode("\n\n", $sentences), $contribution);
     }
 }

@@ -34,6 +34,13 @@
               ]
             },
             {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
               "producer": "integration:sanctum",
               "layer": "integration",
               "fields": [
@@ -47,6 +54,7 @@
             }
           ]
         },
+        "operationId": "get.api.secure.dual",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -128,6 +136,13 @@
               ]
             },
             {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
               "producer": "integration:sanctum",
               "layer": "integration",
               "fields": [
@@ -141,6 +156,7 @@
             }
           ]
         },
+        "operationId": "get.api.secure.dual-by-class",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -222,6 +238,13 @@
               ]
             },
             {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
               "producer": "integration:passport",
               "layer": "integration",
               "fields": [
@@ -235,6 +258,7 @@
             }
           ]
         },
+        "operationId": "get.api.secure.scoped",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -358,7 +382,7 @@
     "document": {
       "id": "doc:internal",
       "configHash": "58a8092e2ddce2265e379ab7e3d6e81ff274d5ce60755bd9e428ab667a642338",
-      "contentHash": "cb2a627860e0754835a48e694ef09ad6c9c890e6d2816cb2d41d8ece1552231f"
+      "contentHash": "235b4101e7cb531457549c4727c5fda1744e60731bc9e231547010e77fb68810"
     },
     "generator": {
       "name": "docuccino/laravel",

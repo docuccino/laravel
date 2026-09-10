@@ -29,6 +29,7 @@ use Docuccino\Laravel\Integrations\InferredHandler\HandlerResponseBuilder;
 use Docuccino\Laravel\Integrations\InferredHandler\InferredHandlerExceptionToResponse;
 use Docuccino\Laravel\Integrations\RateLimit\RateLimitResponsesExtension;
 use Docuccino\Laravel\Integrations\Support\AppRenderedErrors;
+use Docuccino\Laravel\Integrations\Support\FrameworkExceptionTable;
 use Docuccino\Laravel\Tests\Fixtures\InferredHandler\ProbeRejection;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -133,8 +134,11 @@ it('divides every producer of a framework-shaped error body between writing the 
     $neither = [];
 
     foreach (adapterFrameworkErrorProducers() as $fqcn => $source) {
-        $reads = str_contains($source, 'AppRenderedErrors::includes');
-        $writes = str_contains($source, 'AppRenderedErrors::record');
+        // Resolved static calls rather than call-site substrings: an aliased import would have put a
+        // producer in the wrong bucket for the way it spells a class name.
+        $calls = phpStaticCalls($source);
+        $reads = in_array(AppRenderedErrors::class.'::includes', $calls, true);
+        $writes = in_array(AppRenderedErrors::class.'::record', $calls, true);
 
         match (true) {
             $reads => $readers[] = $fqcn,
@@ -168,125 +172,72 @@ it('divides every producer of a framework-shaped error body between writing the 
         ->and($neither)->toBe([HandlerResponseBuilder::class]);
 });
 
-it('recognises every class the adapter declares, so none can hide behind a modifier', function (): void {
-    // The union of the two derivations above is only as wide as the set of files the scan can name a class
-    // in, and nothing was asking how wide THAT was: the pattern accepted `final class` and no other
-    // modifier, so `final readonly class` and `abstract class` — 56 files — were outside the guard for the
-    // shape of their declaration. A producer landing in one of them would have been silently uncovered.
-    //
-    // The oracle is PHP's own tokenizer rather than a second regex, so it states the rule independently:
-    // a guard that asks the pattern for its own answer agrees with whatever the pattern does. Anonymous
-    // classes and `Foo::class` are not declarations and are excluded on the token stream, not by pattern.
-    $root = dirname(__DIR__, 3).'/src';
-    $missed = [];
-    $declared = 0;
+it('places a producer that names the note and the table through an alias', function (): void {
+    // Both derivations used to key on a literal spelling — `implements … ExceptionToResponse` in the class
+    // line, `FrameworkExceptionTable::` at the call — so a producer importing either under an alias fell
+    // out of the population entirely, or into the wrong bucket. Written out rather than promised.
+    $source = <<<'PHP'
+    <?php
 
-    /** @var iterable<SplFileInfo> $entries */
-    $entries = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
-    foreach ($entries as $entry) {
-        if (! $entry->isFile() || $entry->getExtension() !== 'php') {
-            continue;
-        }
+    namespace Probe;
 
-        $source = (string) file_get_contents($entry->getPathname());
-        if (! adapterDeclaresNamedClass($source)) {
-            continue;
-        }
+    use Docuccino\Laravel\Integrations\Support\AppRenderedErrors as Note;
+    use Docuccino\Laravel\Integrations\Support\FrameworkExceptionTable as Table;
 
-        $declared++;
-        if (preg_match(adapterClassPattern().'/m', $source) !== 1) {
-            $missed[] = substr($entry->getPathname(), strlen($root) + 1);
+    final readonly class AliasedProducer
+    {
+        public function reason(object $context, string $fqcn): ?string
+        {
+            return Note::includes($context, $fqcn) ? null : Table::reason('404');
         }
     }
+    PHP;
 
-    sort($missed);
-
-    // Well under what the tree holds, and far above zero: a tokenizer walk that stopped recognising a
-    // class declaration would otherwise report perfect agreement over an empty set.
-    expect($declared)->toBeGreaterThan(100)
-        ->and($missed)->toBe([]);
+    expect(phpDeclaredClasses($source))->toBe(['Probe\AliasedProducer'])
+        ->and(phpReferencedClasses($source))->toContain(FrameworkExceptionTable::class)
+        ->and(phpStaticCalls($source))->toContain(AppRenderedErrors::class.'::includes')
+        // …and the write side is genuinely absent, so the rows above are about what the reader found and
+        // not about one that answers yes to everything.
+        ->and(phpStaticCalls($source))->not->toContain(AppRenderedErrors::class.'::record');
 });
 
-/**
- * Whether $source declares a named class, read off PHP's token stream: a `T_CLASS` that is neither the
- * `::class` constant nor an anonymous `new class`. The independent statement of what the scan's pattern
- * has to recognise.
- */
-function adapterDeclaresNamedClass(string $source): bool
-{
-    $tokens = array_values(array_filter(
-        token_get_all($source),
-        static fn (array|string $token): bool => is_string($token) || ! in_array($token[0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true),
-    ));
+it('reads every class the adapter declares, so none can hide behind the shape of its declaration', function (): void {
+    // The union of the two derivations below is only as wide as the set of classes the scan can name, and
+    // nothing was asking how wide THAT was: the pattern it used accepted `final class` and no other
+    // modifier, so `final readonly class` and `abstract class` were outside the guard for the shape of
+    // their declaration. A producer landing in one of them would have been silently uncovered.
+    //
+    // The names now come off a parsed AST ({@see phpDeclaredClasses()}, whose spellings are executed in
+    // `SourceGrammarTest`), so what is owed here is the denominator: well under what the tree holds and
+    // far above zero, because a reader that stopped naming classes would otherwise report perfect
+    // agreement over an empty set. Every one must also LOAD, since the membership test below is
+    // reflection — a class the scan names but cannot resolve is a hole, not a pass.
+    $declared = adapterDeclaredClasses();
+    $unloadable = array_values(array_filter(array_keys($declared), static fn (string $fqcn): bool => ! class_exists($fqcn)));
 
-    foreach ($tokens as $index => $token) {
-        if (is_string($token) || $token[0] !== T_CLASS) {
-            continue;
-        }
-
-        $previous = $tokens[$index - 1] ?? null;
-        $next = $tokens[$index + 1] ?? null;
-
-        // `Foo::class` puts a `::` in front of it; `new class(...) {}` has no name after it.
-        if (is_array($previous) && $previous[0] === T_DOUBLE_COLON) {
-            continue;
-        }
-        if (is_array($next) && $next[0] === T_STRING) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-/**
- * The declaration of a class, with every modifier PHP lets sit in front of one. `final readonly class`
- * and `abstract class` are both ordinary here — 56 of the adapter's classes carry one — and a pattern
- * matching only `final` reads straight past them, which would have left the scan below blind to a
- * producer for the shape of its declaration rather than for anything it does.
- */
-function adapterClassPattern(string $tail = ''): string
-{
-    return '/^\s*(?:(?:final|abstract|readonly)\s+)*class\s+(\w+)'.$tail;
-}
+    expect(count($declared))->toBeGreaterThan(100)
+        ->and($unloadable)->toBe([]);
+});
 
 /**
  * Every class in the adapter that can come to publish a framework-shaped error body, as FQCN => its
  * source: the ones implementing the error chain's contract, and the ones reaching for the shared framework
- * exception table. A source scan rather than a reflection sweep, because the classification above is about
- * which call each one makes — and a UNION of two derivations, because either alone leaves the other's
- * members silently uncovered.
+ * exception table. A UNION of two derivations, because either alone leaves the other's members silently
+ * uncovered — and each is read through a grammar rather than matched as text, so an aliased import, a
+ * fully-qualified name inline or an implements list broken over several lines all answer the same.
  *
  * @return array<class-string, string>
  */
 function adapterFrameworkErrorProducers(): array
 {
-    $root = dirname(__DIR__, 3).'/src';
     $found = [];
 
-    /** @var iterable<SplFileInfo> $entries */
-    $entries = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
-    foreach ($entries as $entry) {
-        if (! $entry->isFile() || $entry->getExtension() !== 'php') {
-            continue;
-        }
+    foreach (adapterDeclaredClasses() as $fqcn => $source) {
+        $implements = class_exists($fqcn) && (new ReflectionClass($fqcn))->implementsInterface(ExceptionToResponse::class);
 
-        $source = (string) file_get_contents($entry->getPathname());
-        if (! preg_match(adapterClassPattern().'/m', $source, $class)) {
-            continue;
+        if ($implements || in_array(FrameworkExceptionTable::class, phpReferencedClasses($source), true)) {
+            $found[$fqcn] = $source;
         }
-
-        $implements = (bool) preg_match(adapterClassPattern('[^{]*\bimplements\b[^{]*\bExceptionToResponse\b').'/m', $source);
-        if (! $implements && ! str_contains($source, 'FrameworkExceptionTable::')) {
-            continue;
-        }
-        if (! preg_match('/^namespace\s+([^;]+);/m', $source, $namespace)) {
-            continue;
-        }
-
-        /** @var class-string $fqcn */
-        $fqcn = trim($namespace[1]).'\\'.$class[1];
-        $found[$fqcn] = $source;
     }
 
     ksort($found);

@@ -31,9 +31,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.archived-forms.@form",
         "summary": "Show a form.",
         "tags": [
           "Forms"
@@ -173,9 +181,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.article-resources",
         "summary": "An anonymous resource collection → array of the item schema.",
         "tags": [
           "Integrations"
@@ -254,9 +270,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.article-resources.@id",
         "summary": "A single API resource whose whenLoaded fields become optional.",
         "tags": [
           "Integrations"
@@ -367,6 +391,13 @@
               ]
             },
             {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
               "producer": "integration:spatie-data",
               "layer": "integration",
               "fields": [
@@ -380,6 +411,7 @@
             }
           ]
         },
+        "operationId": "post.api.articles",
         "summary": "Spatie Data request (body from the Data class) + response, under a folded 201.",
         "tags": [
           "Integrations"
@@ -536,9 +568,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.attachments.@id",
         "summary": "A polymorphic morph (Widget|Gadget) → discriminated oneOf keyed by the morph map.",
         "tags": [
           "Integrations"
@@ -653,9 +693,17 @@
                 "description",
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.authenticated-forms",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -751,9 +799,17 @@
                 "description",
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.authorized-forms",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -858,11 +914,13 @@
               "producer": "fallback",
               "layer": "fallback",
               "fields": [
-                "description"
+                "description",
+                "operationId"
               ]
             }
           ]
         },
+        "operationId": "get.api.broken",
         "description": "Documentation could not be generated for this route."
       }
     },
@@ -889,9 +947,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "post.api.checkout",
         "summary": "Throws a renderable exception whose render() defines a 402 — documented by the inferred tier.",
         "tags": [
           "Integrations"
@@ -1036,9 +1102,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "post.api.created-articles",
         "summary": "A resource wrapping a fresh Model::create() → a 201 Created response (Wave C item 4).",
         "tags": [
           "Integrations"
@@ -1124,9 +1198,17 @@
                 "description",
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.forms",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -1197,9 +1279,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.forms.@form",
         "summary": "Show a form.",
         "tags": [
           "Forms"
@@ -1333,9 +1423,17 @@
                 "description",
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.guarded-forms",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -1454,9 +1552,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.json-paginated-articles",
         "summary": "A jsonPaginate() resource collection → page[...] params + the paginator envelope (Wave C item 2).",
         "tags": [
           "Integrations"
@@ -1653,9 +1759,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.jsonapi-articles.@id",
         "summary": "A first-party JSON:API resource → JSON:API document + include/fields query params.",
         "tags": [
           "Integrations"
@@ -1858,9 +1972,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.ledger-query",
         "summary": "List ledgers, with related resources and a sparse fieldset selectable via the query string.",
         "tags": [
           "LedgerQuery"
@@ -2183,9 +2305,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.model-widgets.@id",
         "summary": "An Eloquent model → object schema from columns + casts + visible/hidden.",
         "tags": [
           "Integrations"
@@ -2282,9 +2412,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "delete.api.model-widgets.@id",
         "summary": "A 204 No Content response (noContent()).",
         "tags": [
           "Integrations"
@@ -2364,9 +2502,17 @@
                 "description",
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.moderated-forms",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -2437,9 +2583,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.paginated-articles",
         "summary": "A paginated resource collection → the length-aware {data, links, meta} envelope (Wave C item 1).",
         "tags": [
           "Integrations"
@@ -2567,8 +2721,18 @@
     "/api/ping": {
       "get": {
         "x-docuccino": {
-          "id": "op:v1:yiirf4eyuut77qg5"
-        }
+          "id": "op:v1:yiirf4eyuut77qg5",
+          "provenance": [
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.ping"
       }
     },
     "/api/rate-limited": {
@@ -2595,9 +2759,17 @@
                 "description",
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.rate-limited",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -2756,9 +2928,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "post.api.reports",
         "summary": "Distinct return paths carrying distinct statuses (200 + 202).",
         "tags": [
           "Integrations"
@@ -2879,9 +3059,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.showcases.@id",
         "summary": "A model whose allow-list is narrowed further by a deny-list naming one of the same keys.",
         "tags": [
           "Integrations"
@@ -2981,9 +3169,17 @@
                 "description",
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.signed-forms",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -3078,9 +3274,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.strongboxes.@id",
         "summary": "A model whose deny-list also reaches its appends and its eager-loaded relations.",
         "tags": [
           "Integrations"
@@ -3174,6 +3378,13 @@
               }
             },
             {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
               "producer": "integration:form-request",
               "layer": "integration",
               "fields": [
@@ -3187,6 +3398,7 @@
             }
           ]
         },
+        "operationId": "post.api.tickets",
         "tags": [
           "Widgets"
         ],
@@ -3302,9 +3514,17 @@
                 "description",
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.unguarded-forms",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -3376,9 +3596,17 @@
                 "description",
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.verified-forms",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -3497,9 +3725,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.widget-query",
         "summary": "List forms, filterable and sortable via the query string.",
         "tags": [
           "WidgetQuery"
@@ -3772,9 +4008,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "post.api.widgets",
         "summary": "Create a widget.",
         "tags": [
           "Widgets"
@@ -4610,7 +4854,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "48ddc5d56508900ed302561994befac297bb8402be944adaef6f2752f3f24c42",
-      "contentHash": "578d8b8398732068ec0e31b723ac0070085988c7d9cda9d03ba0760569e21f41"
+      "contentHash": "8690f3bbaa2cde750b1add5763c13a1bdc4f93e9d6d15dfc287f5165afbfedd5"
     },
     "generator": {
       "name": "docuccino/laravel",

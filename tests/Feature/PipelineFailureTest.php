@@ -18,6 +18,7 @@ use Docuccino\Laravel\Tests\Support\LocalityEngine;
 use Docuccino\Laravel\Tests\Support\ThrowingTypeEngine;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Illuminate\Routing\Router;
+use Workbench\App\Http\Controllers\FormController;
 
 /**
  * Pipeline failure semantics (design §5): --fail-on exit-code matrix, the validate command's
@@ -124,6 +125,10 @@ it('isolates an engine exception to a skeleton while siblings document normally'
     // The exploding route is present as a skeleton...
     expect($document['paths']['/api/forms']['get']['description'] ?? null)
         ->toBe('Documentation could not be generated for this route.')
+        // ...carrying an operationId, because a client generator names a method after a skeleton the
+        // same way it does after any other operation — and the strategies that read the ACTION cannot
+        // answer for a route whose action is exactly what could not be read...
+        ->and($document['paths']['/api/forms']['get']['operationId'] ?? null)->toBe('get.api.forms')
         // ...its sibling documents its real response...
         ->and($document['paths']['/api/forms/{form}']['get']['responses'])->toHaveKey('200')
         // ...and an error diagnostic names the failed route.
@@ -131,6 +136,21 @@ it('isolates an engine exception to a skeleton while siblings document normally'
             $result->diagnostics,
             static fn ($d): bool => $d->code === 'route.build-failed' && $d->routeSignature === 'GET /api/forms',
         ))->not->toBeEmpty();
+});
+
+/** And the route's own name still outranks the mint on a skeleton, exactly as it does elsewhere. */
+it('names a skeleton after the route where the route was named', function (): void {
+    app('router')->get('api/named-broken', [FormController::class, 'index'])->name('forms.named-broken');
+
+    $engine = new ThrowingTypeEngine(WorkbenchEngine::make(), 'Workbench\\App\\Http\\Controllers\\FormController::index');
+    app()->instance(TypeEngine::class, $engine);
+
+    $config = app(DocumentConfigFactory::class)->make('default', documentSettings(), 'skeleton');
+    $document = app(DocumentGenerator::class)->generate($config, $engine)->document->toArray();
+
+    expect($document['paths']['/api/named-broken']['get']['description'] ?? null)
+        ->toBe('Documentation could not be generated for this route.')
+        ->and($document['paths']['/api/named-broken']['get']['operationId'] ?? null)->toBe('forms.named-broken');
 });
 
 it('rolls back components registered by a route that then throws (A3)', function (): void {

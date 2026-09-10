@@ -50,6 +50,11 @@ final class PermissionExtension implements OperationExtension
     }
 
     /**
+     * The distinct requirements the route enforces, keyed by what a requirement SAYS rather than by where
+     * it was met. One middleware written two ways — spatie's alias on the group and the class name its
+     * `::using()` helper renders on the route — reaches here twice and is one requirement; two that differ
+     * anywhere, a guard or a value, are two the server enforces separately and both are published.
+     *
      * @return list<PermissionRequirement>
      */
     private function requirements(RouteContext $context): array
@@ -57,21 +62,26 @@ final class PermissionExtension implements OperationExtension
         $requirements = [];
         foreach ($context->route->middleware as $middleware) {
             $requirement = $this->parser->parse($middleware);
-            if ($requirement !== null) {
-                $requirements[] = $requirement;
+            if ($requirement === null) {
+                continue;
             }
+
+            $requirements[json_encode($requirement->toArray(), JSON_THROW_ON_ERROR)] = $requirement;
         }
 
-        return $requirements;
+        return array_values($requirements);
     }
 
     /**
+     * One line per distinct sentence: two requirements that differ only in their guard describe the same
+     * obligation, and the guard is not in the prose, so saying it twice says nothing twice.
+     *
      * @param  list<PermissionRequirement>  $requirements
      */
     private function appendDescription(OperationDraft $operation, array $requirements, Contribution $contribution): void
     {
-        $lines = implode("\n\n", array_map(static fn (PermissionRequirement $r): string => $r->describe(), $requirements));
+        $sentences = array_unique(array_map(static fn (PermissionRequirement $r): string => $r->describe(), $requirements));
 
-        DescriptionAppender::append($operation, $lines, $contribution);
+        DescriptionAppender::append($operation, implode("\n\n", $sentences), $contribution);
     }
 }

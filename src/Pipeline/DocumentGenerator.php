@@ -21,6 +21,7 @@ use Docuccino\Core\Extensions\Schema\ComponentNames;
 use Docuccino\Core\Extensions\Schema\ComponentRegistry;
 use Docuccino\Core\Extensions\Schema\SchemaConverter;
 use Docuccino\Core\Identity\IdentityGenerator;
+use Docuccino\Core\Identity\OperationIdentities;
 use Docuccino\Core\Inference\ReportsBootFailure;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Overlay\OverlayDocument;
@@ -33,6 +34,7 @@ use Docuccino\Core\Pipeline\OperationPipeline;
 use Docuccino\Core\Provenance\MessagePaths;
 use Docuccino\Core\Provenance\RootRelativeSourcePathResolver;
 use Docuccino\Core\SpecValidation\Validator;
+use Docuccino\Core\Support\RouteOperationId;
 use Docuccino\Laravel\Registry\ConfigDiagnostics;
 use Docuccino\Laravel\Registry\DefaultExtensions;
 use Docuccino\Laravel\Registry\ExtensionRegistry;
@@ -48,9 +50,9 @@ use Throwable;
 
 /**
  * The document pipeline (design §5): resolve extensions late, discover routes, build each operation
- * in phased isolation, assign identities, assemble, apply overlays/transformers, validate against
- * the bundled UIR schema. A broken route yields a skeleton (or is omitted) plus an error diagnostic
- * — never a dead build. {@see DocumentBuilder} is the config-facade callers use to feed it.
+ * in phased isolation, stamp identities on the way out of the fragment cache, assemble, apply
+ * overlays/transformers, validate against the bundled UIR schema. A broken route yields a skeleton
+ * (or is omitted) plus an error diagnostic — never a dead build. {@see DocumentBuilder} is the config-facade callers use to feed it.
  *
  * @internal
  */
@@ -71,6 +73,7 @@ final class DocumentGenerator
         private readonly string $generatorVersion,
         ?FragmentCache $cache = null,
         private readonly IdentityGenerator $identity = new IdentityGenerator,
+        private readonly OperationIdentities $identities = new OperationIdentities,
         private readonly BuildFingerprint $fingerprint = new BuildFingerprint,
         // Foreign text reaches a diagnostic here, and a diagnostic reaches the document. Without a
         // project root the ladder still runs, so the fallback degrades rather than publishing a path.
@@ -134,17 +137,17 @@ final class DocumentGenerator
         $bag->addAll($contentDiagnostics);
 
         // Document config, the tag mapper's own state, booted-app facts and the build environment the
-        // engine runs in: four of the document-level inputs every route's fragment-cache key carries.
-        // The fifth is $documentId, which the key takes separately — a fragment holds ids minted from
-        // it, and two documents can legitimately hash their shaping config alike
-        // ({@see FragmentCache::key()}). The mapper is here rather than in a route's manifest because
-        // what it was constructed with is a value and a manifest holds only files
-        // ({@see TagMapperKeying::stateDigest()}).
-        $configHash = $document->hash()
+        // engine runs in: the document-level inputs every route's fragment-cache key carries. The
+        // config half is the FRAGMENT hash and not the published one — `info` and `api_version` reach
+        // no fragment ({@see DocumentConfig::fragmentHash()}). The mapper is here rather than in a
+        // route's manifest because what it was constructed with is a value and a manifest holds only
+        // files ({@see TagMapperKeying::stateDigest()}).
+        $fragmentHash = $document->fragmentHash()
             .'|tags:'.TagMapperKeying::stateDigest($document)
             .'|env:'.$this->environmentDigest($resolved)
             .'|build:'.$this->fingerprint->digest($engine);
         $extensionClasses = $resolved->cacheSignature();
+        $documentScope = FragmentCache::documentScope($document, $documentId, $resolved);
 
         $fragments = [];
         foreach ($this->descriptors($resolved, $document, $bag) as $descriptor) {
@@ -156,7 +159,7 @@ final class DocumentGenerator
 
             // A route registered for several verbs documents one operation per method.
             foreach ($descriptor->documentableMethods() as $method) {
-                $fragment = $this->processRoute($descriptor, $method, $document, $documentId, $engine, $resolved, $components, $bag, $configHash, $extensionClasses, $cache);
+                $fragment = $this->processRoute($descriptor, $method, $document, $documentId, $documentScope, $engine, $resolved, $components, $bag, $fragmentHash, $extensionClasses, $cache);
                 if ($fragment !== null) {
                     $fragments[] = $fragment;
                     $bag->addAll($fragment->diagnostics);
@@ -171,7 +174,7 @@ final class DocumentGenerator
         $bag->addAll($webhookDiagnostics);
 
         foreach ($declarations as $declaration) {
-            $fragment = $this->processWebhook($declaration, $document, $documentId, $engine, $resolved, $components, $bag, $configHash, $extensionClasses, $cache);
+            $fragment = $this->processWebhook($declaration, $document, $documentId, $documentScope, $engine, $resolved, $components, $bag, $fragmentHash, $extensionClasses, $cache);
             if ($fragment !== null) {
                 $fragments[] = $fragment;
                 $bag->addAll($fragment->diagnostics);
@@ -358,6 +361,7 @@ final class DocumentGenerator
     }
 
     /**
+     * @param  string  $documentScope  {@see FragmentCache::documentScope()}
      * @param  list<string>  $extensionClasses
      * @param  FragmentCache  $cache  this document's cache, which is the disabled one when an extension
      *                                the whole signature is keyed on could not be hashed
@@ -367,28 +371,30 @@ final class DocumentGenerator
         string $method,
         DocumentConfig $document,
         string $documentId,
+        string $documentScope,
         TypeEngine $engine,
         ResolvedExtensions $resolved,
         ComponentRegistry $components,
         DiagnosticCollector $bag,
-        string $configHash,
+        string $fragmentHash,
         array $extensionClasses,
         FragmentCache $cache,
     ): ?OperationFragment {
         $path = OasPath::of($descriptor->uri);
         // Naming the specific method keeps multi-method routes' diagnostics distinct.
         $signature = $descriptor->signature($method);
-        // Minted here rather than at freeze time, so an extension keyed on the operation's identity
-        // reads the same string the node ends up carrying instead of deriving a second one.
+        // Minted here rather than read off the stamped node, so an extension keyed on the operation's
+        // identity reads the same string the node ends up carrying instead of deriving a second one.
         $operationId = $this->identity->operationId($documentId, $method, $path, $descriptor->domain);
 
         // The method is part of the cache key: GET query vs POST body are different fragments with
         // different operation identities.
-        $cacheKey = $cache->key($descriptor->cacheSignature().'|'.$method, $documentId, $configHash, $extensionClasses);
+        $cacheKey = $cache->key($descriptor->cacheSignature().'|'.$method, $documentScope, $fragmentHash, $extensionClasses);
         $cached = $cache->get($cacheKey);
         if ($cached !== null) {
-            // Warm hit: restore components without waking the type engine (design §10).
-            return $this->restoreComponents($cached, $components);
+            // Warm hit: restore components without waking the type engine (design §10), then stamp
+            // through the same call the cold path below uses, so warm ids are cold ids.
+            return $this->stamped($this->restoreComponents($cached, $components), $operationId);
         }
 
         // Snapshot the shared registry: a route that throws mid-build rolls back, so it can't leave
@@ -415,7 +421,6 @@ final class DocumentGenerator
             $operation = new OperationDraft;
             $this->pipeline->run($operation, $context, $resolved);
             $diagnostics = $this->analysisDiagnostics($context, $signature);
-            $this->assignIds($operation, $operationId);
 
             $frozen = $operation->freeze();
             [$referencedSchemas, $referencedSchemaIds, $referencedResponses, $referencedSchemaBases, $referencedSecuritySchemes, $referencedResponseBases, $referencedSchemeBases] = $this->componentClosure($frozen->toArray(), $components);
@@ -434,7 +439,9 @@ final class DocumentGenerator
                 $cache->put($cacheKey, $fragment, $context->dependencyFiles());
             }
 
-            return $fragment;
+            // Stamped only AFTER storing: what goes in the cache carries no identity, which is what
+            // lets one entry answer for every document that shapes this route alike.
+            return $this->stamped($fragment, $operationId);
         } catch (Throwable $exception) {
             $components->restore($snapshot);
 
@@ -450,6 +457,7 @@ final class DocumentGenerator
      * — the class's own hierarchy, and every file the schema it produced was built from. Everything
      * the build reports rides the fragment, so a warm hit says what a cold one said.
      *
+     * @param  string  $documentScope  as for {@see processRoute()}
      * @param  list<string>  $extensionClasses
      * @param  FragmentCache  $cache  as for {@see processRoute()}
      */
@@ -457,18 +465,21 @@ final class DocumentGenerator
         WebhookDeclaration $webhook,
         DocumentConfig $document,
         string $documentId,
+        string $documentScope,
         TypeEngine $engine,
         ResolvedExtensions $resolved,
         ComponentRegistry $components,
         DiagnosticCollector $bag,
-        string $configHash,
+        string $fragmentHash,
         array $extensionClasses,
         FragmentCache $cache,
     ): ?OperationFragment {
-        $cacheKey = $cache->key($webhook->cacheSignature(), $documentId, $configHash, $extensionClasses);
+        $operationId = $this->identity->webhookId($documentId, $webhook->method, $webhook->name);
+
+        $cacheKey = $cache->key($webhook->cacheSignature(), $documentScope, $fragmentHash, $extensionClasses);
         $cached = $cache->get($cacheKey);
         if ($cached !== null) {
-            return $this->restoreComponents($cached, $components);
+            return $this->stamped($this->restoreComponents($cached, $components), $operationId);
         }
 
         $snapshot = $components->snapshot();
@@ -487,13 +498,6 @@ final class DocumentGenerator
 
             $diagnostics = [];
             $operation = $this->webhookBuilder->build($webhook, $document, $converter, $dependencies, $webhook->source, $diagnostics);
-
-            $operationId = $this->identity->webhookId($documentId, $webhook->method, $webhook->name);
-            $operation->assignId($operationId);
-            $operation->assignChildIds(
-                fn (string $in, string $name): string => $this->identity->parameterId($operationId, $in, $name),
-                fn (string $status, string $mediaType): ?string => $mediaType === '' ? null : $this->identity->responseId($operationId, $status, $mediaType),
-            );
 
             $frozen = $operation->freeze();
             [$referencedSchemas, $referencedSchemaIds, $referencedResponses, $referencedSchemaBases, $referencedSecuritySchemes, $referencedResponseBases, $referencedSchemeBases] = $this->componentClosure($frozen->toArray(), $components);
@@ -522,7 +526,7 @@ final class DocumentGenerator
                 $cache->put($cacheKey, $fragment, $files);
             }
 
-            return $fragment;
+            return $this->stamped($fragment, $operationId);
         } catch (Throwable $exception) {
             $components->restore($snapshot);
 
@@ -782,18 +786,31 @@ final class DocumentGenerator
 
         $operation = new OperationDraft;
         $operation->setDescription('Documentation could not be generated for this route.', Contribution::fallback());
-        $this->assignIds($operation, $this->identity->operationId($documentId, $method, $path, $descriptor->domain));
+        // A skeleton is still an operation a client generator will name a method after, so it owes an
+        // operationId like any other. The strategies that read the ACTION cannot answer here — the
+        // action is what could not be read — so this is the route's own name, or the mint that stands
+        // in for one, and never the empty field that leaves the generator to invent a name.
+        $operation->setOperationId(
+            $descriptor->name === null || $descriptor->name === ''
+                ? RouteOperationId::mint($method, $path)
+                : $descriptor->name,
+            Contribution::fallback(),
+        );
 
-        return new OperationFragment($path, $method, $operation->freeze(), $signature);
+        return $this->stamped(
+            new OperationFragment($path, $method, $operation->freeze(), $signature),
+            $this->identity->operationId($documentId, $method, $path, $descriptor->domain),
+        );
     }
 
-    private function assignIds(OperationDraft $operation, string $operationId): void
+    /**
+     * The fragment with its identity tree on it. A stored fragment carries none, so every path that
+     * hands one on — cold, warm, and the skeleton a failed route leaves behind — comes through here,
+     * and warm ids are cold ids by construction.
+     */
+    private function stamped(OperationFragment $fragment, string $operationId): OperationFragment
     {
-        $operation->assignId($operationId);
-        $operation->assignChildIds(
-            fn (string $in, string $name): string => $this->identity->parameterId($operationId, $in, $name),
-            fn (string $status, string $mediaType): ?string => $mediaType === '' ? null : $this->identity->responseId($operationId, $status, $mediaType),
-        );
+        return $fragment->withOperation($this->identities->stamp($fragment->operation, $operationId));
     }
 
     /**

@@ -205,6 +205,34 @@ it('emits an info diagnostic for a tag parent that no definition declares', func
         ->and($diagnostics[0]->message)->toContain("'Invoices'")->toContain("'Billing'");
 });
 
+it('emits an info diagnostic for a tag defined twice by definitions that agree', function (): void {
+    $diagnostics = ConfigDiagnostics::for(configDoc(tags: ['definitions' => [
+        ['name' => 'Billing', 'summary' => 'Billing'],
+        ['name' => 'Billing', 'description' => 'Everything money.'],
+    ]]));
+
+    expect($diagnostics)->toHaveCount(1)
+        ->and($diagnostics[0]->severity)->toBe(Severity::Info)
+        ->and($diagnostics[0]->code)->toBe('config.duplicate-tag-definition')
+        ->and($diagnostics[0]->message)->toContain("'Billing'")->toContain('2 times');
+});
+
+it('warns, and names the members, when the definitions of one tag disagree', function (): void {
+    // Warning rather than Info because this one loses something the author wrote: nothing published
+    // says what the summary or the parent is.
+    $diagnostics = ConfigDiagnostics::for(configDoc(tags: ['definitions' => [
+        ['name' => 'Billing', 'summary' => 'Money in', 'parent' => 'Ledger'],
+        ['name' => 'Billing', 'summary' => 'Money out', 'parent' => 'Accounts'],
+        ['name' => 'Ledger'],
+        ['name' => 'Accounts'],
+    ]]));
+
+    expect($diagnostics)->toHaveCount(1)
+        ->and($diagnostics[0]->severity)->toBe(Severity::Warning)
+        ->and($diagnostics[0]->code)->toBe('config.duplicate-tag-definition')
+        ->and($diagnostics[0]->message)->toContain("'Billing'")->toContain('summary, parent');
+});
+
 it('emits an info diagnostic for a tag parent link that closes a cycle', function (): void {
     $diagnostics = ConfigDiagnostics::for(configDoc(tags: ['definitions' => [
         ['name' => 'Invoices', 'parent' => 'Billing'],

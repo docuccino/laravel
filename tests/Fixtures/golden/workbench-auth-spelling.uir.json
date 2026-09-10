@@ -34,6 +34,13 @@
               ]
             },
             {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
               "producer": "integration:security",
               "layer": "integration",
               "fields": [
@@ -42,6 +49,7 @@
             }
           ]
         },
+        "operationId": "get.api.spelling.by-alias",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -144,6 +152,13 @@
               ]
             },
             {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
               "producer": "integration:security",
               "layer": "integration",
               "fields": [
@@ -152,6 +167,7 @@
             }
           ]
         },
+        "operationId": "get.api.spelling.by-class",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -293,7 +309,7 @@
     "document": {
       "id": "doc:spelling",
       "configHash": "d45f9ec9ecbb16025a4f461fe3930d42d91e02270892c582a516693901e6961b",
-      "contentHash": "2dfec7e080f294b6b333a6509fdd6c0b200447d5c54329e0d542ce4152893597"
+      "contentHash": "c8e3a84252925fa764c9a77d3cb2554026bcbc66071b391e6a32839faae0f8dd"
     },
     "generator": {
       "name": "docuccino/laravel",

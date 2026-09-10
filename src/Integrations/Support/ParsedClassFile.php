@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\Support;
 
+use PhpParser\Node;
+use PhpParser\Node\Stmt\ClassLike;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\NodeFinder;
 use PhpParser\NodeTraverser;
@@ -18,6 +20,10 @@ use Throwable;
  * resolved to FQCNs (so an `Attribute::make` call matches whatever alias the file imported it under).
  * Every failure mode — unreadable file, parse error, unexpected shape — yields an empty map rather
  * than an exception, so a caller simply degrades to its own fallback.
+ *
+ * {@see methods()} reads the whole FILE. A caller asking a question about one class wants
+ * {@see methodsOf()} instead: a file may declare more than one class, and a sibling's body is not
+ * evidence about its neighbour.
  */
 final class ParsedClassFile
 {
@@ -29,27 +35,72 @@ final class ParsedClassFile
      */
     public static function methods(string $file): array
     {
-        try {
-            $code = file_get_contents($file);
-            if ($code === false) {
-                return [];
-            }
+        $ast = self::parse($file);
 
-            $ast = (new ParserFactory)->createForNewestSupportedVersion()->parse($code);
-            if ($ast === null) {
-                return [];
-            }
+        if ($ast === null) {
+            return [];
+        }
 
-            $ast = (new NodeTraverser(new NameResolver))->traverse($ast);
+        $nodes = [];
+        foreach ((new NodeFinder)->findInstanceOf($ast, ClassMethod::class) as $method) {
+            $nodes[$method->name->toString()] = $method;
+        }
+
+        return $nodes;
+    }
+
+    /**
+     * The methods one class DECLARES, keyed by method name — {@see methods()} narrowed to the
+     * class-like node whose resolved name is `$fqcn`, so a second class sharing the file contributes
+     * nothing. `[]` when the file cannot be parsed or declares no such class.
+     *
+     * @return array<string, ClassMethod>
+     */
+    public static function methodsOf(string $file, string $fqcn): array
+    {
+        $ast = self::parse($file);
+
+        if ($ast === null) {
+            return [];
+        }
+
+        foreach ((new NodeFinder)->findInstanceOf($ast, ClassLike::class) as $class) {
+            if ($class->namespacedName?->toString() !== ltrim($fqcn, '\\')) {
+                continue;
+            }
 
             $nodes = [];
-            foreach ((new NodeFinder)->findInstanceOf($ast, ClassMethod::class) as $method) {
+            foreach ($class->getMethods() as $method) {
                 $nodes[$method->name->toString()] = $method;
             }
 
             return $nodes;
+        }
+
+        return [];
+    }
+
+    /**
+     * The file's name-resolved statements, or null when it cannot be read or parsed.
+     *
+     * @return array<Node>|null
+     */
+    private static function parse(string $file): ?array
+    {
+        try {
+            $code = file_get_contents($file);
+            if ($code === false) {
+                return null;
+            }
+
+            $ast = (new ParserFactory)->createForNewestSupportedVersion()->parse($code);
+            if ($ast === null) {
+                return null;
+            }
+
+            return (new NodeTraverser(new NameResolver))->traverse($ast);
         } catch (Throwable) {
-            return [];
+            return null;
         }
     }
 }

@@ -18,6 +18,8 @@ use Docuccino\Laravel\Integrations\SpatieData\DataClassReflector;
 use Docuccino\Laravel\Integrations\SpatieData\DataSchema;
 use Docuccino\Laravel\Integrations\SpatieData\WrapResolver;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\AuthorData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\HelperContextProblemData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\NestedTransformDisabledData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\NestedUnwrappedData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\OwnResponseProblemData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\PlainCasedData;
@@ -50,6 +52,13 @@ function waveDEngine(): StubTypeEngine
         ]),
         NestedUnwrappedData::class => new ClassMetadata(NestedUnwrappedData::class, [
             new PropertyMetadata('id', ScalarT::int()),
+        ]),
+        NestedTransformDisabledData::class => new ClassMetadata(NestedTransformDisabledData::class, [
+            new PropertyMetadata('id', ScalarT::int()),
+        ]),
+        HelperContextProblemData::class => new ClassMetadata(HelperContextProblemData::class, [
+            new PropertyMetadata('type', ScalarT::string()),
+            new PropertyMetadata('status', ScalarT::int()),
         ]),
     ]);
 }
@@ -116,6 +125,43 @@ it('still wraps a class that only unwraps a nested collection', function (): voi
 
     expect(array_keys($result['root']['properties'] ?? []))->toBe(['data'])
         ->and($result['root']['required'] ?? [])->toContain('data');
+});
+
+it('still wraps a class that only disables wrapping on a nested transformation', function (): void {
+    // The transformation-context spelling of the row above, and the one a bare `WrapExecutionType`
+    // sighting got wrong. Spatie hands a `WrapExecutionType` to the transformation it is given and to
+    // no other: the root's envelope comes from the root's own `Wrap` under the context `toResponse()`
+    // built, which this class never touches. So the server really does send `{"data": …}` here, and a
+    // document that omitted it would have a generated client reading `response.id` off a body whose
+    // id is at `response.data.id` — a failure at runtime, not at compile time.
+    $result = convertWithWrap(new ClassT(NestedTransformDisabledData::class), new WrapResolver('data'));
+
+    expect(array_keys($result['root']['properties'] ?? []))->toBe(['data'])
+        ->and($result['root']['required'] ?? [])->toContain('data');
+});
+
+it('keeps the configured envelope and says so where it cannot tell whose wrapping was disabled', function (): void {
+    // Here spatie really does unwrap, through a hop the static read cannot follow. Both answers would
+    // be a lie of the same size, so the envelope falls to what the configuration says the framework
+    // does to every root Data response — the half that WAS read — and the half that was not reaches
+    // the author as a diagnostic rather than as a quiet guess.
+    $result = convertWithWrap(new ClassT(HelperContextProblemData::class), new WrapResolver('data'));
+
+    expect(array_keys($result['root']['properties'] ?? []))->toBe(['data']);
+
+    $codes = array_map(static fn ($d): string => $d->code, $result['components']->diagnostics());
+    expect($codes)->toContain('spatie-data.root-wrap-unsettled');
+});
+
+it('says nothing about a wrap it settled', function (): void {
+    // The other count: the classes the read CAN attribute must stay quiet, or the channel trains
+    // people to ignore it.
+    foreach ([ProblemDocumentData::class, OwnResponseProblemData::class, NestedUnwrappedData::class, NestedTransformDisabledData::class, AuthorData::class] as $fqcn) {
+        $result = convertWithWrap(new ClassT($fqcn), new WrapResolver('data'));
+
+        $codes = array_map(static fn ($d): string => $d->code, $result['components']->diagnostics());
+        expect($codes)->not->toContain('spatie-data.root-wrap-unsettled');
+    }
 });
 
 it('leaves a top-level Data object unwrapped when neither defaultWrap() nor global config is set', function (): void {

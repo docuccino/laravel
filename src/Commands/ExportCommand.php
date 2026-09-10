@@ -293,7 +293,16 @@ final class ExportCommand extends Command
         // A downlevel drops or approximates things; say so rather than shipping a quieter contract.
         $this->renderDiagnostics($target->format, $result->report->diagnostics);
 
-        return true;
+        // An emitter reports an ERROR only for a defect of OURS — a file that is not a valid document of
+        // the format it claims — so the run failed however loud the reader asked diagnostics to be.
+        // `--fail-on` is how strict you want to be about what the document SAYS; a malformed artifact is
+        // not that question, and `docuccino:validate` already treats the UIR half the same way. What an
+        // application can cause from its own config or routes comes back a WARNING and is rendered
+        // rather than fatal, so no documented setting can make an export fail.
+        return array_filter(
+            $result->report->diagnostics,
+            static fn (Diagnostic $d): bool => $d->severity === Severity::Error,
+        ) === [];
     }
 
     private function emitOptions(ExportTarget $target, DocumentConfig $config): EmitOptions

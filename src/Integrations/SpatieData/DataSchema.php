@@ -98,9 +98,15 @@ final class DataSchema implements TypeToSchema
             return $result;
         }
 
-        // `withoutWrapping()` and `defaultWrap()` are both inheritance-answered, so the envelope can be
-        // decided in a file this class does not name.
+        // `defaultWrap()` is inheritance-answered, so the envelope can be decided in a file this class
+        // does not name. Keying every declaration file over-keys the unwrapping scan, which reads only
+        // the class's own file — and over-keying is a cost where under-keying is a bug.
         $context->dependsOn(...DeclarationFiles::of($fqcn));
+
+        $unsettled = $this->wrap->diagnose($fqcn);
+        if ($unsettled !== null) {
+            $context->diagnostic($unsettled);
+        }
 
         $key = $this->wrap->key($fqcn);
         if ($key === null) {

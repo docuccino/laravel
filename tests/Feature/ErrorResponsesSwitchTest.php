@@ -113,28 +113,18 @@ it('gates every class that reaches the error-response chain, whatever a build ha
     $gated = [];
     $ungated = [];
 
-    /** @var iterable<SplFileInfo> $entries */
-    $entries = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator(dirname(__DIR__, 2).'/src', FilesystemIterator::SKIP_DOTS),
-    );
-    foreach ($entries as $entry) {
-        if (! $entry->isFile() || $entry->getExtension() !== 'php') {
+    foreach (adapterDeclaredClasses() as $fqcn => $source) {
+        // Reaching the chain is one CALL, whoever the receiver is — through the ignore reader, which every
+        // tiered producer uses, or directly, which the middleware-synthesized 429 has to — so the question
+        // is asked of the parsed source rather than of two literal call-site spellings, either of which a
+        // third receiver would slip between.
+        if (! in_array('mapThrow', phpCalledMethods($source), true)) {
             continue;
         }
 
-        $source = (string) file_get_contents($entry->getPathname());
-        // The two ways to reach the chain: through the ignore reader, which every tiered producer uses,
-        // and directly, which the middleware-synthesized 429 has to.
-        if (! str_contains($source, 'IgnoredResponses::mapThrow(') && ! str_contains($source, '$context->mapThrow(')) {
-            continue;
-        }
-        if (preg_match('/^namespace\s+([^;]+);/m', $source, $namespace) !== 1
-            || preg_match('/^\s*(?:(?:final|abstract|readonly)\s+)*class\s+(\w+)/m', $source, $class) !== 1) {
-            continue;
-        }
-
-        $fqcn = trim($namespace[1]).'\\'.$class[1];
-
+        // The gate itself is still read as text, and deliberately: all five spell it this way, and a sixth
+        // spelling — a reversed comparison, a `match`, a helper — does not go unnoticed, it lands in
+        // $ungated, which is asserted exactly. This blind spot fails loudly, which is why it stays cheap.
         if (str_contains($source, "errorResponses === 'none'")) {
             $gated[] = $fqcn;
         } else {
@@ -157,3 +147,35 @@ it('gates every class that reaches the error-response chain, whatever a build ha
         // its own, so there is nothing for the switch to withhold.
         ->and($ungated)->toBe([IgnoredResponses::class]);
 });
+
+it('sees a producer reach the chain through a receiver neither old spelling named', function (string $call, bool $reaches): void {
+    // The reader keyed on `IgnoredResponses::mapThrow(` and `$context->mapThrow(`, so a producer holding
+    // the reader in a property, or reaching it through an alias, was not a producer at all as far as the
+    // guard above was concerned. Written out here rather than promised, with the two spellings that
+    // already worked beside them so a reader seeing nothing fails instead of agreeing.
+    $source = <<<PHP
+    <?php
+
+    namespace Probe;
+
+    use Docuccino\Laravel\Support\IgnoredResponses;
+    use Docuccino\Laravel\Support\IgnoredResponses as Ignored;
+
+    final class Producer
+    {
+        public function apply(object \$context, object \$e): void
+        {
+            {$call}
+        }
+    }
+    PHP;
+
+    expect(in_array('mapThrow', phpCalledMethods($source), true))->toBe($reaches);
+})->with([
+    'the ignore reader named outright' => ['IgnoredResponses::mapThrow($context, $e);', true],
+    'the context directly' => ['$context->mapThrow($e);', true],
+    'the ignore reader through an alias' => ['Ignored::mapThrow($context, $e);', true],
+    'a reader held in a property' => ['$this->ignored->mapThrow($context, $e);', true],
+    'a nullsafe hop' => ['$context?->mapThrow($e);', true],
+    'the name mentioned but never called' => ["\$name = 'mapThrow';", false],
+]);

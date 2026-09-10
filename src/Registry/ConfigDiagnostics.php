@@ -34,6 +34,9 @@ use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParameters;
  *   in the bag and no mapper beside it.
  * - A `tags.definitions` `parent` that {@see DocumentConfig::tagDefinitions()} dropped, because it
  *   names no defined tag or would close a cycle — OAS 3.2 allows neither.
+ * - A tag `tags.definitions` names more than once, which the same reader merged into the one entry
+ *   the `tags` array allows per name, plus whichever members the definitions contradicted and so
+ *   left out.
  * - A path-like key pointing outside the app base path. {@see ConfigPaths} can't relativise it, so it
  *   goes verbatim into the `configHash` and the output becomes machine-dependent.
  * - A path-like key holding a NUL byte, which no filesystem call accepts. Every reader is handed
@@ -113,6 +116,31 @@ final class ConfigDiagnostics
                         $issue['tag'],
                         $issue['parent'],
                     ),
+                );
+        }
+
+        foreach ($document->tagDuplicates() as $duplicate) {
+            $diagnostics[] = $duplicate['dropped'] === []
+                ? new Diagnostic(
+                    severity: Severity::Info,
+                    code: 'config.duplicate-tag-definition',
+                    message: sprintf(
+                        "tags.definitions: '%s' is defined %d times and the definitions agree — they are merged, because the OAS `tags` array may name a tag only once.",
+                        $duplicate['tag'],
+                        $duplicate['count'],
+                    ),
+                    help: sprintf("Define '%s' once.", $duplicate['tag']),
+                )
+                : new Diagnostic(
+                    severity: Severity::Warning,
+                    code: 'config.duplicate-tag-definition',
+                    message: sprintf(
+                        "tags.definitions: '%s' is defined %d times and they disagree on %s — the merged entry publishes neither reading rather than presenting one of them as the tag's own.",
+                        $duplicate['tag'],
+                        $duplicate['count'],
+                        implode(', ', $duplicate['dropped']),
+                    ),
+                    help: sprintf("Define '%s' once, saying there what you meant those members to be.", $duplicate['tag']),
                 );
         }
 

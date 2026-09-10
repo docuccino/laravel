@@ -109,6 +109,8 @@ documents:
     representation:
       filters: 'bracketed'       # bracketed: one filter[status] param | deepObject: a single `filter` object
       nullable: 'type-array'     # type-array: type: [string, null] | anyof: a {type: null} branch
+      # Where the strategy has nothing to read — an unnamed route, a closure — the operationId is
+      # minted from the operation's own method and path (GET /api/forms -> get.api.forms).
       operation_id: 'route-name' # route-name | controller-method (InvoiceController@store)
       # enums:
       #   naming: 'names'   # names (both hint spellings) | none | x-enumNames | x-enum-varnames

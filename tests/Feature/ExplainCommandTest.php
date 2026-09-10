@@ -136,7 +136,7 @@ it('lists the fields an operation has when the query names none of them', functi
         ->and($output)->toContain('requestBody')
         // Named with the rung that won it, so the list is worth reading rather than only choosing from.
         ->and($output)->toContain('integration')
-        ->and($output)->toContain('php artisan docuccino:explain "POST /api/tickets" --field=requestBody');
+        ->and($output)->toContain('php artisan docuccino:explain "POST /api/tickets" --field=operationId');
 });
 
 it('publishes a narrowed field as JSON on the same three codes', function (string $field, string $status, int $exit): void {
@@ -192,41 +192,84 @@ it('says what could be typed instead when nothing matches', function (): void {
         ->and($output)->toContain('routes.include / routes.exclude');
 });
 
-it('says so, and what it does not mean, when an operation recorded nothing', function (): void {
+/**
+ * The operation with nothing to explain. Every operation the BUILD produces writes at least its
+ * operationId through the precedence guard, so the only way into the document without a trail is to
+ * be put there by an overlay — which is published as written and has no layers behind it.
+ */
+describe('an operation with an empty trail', function (): void {
+    beforeEach(function (): void {
+        $this->overlayDir = sys_get_temp_dir().'/docuccino-explain-overlay-'.uniqid();
+        mkdir($this->overlayDir);
+        file_put_contents($this->overlayDir.'/adds-a-path.yaml', <<<'YAML'
+            overlay: 1.0.0
+            actions:
+              - target: $.paths
+                update:
+                  /api/overlaid:
+                    get:
+                      responses:
+                        '200':
+                          description: OK
+            YAML);
+        setBuild('documents.default.overlays', [$this->overlayDir.'/*.yaml']);
+    });
+
+    afterEach(function (): void {
+        array_map(unlink(...), glob($this->overlayDir.'/*') ?: []);
+        @rmdir($this->overlayDir);
+    });
+
+    it('says so, and what it does not mean, when an operation recorded nothing', function (): void {
+        $exit = Artisan::call('docuccino:explain', ['route' => 'GET /api/overlaid', 'document' => 'default']);
+        $output = Artisan::output();
+
+        expect($exit)->toBe(0)
+            ->and($output)->toContain('No provenance recorded for this operation.')
+            ->and($output)->toContain('`--provenance` only decides how much of it');
+    });
+
+    /**
+     * A `--field` query on an operation that recorded nothing has no list to answer with, and the two
+     * halves of the no-match report — a table of the fields on offer, and a command naming the first
+     * of them — are both a read of that list. It says why the list is empty instead.
+     */
+    it('answers a field query on an empty trail without a list it does not have', function (): void {
+        $exit = Artisan::call('docuccino:explain', ['route' => 'GET /api/overlaid', '--field' => 'nosuchfield', 'document' => 'default']);
+        $output = Artisan::output();
+
+        expect($exit)->toBe(1)
+            ->and($output)->toContain('No field matches "nosuchfield" on GET /api/overlaid.')
+            ->and($output)->toContain('No provenance recorded for this operation.')
+            // Neither the header rule over no rows, nor a command naming a field that does not exist.
+            ->and($output)->not->toContain('Field  Rung')
+            ->and($output)->not->toContain('--field=');
+    });
+
+    it('publishes an empty trail as an empty field list rather than a crash', function (): void {
+        $exit = Artisan::call('docuccino:explain', ['route' => 'GET /api/overlaid', '--field' => 'nosuchfield', 'document' => 'default', '--json' => true]);
+
+        /** @var array<string, mixed> $payload */
+        $payload = json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR);
+
+        expect($exit)->toBe(1)
+            ->and($payload['status'])->toBe('no-match')
+            ->and($payload['fields'])->toBe([]);
+    });
+});
+
+/**
+ * The other side of that: an operation the build DID produce always has a trail, however little the
+ * engine could read off it. A closure route is the thinnest of them and it still records the id its
+ * method and path mint.
+ */
+it('explains the one field a route with nothing else to say still records', function (): void {
     $exit = Artisan::call('docuccino:explain', ['route' => 'GET /api/ping', 'document' => 'default']);
     $output = Artisan::output();
 
     expect($exit)->toBe(0)
-        ->and($output)->toContain('No provenance recorded for this operation.')
-        ->and($output)->toContain('`--provenance` only decides how much of it');
-});
-
-/**
- * A `--field` query on an operation that recorded nothing has no list to answer with, and the two
- * halves of the no-match report — a table of the fields on offer, and a command naming the first of
- * them — are both a read of that list. It says why the list is empty instead.
- */
-it('answers a field query on an empty trail without a list it does not have', function (): void {
-    $exit = Artisan::call('docuccino:explain', ['route' => 'GET /api/ping', '--field' => 'nosuchfield', 'document' => 'default']);
-    $output = Artisan::output();
-
-    expect($exit)->toBe(1)
-        ->and($output)->toContain('No field matches "nosuchfield" on GET /api/ping.')
-        ->and($output)->toContain('No provenance recorded for this operation.')
-        // Neither the header rule over no rows, nor a command naming a field that does not exist.
-        ->and($output)->not->toContain('Field  Rung')
-        ->and($output)->not->toContain('--field=');
-});
-
-it('publishes an empty trail as an empty field list rather than a crash', function (): void {
-    $exit = Artisan::call('docuccino:explain', ['route' => 'GET /api/ping', '--field' => 'nosuchfield', 'document' => 'default', '--json' => true]);
-
-    /** @var array<string, mixed> $payload */
-    $payload = json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR);
-
-    expect($exit)->toBe(1)
-        ->and($payload['status'])->toBe('no-match')
-        ->and($payload['fields'])->toBe([]);
+        ->and($output)->not->toContain('No provenance recorded for this operation.')
+        ->and($output)->toContain('operationId');
 });
 
 /**

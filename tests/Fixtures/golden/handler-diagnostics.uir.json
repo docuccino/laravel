@@ -24,9 +24,17 @@
                 "line": 17,
                 "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\InferredHandler\\DeferralCarrierController::index"
               }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.zz-deferring",
         "tags": [
           "DeferralCarrier"
         ]
@@ -37,7 +45,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "cc4cf01524c0d0a60d3243eb95719c024095019c48a01aed25f75a032c3f7d4f"
+      "contentHash": "75dea1df0bcc3161f144c070cb40960aa5b785459e416642baa7a04a402ff475"
     },
     "generator": {
       "name": "docuccino/laravel",

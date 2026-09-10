@@ -8,17 +8,25 @@ namespace Docuccino\Laravel\Integrations\Permission;
  * One authorization requirement from a `spatie/laravel-permission` middleware: its type, the pipe-separated
  * any-of `values`, and the optional guard a `,guard` suffix names. Feeds the `x-permissions` member and the
  * description line.
+ *
+ * `values` is a SET — the pipe list is any-of, so naming one entry twice names one alternative — and the
+ * constructor is what guarantees it, so no producer can hand the document `["edit", "edit"]`.
  */
 final readonly class PermissionRequirement
 {
+    /** @var list<string> */
+    public array $values;
+
     /**
      * @param  list<string>  $values
      */
     public function __construct(
         public string $type,
-        public array $values,
+        array $values,
         public ?string $guard = null,
-    ) {}
+    ) {
+        $this->values = array_values(array_unique($values));
+    }
 
     /**
      * @return array<string, mixed>

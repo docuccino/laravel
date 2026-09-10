@@ -8,6 +8,10 @@ namespace Docuccino\Laravel\Integrations\Sanctum;
  * One Sanctum token-ability requirement, from an `abilities:`/`ability:` middleware, the legacy scope
  * middleware, or a `#[Abilities]` attribute. Match semantics are `all` for `CheckAbilities`/`abilities:`
  * and `any` for `CheckForAnyAbility`/`ability:`. Feeds the `x-abilities` member and the description line.
+ *
+ * `abilities` is a SET, whichever way `match` reads it — naming one ability twice neither adds an
+ * alternative nor a second thing to hold — and the constructor is what guarantees it, so no producer can
+ * hand the document `["read", "read"]`.
  */
 final readonly class AbilityRequirement
 {
@@ -15,14 +19,19 @@ final readonly class AbilityRequirement
 
     public const ANY = 'any';
 
+    /** @var list<string> */
+    public array $abilities;
+
     /**
      * @param  self::ALL|self::ANY  $match
      * @param  list<string>  $abilities
      */
     public function __construct(
         public string $match,
-        public array $abilities,
-    ) {}
+        array $abilities,
+    ) {
+        $this->abilities = array_values(array_unique($abilities));
+    }
 
     /**
      * @return array{match: string, abilities: list<string>}

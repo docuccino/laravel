@@ -34,6 +34,13 @@
               ]
             },
             {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
               "producer": "integration:security",
               "layer": "integration",
               "fields": [
@@ -42,6 +49,7 @@
             }
           ]
         },
+        "operationId": "get.api.inherited.from-group",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -167,9 +175,17 @@
                 "description",
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.inherited.neither",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -243,6 +259,13 @@
               ]
             },
             {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
               "producer": "integration:security",
               "layer": "integration",
               "fields": [
@@ -251,6 +274,7 @@
             }
           ]
         },
+        "operationId": "get.api.inherited.on-the-route",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -471,7 +495,7 @@
     "document": {
       "id": "doc:inherited",
       "configHash": "cce2a42d4124cc46880ec88e69cec15582e42b7779214f12309684b594ce76a3",
-      "contentHash": "e5fc43930a49ec21c58cec960f0f7c7d6b76eb1f4801ee4915b50fed2ad92e97"
+      "contentHash": "139bef3c97e1da7940421b2f7aced30e769c227747164e978d15cee8e138960b"
     },
     "generator": {
       "name": "docuccino/laravel",

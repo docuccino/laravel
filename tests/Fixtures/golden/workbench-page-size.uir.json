@@ -31,9 +31,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.paged.clamped",
         "summary": "The shared clamp: the read is the value the helper answers with, under a key of the app's choosing.",
         "tags": [
           "PagedList"
@@ -224,9 +232,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.paged.lazy",
         "summary": "A key read inside a closure the helper never calls, so the size it answers with never touches it.",
         "tags": [
           "PagedList"
@@ -374,9 +390,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.paged.limited",
         "summary": "The same clamp with the read named in a local first, and its literal fallback.",
         "tags": [
           "PagedList"
@@ -569,9 +593,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.paged.preset",
         "summary": "A preset selector: the key picks which fixed size is used, and is not itself a size.",
         "tags": [
           "PagedList"
@@ -845,7 +877,7 @@
     "document": {
       "id": "doc:page-size",
       "configHash": "0902620ee05e979fb634964a8073c35becef86a216e111fc8b3a10b9f3472468",
-      "contentHash": "f90e11b4642b6f24c7fc0b772a51ec53e7a282bd21f374aa9d92fef999caedc5"
+      "contentHash": "62b3828698706fed932497a561916e92f0112ca1d5bcbb3341b4071857ea8803"
     },
     "generator": {
       "name": "docuccino/laravel",

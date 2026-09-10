@@ -24,9 +24,17 @@
                 "line": 26,
                 "symbol": "Workbench\\App\\Http\\Controllers\\QbListController::index"
               }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.qb-list",
         "tags": [
           "QbList"
         ],
@@ -458,7 +466,7 @@
     "document": {
       "id": "doc:qb-list",
       "configHash": "ec45f90ff9da3b7d3c9f334a29bd4914e590195beb24cfb9113527bb1ee14e78",
-      "contentHash": "06d327255a190307e5b27f0b9dacfb032ff19d1928456d9de182ded7c98e511a"
+      "contentHash": "d8b18ab498d6cc68edeb287d5a605fbc1e750e2e8341e54685ac2cf4fa541e48"
     },
     "generator": {
       "name": "docuccino/laravel",

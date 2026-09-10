@@ -385,7 +385,9 @@ final class QueryBuilderParameters
             return [];
         }
 
-        $names = array_map(static fn (QbEntry $i): string => $i->name, $facts->includes);
+        // The allow-list as a SET: the enum below already holds each legal value once, and prose that
+        // counted the entries instead would name a relation twice beside an enum that names it once.
+        $names = array_values(array_unique(array_map(static fn (QbEntry $i): string => $i->name, $facts->includes)));
         $description = sprintf('Include related resources: %s.', implode(', ', $names));
 
         $values = [];

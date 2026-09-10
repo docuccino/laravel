@@ -1128,3 +1128,50 @@ it('names the public filter key in the prose, never the internal column', functi
     expect($description)->toBe('Exact match on `status`.')
         ->and($description)->not->toContain('status_code');
 });
+
+/**
+ * An allow-list is a SET — `allowedSorts(['name', 'name'])` is legal PHP and Spatie accepts it, and a
+ * value named twice is still one value the server takes. Every part of the published parameter has to
+ * agree about that: the enum, the SDK member names minted from it, and the prose that lists it. They
+ * are derived at different sites, so each bucket is put to all three — an enum deduped beside prose
+ * that was not is how "Include related resources: author, author." shipped next to `enum: [author]`.
+ */
+it('publishes a repeated allow-list value once, in the enum, the names and the prose', function (callable $mutate, string $parameter, array $enum, array $names, string $description): void {
+    $byName = specsByName((new QueryBuilderParameters)->build(factsWith($mutate), bracketedPolicy()));
+    $spec = $byName[$parameter];
+
+    $items = $spec->schema['items'] ?? $spec->schema;
+
+    expect($items['enum'])->toBe($enum)
+        ->and($items['x-enum-varnames'])->toBe($names)
+        ->and($items['x-enumNames'])->toBe($names)
+        ->and($spec->description)->toBe($description);
+})->with([
+    'sorts' => [
+        static function (QueryBuilderFacts $f): void {
+            $f->sorts = [new QbEntry('name', 'field'), new QbEntry('name', 'field'), new QbEntry('total', 'field')];
+        },
+        'sort',
+        ['name', '-name', 'total', '-total'],
+        ['Name', 'NameDesc', 'Total', 'TotalDesc'],
+        'Sort by: name, total (prefix `-` for descending).',
+    ],
+    'includes' => [
+        static function (QueryBuilderFacts $f): void {
+            $f->includes = [new QbEntry('author', 'relationship'), new QbEntry('author', 'relationship')];
+        },
+        'include',
+        ['author'],
+        ['Author'],
+        'Include related resources: author.',
+    ],
+    'fields' => [
+        static function (QueryBuilderFacts $f): void {
+            $f->fields = [new QbEntry('id', 'field'), new QbEntry('id', 'field'), new QbEntry('title', 'field')];
+        },
+        'fields',
+        ['id', 'title'],
+        ['Id', 'Title'],
+        'Fields to return: id, title.',
+    ],
+]);

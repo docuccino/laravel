@@ -183,3 +183,58 @@ it('still reports the duplicate operationId on a warm fragment-cache build', fun
     @unlink($dir.'/.gitignore');
     @rmdir($dir);
 });
+
+/**
+ * The mint's side of the same name space, end to end. Four paths one application may register side
+ * by side used to reduce to one name, because the reduction folded `-`, `_`, camel case and the
+ * segment break itself into a capital letter — so the document published one `operationId` four
+ * times, and a generated client cannot give one method name to four methods. The names are read off
+ * the finished document rather than from the mint, because it is the DOCUMENT that has to hold four.
+ */
+it('publishes a name of its own for paths that differ only in punctuation', function (): void {
+    $result = tagCollisionDocument(static function ($router): void {
+        $router->get('api/zz-user-profile', [LedgerController::class, 'index']);
+        $router->get('api/zz-user_profile', [LedgerController::class, 'index']);
+        $router->get('api/zz-userProfile', [LedgerController::class, 'index']);
+        $router->get('api/zz-user/profile', [LedgerController::class, 'index']);
+    });
+
+    $paths = $result->document->toArray()['paths'];
+
+    expect([
+        $paths['/api/zz-user-profile']['get']['operationId'],
+        $paths['/api/zz-user_profile']['get']['operationId'],
+        $paths['/api/zz-userProfile']['get']['operationId'],
+        $paths['/api/zz-user/profile']['get']['operationId'],
+    ])->toBe([
+        'get.api.zz-user-profile',
+        'get.api.zz-user__profile',
+        'get.api.zz-userProfile',
+        'get.api.zz-user.profile',
+    ])
+        ->and(diagnosticsCoded($result->diagnostics, 'route.duplicate-operation-id'))->toBe([]);
+});
+
+/**
+ * And every other operation in the same document keeps a name of its own, which is the claim the
+ * mint makes and the one a document is the only place to check.
+ */
+it('publishes as many operationIds as it has operations, all different', function (): void {
+    $result = tagCollisionDocument(static function ($router): void {
+        $router->get('api/zz-user-profile', [LedgerController::class, 'index']);
+        $router->get('api/zz-user/profile', [LedgerController::class, 'index']);
+    });
+
+    $ids = [];
+    $operations = 0;
+    foreach ($result->document->toArray()['paths'] as $item) {
+        foreach ($item as $operation) {
+            $operations++;
+            $ids[] = $operation['operationId'] ?? null;
+        }
+    }
+
+    expect($operations)->toBeGreaterThan(10)
+        ->and(array_filter($ids, static fn (?string $id): bool => $id === null))->toBe([])
+        ->and(array_unique($ids))->toHaveCount($operations);
+});

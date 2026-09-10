@@ -68,6 +68,41 @@ it('drops an unresolvable tag parent and reports it, rather than failing the bui
     'self parent' => [[['name' => 'Invoices', 'parent' => 'Invoices']], 'config.tag-parent-cycle'],
 ]);
 
+// A document whose config names one tag twice — OAS says each name in the `tags` array MUST be
+// unique, so publishing both entries hands a client generator two definitions of one type.
+it('publishes one tags entry for a tag the definitions name twice', function (): void {
+    $document = stubDocumentArray(function (array $raw): array {
+        $raw['tags']['definitions'] = [
+            ['name' => 'Forms', 'summary' => 'Forms', 'weight' => 9],
+            ['name' => 'Zebra'],
+            ['name' => 'Forms', 'description' => 'Manage forms', 'weight' => 1],
+        ];
+
+        return $raw;
+    });
+
+    // Merged, and positioned at the lowest weight the two entries state — so it sorts after the
+    // unweighted Zebra rather than at the 9 the first entry happened to be written with.
+    expect($document['tags'])->toBe([
+        ['name' => 'Zebra'],
+        ['name' => 'Forms', 'summary' => 'Forms', 'description' => 'Manage forms'],
+    ]);
+});
+
+it('projects one x-tagGroups group for a duplicated root', function (): void {
+    $document = stubDocumentArray(function (array $raw): array {
+        $raw['tags']['definitions'] = [
+            ['name' => 'Forms'],
+            ['name' => 'Forms'],
+            ['name' => 'Zebra', 'parent' => 'Forms'],
+        ];
+
+        return $raw;
+    });
+
+    expect($document['x-tagGroups'])->toBe([['name' => 'Forms', 'tags' => ['Forms', 'Zebra']]]);
+});
+
 it('emits byte-identical documents however the tag definitions are ordered', function (): void {
     $definitions = [
         ['name' => 'Refunds', 'parent' => 'Invoices', 'kind' => 'nav', 'weight' => 2],

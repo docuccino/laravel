@@ -24,9 +24,17 @@
                 "line": 17,
                 "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\BatchController::replay"
               }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.batch-replay",
         "tags": [
           "Batch"
         ],
@@ -121,9 +129,17 @@
                 "line": 11,
                 "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\BatchController::submit"
               }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.batch-submit",
         "tags": [
           "Batch"
         ],
@@ -283,7 +299,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "88e8ab38a040eeee45ed7ecfe60f8ce80e5b08c2982788a1d976550bfbba3f82"
+      "contentHash": "f3bbc97e311b3b1922ca2894e76266bd4b066af40ebf12de411825e0cd6e1d70"
     },
     "generator": {
       "name": "docuccino/laravel",

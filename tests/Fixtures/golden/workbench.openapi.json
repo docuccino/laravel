@@ -8,6 +8,7 @@
   "paths": {
     "/api/archived-forms/{form}": {
       "get": {
+        "operationId": "get.api.archived-forms.@form",
         "summary": "Show a form.",
         "tags": [
           "Forms"
@@ -42,6 +43,7 @@
     },
     "/api/article-resources": {
       "get": {
+        "operationId": "get.api.article-resources",
         "summary": "An anonymous resource collection → array of the item schema.",
         "tags": [
           "Integrations"
@@ -73,6 +75,7 @@
     },
     "/api/article-resources/{id}": {
       "get": {
+        "operationId": "get.api.article-resources.@id",
         "summary": "A single API resource whose whenLoaded fields become optional.",
         "tags": [
           "Integrations"
@@ -111,6 +114,7 @@
     },
     "/api/articles": {
       "post": {
+        "operationId": "post.api.articles",
         "summary": "Spatie Data request (body from the Data class) + response, under a folded 201.",
         "tags": [
           "Integrations"
@@ -162,6 +166,7 @@
     },
     "/api/attachments/{id}": {
       "get": {
+        "operationId": "get.api.attachments.@id",
         "summary": "A polymorphic morph (Widget|Gadget) → discriminated oneOf keyed by the morph map.",
         "tags": [
           "Integrations"
@@ -206,6 +211,7 @@
     },
     "/api/authenticated-forms": {
       "get": {
+        "operationId": "get.api.authenticated-forms",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -233,6 +239,7 @@
     },
     "/api/authorized-forms": {
       "get": {
+        "operationId": "get.api.authorized-forms",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -263,11 +270,13 @@
     },
     "/api/broken": {
       "get": {
+        "operationId": "get.api.broken",
         "description": "Documentation could not be generated for this route."
       }
     },
     "/api/checkout": {
       "post": {
+        "operationId": "post.api.checkout",
         "summary": "Throws a renderable exception whose render() defines a 402 — documented by the inferred tier.",
         "tags": [
           "Integrations"
@@ -330,6 +339,7 @@
     },
     "/api/created-articles": {
       "post": {
+        "operationId": "post.api.created-articles",
         "summary": "A resource wrapping a fresh Model::create() → a 201 Created response (Wave C item 4).",
         "tags": [
           "Integrations"
@@ -358,6 +368,7 @@
     },
     "/api/forms": {
       "get": {
+        "operationId": "get.api.forms",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -382,6 +393,7 @@
     },
     "/api/forms/{form}": {
       "get": {
+        "operationId": "get.api.forms.@form",
         "summary": "Show a form.",
         "tags": [
           "Forms"
@@ -415,6 +427,7 @@
     },
     "/api/guarded-forms": {
       "get": {
+        "operationId": "get.api.guarded-forms",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -445,6 +458,7 @@
     },
     "/api/json-paginated-articles": {
       "get": {
+        "operationId": "get.api.json-paginated-articles",
         "summary": "A jsonPaginate() resource collection → page[...] params + the paginator envelope (Wave C item 2).",
         "tags": [
           "Integrations"
@@ -490,6 +504,7 @@
     },
     "/api/jsonapi-articles/{id}": {
       "get": {
+        "operationId": "get.api.jsonapi-articles.@id",
         "summary": "A first-party JSON:API resource → JSON:API document + include/fields query params.",
         "tags": [
           "Integrations"
@@ -551,6 +566,7 @@
     },
     "/api/ledger-query": {
       "get": {
+        "operationId": "get.api.ledger-query",
         "summary": "List ledgers, with related resources and a sparse fieldset selectable via the query string.",
         "tags": [
           "LedgerQuery"
@@ -684,6 +700,7 @@
     },
     "/api/model-widgets/{id}": {
       "get": {
+        "operationId": "get.api.model-widgets.@id",
         "summary": "An Eloquent model → object schema from columns + casts + visible/hidden.",
         "tags": [
           "Integrations"
@@ -712,6 +729,7 @@
         }
       },
       "delete": {
+        "operationId": "delete.api.model-widgets.@id",
         "summary": "A 204 No Content response (noContent()).",
         "tags": [
           "Integrations"
@@ -735,6 +753,7 @@
     },
     "/api/moderated-forms": {
       "get": {
+        "operationId": "get.api.moderated-forms",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -768,6 +787,7 @@
     },
     "/api/paginated-articles": {
       "get": {
+        "operationId": "get.api.paginated-articles",
         "summary": "A paginated resource collection → the length-aware {data, links, meta} envelope (Wave C item 1).",
         "tags": [
           "Integrations"
@@ -800,10 +820,13 @@
       }
     },
     "/api/ping": {
-      "get": {}
+      "get": {
+        "operationId": "get.api.ping"
+      }
     },
     "/api/rate-limited": {
       "get": {
+        "operationId": "get.api.rate-limited",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -876,6 +899,7 @@
     },
     "/api/reports": {
       "post": {
+        "operationId": "post.api.reports",
         "summary": "Distinct return paths carrying distinct statuses (200 + 202).",
         "tags": [
           "Integrations"
@@ -923,6 +947,7 @@
     },
     "/api/showcases/{id}": {
       "get": {
+        "operationId": "get.api.showcases.@id",
         "summary": "A model whose allow-list is narrowed further by a deny-list naming one of the same keys.",
         "tags": [
           "Integrations"
@@ -953,6 +978,7 @@
     },
     "/api/signed-forms": {
       "get": {
+        "operationId": "get.api.signed-forms",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -980,6 +1006,7 @@
     },
     "/api/strongboxes/{id}": {
       "get": {
+        "operationId": "get.api.strongboxes.@id",
         "summary": "A model whose deny-list also reaches its appends and its eager-loaded relations.",
         "tags": [
           "Integrations"
@@ -1010,6 +1037,7 @@
     },
     "/api/tickets": {
       "post": {
+        "operationId": "post.api.tickets",
         "tags": [
           "Widgets"
         ],
@@ -1042,6 +1070,7 @@
     },
     "/api/unguarded-forms": {
       "get": {
+        "operationId": "get.api.unguarded-forms",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -1066,6 +1095,7 @@
     },
     "/api/verified-forms": {
       "get": {
+        "operationId": "get.api.verified-forms",
         "summary": "List forms.",
         "description": "Returns the collection of forms visible to the caller.",
         "tags": [
@@ -1096,6 +1126,7 @@
     },
     "/api/widget-query": {
       "get": {
+        "operationId": "get.api.widget-query",
         "summary": "List forms, filterable and sortable via the query string.",
         "tags": [
           "WidgetQuery"
@@ -1180,6 +1211,7 @@
     },
     "/api/widgets": {
       "post": {
+        "operationId": "post.api.widgets",
         "summary": "Create a widget.",
         "tags": [
           "Widgets"

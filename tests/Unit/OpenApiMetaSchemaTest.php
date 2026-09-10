@@ -5,8 +5,8 @@ declare(strict_types=1);
 use Docuccino\Core\Document\UirDocument;
 use Docuccino\Core\Emit\EmitOptions;
 use Docuccino\Core\Emit\Formats;
+use Docuccino\Core\SpecValidation\OpenApiMetaSchema;
 use Docuccino\Core\Tests\Support\EmittedDocument;
-use Docuccino\Core\Tests\Support\OpenApiMetaSchema;
 
 /**
  * The meta-schema oracle over the adapter's recorded documents: what a REAL application's build produces,
@@ -45,19 +45,15 @@ function adapterMetaSchemaSubjects(): array
  * Every recorded UIR golden, discovered rather than listed, so a document added tomorrow is validated
  * without anyone remembering to name it here.
  *
+ * Through {@see uirDocuments()} rather than a glob of `*.uir.json`, so the set is what the tree HOLDS
+ * and not what a naming convention describes — `MetaSchemaCoverageTest` holds this half and core's to
+ * the whole of it, and it can only do that if both halves are cut from the same domain.
+ *
  * @return list<string>
  */
 function adapterMetaSchemaGoldens(): array
 {
-    $goldens = [];
-
-    foreach (glob(golden('*.uir.json')) ?: [] as $path) {
-        $goldens[] = basename($path);
-    }
-
-    sort($goldens);
-
-    return $goldens;
+    return uirDocumentsUnder(dirname(golden('x')));
 }
 
 /** @return array{mixed, mixed} the JSON emission and the YAML emission of one golden, both as graphs */
@@ -134,9 +130,10 @@ it('re-emits the empty objects its subjects hold, rather than the lists a plain 
 });
 
 /**
- * A scan that finds nothing must fail. Each floor below is set from what the tree measures — 13 goldens,
- * 39 subjects, 12,230 positions, 35 empty maps, 1,131 ordered maps — close enough underneath that a real
- * truncation drops through it, far enough that retiring one golden does not.
+ * A scan that finds nothing must fail. Each floor below is set from what the tree measures — 20 goldens,
+ * 60 subjects, 15,448 positions, 43 empty maps, 1,430 ordered maps — close enough underneath that a real
+ * truncation drops through it, far enough that retiring one golden does not. A floor left where the
+ * corpus was seven goldens ago is most of the way to no floor.
  *
  * The empty-map count is the one that keeps THIS file honest: these documents hold empty maps, and a
  * reader that stopped preserving them — or an emitter that stopped writing them — would leave every
@@ -164,9 +161,9 @@ it('validates a plausible minimum of recorded documents, positions and empty map
         $orderedMaps += EmittedDocument::orderedMaps($json);
     }
 
-    expect(count(adapterMetaSchemaGoldens()))->toBeGreaterThanOrEqual(10)
-        ->and(count(adapterMetaSchemaSubjects()))->toBeGreaterThanOrEqual(30)
-        ->and($positions)->toBeGreaterThanOrEqual(10000)
-        ->and($emptyMaps)->toBeGreaterThanOrEqual(25)
-        ->and($orderedMaps)->toBeGreaterThanOrEqual(500);
+    expect(count(adapterMetaSchemaGoldens()))->toBeGreaterThanOrEqual(18)
+        ->and(count(adapterMetaSchemaSubjects()))->toBeGreaterThanOrEqual(54)
+        ->and($positions)->toBeGreaterThanOrEqual(14000)
+        ->and($emptyMaps)->toBeGreaterThanOrEqual(38)
+        ->and($orderedMaps)->toBeGreaterThanOrEqual(1300);
 });

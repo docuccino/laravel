@@ -11,6 +11,7 @@ use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Routing\Router;
 use Laravel\Passport\Passport;
+use Spatie\Permission\Middleware\PermissionMiddleware;
 use Workbench\App\Http\Controllers\AuthAttributesController;
 use Workbench\App\Http\Controllers\FormController;
 
@@ -51,6 +52,17 @@ beforeEach(function (): void {
     // alias-only reading resolved no driver and no integration claimed the route.
     $router->get('api/wave-d/partner-by-class', [FormController::class, 'index'])
         ->middleware(Authenticate::using('partner'));
+    // One authorization requirement written two ways: spatie's alias on the group, and the class name
+    // its `::using()` helper renders on the route. The middleware list is unique by string, so both
+    // survive to the producer and the published requirement has to be one either way.
+    $router->group(['middleware' => ['permission:moderate forms,web']], static function () use ($router): void {
+        $router->get('api/wave-d/moderated', [FormController::class, 'index'])
+            ->middleware(PermissionMiddleware::class.':moderate forms,web');
+    });
+    // An ability the middleware names twice, beside the `#[Abilities]` attribute restating what the
+    // middleware already says — the two ways an application belts and braces one token ability.
+    $router->post('api/wave-d/publish-twice', [AuthAttributesController::class, 'publish'])
+        ->middleware(['auth:sanctum', 'abilities:posts:publish,posts:publish']);
 
     setDocuments([
         'wave-d-auth' => [
@@ -58,6 +70,8 @@ beforeEach(function (): void {
             'routes' => ['include' => ['api/wave-d/*']],
         ],
     ]);
+
+    setBuild('documents.wave-d-auth.integrations.permission.enabled', true);
 });
 
 afterEach(function (): void {

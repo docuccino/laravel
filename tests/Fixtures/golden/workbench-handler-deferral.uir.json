@@ -31,9 +31,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.note-archives.@form",
         "summary": "Show a form.",
         "tags": [
           "Forms"
@@ -161,9 +169,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.note-forms.@form",
         "summary": "Show a form.",
         "tags": [
           "Forms"
@@ -301,7 +317,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "d30f33734bd7c675f0365e9c1ba779904e495026fda59f3c1cd925f5034d41c7"
+      "contentHash": "a37e0093f7fec6dcc1aca3c157952d6a1c086a825eed8b7046f0929292cce980"
     },
     "generator": {
       "name": "docuccino/laravel",

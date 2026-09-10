@@ -24,9 +24,17 @@
                 "line": 17,
                 "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\ErrorsController::denied"
               }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.zz-denied",
         "tags": [
           "Errors"
         ],
@@ -84,9 +92,17 @@
               "fields": [
                 "summary"
               ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
             }
           ]
         },
+        "operationId": "get.api.zz-deniedagain",
         "summary": "The same body as, described differently — presentation, not contract.",
         "tags": [
           "Errors"
@@ -170,7 +186,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "475ee8855167f04f15c984c46a77e63136bc0e3e4f1951f0705d0efe8ba76cac",
-      "contentHash": "18f4b592928c52403a69591a7d92c332643bf351bd1b11c2a9d73abe43114437"
+      "contentHash": "0aa8dcb59e6fa883f758f0db6929085c168a150670ccff40acbef95715826ce5"
     },
     "generator": {
       "name": "docuccino/laravel",

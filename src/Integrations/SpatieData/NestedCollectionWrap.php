@@ -35,16 +35,18 @@ final class NestedCollectionWrap
      *
      * The nested key is the GLOBAL wrap, never the item class's `defaultWrap()`: spatie resolves a
      * nested collection's envelope from `config('data.wrap')` alone, so an item class overriding the
-     * key does not change what lands on the wire.
+     * key does not change what lands on the wire. {@see WrapResolver::wrapsNested()} owns the other
+     * half — which of spatie's two switches reaches this far.
      */
     public function diagnose(string $fqcn, string $property, DType $clean): ?Diagnostic
     {
         $key = $this->wrap->globalKey();
 
-        // No global wrap, or a class that disables wrapping for its whole transformation — the latter
-        // reads `withoutWrapping()` and `WrapExecutionType::Disabled` alike, and propagates to nested
-        // values, so nothing here will be wrapped.
-        if ($key === null || $this->wrap->key($fqcn) === null) {
+        // No global wrap, or nothing left to say about the switch that propagates downward, which is
+        // the only one that reaches a value nested in here. A class that merely takes its own root
+        // envelope off is not one of them: that writes the object's `Wrap`, which spatie reads for
+        // the root and nowhere else.
+        if ($key === null || ! $this->wrap->wrapsNested($fqcn)) {
             return null;
         }
 
