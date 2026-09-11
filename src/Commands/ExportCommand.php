@@ -65,15 +65,16 @@ final class ExportCommand extends Command
 
         $exit = $this->forEachDocument($builder, function (string $key) use ($builder, $engine): int {
             $result = $builder->build($key, $engine);
-            $diagnostics = $this->withAcceptanceNotes($result->diagnostics);
 
             $written = $this->writeTargets($builder->config($key), $result->document);
-            $this->renderDiagnostics($key, $diagnostics);
+            $this->renderDiagnostics($key, $this->withAcceptanceNotes($result->diagnostics));
 
-            return $written && ! $this->failsOnAny($diagnostics) ? self::SUCCESS : self::FAILURE;
+            return $written ? self::SUCCESS : self::FAILURE;
         });
 
-        return $this->reportStaleAcceptances($exit);
+        $this->reportStaleAcceptances();
+
+        return $this->withSeverityGate($exit);
     }
 
     /**
@@ -291,26 +292,31 @@ final class ExportCommand extends Command
         $this->info(sprintf('Wrote %s (%s).', $path, $target->format));
 
         // A downlevel drops or approximates things; say so rather than shipping a quieter contract.
-        $this->renderDiagnostics($target->format, $result->report->diagnostics);
+        // Printed like any other report, so `--fail-on` reads it and `diagnostics.accept` quiets it:
+        // what an artifact loses on the way out is a fact about the contract being shipped, and a
+        // reader who asked to fail on warnings asked about that one too.
+        $this->renderDiagnostics($target->format, $this->withAcceptanceNotes($result->report->diagnostics));
 
-        // An emitter reports an ERROR only for a defect of OURS — a file that is not a valid document of
-        // the format it claims — so the run failed however loud the reader asked diagnostics to be.
-        // `--fail-on` is how strict you want to be about what the document SAYS; a malformed artifact is
-        // not that question, and `docuccino:validate` already treats the UIR half the same way. What an
-        // application can cause from its own config or routes comes back a WARNING and is rendered
-        // rather than fatal, so no documented setting can make an export fail.
-        return array_filter(
-            $result->report->diagnostics,
-            static fn (Diagnostic $d): bool => $d->severity === Severity::Error,
-        ) === [];
+        // An emitter reports an ERROR only for a defect of OURS — a file that is not a valid document
+        // of the format it claims — so the run fails at `--fail-on=none`, below the floor's reach, the
+        // way `docuccino:validate` treats both halves. Everything quieter is the gate's.
+        return ! $result->report->hasError();
     }
 
+    /**
+     * What this run writes $target with: the bare-export options ({@see DocumentEmitOptions::canonical()})
+     * with every flag laid over them. Each of the three settings canonical states is overwritten here
+     * unconditionally, so what starting from it buys is the document's own say plus a base a fourth
+     * setting cannot fall out of — that a bare run writes the same bytes `docuccino:validate` checks
+     * and the contract assertions compare against follows from the flags' own defaults, and is proved
+     * by the executed byte comparison in `ArtifactSoundnessReachTest`.
+     */
     private function emitOptions(ExportTarget $target, DocumentConfig $config): EmitOptions
     {
         // `--yaml` is the single-target override's say; a configured target states it in its own path.
         $yaml = $this->option('yaml') === true || $target->yaml();
 
-        return DocumentEmitOptions::for($config)
+        return DocumentEmitOptions::canonical($config, $target)
             ->withYaml($yaml && Formats::serialisesYaml($target->format))
             ->withProvenance($this->provenanceLevel())
             ->withKeepIds($this->option('drop-ids') !== true);

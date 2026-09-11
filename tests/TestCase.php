@@ -47,6 +47,7 @@ abstract class TestCase extends Orchestra
     /**
      * The default `viewer.middleware` includes the `web` group, whose session/cookie encryption
      * needs an application key — set a fixed one so the viewer feature tests run as a real app would.
+     * (`app.url` is pinned too, but in `phpunit.xml`: it is read before this runs.)
      */
     protected function defineEnvironment($app): void
     {

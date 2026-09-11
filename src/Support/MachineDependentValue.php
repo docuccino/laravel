@@ -43,13 +43,10 @@ final class MachineDependentValue
      */
     public static function isLocalUrl(string $url): bool
     {
-        $host = parse_url($url, PHP_URL_HOST);
-        if (! is_string($host) || $host === '') {
+        $host = HostAddress::of($url);
+        if ($host === null) {
             return false;
         }
-
-        // Trailing dot = the fully-qualified spelling of the same name; brackets = IPv6 URL syntax.
-        $host = trim(strtolower($host), '[].');
 
         $address = self::loopbackAddress($host);
         if ($address !== null) {
@@ -159,13 +156,13 @@ final class MachineDependentValue
      */
     private static function loopbackAddress(string $host): ?bool
     {
-        $address = self::ipv4($host);
+        $address = HostAddress::ipv4($host);
         if ($address !== null) {
             return self::isLoopbackV4($address);
         }
 
-        $packed = inet_pton($host);
-        if (! is_string($packed) || strlen($packed) !== 16) {
+        $packed = HostAddress::ipv6($host);
+        if ($packed === null) {
             return null;
         }
 
@@ -173,75 +170,14 @@ final class MachineDependentValue
             return true;
         }
 
-        if (! str_starts_with($packed, str_repeat("\0", 10)."\xff\xff")) {
-            return false;
-        }
+        $mapped = HostAddress::mappedIpv4($packed);
 
-        $mapped = unpack('N', substr($packed, 12));
-
-        return is_array($mapped) && is_int($mapped[1] ?? null) && self::isLoopbackV4($mapped[1]);
+        return $mapped !== null && self::isLoopbackV4($mapped);
     }
 
     private static function isLoopbackV4(int $address): bool
     {
         return $address === 0 || ($address >> 24) === 127;
-    }
-
-    /**
-     * A host spelled as an IPv4 address, as the 32-bit number it means — in every spelling the C
-     * resolver accepts, because `127.1`, `2130706433`, `0x7f.1` and `0177.0.0.1` all reach the same
-     * machine and a document naming one of those is as unreachable as one naming `127.0.0.1`. Null
-     * when the host is a name.
-     */
-    private static function ipv4(string $host): ?int
-    {
-        $parts = explode('.', $host);
-        if (count($parts) > 4) {
-            return null;
-        }
-
-        $values = [];
-        foreach ($parts as $part) {
-            $value = self::number($part);
-            if ($value === null) {
-                return null;
-            }
-
-            $values[] = $value;
-        }
-
-        // The last part fills every byte the earlier ones left over; each earlier one is a single byte.
-        $last = array_pop($values);
-        if ($last >= 2 ** (8 * (4 - count($values)))) {
-            return null;
-        }
-
-        $address = $last;
-        foreach ($values as $index => $value) {
-            if ($value > 255) {
-                return null;
-            }
-
-            $address |= $value << (8 * (3 - $index));
-        }
-
-        return $address;
-    }
-
-    /** One dotted part as the number it spells: `0x…` hex, leading-zero octal, else decimal. */
-    private static function number(string $part): ?int
-    {
-        if (str_starts_with($part, '0x')) {
-            $digits = substr($part, 2);
-
-            return $digits !== '' && strlen($digits) <= 8 && ctype_xdigit($digits) ? (int) hexdec($digits) : null;
-        }
-
-        if (strlen($part) > 1 && $part[0] === '0') {
-            return strlen($part) <= 12 && strspn($part, '01234567') === strlen($part) ? (int) octdec($part) : null;
-        }
-
-        return $part !== '' && strlen($part) <= 10 && ctype_digit($part) ? (int) $part : null;
     }
 
     /**

@@ -9,6 +9,7 @@ use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Document\UirDocument;
 use Docuccino\Core\Emit\EmitOptions;
 use Docuccino\Core\Emit\EmitReport;
+use Docuccino\Core\Emit\EmitResult;
 use Docuccino\Core\Emit\OpenApi30DownlevelEmitter;
 use Docuccino\Core\Emit\OpenApi31DownlevelEmitter;
 use Docuccino\Core\Emit\OpenApi32Emitter;
@@ -97,14 +98,25 @@ final class ViewerDrivers
      */
     public function emitFor(DocumentConfig $config, UirDocument $document): string
     {
-        $emitter = $this->emitterFor($config);
-        $result = $emitter->emitWithReport($document, new EmitOptions);
+        $result = $this->emitResultFor($config, $document);
 
         if (! $result->report->isEmpty()) {
-            $this->logLoss($config, $emitter->format(), $result->report);
+            $this->logLoss($config, $this->formatFor($config), $result->report);
         }
 
         return $result->output;
+    }
+
+    /**
+     * The same emission with its report still attached, for a caller that has a reader in front of it.
+     *
+     * A request has nobody to tell, which is why {@see emitFor()} logs; `docuccino:cache` emits the
+     * very same payload with an operator watching, and a console is the channel that reaches them.
+     * One emission either way, so the two cannot cache different bytes than they report on.
+     */
+    public function emitResultFor(DocumentConfig $config, UirDocument $document): EmitResult
+    {
+        return $this->emitterFor($config)->emitWithReport($document, new EmitOptions);
     }
 
     private function logLoss(DocumentConfig $config, string $format, EmitReport $report): void

@@ -12,6 +12,7 @@ use Docuccino\Core\Emit\OpenApi32Emitter;
 use Docuccino\Core\Emit\UirEmitter;
 use Docuccino\Core\Extensions\Context\DocumentContext;
 use Docuccino\Core\Extensions\Document\UirDocumentDraft;
+use Docuccino\Core\Pipeline\GenerationResult;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
 use Docuccino\Laravel\Versioning\ApiVersionTransformer;
 use Docuccino\Laravel\Versioning\VersionChangeCollector;
@@ -53,6 +54,19 @@ function twoOperationVersion(array $raw): array
     $raw['routes'] = ['include' => ['api/versioned-forms', 'api/versioned-forms/archived']];
 
     return $raw;
+}
+
+/** The one refusal a document earns, so an assertion on its wording cannot silently read a second. */
+function headerRefusal(GenerationResult $result): Diagnostic
+{
+    $found = array_values(array_filter(
+        $result->diagnostics,
+        static fn (Diagnostic $d): bool => $d->code === 'versioning.header-name-ignored',
+    ));
+
+    expect($found)->toHaveCount(1);
+
+    return $found[0];
 }
 
 it('publishes the header once and points every operation at it', function (): void {
@@ -98,6 +112,78 @@ it('leaves a document that declares no version with no version parameter at all'
         ->and($document['paths']['/api/versioned-forms']['get'])->not->toHaveKey('parameters')
         ->and($document['paths']['/api/versioned-forms/archived']['get'])->not->toHaveKey('parameters');
 });
+
+/*
+ * The three header names OpenAPI takes away. §4.12.2.1 says a header parameter named `Accept`,
+ * `Content-Type` or `Authorization` SHALL be ignored, so a version enum published on one is published
+ * where nothing conforming will read it: a document that looks like it describes versioning and does
+ * not. The names are typed out from the spec here rather than read off `IgnoredHeaders`, for the
+ * reason {@see IgnoredHeadersTest} gives — a table that asks the code for its own rule agrees with
+ * whatever the code holds.
+ *
+ * Publishing it anyway would also earn one `document.ignored-header-declaration` per operation against
+ * a parameter the author never wrote and cannot delete, with help telling them to move a fact into a
+ * response they do not own. What they get instead names the one thing that is theirs to change.
+ */
+it('publishes no version header on a name OpenAPI reserves, and says which setting to change', function (string $header): void {
+    $result = generateDocument(static function (array $raw) use ($header): array {
+        $raw['api_version']['header'] = $header;
+
+        return twoOperationVersion($raw);
+    }, 'v2026-06-01');
+
+    $document = $result->document->toArray();
+
+    $reported = array_values(array_map(
+        static fn (Diagnostic $d): string => $d->severity->value.': '.$d->code,
+        array_filter(
+            $result->diagnostics,
+            static fn (Diagnostic $d): bool => in_array(
+                $d->code,
+                ['versioning.header-name-ignored', 'document.ignored-header-declaration'],
+                true,
+            ),
+        ),
+    ));
+
+    expect($document['components'] ?? [])->not->toHaveKey('parameters')
+        ->and($document['paths']['/api/versioned-forms']['get'])->not->toHaveKey('parameters')
+        ->and($document['paths']['/api/versioned-forms/archived']['get'])->not->toHaveKey('parameters')
+        // One warning for the document, not one per operation — and no ignored-header report at all,
+        // because nothing was published for the audit to find.
+        ->and($reported)->toBe(['warning: versioning.header-name-ignored'])
+        // The setting is the only lever the author has, so the message has to name it.
+        ->and(headerRefusal($result)->help)->toContain('api_version.header')
+        ->and(headerRefusal($result)->message)->toContain($header);
+})->with([
+    'Accept' => ['Accept'],
+    'Content-Type' => ['Content-Type'],
+    'Authorization' => ['Authorization'],
+    // Header names are case-insensitive on the wire, so the refusal cannot be spelling-sensitive.
+    'a lower-cased name' => ['authorization'],
+]);
+
+it('publishes the header, and says nothing, on a name OpenAPI carries', function (string $header): void {
+    $result = generateDocument(static function (array $raw) use ($header): array {
+        $raw['api_version']['header'] = $header;
+
+        return twoOperationVersion($raw);
+    }, 'v2026-06-01');
+
+    // The positive control for the block above: the refusal has to be these three names biting rather
+    // than the version header having stopped being published at all.
+    expect($result->document->toArray()['components']['parameters'])->toHaveCount(1)
+        ->and(array_filter(
+            $result->diagnostics,
+            static fn (Diagnostic $d): bool => $d->code === 'versioning.header-name-ignored',
+        ))->toBe([]);
+})->with([
+    'the default' => ['X-Api-Version'],
+    // Names that look adjacent to the reserved three and are ordinary headers.
+    'Accept-Version' => ['Accept-Version'],
+    'Content-Type-Version' => ['Content-Type-Version'],
+    'X-Authorization' => ['X-Authorization'],
+]);
 
 /*
  * The {@see ComponentNames} invariant, which is why this component may be NAMED where a scoped change's

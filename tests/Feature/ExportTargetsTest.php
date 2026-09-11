@@ -162,30 +162,68 @@ it('finds the override target by format, not by position', function (): void {
     }
 });
 
-it('refuses to build when a target list cannot be honoured', function (array $targets, string $code): void {
-    $dir = targetsDir();
-    configureTargets($targets);
+/**
+ * Every way a target list can be unreadable, against the code that names it. Paths are written under
+ * `@dir` and resolved to the run's own scratch directory, so "nothing was written" is asserted about
+ * somewhere this test can see rather than about a path nothing would have touched anyway.
+ */
+function unreadableTargetLists(): array
+{
+    return [
+        'unknown format' => [[['format' => 'swagger-2.0', 'path' => '@dir/x.json']], 'config.export-unknown-format'],
+        'empty list' => [[], 'config.export-no-targets'],
+        'malformed entry' => [['nope'], 'config.export-target-shape'],
+        'yaml on a json-only format' => [[['format' => 'uir', 'path' => '@dir/x.yaml']], 'config.export-yaml-unsupported'],
+        'two targets one path' => [[
+            ['format' => 'openapi-3.2', 'path' => '@dir/same.json'],
+            ['format' => 'openapi-3.1', 'path' => '@dir/same.json'],
+        ], 'config.export-duplicate-path'],
+        'two targets one format' => [[
+            ['format' => 'uir', 'path' => '@dir/a.json'],
+            ['format' => 'uir', 'path' => '@dir/b.json'],
+        ], 'config.export-duplicate-format'],
+    ];
+}
 
-    $this->artisan('docuccino:export')
+/**
+ * And the commands that read the list. The export is the obvious one — it is about to write those
+ * files. `docuccino:validate` refuses for the reason the commands reference states: a list it cannot
+ * read names no artifact to check, and a document whose configured artifacts cannot be written is not
+ * one to call sound. Driven over both, because a dataset that drove only the export said nothing
+ * about the half of the rule the other command owes.
+ */
+function unreadableTargetRows(): array
+{
+    $rows = [];
+
+    foreach (['docuccino:export', 'docuccino:validate'] as $command) {
+        foreach (unreadableTargetLists() as $shape => [$targets, $code]) {
+            $rows[$command.' · '.$shape] = [$command, $targets, $code];
+        }
+    }
+
+    return $rows;
+}
+
+it('refuses to build when a target list cannot be honoured', function (string $command, array $targets, string $code): void {
+    $dir = targetsDir();
+
+    configureTargets(array_map(
+        static fn (mixed $target): mixed => is_array($target)
+            ? ['format' => $target['format'], 'path' => str_replace('@dir', $dir, (string) $target['path'])]
+            : $target,
+        $targets,
+    ));
+
+    $this->artisan($command)
         ->expectsOutputToContain($code)
+        // Refused before the analysis: neither command reaches the verdict a built document earns.
+        ->doesntExpectOutputToContain('valid against UIR')
         ->assertFailed();
 
     // Nothing was written: the check runs before the (expensive) build, not after it.
     expect(glob($dir.'/*'))->toBe([]);
-})->with([
-    'unknown format' => [[['format' => 'swagger-2.0', 'path' => '/tmp/x.json']], 'config.export-unknown-format'],
-    'empty list' => [[], 'config.export-no-targets'],
-    'malformed entry' => [['nope'], 'config.export-target-shape'],
-    'yaml on a json-only format' => [[['format' => 'uir', 'path' => '/tmp/x.yaml']], 'config.export-yaml-unsupported'],
-    'two targets one path' => [[
-        ['format' => 'openapi-3.2', 'path' => '/tmp/same.json'],
-        ['format' => 'openapi-3.1', 'path' => '/tmp/same.json'],
-    ], 'config.export-duplicate-path'],
-    'two targets one format' => [[
-        ['format' => 'uir', 'path' => '/tmp/a.json'],
-        ['format' => 'uir', 'path' => '/tmp/b.json'],
-    ], 'config.export-duplicate-format'],
-]);
+})->with(fn (): array => unreadableTargetRows());
 
 it('refuses when two documents would write the same file', function (): void {
     $dir = targetsDir();

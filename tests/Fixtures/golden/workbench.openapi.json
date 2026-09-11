@@ -17,7 +17,7 @@
           {
             "name": "form",
             "in": "path",
-            "description": "Resolves soft-deleted (trashed) records as well as active ones.",
+            "description": "Matched on the resource's `id`. Resolves soft-deleted (trashed) records as well as active ones.",
             "required": true,
             "schema": {
               "type": "integer"
@@ -402,6 +402,7 @@
           {
             "name": "form",
             "in": "path",
+            "description": "Matched on the resource's `id`.",
             "required": true,
             "schema": {
               "type": "integer"

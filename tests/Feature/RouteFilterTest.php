@@ -235,15 +235,25 @@ it('escapes the document key in the refusal, the way it already escapes the clas
     'not a route filter' => [NotAFilter::class],
 ]);
 
-it('reports an unusable filter as a config error and writes nothing', function (): void {
+/**
+ * Both commands that read the config before building, because the refusal is thrown where the filter
+ * is resolved: whichever command touches the config first meets it, and a command that does not catch
+ * it hands the reader a stack trace instead of the config error it is.
+ */
+it('reports an unusable filter as a config error and writes nothing', function (string $command, bool $writes): void {
     $out = sys_get_temp_dir().'/docuccino-route-filter-'.uniqid().'.json';
     setBuild('documents.default.routes.filter', 'App\\Docs\\NoSuchFilter');
 
     // One substring per written line: the diagnostic's own line, then the `help` under it.
-    $this->artisan('docuccino:export', ['--out' => $out])
+    $this->artisan($command, $writes ? ['--out' => $out] : [])
         ->expectsOutputToContain("[error] config.route-filter-unusable: documents.default.routes.filter names 'App\\Docs\\NoSuchFilter', which is not an autoloadable class.")
         ->expectsOutputToContain('Point documents.default.routes.filter at an autoloadable class implementing')
+        // Refused before the analysis, so no document was built for a verdict to be printed about.
+        ->doesntExpectOutputToContain('valid against UIR')
         ->assertFailed();
 
     expect(file_exists($out))->toBeFalse();
-});
+})->with([
+    'docuccino:export' => ['docuccino:export', true],
+    'docuccino:validate' => ['docuccino:validate', false],
+]);

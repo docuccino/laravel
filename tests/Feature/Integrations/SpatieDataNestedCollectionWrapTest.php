@@ -16,6 +16,7 @@ use Docuccino\Laravel\Tests\Fixtures\SpatieData\NestedWrapMapData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\NestedWrapNestedDisabledData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\NestedWrapOwnKeyData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\NestedWrapPaginatedData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\NestedWrapPhantomData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\NestedWrapSelfUnwrappedData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\NestedWrapTransformedData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\NestedWrapUnattributedData;
@@ -82,7 +83,23 @@ it('stays silent where nothing will be wrapped', function (string $fqcn, ?string
         'data',
         new ClassT('Spatie\\LaravelData\\PaginatedDataCollection', [ScalarT::int(), new ClassT(NESTED_WRAP_ITEM)]),
     ],
+    // Nothing spatie serialises, so nothing it can wrap. The oracle at the bottom is what says so —
+    // reading the absence as "a transformer must be handling it" happened to land on silence here and
+    // would report the moment it stopped, which is a claim about a key no response carries.
+    'the property exists only in the class docblock' => [NestedWrapPhantomData::class, 'data', null],
 ]);
+
+it('answers no transformer for a property the class does not declare', function (): void {
+    // The two questions the one reading used to collapse. `#[WithTransformer]` is a thing an author
+    // WRITES; a property nothing can read carries none, and saying otherwise suppresses whatever the
+    // caller was about to publish for a reason that is not in the code.
+    $reflector = new DataClassReflector;
+
+    expect($reflector->isPropertyTransformed(NestedWrapPhantomData::class, 'things'))->toBeFalse()
+        ->and($reflector->declaresProperty(NestedWrapPhantomData::class, 'things'))->toBeFalse()
+        ->and($reflector->declaresProperty(NestedWrapPhantomData::class, 'label'))->toBeTrue()
+        ->and($reflector->isPropertyTransformed(NestedWrapTransformedData::class, 'things'))->toBeTrue();
+});
 
 it('leaves a transformed property its declared shape', function (): void {
     expect(convertNestedWrap(NestedWrapTransformedData::class, 'data')['schema']['properties']['things'])
@@ -122,6 +139,16 @@ it('pins that a paginated collection carries the envelope the schema already pub
 
     expect($rendered['data']['things'])->toHaveKeys(['data', 'links', 'meta'])
         ->and($rendered['data']['things']['data'])->toBe([['label' => 'a']]);
+});
+
+it('pins that a docblock-only property is not on the wire at all', function (): void {
+    // Why silence is right for it, rather than merely convenient: spatie builds its properties from
+    // reflection, so the `@property` tag contributes no key to serialise and no key to wrap.
+    bootLaravelData('data');
+
+    $rendered = (new NestedWrapPhantomData('a'))->toResponse(request())->getData(true);
+
+    expect($rendered)->toBe(['data' => ['label' => 'a']]);
 });
 
 it('pins the two ways a nested collection comes back bare', function (): void {

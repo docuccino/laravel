@@ -1,0 +1,1113 @@
+{
+  "$schema": "https://spec.docuccino.app/uir/1.0/schema.json",
+  "uir": "1.0.0",
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/binding-articles/{article}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:iltk5r22t6ke2oc3",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/BindingController.php",
+                "line": 46,
+                "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showArticle"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.binding-articles.@article",
+        "summary": "Show an article.",
+        "tags": [
+          "Bindings"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:ppqbe3i2ldovtqaa",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/BindingController.php",
+                    "line": 46,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showArticle"
+                  }
+                }
+              ]
+            },
+            "name": "article",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "x-docuccino": {
+              "id": "res:v1:iecaa5orrxnti6zc",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/BindingController.php",
+                    "line": 46,
+                    "symbol": "implicit:route-model-binding"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "NotFound"
+              }
+            },
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/binding-custom/{custom}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:tvpwsmdofjofpbfk",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/BindingController.php",
+                "line": 60,
+                "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showBound"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.binding-custom.@custom",
+        "summary": "Show a form the application resolves with a binder of its own.",
+        "tags": [
+          "Bindings"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:357f72zplycjykku",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/BindingController.php",
+                    "line": 60,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showBound"
+                  }
+                }
+              ]
+            },
+            "name": "custom",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "x-docuccino": {
+              "id": "res:v1:f2bt4k2nnxwnzjyx",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/BindingController.php",
+                    "line": 60,
+                    "symbol": "implicit:route-model-binding"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "NotFound"
+              }
+            },
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/binding-ledgers/{ledger}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:v5iuqlhsshdiwux4",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/BindingController.php",
+                "line": 25,
+                "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showByReference"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.binding-ledgers.@ledger",
+        "summary": "Show a ledger by its human reference.",
+        "tags": [
+          "Bindings"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:pejnjyfbg6bouck3",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/BindingController.php",
+                    "line": 25,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showByReference"
+                  }
+                }
+              ],
+              "facts": {
+                "routeBinding": {
+                  "key": "id"
+                }
+              }
+            },
+            "name": "ledger",
+            "in": "path",
+            "description": "Matched on the resource's `id`.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/BindingController.php",
+                      "line": 25,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showByReference"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "x-docuccino": {
+              "id": "res:v1:c52rzm2rvrf22cyc",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/BindingController.php",
+                    "line": 25,
+                    "symbol": "implicit:route-model-binding"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "NotFound"
+              }
+            },
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/binding-ledgers/{ledger}/entries/{entry}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:djhik2nsc3ufmmu2",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/BindingController.php",
+                "line": 32,
+                "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showEntry"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.binding-ledgers.@ledger.entries.@entry",
+        "summary": "Show one entry filed against a ledger.",
+        "tags": [
+          "Bindings"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:wmpfqbsiwpvs5vtm",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/BindingController.php",
+                    "line": 32,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showEntry"
+                  }
+                }
+              ],
+              "facts": {
+                "routeBinding": {
+                  "key": "id",
+                  "scopedTo": "ledger"
+                }
+              }
+            },
+            "name": "entry",
+            "in": "path",
+            "description": "Matched on the resource's `id`. Scoped to `{ledger}`: only values belonging to it match.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/BindingController.php",
+                      "line": 32,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showEntry"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:oknaguf5kg4da3qg",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/BindingController.php",
+                    "line": 32,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showEntry"
+                  }
+                }
+              ],
+              "facts": {
+                "routeBinding": {
+                  "key": "id"
+                }
+              }
+            },
+            "name": "ledger",
+            "in": "path",
+            "description": "Matched on the resource's `id`.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/BindingController.php",
+                      "line": 32,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showEntry"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "x-docuccino": {
+              "id": "res:v1:4bzwwyjvnknqsdcz",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/BindingController.php",
+                    "line": 32,
+                    "symbol": "implicit:route-model-binding"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "NotFound"
+              }
+            },
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/binding-ledgers/{ledger}/loose/{entry}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:m6twqltqjj7dl44b",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/BindingController.php",
+                "line": 39,
+                "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showEntryByTitle"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.binding-ledgers.@ledger.loose.@entry",
+        "summary": "Show one entry of a ledger, found by its title.",
+        "tags": [
+          "Bindings"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:6tnfm5sxewivayte",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/BindingController.php",
+                    "line": 39,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showEntryByTitle"
+                  }
+                }
+              ],
+              "facts": {
+                "routeBinding": {
+                  "key": "title"
+                }
+              }
+            },
+            "name": "entry",
+            "in": "path",
+            "description": "Matched on the resource's `title`.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:g7p4xef42waj3wrn",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/BindingController.php",
+                    "line": 39,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showEntryByTitle"
+                  }
+                }
+              ],
+              "facts": {
+                "routeBinding": {
+                  "key": "id"
+                }
+              }
+            },
+            "name": "ledger",
+            "in": "path",
+            "description": "Matched on the resource's `id`.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/BindingController.php",
+                      "line": 39,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showEntryByTitle"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "x-docuccino": {
+              "id": "res:v1:t6vii6pty5alg52n",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/BindingController.php",
+                    "line": 39,
+                    "symbol": "implicit:route-model-binding"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "NotFound"
+              }
+            },
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/binding-ledgers/{ledger}/titled/{entry}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:xdkexzhpo4ppfmm2",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/BindingController.php",
+                "line": 39,
+                "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showEntryByTitle"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.binding-ledgers.@ledger.titled.@entry",
+        "summary": "Show one entry of a ledger, found by its title.",
+        "tags": [
+          "Bindings"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:qg2oganwt2dea5ki",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/BindingController.php",
+                    "line": 39,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showEntryByTitle"
+                  }
+                }
+              ],
+              "facts": {
+                "routeBinding": {
+                  "key": "title",
+                  "scopedTo": "ledger"
+                }
+              }
+            },
+            "name": "entry",
+            "in": "path",
+            "description": "Matched on the resource's `title`. Scoped to `{ledger}`: only values belonging to it match.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:za343iqdka2a6o5w",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/BindingController.php",
+                    "line": 39,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showEntryByTitle"
+                  }
+                }
+              ],
+              "facts": {
+                "routeBinding": {
+                  "key": "id"
+                }
+              }
+            },
+            "name": "ledger",
+            "in": "path",
+            "description": "Matched on the resource's `id`.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/BindingController.php",
+                      "line": 39,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showEntryByTitle"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "x-docuccino": {
+              "id": "res:v1:etsu4enwigzk2gu2",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/BindingController.php",
+                    "line": 39,
+                    "symbol": "implicit:route-model-binding"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "NotFound"
+              }
+            },
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/binding-refs/{ledger}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:hu3373xb35lux76s",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/BindingController.php",
+                "line": 25,
+                "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showByReference"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.binding-refs.@ledger",
+        "summary": "Show a ledger by its human reference.",
+        "tags": [
+          "Bindings"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:t3kq5akf5k243mh5",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/BindingController.php",
+                    "line": 25,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showByReference"
+                  }
+                }
+              ],
+              "facts": {
+                "routeBinding": {
+                  "key": "reference"
+                }
+              }
+            },
+            "name": "ledger",
+            "in": "path",
+            "description": "Matched on the resource's `reference`.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/BindingController.php",
+                      "line": 25,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showByReference"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "x-docuccino": {
+              "id": "res:v1:vpy2pz76vg6yj5f6",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/BindingController.php",
+                    "line": 25,
+                    "symbol": "implicit:route-model-binding"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "NotFound"
+              }
+            },
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/binding-seasons/{season}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:jvjzjhu7lbet3zsx",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/BindingController.php",
+                "line": 53,
+                "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showSeason"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.binding-seasons.@season",
+        "summary": "Show the forms filed in one season.",
+        "tags": [
+          "Bindings"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:5vkmuualw63ljvi2",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/BindingController.php",
+                    "line": 53,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showSeason"
+                  }
+                }
+              ]
+            },
+            "name": "season",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "$ref"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/BindingController.php",
+                      "line": 53,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\BindingController::showSeason"
+                    }
+                  }
+                ]
+              },
+              "$ref": "#/components/schemas/Season"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "x-docuccino": {
+              "id": "res:v1:y54vgioqpoqg5sit",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/BindingController.php",
+                    "line": 53,
+                    "symbol": "implicit:route-model-binding"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "NotFound"
+              }
+            },
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "NotFound": {
+        "x-docuccino": {
+          "id": "sch:v1:bvvuacym2wsq7ebk"
+        },
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "Season": {
+        "x-docuccino": {
+          "id": "sch:v1:d5jk7rdisu2rlfo2"
+        },
+        "type": "string",
+        "enum": [
+          "summer",
+          "winter",
+          "spring"
+        ],
+        "x-enum-descriptions": [
+          "Warm and dry.",
+          "Cold and wet.",
+          ""
+        ],
+        "x-enum-varnames": [
+          "Summer",
+          "Winter",
+          "Spring"
+        ],
+        "x-enumNames": [
+          "Summer",
+          "Winter",
+          "Spring"
+        ]
+      }
+    },
+    "responses": {
+      "NotFound": {
+        "description": "Not Found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/NotFound"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "5e2d6ac33364bf430e3c87b555abc286d36ad0401465edb2a3e2b4e3e9e0fd7a"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.16.0",
+      "specVersion": "1.0.0"
+    }
+  }
+}

@@ -281,3 +281,62 @@ it('publishes no machine path in any diagnostic a whole build raises', function 
             ->and($diagnostic->source?->file ?? '')->not->toStartWith('/');
     }
 });
+
+it('publishes no machine directory in the diagnostic a failed route leaves behind', function (): void {
+    bindStubEngine();
+
+    // The other half of the shape above, and the half that leaked: a run that names a DIRECTORY. A
+    // file has its own name for the ladder to fall back on, a directory has nothing — so the whole
+    // path stood, home and username included, in a diagnostic the exported document carries. Two
+    // directories, because the answer comes from two different roots: one under the project, one
+    // under the home this process runs out of and nowhere near the project.
+    $inside = base_path('storage');
+    $outside = (string) getenv('HOME').'/Library/Caches/acme';
+
+    // Nothing is proved on a machine with no home to name, or one too shallow to be a machine word:
+    // the row would then assert the leak it exists to refuse.
+    expect(substr_count((string) getenv('HOME'), '/'))->toBeGreaterThanOrEqual(2);
+
+    Docuccino::extend(new class($inside, $outside) implements OperationExtension
+    {
+        public function __construct(
+            private readonly string $inside,
+            private readonly string $outside,
+        ) {}
+
+        public function phase(): OperationPhase
+        {
+            return OperationPhase::Finalize;
+        }
+
+        public function handle(OperationDraft $operation, RouteContext $context): void
+        {
+            if ($context->route->uri !== '/api/ping') {
+                return;
+            }
+
+            throw new RuntimeException(sprintf(
+                'scandir(%s) failed and %s is not writable, for App\\Http\\Kernel',
+                $this->outside,
+                $this->inside,
+            ));
+        }
+    });
+
+    $failed = array_values(array_filter(
+        diagnosticsCoded(generateDocument()->diagnostics, 'route.build-failed'),
+        static fn (Diagnostic $d): bool => $d->routeSignature === 'GET /api/ping',
+    ));
+
+    expect($failed)->toHaveCount(1)
+        ->and($failed[0]->message)
+        ->toContain('GET /api/ping')
+        ->toContain('storage is not writable')
+        // The class name after the path is ordinary in a thrown message, and reading the backslash
+        // over the whole sentence is what published the project root whole.
+        ->toContain('App\\Http\\Kernel')
+        ->toContain('Library/Caches/acme')
+        ->not->toContain(base_path())
+        ->and($failed[0]->message)->not->toContain($outside)
+        ->and($failed[0]->message)->not->toContain((string) getenv('HOME'));
+});

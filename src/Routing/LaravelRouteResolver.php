@@ -123,10 +123,13 @@ final class LaravelRouteResolver implements RouteResolver
             // else the signature already carries, so it has to fold itself in or a warm build keeps
             // answering with the note the route dropped. Binding fields are the same shape of input for
             // a stronger reason: Laravel strips `:slug` out of `uri()`, so `{post}` and `{post:slug}`
-            // are the same signature and the same key while typing the parameter differently.
+            // are the same signature and the same key while typing the parameter differently. Scoping
+            // and the application's own binders are the same shape again
+            // ({@see RouteBindingResolution}).
             cacheInputs: [
                 ...($route->allowsTrashedBindings() ? ['trashed'] : []),
                 ...RouteBindingFields::cacheInputs($route),
+                ...RouteBindingResolution::cacheInputs($this->router, $route),
             ],
             domain: RouteHost::of($route),
             fallback: $route->isFallback,

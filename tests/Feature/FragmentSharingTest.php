@@ -19,6 +19,31 @@ afterEach(function (): void {
     removeFragmentCacheDirs('sharing');
 });
 
+it('tells its versions apart by every fact a fragment is not keyed on', function (): void {
+    // The denominator for every test below. A version set is only evidence about the facts it VARIES:
+    // one that agrees on a fact cannot notice a build reading that fact at route scope, because the
+    // answer it would carry from one document into another is the answer both documents wanted. The
+    // five are the document key plus the four config keys the fragment hash drops, written out here
+    // rather than read off the fixture — a fixture that stopped varying one would otherwise agree
+    // with a list derived from itself. Core states the same set from the other side, over the hash:
+    // `ConfigHashTest`, "keys a fragment on the config bag minus export, viewer, info and
+    // api_version, and nothing else".
+    setDocuments(sharedVersionDocuments(3));
+    $facts = sharedVersionUnkeyedFacts(sharedVersionDocuments(3));
+
+    expect(array_keys($facts))->toBe(['key', 'info', 'api_version', 'export', 'viewer']);
+
+    foreach ($facts as $fact => $said) {
+        // Distinct AND non-empty, because three documents agreeing that a key is absent are three
+        // documents that do not differ in it, and three empty bags are all distinct from nothing.
+        $spellings = array_map(json_encode(...), array_values($said));
+
+        expect($spellings)->toHaveCount(3, $fact)
+            ->and(array_unique($spellings))->toHaveCount(3, $fact)
+            ->and(array_filter($said))->toHaveCount(3, $fact);
+    }
+});
+
 it('builds every version of a route set for what the first version cost', function (): void {
     $dir = fragmentCacheDir('sharing');
     setDocuments(sharedVersionDocuments(4));

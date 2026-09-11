@@ -8,6 +8,7 @@ use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Laravel\Engine\EnginePackage;
 use Docuccino\Laravel\Tests\Support\CountingTypeEngine;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
+use Workbench\App\Http\Controllers\BindingController;
 use Workbench\App\Http\Controllers\FormController;
 
 /**
@@ -50,11 +51,9 @@ it('rebuilds a route that gained withTrashed rather than serving its untrashed a
     $coldParameter = $cold['paths']['/api/trashable/{form}']['get']['parameters'][0];
     $warmParameter = $warm['paths']['/api/trashable/{form}']['get']['parameters'][0];
 
-    expect($coldParameter['x-docuccino'])->not->toHaveKey('facts')
-        ->and($coldParameter)->not->toHaveKey('description')
-        ->and($warmParameter['x-docuccino'])->toHaveKey('facts')
+    expect($coldParameter['x-docuccino']['facts']['routeBinding'])->toBe(['key' => 'id'])
+        ->and($coldParameter['description'])->not->toContain('trashed')
         ->and($warmParameter['x-docuccino']['facts']['routeBinding']['withTrashed'])->toBeTrue()
-        ->and($warmParameter)->toHaveKey('description')
         ->and($warmParameter['description'])->toContain('trashed');
 });
 
@@ -72,6 +71,72 @@ it('rebuilds a route that named a binding column rather than serving its route-k
 
     expect($cold['paths']['/api/bindable/{form}']['get']['parameters'][0]['schema']['type'])->toBe('integer')
         ->and($warm['paths']['/api/bindable/{form}']['get']['parameters'][0]['schema']['type'])->toBe('string');
+});
+
+it('rebuilds a route that gained scoped bindings rather than serving its unscoped answer', function (): void {
+    fragmentCacheDir('staleness');
+    app()->instance(TypeEngine::class, WorkbenchEngine::make());
+
+    app('router')->get('api/scopable/{ledger}/entries/{entry}', [BindingController::class, 'showEntry']);
+    $cold = generateDocument()->document->toArray();
+
+    // `->scopeBindings()` is a flag on the route. It changes what the server accepts — a child now has
+    // to belong to its parent — and touches neither the URI, the action, the middleware nor any file
+    // the fragment depends on, so it has to fold itself into the key like `->withTrashed()` does.
+    app('router')->get('api/scopable/{ledger}/entries/{entry}', [BindingController::class, 'showEntry'])
+        ->scopeBindings();
+    $warm = generateDocument()->document->toArray();
+
+    $path = '/api/scopable/{ledger}/entries/{entry}';
+    $coldEntry = pathParameter($cold['paths'][$path]['get'], 'entry');
+    $warmEntry = pathParameter($warm['paths'][$path]['get'], 'entry');
+
+    expect($coldEntry['x-docuccino']['facts']['routeBinding'])->not->toHaveKey('scopedTo')
+        ->and($warmEntry['x-docuccino']['facts']['routeBinding']['scopedTo'])->toBe('ledger');
+});
+
+it('rebuilds a route that prevented scoped bindings rather than serving its scoped answer', function (): void {
+    fragmentCacheDir('staleness');
+    app()->instance(TypeEngine::class, WorkbenchEngine::make());
+
+    // A child naming its own column scopes itself, with nothing on the route saying so.
+    app('router')->get('api/preventable/{ledger}/entries/{entry:title}', [BindingController::class, 'showEntryByTitle']);
+    $cold = generateDocument()->document->toArray();
+
+    // `->withoutScopedBindings()` switches that off. Laravel parses the `:title` out of the URI, so
+    // the two routes agree on method, URI, name, action and middleware, and the flag is the whole
+    // difference — the other direction of the row above it, and the one that loosens what the server
+    // accepts rather than tightening it.
+    app('router')->get('api/preventable/{ledger}/entries/{entry:title}', [BindingController::class, 'showEntryByTitle'])
+        ->withoutScopedBindings();
+    $warm = generateDocument()->document->toArray();
+
+    $path = '/api/preventable/{ledger}/entries/{entry}';
+    $coldEntry = pathParameter($cold['paths'][$path]['get'], 'entry');
+    $warmEntry = pathParameter($warm['paths'][$path]['get'], 'entry');
+
+    expect($coldEntry['x-docuccino']['facts']['routeBinding']['scopedTo'])->toBe('ledger')
+        ->and($coldEntry['description'])->toContain('Scoped to `{ledger}`')
+        ->and($warmEntry['x-docuccino']['facts']['routeBinding'])->not->toHaveKey('scopedTo')
+        ->and($warmEntry['description'] ?? '')->not->toContain('Scoped to');
+});
+
+it('rebuilds a route whose parameter gained a binder of the application\'s own', function (): void {
+    fragmentCacheDir('staleness');
+    app()->instance(TypeEngine::class, WorkbenchEngine::make());
+
+    app('router')->get('api/bindable-custom/{custom}', [BindingController::class, 'showBound']);
+    $cold = generateDocument()->document->toArray();
+
+    // A registered binder is global router state a service provider set up. It decides what the
+    // segment holds, and nothing about the route itself moves when one appears.
+    app('router')->bind('custom', static fn (string $value): string => $value);
+    $warm = generateDocument()->document->toArray();
+
+    $path = '/api/bindable-custom/{custom}';
+
+    expect(pathParameter($cold['paths'][$path]['get'], 'custom')['schema']['type'])->toBe('integer')
+        ->and(pathParameter($warm['paths'][$path]['get'], 'custom')['schema']['type'])->toBe('string');
 });
 
 it('never serves inference-free fragments once the engine package is installed', function (): void {

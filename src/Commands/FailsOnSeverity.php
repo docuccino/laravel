@@ -16,6 +16,11 @@ use Illuminate\Console\Command;
  * The `--fail-on` policy shared by the commands: a floor on {@see Severity}, where anything reported
  * at that severity or louder makes the run exit non-zero, and `none` never fails.
  *
+ * "Anything reported" is the whole of it: the set the floor reads is everything the run PRINTED
+ * ({@see withSeverityGate()}), so a command cannot show the reader a report the gate cannot see. The
+ * one exception runs the other way — a report a command treats as fatal on its own terms, such as an
+ * artifact that is not a valid document of its own format, still fails at `--fail-on=none`.
+ *
  * The floor reaches `info` and `hint` as well as `warning` and `error`, because `info` is where the
  * build reports that it had to widen — an unrecoverable payload, a model with no readable columns, a
  * validation rule it could not read. Those are the reports a pipeline gating on inference certainty
@@ -47,16 +52,36 @@ trait FailsOnSeverity
     /** @return list<string> */
     abstract protected function printedCodes(): array;
 
+    /** @return list<Diagnostic> */
+    abstract protected function printedDiagnostics(): array;
+
     /**
-     * The gate over a bare list.
+     * The floor itself, over a bare list. Private because the only list it may be asked about is the
+     * one the run printed — a caller picking its own is the hole this trait now exists to close.
      *
      * @param  list<Diagnostic>  $diagnostics
      */
-    protected function failsOnAny(array $diagnostics): bool
+    private function failsOnAny(array $diagnostics): bool
     {
         $floor = Severity::tryFrom($this->failOn());
 
         return $floor !== null && AcceptedDiagnostics::read()->fails($diagnostics, $floor);
+    }
+
+    /**
+     * The command's exit code: whatever the run itself decided, and then the floor over EVERYTHING it
+     * printed — the build's reports, an emitter's, and the config reports raised before either.
+     *
+     * The set is the one {@see RendersDiagnostics} recorded rather than a list each call site
+     * remembers to pass on, because the two could differ and did: a channel with a renderer and no
+     * gate printed a warning, exited zero under `--fail-on=warning`, and printed "Accepted, so
+     * --fail-on ignores them" over a code the gate was never going to be asked about.
+     */
+    protected function withSeverityGate(int $exit): int
+    {
+        return $exit === self::FAILURE || $this->failsOnAny($this->printedDiagnostics())
+            ? self::FAILURE
+            : self::SUCCESS;
     }
 
     /**
@@ -107,16 +132,17 @@ trait FailsOnSeverity
     }
 
     /**
-     * Reports the acceptance entries this run proved do nothing, and folds them into the exit code.
-     * Called once, after every document, because an entry is only stale when NO document reported it.
+     * Reports the acceptance entries this run proved do nothing. Called once, after every document,
+     * because an entry is only stale when NO document reported it — and before
+     * {@see withSeverityGate()}, which is what folds these into the exit code along with the rest.
      *
      * A run narrowed to one document says nothing: it cannot tell an entry nothing reports from one
      * the document it skipped reports on every build.
      */
-    protected function reportStaleAcceptances(int $exit): int
+    protected function reportStaleAcceptances(): void
     {
         if (is_string($this->argument('document'))) {
-            return $exit;
+            return;
         }
 
         $stale = [];
@@ -130,13 +156,7 @@ trait FailsOnSeverity
             );
         }
 
-        if ($stale === []) {
-            return $exit;
-        }
-
         $this->renderDiagnostics(ConfigFile::NAME, $stale);
-
-        return $this->failsOnAny($stale) ? self::FAILURE : $exit;
     }
 
     /** False (after printing why) when `--fail-on` names something we don't know. */

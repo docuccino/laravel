@@ -35,7 +35,9 @@ documents:
       # description: { file: 'resources/docs/api/description.md' }
 
     # The OpenAPI `servers` array. Each entry is an OAS Server Object, written as
-    # `{ url: 'https://api.example.com', description: 'Production' }`.
+    # `{ url: 'https://api.example.com', description: 'Production' }`. Left empty, the document
+    # publishes your `app.url` when that names a host a client could reach, and nothing at all when
+    # it does not — which OpenAPI reads as the origin the document is served from.
     servers: []
 
     # Which routes belong to this document.

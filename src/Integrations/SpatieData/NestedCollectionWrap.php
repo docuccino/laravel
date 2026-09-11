@@ -51,7 +51,18 @@ final class NestedCollectionWrap
         }
 
         $item = $this->reflector->nestedCollectionItem($fqcn, $property, $clean);
-        if ($item === null || $this->reflector->isPropertyTransformed($fqcn, $property)) {
+        if ($item === null) {
+            return null;
+        }
+
+        // Two separate reasons for silence, kept apart because one `null` answering both is how this
+        // read went wrong before. A property spatie's own factory cannot see is not on the wire at all,
+        // so there is no divergence to report: it builds from `ReflectionClass::getProperties()`, while
+        // the type handed in here can have come from a class-level `@property` tag. And a property
+        // carrying a transformer has a wire shape no static read can predict, so nothing can be said.
+        if (! $this->reflector->declaresProperty($fqcn, $property)
+            || $this->reflector->isPropertyTransformed($fqcn, $property)
+        ) {
             return null;
         }
 

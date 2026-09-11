@@ -53,9 +53,10 @@ final class SanctumAbilitiesExtension implements OperationExtension
     /**
      * Middleware requirements first, then `#[Abilities]` ones — the attribute is an all-of requirement.
      *
-     * Keyed by what a requirement SAYS rather than by where it was met, so an ability stated by both the
-     * middleware and the attribute, or by two spellings of one middleware, is one requirement; two that
-     * differ anywhere are two the server enforces separately and both are published.
+     * Keyed by the JSON each requirement publishes — the dedupe docs/design/uir-and-extensions.md §2
+     * "A contested published slot" separates from a merge — so an ability stated by both the middleware
+     * and the attribute, or by two spellings of one middleware, is one requirement; two that differ
+     * anywhere are two the server enforces separately and both are published.
      *
      * @return list<AbilityRequirement>
      */

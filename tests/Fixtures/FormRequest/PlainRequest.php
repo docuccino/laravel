@@ -7,8 +7,8 @@ namespace Docuccino\Laravel\Tests\Fixtures\FormRequest;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * A FormRequest that declares NO authorize() gate of its own — the implicit-403 signal must not fire
- * for it (there is no own-file gate to prove can-deny). Only ever reflected / analysed.
+ * A FormRequest with no authorize() anywhere in its hierarchy — the framework declares none either,
+ * so nothing gates it and the implicit-403 signal must not fire. Only ever reflected / analysed.
  */
 final class PlainRequest extends FormRequest
 {

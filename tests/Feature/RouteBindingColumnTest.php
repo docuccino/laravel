@@ -136,6 +136,30 @@ it('leaves an ordinary bound parameter untouched and unreported', function (): v
         ->and(diagnosticsCoded($diagnostics, 'route-binding.column-untyped'))->toBeEmpty();
 });
 
+/**
+ * The notice exists to say the document is describing a segment more loosely than the route does. An
+ * author who declared the segment's type has already closed that gap: the parameter carries their
+ * schema, not the fallback string, so there is nothing left to act on and the message would name a
+ * remedy — annotate the column — for a document that is no longer vague. A diagnostic firing where
+ * nothing can be done is what teaches a team to stop reading the channel.
+ *
+ * Its sibling above ('a column no source mentions') is the same route and the same column WITHOUT the
+ * declaration, and still reports: the difference is the author's answer and nothing else.
+ */
+it('says nothing about a column the author declared the type of', function (): void {
+    [$document, $diagnostics] = ($this->boundDocument)(static function (Router $router): void {
+        $router->get('api/zz-pinned/{blank:slug}', [BindingController::class, 'pinnedBlank']);
+    });
+
+    $parameter = pathParameter($document['paths']['/api/zz-pinned/{blank}']['get'], 'blank');
+
+    expect($parameter)->not->toBeNull()
+        // The declared schema, not the fallback: no fallback ever sets a format.
+        ->and($parameter['schema']['type'])->toBe('string')
+        ->and($parameter['schema']['format'])->toBe('uuid')
+        ->and(diagnosticsCoded($diagnostics, 'route-binding.column-untyped'))->toBeEmpty();
+});
+
 it('says nothing about a column named on a parameter no action binds', function (): void {
     // `{blank:slug}` with no type-hint is not a binding at all — Laravel hands the action a raw string.
     // There is no model to type against, so the plain string is already the whole truth and a

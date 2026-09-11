@@ -77,13 +77,14 @@
               ],
               "facts": {
                 "routeBinding": {
+                  "key": "id",
                   "withTrashed": true
                 }
               }
             },
             "name": "form",
             "in": "path",
-            "description": "Resolves soft-deleted (trashed) records as well as active ones.",
+            "description": "Matched on the resource's `id`. Resolves soft-deleted (trashed) records as well as active ones.",
             "required": true,
             "schema": {
               "x-docuccino": {
@@ -1265,6 +1266,7 @@
                   "producer": "inference",
                   "layer": "inference",
                   "fields": [
+                    "description",
                     "required"
                   ],
                   "source": {
@@ -1273,10 +1275,16 @@
                     "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
                   }
                 }
-              ]
+              ],
+              "facts": {
+                "routeBinding": {
+                  "key": "id"
+                }
+              }
             },
             "name": "form",
             "in": "path",
+            "description": "Matched on the resource's `id`.",
             "required": true,
             "schema": {
               "x-docuccino": {
@@ -4792,7 +4800,7 @@
     "document": {
       "id": "doc:secured",
       "configHash": "d89a86d522eb398c0a3d894b165ad3d553ea98b9606eab23fb4d7a6a100fb07f",
-      "contentHash": "f205fbe25d8a155dab2977d7afcd74f1962a9b5fbd0e29ddfbed7b2cdfaf5f4e"
+      "contentHash": "998672094f5e02cad230d2cac1bf7e720d0beca0ef1a8d3dcfe81b5188a0541f"
     },
     "generator": {
       "name": "docuccino/laravel",

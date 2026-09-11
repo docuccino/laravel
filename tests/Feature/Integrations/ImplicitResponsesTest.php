@@ -27,8 +27,10 @@ use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Laravel\Extensions\ImplicitResponsesExtension;
 use Docuccino\Laravel\Registry\DefaultExtensions;
 use Docuccino\Laravel\Registry\ExtensionRegistry;
+use Docuccino\Laravel\Tests\Fixtures\FormRequest\BaseGateRequest;
 use Docuccino\Laravel\Tests\Fixtures\FormRequest\GateController;
 use Docuccino\Laravel\Tests\Fixtures\FormRequest\GateRequest;
+use Docuccino\Laravel\Tests\Fixtures\FormRequest\InheritedGateRequest;
 use Docuccino\Laravel\Tests\Fixtures\FormRequest\PlainRequest;
 use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
@@ -206,6 +208,32 @@ it('adds no 403 for a FormRequest authorize() that returns literal true', functi
 
     expect(implicitStatuses(runImplicit($context)))->not->toContain('403');
 });
+
+it('synthesizes a 403 for a FormRequest whose authorize() gate is written on a base class', function (bool $canDeny, bool $publishes): void {
+    // The framework declares no authorize() at all, so having the method IS having a gate somebody
+    // wrote, and reading a base class's as "no gate of its own" drops a 403 the endpoint returns. What
+    // the body proves still decides: a literal `return true` publishes nothing, wherever it lives.
+    $engine = new StubTypeEngine(analyses: [
+        BaseGateRequest::class.'::authorize' => new ActionAnalysis(returns: [
+            new ReturnSite($canDeny ? ScalarT::bool() : new LiteralT(true), new SourceLocation('')),
+        ]),
+    ]);
+    $context = implicitContext(
+        new RouteDescriptor(['POST'], 'api/gated'),
+        engine: $engine,
+        actionRef: new ActionRef((string) (new ReflectionClass(GateController::class))->getFileName(), GateController::class, 'store'),
+        formRequestClass: InheritedGateRequest::class,
+    );
+
+    $statuses = implicitStatuses(runImplicit($context));
+
+    expect(in_array('403', $statuses, true))->toBe($publishes)
+        // The base's file is where the gate is written, and it is not one the request's own file names.
+        ->and($context->dependencyFiles())->toContain((string) (new ReflectionClass(BaseGateRequest::class))->getFileName());
+})->with([
+    'a gate that can deny' => [true, true],
+    'a gate that is a literal return true' => [false, false],
+]);
 
 it('adds no 403 when the route has no FormRequest and no authorization middleware', function (): void {
     $context = implicitContext(new RouteDescriptor(['POST'], 'api/open', middleware: ['throttle:60,1']));

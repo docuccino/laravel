@@ -50,10 +50,12 @@ final class PermissionExtension implements OperationExtension
     }
 
     /**
-     * The distinct requirements the route enforces, keyed by what a requirement SAYS rather than by where
-     * it was met. One middleware written two ways — spatie's alias on the group and the class name its
-     * `::using()` helper renders on the route — reaches here twice and is one requirement; two that differ
-     * anywhere, a guard or a value, are two the server enforces separately and both are published.
+     * The distinct requirements the route enforces, keyed by the JSON each one publishes — the dedupe
+     * docs/design/uir-and-extensions.md §2 "A contested published slot" separates from a merge, so two
+     * contributors on one key said the same thing and nothing is dropped. One middleware written two
+     * ways — spatie's alias on the group and the class name its `::using()` helper renders on the
+     * route — reaches here twice and is one requirement; two that differ anywhere, a guard or a value,
+     * are two the server enforces separately and both are published.
      *
      * @return list<PermissionRequirement>
      */

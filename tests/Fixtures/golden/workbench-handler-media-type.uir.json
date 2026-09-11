@@ -55,6 +55,7 @@
                   "producer": "inference",
                   "layer": "inference",
                   "fields": [
+                    "description",
                     "required"
                   ],
                   "source": {
@@ -63,10 +64,16 @@
                     "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
                   }
                 }
-              ]
+              ],
+              "facts": {
+                "routeBinding": {
+                  "key": "id"
+                }
+              }
             },
             "name": "form",
             "in": "path",
+            "description": "Matched on the resource's `id`.",
             "required": true,
             "schema": {
               "x-docuccino": {
@@ -185,7 +192,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "9b213198d8978b34acd4fe2de83781dfbad1354648b0d3b7c24b9f21cd32bf1c"
+      "contentHash": "037decd91e17b4e83acdbd4dbcdc8731442380f27f46138c528d6592ef6c0aeb"
     },
     "generator": {
       "name": "docuccino/laravel",

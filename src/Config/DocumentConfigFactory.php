@@ -11,6 +11,7 @@ use Docuccino\Core\Support\ConfinedPath;
 use Docuccino\Core\Support\Hydrate;
 use Docuccino\Core\Support\LineEndings;
 use Docuccino\Laravel\Registry\ConfigDiagnostics;
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Contracts\Container\Container;
 
 /**
@@ -52,10 +53,22 @@ final readonly class DocumentConfigFactory
             $config['info'] = [...$rawInfo, 'description' => $description];
         }
 
+        // A document declaring no servers gets the application's own URL wherever that proves
+        // something ({@see DerivedServers}). The derived entry goes back into the bag as well as onto
+        // the property: it shapes the emitted document, so the published `configHash` owes it, and the
+        // fragment cache has to retire an operation whose host-bound `servers` hangs off it.
+        $servers = Hydrate::listOfMaps($config['servers'] ?? null) ?? [];
+        if ($servers === []) {
+            $servers = DerivedServers::for($this->container->make(ConfigRepository::class));
+            if ($servers !== []) {
+                $config['servers'] = $servers;
+            }
+        }
+
         return new DocumentConfig(
             key: $key,
             info: $info,
-            servers: Hydrate::listOfMaps($config['servers'] ?? null) ?? [],
+            servers: $servers,
             routeInclude: Hydrate::stringList($routes['include'] ?? []),
             routeExclude: Hydrate::stringList($routes['exclude'] ?? []),
             routeFilter: (new ConfiguredRouteFilter($this->container))->resolve($key, $routes),

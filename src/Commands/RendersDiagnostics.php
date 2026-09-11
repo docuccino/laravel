@@ -29,8 +29,17 @@ use Illuminate\Console\Command;
  */
 trait RendersDiagnostics
 {
-    /** @var array<string, true> Every code this run printed, which is what {@see FailsOnSeverity} measures a stale acceptance against. */
-    private array $printedCodes = [];
+    /**
+     * Every diagnostic this run printed, in the order it printed them — what {@see FailsOnSeverity}
+     * gates on, and what it measures a stale acceptance against.
+     *
+     * Recording happens here rather than at each call site because printing and gating are one act:
+     * a report the reader was shown that the floor could not see is a `--fail-on` that lies about its
+     * own floor, and `diagnostics.accept` marks such a report accepted while accepting nothing.
+     *
+     * @var list<Diagnostic>
+     */
+    private array $printed = [];
 
     /** @var array<string, true> Codes whose reference link this run has already shown. */
     private array $linkedCodes = [];
@@ -40,9 +49,7 @@ trait RendersDiagnostics
      */
     protected function renderDiagnostics(string $document, array $diagnostics): void
     {
-        foreach ($diagnostics as $diagnostic) {
-            $this->printedCodes[$diagnostic->code] = true;
-        }
+        $this->printed = [...$this->printed, ...$diagnostics];
 
         if ($diagnostics === []) {
             return;
@@ -85,7 +92,23 @@ trait RendersDiagnostics
      */
     protected function printedCodes(): array
     {
-        return array_keys($this->printedCodes);
+        $codes = [];
+
+        foreach ($this->printed as $diagnostic) {
+            $codes[$diagnostic->code] = true;
+        }
+
+        return array_keys($codes);
+    }
+
+    /**
+     * Every diagnostic this run printed, which is the set `--fail-on` reads ({@see $printed}).
+     *
+     * @return list<Diagnostic>
+     */
+    protected function printedDiagnostics(): array
+    {
+        return $this->printed;
     }
 
     /**

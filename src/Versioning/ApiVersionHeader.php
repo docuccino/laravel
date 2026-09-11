@@ -6,6 +6,7 @@ namespace Docuccino\Laravel\Versioning;
 
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
+use Docuccino\Core\Document\IgnoredHeaders;
 use Docuccino\Core\Document\PathItem;
 use Docuccino\Core\Extensions\Context\DocumentContext;
 use Docuccino\Core\Extensions\Context\RepresentationPolicy;
@@ -76,7 +77,8 @@ final readonly class ApiVersionHeader
      * versions are related by construction, so this is not the locality rule being broken.
      *
      * `webhooks` are left alone: a webhook is a request the SERVER makes, and the header is what a
-     * CLIENT sends to pin a version.
+     * CLIENT sends to pin a version. A header name OAS reserves is left alone too, and for a harder
+     * reason — see {@see reservedName()}.
      *
      * @param  array<string, mixed>  $doc
      * @param  list<VersionChange>  $changes
@@ -90,6 +92,13 @@ final readonly class ApiVersionHeader
         }
 
         $name = $context->config->apiVersionHeader();
+
+        if (IgnoredHeaders::parameter($name)) {
+            $context->report(self::reservedName($name));
+
+            return $doc;
+        }
+
         $components = is_array($doc['components'] ?? null) ? Arr::stringKeyed($doc['components']) : [];
         $bucket = is_array($components[self::PARAMETERS] ?? null) ? Arr::stringKeyed($components[self::PARAMETERS]) : [];
 
@@ -138,6 +147,34 @@ final readonly class ApiVersionHeader
         $doc['components'] = $components;
 
         return $doc;
+    }
+
+    /**
+     * The report owed where the configured header is one OAS says every reader SHALL ignore as a
+     * parameter ({@see IgnoredHeaders}) — `Accept`, `Content-Type` or `Authorization`.
+     *
+     * Nothing is published in that case. A parameter named one of those carries no meaning to a
+     * conforming consumer, so declaring the version enum on it would put the whole of how a client
+     * pins a version somewhere nothing will read it: a document that looks like it describes
+     * versioning and does not, which is worse than one that plainly says nothing. Publishing it would
+     * also earn one `document.ignored-header-declaration` per operation for a parameter the author
+     * never wrote and cannot delete.
+     *
+     * So the vague-but-true answer, said out loud. The author IS the one who can act — the name is
+     * theirs to set — which is why this names the setting where the help for the declarations an
+     * author actually wrote names the OAS member instead.
+     */
+    private static function reservedName(string $header): Diagnostic
+    {
+        return new Diagnostic(
+            severity: Severity::Warning,
+            code: 'versioning.header-name-ignored',
+            message: sprintf(
+                'The API version header is named "%s", which OpenAPI says every reader SHALL ignore as a parameter, so no operation can publish it and the document says nothing about how a client pins a version.',
+                $header,
+            ),
+            help: 'Name it something OpenAPI carries with api_version.header — the default, X-Api-Version, is one. Accept, Content-Type and Authorization are the three OpenAPI reserves.',
+        );
     }
 
     /**

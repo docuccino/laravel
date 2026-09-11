@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Tests\Fixtures\RouteBindings;
 
+use Docuccino\Attributes\PathParameter;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Blank;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Merchant;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Post;
@@ -35,6 +36,13 @@ final class BindingController
     }
 
     public function blank(Blank $blank): array
+    {
+        return [];
+    }
+
+    /** The same untypable column, with the segment's type declared on the action instead. */
+    #[PathParameter('blank', type: 'string', format: 'uuid')]
+    public function pinnedBlank(Blank $blank): array
     {
         return [];
     }

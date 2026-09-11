@@ -18,9 +18,13 @@ use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Laravel\Integrations\SpatieData\DataResponseStatus;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\AccountData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\ApiStatusBaseData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\CalculatesAcceptedStatus;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\CreatedData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\InheritedStatusData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\NoStatusData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\NotAData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\TraitStatusData;
 
 /**
  * calculateResponseStatus() folding: a Data class overriding the method re-homes the inferred 200 to its
@@ -95,6 +99,29 @@ it('prefers a real override to the inherited POST default', function (): void {
 
     expect((new DataResponseStatus)->resolveStatuses($context, CreatedData::class))->toBe([200]);
 });
+
+/*
+ * Where the calculation is WRITTEN decides nothing about whose it is; only whether it is spatie's own
+ * concern does. An application writes a shared status rule on a base class or in a trait as readily as
+ * on the class returned, and spatie runs whichever one resolves.
+ */
+
+it('reads a status calculation written outside the Data class\'s own file', function (string $fqcn, string $owner, string $declaredIn): void {
+    // Taking "declared in another file" for "no override" leaves the endpoint documented 200 — or 201
+    // on a POST, from a vendor default that is not what runs — while the server sends 202.
+    $context = statusContext(statusEngine($owner, [new LiteralT(202)]));
+
+    expect((new DataResponseStatus)->resolveStatuses($context, $fqcn))->toBe([202])
+        ->and($context->components->diagnostics())->toBe([])
+        // The file the fact was written in, which is not one this route otherwise names: adding or
+        // changing the calculation there has to retire the warm fragment.
+        ->and($context->dependencyFiles())->toContain((string) (new ReflectionClass($declaredIn))->getFileName());
+})->with([
+    'declared on an application base class' => [InheritedStatusData::class, ApiStatusBaseData::class, ApiStatusBaseData::class],
+    // A trait method reports the USING class as its declarer and the trait's file as its file, so the
+    // symbol the engine is asked about and the file it is asked to read come from opposite halves.
+    'imported from an application trait' => [TraitStatusData::class, TraitStatusData::class, CalculatesAcceptedStatus::class],
+]);
 
 it('degrades a genuinely computed status to 200 with a diagnostic', function (array $returnTypes): void {
     $context = statusContext(statusEngine(CreatedData::class, $returnTypes));

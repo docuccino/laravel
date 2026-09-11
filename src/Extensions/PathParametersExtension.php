@@ -9,29 +9,44 @@ use Docuccino\Attributes\PathParameter;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Draft\OperationDraft;
+use Docuccino\Core\Draft\ParameterDraft;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
 use Docuccino\Core\Extensions\Contracts\RouteBindingFieldSchemaResolver;
+use Docuccino\Core\Extensions\Contracts\RouteBindingKeyResolver;
 use Docuccino\Core\Extensions\Contracts\RouteBindingSchemaResolver;
 use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
+use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Docuccino\Core\Extensions\Schema\EnumReflection;
 use Docuccino\Core\Inference\DType\EnumT;
 use Docuccino\Core\Patch\Contribution;
 use ReflectionEnum;
 
 /**
- * Adds a path parameter for every `{param}` in the route template (design §Route-model binding). A
- * model-bound parameter is typed from the model's route key (uuid/ulid/int, with format) via the gated
+ * Adds a path parameter for every `{param}` in the route template. A model-bound parameter is typed
+ * from the model's route key (uuid/ulid/int, with format) via the gated
  * {@see RouteBindingSchemaResolver} chain, so `{model}` matches the real key instead of a hardcoded
  * integer; `{model:column}` is typed from THAT column instead, through the same chain. A
  * string-backed-enum hint is Laravel's implicit enum binding, so it types as that enum. An unbound
  * segment — a disabled Eloquent integration, an int-backed or pure enum, a custom `UrlRoutable` —
- * gives a required string, and `#[PathParameter]` can refine any of it from the higher attribute layer.
+ * gives a required string, as does a binding whose matching column is a method body, and
+ * `#[PathParameter]` can refine any of it from the higher attribute layer.
  *
- * A route with `->withTrashed()` flags each bound parameter: a note on the description plus an
- * `x-docuccino.facts.routeBinding.withTrashed` fact, so consumers know soft-deleted records resolve.
+ * A bound parameter also carries what the route and the model settle about how it RESOLVES, which is
+ * the half a consumer cannot read off the path: the column the value is matched on, the parent it is
+ * scoped to, and whether soft-deleted records resolve. Each goes out twice — as a sentence of the
+ * description and as a member of `x-docuccino.facts.routeBinding` — because a client generator reads
+ * the fact and a person reads the sentence, and a fact stated only in prose is one no generator can
+ * act on. Nothing about the codebase reaches either: the model is not named, because a consumer
+ * cannot see it and could do nothing with it if they could.
+ *
+ * What is NOT settled is left out rather than guessed. A column comes from the route where the route
+ * names one (`{post:slug}`) and from the bound model's route key otherwise — but only while nothing
+ * has moved that decision into a method body, which an override of the key methods or a binder of the
+ * application's own both do. A short description costs a consumer nothing; a wrong one sends them to
+ * look records up by the wrong attribute.
  */
 #[ExtensionOrder(priority: Priorities::EARLY)]
 final class PathParametersExtension implements OperationExtension
@@ -74,18 +89,79 @@ final class PathParametersExtension implements OperationExtension
                 $degraded = $isBound;
                 $parameter->schema()->set('type', 'string', $degraded ? Contribution::fallback() : $contribution);
 
-                if ($isBound && $field !== null) {
-                    $this->reportUntypedColumn($context, $name, $context->routeBindings[$name], $field);
-                } elseif ($isBound && ! self::declaresType($context, $name)) {
-                    $this->reportUntypedBinding($context, $name, $context->routeBindings[$name]);
+                if ($isBound && ! self::declaresType($context, $name)) {
+                    if (self::isCustomBound($context, $name)) {
+                        $this->reportCustomBinding($context, $name);
+                    } elseif ($field !== null) {
+                        $this->reportUntypedColumn($context, $name, $context->routeBindings[$name], $field);
+                    } else {
+                        $this->reportUntypedBinding($context, $name, $context->routeBindings[$name]);
+                    }
                 }
             }
 
-            if ($isBound && $context->allowsTrashedBindings) {
-                $parameter->setDescription(self::TRASHED_NOTE, $contribution);
-                $parameter->setDocuccinoFact('routeBinding', ['withTrashed' => true]);
+            if ($isBound) {
+                $this->describeBinding($parameter, $context, $name, $field, $contribution);
             }
         }
+    }
+
+    /**
+     * The resolution facts, in a fixed order so the description and the fact map are both functions of
+     * the route rather than of the order anything was discovered in.
+     */
+    private function describeBinding(
+        ParameterDraft $parameter,
+        RouteContext $context,
+        string $name,
+        ?string $field,
+        Contribution $contribution,
+    ): void {
+        $notes = [];
+        $facts = [];
+
+        $key = $this->matchedColumn($context, $name, $field);
+        if ($key !== null) {
+            $facts['key'] = $key;
+            $notes[] = sprintf('Matched on the resource\'s `%s`.', $key);
+        }
+
+        $parent = $context->scopedBindings[$name] ?? null;
+        if ($parent !== null) {
+            $facts['scopedTo'] = $parent;
+            $notes[] = sprintf('Scoped to `{%s}`: only values belonging to it match.', $parent);
+        }
+
+        if ($context->allowsTrashedBindings) {
+            $facts['withTrashed'] = true;
+            $notes[] = self::TRASHED_NOTE;
+        }
+
+        if ($notes !== []) {
+            $parameter->setDescription(implode(' ', $notes), $contribution);
+        }
+
+        if ($facts !== []) {
+            $parameter->setDocuccinoFact('routeBinding', $facts);
+        }
+    }
+
+    /**
+     * The column the value is matched on, or null when nothing static settles it.
+     *
+     * A binder the application registered is asked FIRST and ends the question: the framework runs it
+     * before implicit binding and ignores both the route's column and the model's route key, so
+     * publishing either would name a column the server never looks at. Otherwise the route's own
+     * column wins where it names one, and the bound model's route key answers the rest
+     * ({@see RouteBindingKeyResolver}).
+     */
+    private function matchedColumn(RouteContext $context, string $name, ?string $field): ?string
+    {
+        if (self::isCustomBound($context, $name)) {
+            return null;
+        }
+
+        return $field ?? $context->routeBindingKeyName($context->routeBindings[$name]);
     }
 
     /**
@@ -98,6 +174,16 @@ final class PathParametersExtension implements OperationExtension
      */
     private function boundSchema(RouteContext $context, string $name, ?string $field): ?array
     {
+        // A binder the application registered runs before implicit binding and answers with whatever
+        // its closure says, so neither the route's column nor the model's key describes what the
+        // segment holds — and the model's key SHAPE would be a precise wrong answer, an `integer` for
+        // a username lookup. The registry cannot tell such a binder from a `Route::model()` one, whose
+        // key really is the model's, and widening both is the trade the degradation rule names:
+        // vagueness costs the one some type safety, precision costs the other a rejected request.
+        if (self::isCustomBound($context, $name)) {
+            return null;
+        }
+
         $modelFqcn = $context->routeBindings[$name];
 
         if ($field !== null) {
@@ -113,6 +199,12 @@ final class PathParametersExtension implements OperationExtension
         }
 
         return $context->routeBindingKeySchema($modelFqcn);
+    }
+
+    /** Whether the application registered a binder of its own for this segment. */
+    private static function isCustomBound(RouteContext $context, string $name): bool
+    {
+        return in_array($name, $context->customBoundParameters, true);
     }
 
     /** Only a string-backed enum is implicitly bound — int-backed segments never reach `tryFrom`. */
@@ -158,6 +250,21 @@ final class PathParametersExtension implements OperationExtension
         ));
     }
 
+    /** Says that the application's own binder, not the model, decides what this segment holds. */
+    private function reportCustomBinding(RouteContext $context, string $name): void
+    {
+        $context->components->addDiagnostic(new Diagnostic(
+            severity: Severity::Info,
+            code: 'route-binding.custom-binder',
+            message: sprintf(
+                '{%s} is resolved by a binder the application registered for it, so what the segment holds is decided in a closure and the parameter is documented as a plain string.',
+                $name,
+            ),
+            routeSignature: $context->route->signature($context->httpMethod()),
+            help: sprintf('Declare the segment\'s type with #[PathParameter(\'%s\', type: …)] on the action.', $name),
+        ));
+    }
+
     /** Says which column went untyped, and why the parameter is a bare string because of it. */
     private function reportUntypedColumn(RouteContext $context, string $name, string $modelFqcn, string $field): void
     {
@@ -176,16 +283,16 @@ final class PathParametersExtension implements OperationExtension
         ));
     }
 
-    /** Records the model's file as a cache dependency, when it can be reflected. */
+    /**
+     * Records the model's declaration as a cache dependency.
+     *
+     * The whole hierarchy, not just the file the class name points at: the route key, its schema and
+     * the soft-delete answer are all DECLARATIONS, and a parent model or a trait answers most of them —
+     * a `HasUuids` added to a base class, or a `$primaryKey` moved up one, changes what every subclass
+     * publishes while leaving the subclass's own file untouched (design §10).
+     */
     private function recordModelFile(RouteContext $context, string $modelFqcn): void
     {
-        if (! class_exists($modelFqcn)) {
-            return;
-        }
-
-        $file = (new \ReflectionClass($modelFqcn))->getFileName();
-        if ($file !== false) {
-            $context->recordDependencyFiles([$file]);
-        }
+        $context->recordDependencyFiles(DeclarationFiles::of($modelFqcn));
     }
 }

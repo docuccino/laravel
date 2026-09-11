@@ -13,6 +13,7 @@ use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
 use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
+use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Docuccino\Core\Extensions\Validation\ResponseDraftApplier;
 use Docuccino\Core\Inference\ThrowConfidence;
 use Docuccino\Core\Inference\ThrowDisposition;
@@ -252,22 +253,22 @@ final class ImplicitResponsesExtension implements OperationExtension
 
         $reflection = new ReflectionClass($formRequest);
 
-        // Record the file BEFORE the method-presence bail: adding an authorize() gate to a warm-cached
-        // route's FormRequest has to invalidate its fragment (design §10).
-        $formRequestFile = $reflection->getFileName();
-        if ($formRequestFile !== false) {
-            $context->recordDependencyFiles([$formRequestFile]);
-        }
+        // Record the files BEFORE the method-presence bail: adding an authorize() gate to a warm-cached
+        // route's FormRequest has to invalidate its fragment (design §10), and the gate can be added to
+        // a base class or a trait as readily as to the request itself.
+        $context->recordDependencyFiles(DeclarationFiles::of($formRequest));
 
+        // The framework declares no authorize() anywhere — `passesAuthorization()` calls one only if
+        // `method_exists` — so having the method AT ALL is having a gate somebody wrote, and where they
+        // wrote it says nothing about whose it is. An application's shared base or trait is a normal
+        // place for one, and reading those as "no gate" drops the 403 the endpoint really returns.
         if (! $reflection->hasMethod('authorize')) {
             return false;
         }
 
         $method = $reflection->getMethod('authorize');
         $methodFile = $method->getFileName();
-        // Only an authorize() in the FormRequest's own file is a real gate — an inherited framework
-        // default isn't.
-        if ($methodFile === false || $methodFile !== $reflection->getFileName()) {
+        if ($methodFile === false) {
             return false;
         }
 

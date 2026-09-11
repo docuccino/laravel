@@ -33,11 +33,14 @@ use Docuccino\Laravel\Tests\Fixtures\SpatieData\AccountStatus;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\AddressData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ContainerShapeData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ExampleTypesData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\InheritedKeysData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\KebabCasedData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\MappedDescendantData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\PinnedRuleData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ProfileResource;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\RequestExclusionData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\SaveAnswersData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\ScreamingDescendantData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ScreamingMappedController;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ScreamingMappedData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ScreamingNameMapper;
@@ -153,6 +156,51 @@ it('renames every key through a class-level mapper (input and output)', function
     expect($reflector->outputName(AccountData::class, 'displayName'))->toBe('display_name')
         ->and($reflector->inputName(AccountData::class, 'createdAt'))->toBe('created_at')
         ->and($reflector->outputName(AccountData::class, 'code'))->toBe('code');
+});
+
+/*
+ * A class-level map attribute is resolved from the CONCRETE class and every ancestor above it, which is
+ * neither of the two single classes a reading might ask. The oracles below are what say so: whichever
+ * half of the hierarchy holds the attribute, spatie sends one key and the document must publish it.
+ */
+
+it('keys a subclass by the whole parent chain, whichever half of it holds the mapper', function (string $fqcn, string $property, string $key): void {
+    $reflector = new DataClassReflector;
+
+    expect($reflector->outputName($fqcn, $property))->toBe($key)
+        ->and($reflector->inputName($fqcn, $property))->toBe($key);
+})->with([
+    // The mapper is on the leaf and the property comes from the base. Asking the property's DECLARING
+    // class finds no attribute there and publishes `displayName`, a key no request or response carries.
+    'a mapper on the subclass renaming an inherited property' => [InheritedKeysData::class, 'displayName', 'display_name'],
+    // And the other way round: the attribute is on the base, so a reading that stops at the leaf misses it.
+    'a mapper on the base renaming the subclass\'s own property' => [MappedDescendantData::class, 'displayName', 'display_name'],
+]);
+
+it('pins that laravel-data keys a subclass from the whole parent chain', function (): void {
+    // The contract the two rows above are held to. spatie's attribute collection starts at the class
+    // being resolved and walks getParentClass(), so neither end of the hierarchy is where the answer
+    // lives — only the chain is.
+    bootLaravelData(null);
+
+    expect((new InheritedKeysData('Ada'))->toArray())->toBe(['display_name' => 'Ada'])
+        ->and((new MappedDescendantData('Ada'))->toArray())->toBe(['display_name' => 'Ada']);
+});
+
+it('reports an unreadable mapper inherited from a base, and keys past it by the property name', function (): void {
+    // The same chain, degrading arm. An application's own mapper fixed on a shared base is the natural
+    // place to write one, and a read stopping at the subclass leaves the keys silently wrong: no rename
+    // in the document, no diagnostic, and something else entirely on the wire.
+    $reflector = new DataClassReflector;
+
+    expect($reflector->outputName(ScreamingDescendantData::class, 'displayName'))->toBe('displayName')
+        ->and($reflector->unrecognisedMappers(ScreamingDescendantData::class))->toBe([ScreamingNameMapper::class]);
+});
+
+it('pins that an inherited application mapper really does rename the subclass\'s keys', function (): void {
+    bootLaravelData(null);
+
+    expect((new ScreamingDescendantData('Ada'))->toArray())->toBe(['DISPLAYNAME!' => 'Ada']);
 });
 
 it('recognises a spatie Resource via the BaseData interface', function (): void {

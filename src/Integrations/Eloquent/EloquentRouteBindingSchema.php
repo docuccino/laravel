@@ -6,34 +6,51 @@ namespace Docuccino\Laravel\Integrations\Eloquent;
 
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\RouteBindingFieldSchemaResolver;
+use Docuccino\Core\Extensions\Contracts\RouteBindingKeyResolver;
 use Docuccino\Core\Extensions\Contracts\RouteBindingSchemaResolver;
 use Docuccino\Core\Inference\ClassRef;
 
 /**
- * The gated route-binding resolvers contributed by the Eloquent integration: it answers both binding
- * questions, typing a path parameter from the bound model's route key (uuid/ulid/string/integer) and a
- * `{post:slug}` parameter from THAT column. Contributed only when `eloquent` is enabled, so a disabled
- * integration leaves the path parameter to the built-in string fallback rather than typing it off the
- * model.
+ * The gated route-binding resolvers contributed by the Eloquent integration: it answers all three
+ * binding questions, typing a path parameter from the bound model's route key (uuid/ulid/string/integer),
+ * typing a `{post:slug}` parameter from THAT column, and naming the column an implicit binding is
+ * matched on. Contributed only when `eloquent` is enabled, so a disabled integration leaves the path
+ * parameter to the built-in string fallback rather than typing it off the model.
  */
-final class EloquentRouteBindingSchema implements RouteBindingFieldSchemaResolver, RouteBindingSchemaResolver
+final class EloquentRouteBindingSchema implements RouteBindingFieldSchemaResolver, RouteBindingKeyResolver, RouteBindingSchemaResolver
 {
     public function __construct(
         private readonly EloquentModelReflector $reflector = new EloquentModelReflector,
     ) {}
 
     /**
-     * The bound model's route-key schema, or null for a binding that is no Eloquent model at all —
-     * a custom `UrlRoutable` keys on whatever its `resolveRouteBinding` says, so guessing its shape
-     * here would be a confident wrong answer. The caller owns the string fallback.
+     * The bound model's route-key schema, or null when the column the segment is matched against is
+     * not the one this can see. Two ways that happens, and the answer is the same for both: a binding
+     * that is no Eloquent model at all — a custom `UrlRoutable` keys on whatever its
+     * `resolveRouteBinding` says — and a model that decides its route key in a method body.
+     *
+     * The second case used to answer with the PRIMARY key's shape as the closest static answer, and
+     * closest is not the bar: a model binding on a slug published `integer`, which refuses every value
+     * the route actually accepts and gives a generated client a parameter it cannot pass. A vague true
+     * shape beats a precise false one, so this defers and the caller documents a plain string and says
+     * so.
      *
      * @return array<string, mixed>|null
      */
     public function keySchemaFor(string $modelFqcn): ?array
     {
-        return EloquentModelReflector::isModel($modelFqcn)
-            ? $this->reflector->keySchemaFor($modelFqcn)
-            : null;
+        return $this->keyNameFor($modelFqcn) === null
+            ? null
+            : $this->reflector->keySchemaFor($modelFqcn);
+    }
+
+    /**
+     * The column an implicit binding matches on, or null for a non-Eloquent binding and for a model
+     * that decides its route key in a method body ({@see EloquentModelReflector::routeKeyNameFor()}).
+     */
+    public function keyNameFor(string $modelFqcn): ?string
+    {
+        return $this->reflector->routeKeyNameFor($modelFqcn);
     }
 
     /**

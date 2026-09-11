@@ -12,6 +12,7 @@ use Docuccino\Core\Inference\DType\NullT;
 use Docuccino\Core\Inference\DType\ScalarT;
 use Docuccino\Core\Inference\DType\UnionT;
 use ReflectionClass;
+use ReflectionMethod;
 use ReflectionProperty;
 
 /**
@@ -22,6 +23,14 @@ use ReflectionProperty;
 final class EloquentModelReflector
 {
     public const MODEL = 'Illuminate\\Database\\Eloquent\\Model';
+
+    /**
+     * The chain an implicit binding's column comes out of. Overriding ANY of them takes the answer out
+     * of the declarations {@see routeKeyNameFor()} can read.
+     *
+     * @var list<string>
+     */
+    private const ROUTE_KEY_METHODS = ['getRouteKeyName', 'getKeyName'];
 
     public function __construct(
         private readonly CastsMethodReader $castsMethod = new CastsMethodReader,
@@ -94,6 +103,33 @@ final class EloquentModelReflector
         $reflection = new ReflectionClass($fqcn);
 
         return self::keySchema($reflection->getDefaultProperties(), self::traits($fqcn));
+    }
+
+    /**
+     * The column a `{model}` path parameter is matched on, or null when the model decides that
+     * somewhere no reflection can read.
+     *
+     * Laravel resolves an implicit binding through `getRouteKeyName()`, which defaults to
+     * `getKeyName()`, which answers the declared `$primaryKey`. Only that declaration is readable, so
+     * a model overriding either method — a trait it imports counts, since PHP reports a flattened
+     * method as the using class's — has chosen a column this cannot see, and answering `id` for one of
+     * those would tell a consumer to send an id where the server matches a slug. Null is what
+     * {@see keySchemaFor()} cannot do: that one owes a schema either way and a primary-key shape is
+     * still the closest static answer, where a NAME is either right or a lie.
+     */
+    public function routeKeyNameFor(string $fqcn): ?string
+    {
+        if (! self::isModel($fqcn) || ! class_exists($fqcn)) {
+            return null;
+        }
+
+        foreach (self::ROUTE_KEY_METHODS as $method) {
+            if ((new ReflectionMethod($fqcn, $method))->getDeclaringClass()->getName() !== self::MODEL) {
+                return null;
+            }
+        }
+
+        return $this->facts($fqcn)['keyName'];
     }
 
     /**

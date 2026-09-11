@@ -512,18 +512,43 @@ final class DataClassReflector
     }
 
     /**
+     * The classes a class-level spatie attribute may be written on, the concrete class first and then
+     * every ancestor. Stated once here because three readings need it, and one that asks a single class
+     * answers about the wrong file.
+     *
+     * PHP does not inherit class attributes; spatie does. `DataAttributesCollectionFactory` builds its
+     * collection from the class being resolved and then walks `getParentClass()`, concatenating as it
+     * goes, so `first()` answers the NEAREST declaration and a base class speaks for every subclass.
+     * That has been the grammar since 3.9.1, which the `^4.0` this integration activates on is wholly
+     * past — one chain to read, and no version to branch on.
+     *
+     * The subject is what spatie resolves, never whichever class happens to DECLARE the property being
+     * asked about: an inherited property under a mapped subclass is renamed by the subclass's mapper.
+     *
+     * @return list<ReflectionClass<object>>
+     */
+    private static function classChain(string $fqcn): array
+    {
+        if (! class_exists($fqcn)) {
+            return [];
+        }
+
+        $chain = [];
+        for ($class = new ReflectionClass($fqcn); $class !== false; $class = $class->getParentClass()) {
+            $chain[] = $class;
+        }
+
+        return $chain;
+    }
+
+    /**
      * Whether the class or an ancestor carries `#[MergeValidationRules]`, which flips spatie's `rules()`
-     * override from REPLACING the inferred rules at a key to appending to them. PHP does not inherit class
-     * attributes, but spatie's own attribute collection merges the whole parent chain, so a base class
-     * carrying it makes every subclass merge.
+     * override from REPLACING the inferred rules at a key to appending to them. Inherited for the reason
+     * {@see classChain()} gives.
      */
     public function mergesValidationRules(string $fqcn): bool
     {
-        if (! class_exists($fqcn)) {
-            return false;
-        }
-
-        for ($class = new ReflectionClass($fqcn); $class !== false; $class = $class->getParentClass()) {
+        foreach (self::classChain($fqcn) as $class) {
             if ($class->getAttributes(self::MERGE_VALIDATION_RULES) !== []) {
                 return true;
             }
@@ -536,19 +561,26 @@ final class DataClassReflector
      * Mapper FQCNs used on the class or its properties that aren't recognised built-ins. The caller
      * turns these into a diagnostic, so an unknown mapper never silently mis-keys the schema.
      *
+     * The class half reads the whole chain ({@see classChain()}), because that is the set
+     * {@see mappedName()} keys from: a mapper reported by neither is one that renames every key with
+     * nothing said about it.
+     *
      * @return list<string>
      */
     public function unrecognisedMappers(string $fqcn): array
     {
-        if (! class_exists($fqcn)) {
+        $chain = self::classChain($fqcn);
+        if ($chain === []) {
             return [];
         }
 
-        $reflection = new ReflectionClass($fqcn);
         $found = [];
 
-        $candidates = $reflection->getAttributes();
-        foreach ($reflection->getProperties() as $property) {
+        $candidates = [];
+        foreach ($chain as $class) {
+            $candidates = [...$candidates, ...$class->getAttributes()];
+        }
+        foreach ($chain[0]->getProperties() as $property) {
             $candidates = [...$candidates, ...$property->getAttributes()];
         }
 
@@ -636,13 +668,14 @@ final class DataClassReflector
             return null;
         }
 
-        // Precedence: property-level beats class-level, directional beats symmetric MapName.
-        $class = $reflection->getDeclaringClass();
+        // Precedence: property-level beats class-level, directional beats symmetric MapName. Each class
+        // level is the whole chain nearest-first ({@see classChain()}), which is the order spatie's own
+        // `first()` answers in — so a directional map on a base still beats a symmetric one on the leaf.
         $sources = [
             $reflection->getAttributes($directional),
             $reflection->getAttributes(self::MAP_NAME),
-            $class->getAttributes($directional),
-            $class->getAttributes(self::MAP_NAME),
+            self::chainAttributes($fqcn, $directional),
+            self::chainAttributes($fqcn, self::MAP_NAME),
         ];
 
         $anyMapAttribute = false;
@@ -663,6 +696,21 @@ final class DataClassReflector
         }
 
         return null;
+    }
+
+    /**
+     * One class-level attribute's occurrences down the chain, nearest declaration first.
+     *
+     * @return list<ReflectionAttribute<object>>
+     */
+    private static function chainAttributes(string $fqcn, string $attribute): array
+    {
+        $found = [];
+        foreach (self::classChain($fqcn) as $class) {
+            $found = [...$found, ...$class->getAttributes($attribute)];
+        }
+
+        return $found;
     }
 
     /**
@@ -791,10 +839,28 @@ final class DataClassReflector
     /**
      * Whether the property carries any `#[WithTransformer]`. Which transformer it is never matters —
      * one replaces serialisation outright, so the declared shape stops predicting the wire.
+     *
+     * A property the class does not declare carries no transformer, which is what this answers; it is
+     * NOT the same question as whether the property exists, and a caller that needs that asks
+     * {@see declaresProperty()}. Written as `?->…  !== []` the two collapsed, and the collapsed answer
+     * was `true`: an unreadable property reported a transformer nobody wrote.
      */
     public function isPropertyTransformed(string $fqcn, string $property): bool
     {
-        return $this->property($fqcn, $property)?->getAttributes(self::WITH_TRANSFORMER, ReflectionAttribute::IS_INSTANCEOF) !== [];
+        $reflection = $this->property($fqcn, $property);
+
+        return $reflection !== null
+            && $reflection->getAttributes(self::WITH_TRANSFORMER, ReflectionAttribute::IS_INSTANCEOF) !== [];
+    }
+
+    /**
+     * Whether the class declares this property at all — which is also whether spatie will serialise it,
+     * because `DataClassFactory` builds its property set from `ReflectionClass::getProperties()` and
+     * nothing else. A name this build learned from a class-level `@property` tag reaches no payload.
+     */
+    public function declaresProperty(string $fqcn, string $property): bool
+    {
+        return $this->property($fqcn, $property) !== null;
     }
 
     private function property(string $fqcn, string $property): ?ReflectionProperty

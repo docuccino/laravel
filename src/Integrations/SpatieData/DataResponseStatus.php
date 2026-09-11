@@ -8,6 +8,7 @@ use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\ResponseStatusResolver;
+use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Inference\DType\DType;
 use Docuccino\Core\Inference\DType\LiteralT;
@@ -15,23 +16,25 @@ use Docuccino\Core\Inference\DType\UnionT;
 use ReflectionClass;
 
 /**
- * Resolves the success status(es) a Data class documents, from two sources in order: the class's own
- * `calculateResponseStatus()` override, else the default spatie's `ResponsableData` supplies —
- * `201 Created` for a POST, `200 OK` for anything else. The override's return types come from the engine,
+ * Resolves the success status(es) a Data class documents, from two sources in order: an application's
+ * `calculateResponseStatus()`, else the default spatie's `ResponsableData` supplies — `201 Created`
+ * for a POST, `200 OK` for anything else. The override's return types come from the engine,
  * which folds plain ints, class constants (`Response::HTTP_CREATED`) and enum constants to int literals.
  * Several folded literals (a `$x ? 201 : 200`, or multiple return sites) are each documented with the same
  * body — unless the choice between them is one this route already settles, which
  * {@see RouteConditionalStatus} narrows to the single status the route takes. A computed status leaves the
  * default 200 and earns an info diagnostic — nothing is executed and nothing is guessed.
  *
- * Only a real override counts: the inherited trait method reports the vendor trait's file, so comparing
- * files against the Data class's own tells the two apart.
+ * Which of the two sources applies is decided by the FILE the method is written in, compared against the
+ * vendor concern's — never against the Data class's own. A status calculation is as often written once on
+ * an application's base class or in a shared trait as it is on the class returned, and reading "some other
+ * file" as "no override" documents the vendor default where the server sends something else.
  */
 final class DataResponseStatus implements ResponseStatusResolver
 {
     private const METHOD = 'calculateResponseStatus';
 
-    /** The concern that supplies the default; its file identifies an unoverridden inherited method. */
+    /** The concern that supplies the default; its file is the one declaration that is spatie's. */
     private const CONCERN = 'Spatie\\LaravelData\\Concerns\\ResponsableData';
 
     public function resolveStatuses(RouteContext $context, string $fqcn): array
@@ -41,16 +44,37 @@ final class DataResponseStatus implements ResponseStatusResolver
         }
 
         $reflection = new ReflectionClass($fqcn);
-        $override = self::override($reflection);
 
-        if ($override === null) {
-            // No override, so spatie's concern is what runs. Only POST is worth an opinion: 200 is already
-            // the documented default, so staying quiet there leaves the rest of the chain free to answer.
-            return self::inheritsSpatieDefault($reflection) && $context->httpMethod() === 'post' ? [201] : [];
+        // The answer can be written anywhere in the hierarchy, so the whole hierarchy is what it depends
+        // on — recorded before any bail, since ADDING an override to a base has to retire the fragment
+        // (design §10). Over-keying is a cost; under-keying serves a stale status.
+        $context->recordDependencyFiles(DeclarationFiles::of($fqcn));
+
+        $method = $reflection->hasMethod(self::METHOD) ? $reflection->getMethod(self::METHOD) : null;
+        $file = $method === null ? false : $method->getFileName();
+
+        if ($method === null || $file === false) {
+            // Two different nothings, and neither is the vendor default. No method at all is a class that
+            // renders itself without spatie's concern, so there is no default to inherit; a declaration
+            // with no file is one nothing can read. Both leave the documented 200 alone rather than
+            // guessing 201 — and neither earns a diagnostic, the second because only a PHP-internal
+            // method answers that way and no Data class can be one.
+            return [];
         }
 
-        [$file, $line] = $override;
-        $analysis = $context->engine->analyzeAction(new ActionRef($file, $fqcn, self::METHOD, $line));
+        if ($file === self::concernFile()) {
+            // Spatie's own body is what runs: `$request->isMethod(POST) ? 201 : 200`. Only POST is worth
+            // an opinion — 200 is already the documented default, so staying quiet there leaves the rest
+            // of the chain free to answer.
+            return $context->httpMethod() === 'post' ? [201] : [];
+        }
+
+        // Anything else is the application's own, wherever it chose to write it.
+        $line = $method->getStartLine();
+        $line = $line === false ? 0 : $line;
+        $owner = $method->getDeclaringClass()->getName();
+
+        $analysis = $context->engine->analyzeAction(new ActionRef($file, $owner, self::METHOD, $line));
         $context->recordDependencyFiles($analysis->dependencyFiles);
 
         $statuses = [];
@@ -73,13 +97,18 @@ final class DataResponseStatus implements ResponseStatusResolver
 
             // One status is already right. Several are both true only where the route itself doesn't
             // settle the choice, and {@see RouteConditionalStatus} is what asks whether it does.
-            return count($statuses) === 1 ? $statuses : self::narrowToRoute($context, $file, $fqcn, $line, $statuses);
+            return count($statuses) === 1 ? $statuses : self::narrowToRoute($context, $file, $owner, $line, $statuses);
         }
 
         $context->components->addDiagnostic(new Diagnostic(
             severity: Severity::Info,
             code: 'spatie-data.response-status-unresolved',
-            message: sprintf('%s::calculateResponseStatus() does not fold to constant status(es); the success response is documented as 200.', $fqcn),
+            // Named for the class that WROTE the method, plus the one it answers for where those differ:
+            // a base's calculation is the file the author has to open, and the Data class is how they
+            // recognise the endpoint it reached.
+            message: $owner === $fqcn
+                ? sprintf('%s::calculateResponseStatus() does not fold to constant status(es); the success response is documented as 200.', $fqcn)
+                : sprintf('%s::calculateResponseStatus(), inherited by %s, does not fold to constant status(es); the success response is documented as 200.', $owner, $fqcn),
             help: 'Return one or more constant ints (e.g. `return 201;`, a constant like Response::HTTP_CREATED, or a ternary whose arms are both constants) so the status can be documented; a computed status cannot be resolved statically.',
         ));
 
@@ -99,10 +128,10 @@ final class DataResponseStatus implements ResponseStatusResolver
      * @param  list<int>  $statuses
      * @return list<int>
      */
-    private static function narrowToRoute(RouteContext $context, string $file, string $fqcn, int $line, array $statuses): array
+    private static function narrowToRoute(RouteContext $context, string $file, string $owner, int $line, array $statuses): array
     {
         $fold = new RouteConditionalStatus;
-        $context->traceFrom(new ActionRef($file, $fqcn, self::METHOD, $line), $fold);
+        $context->traceFrom(new ActionRef($file, $owner, self::METHOD, $line), $fold);
 
         $status = $fold->statusFor($context->route->name);
 
@@ -110,45 +139,23 @@ final class DataResponseStatus implements ResponseStatusResolver
     }
 
     /**
-     * Whether the class takes `calculateResponseStatus()` straight from spatie's concern, which is when
-     * the vendor default — `201` for a POST, `200` otherwise — is the runtime truth. A trait-provided
-     * method reports the trait's own file, so matching that against the concern's file is exact: a class
-     * satisfying the response contract by hand is left alone rather than assumed to follow the default.
+     * The file spatie's own `calculateResponseStatus()` is written in, or null where the concern is not
+     * installed and so cannot be what a method found here came from.
      *
-     * @param  ReflectionClass<object>  $reflection
+     * This is the whole vendor-versus-application test. A trait-provided method reports the trait's file
+     * while reporting the USING class as its declarer, and an inherited one reports the parent's file —
+     * so the file is the only thing that tells spatie's body from an application's, and comparing it to
+     * the Data class's own file answers a different question entirely.
      */
-    private static function inheritsSpatieDefault(ReflectionClass $reflection): bool
+    private static function concernFile(): ?string
     {
-        if (! trait_exists(self::CONCERN) || ! $reflection->hasMethod(self::METHOD)) {
-            return false;
-        }
-
-        return $reflection->getMethod(self::METHOD)->getFileName() === (new ReflectionClass(self::CONCERN))->getFileName();
-    }
-
-    /**
-     * The file and line of the class's OWN `calculateResponseStatus()` declaration, or null when it only
-     * inherits one. The trait-provided method reports the vendor trait's file, so a same-file declaration
-     * is the tell; a Data class that doesn't inherit the trait at all has no method to find.
-     *
-     * @param  ReflectionClass<object>  $reflection
-     * @return array{string, int}|null
-     */
-    private static function override(ReflectionClass $reflection): ?array
-    {
-        if (! $reflection->hasMethod(self::METHOD)) {
+        if (! trait_exists(self::CONCERN)) {
             return null;
         }
 
-        $method = $reflection->getMethod(self::METHOD);
-        $file = $method->getFileName();
-        if ($file === false || $file !== $reflection->getFileName()) {
-            return null;
-        }
+        $file = (new ReflectionClass(self::CONCERN))->getFileName();
 
-        $line = $method->getStartLine();
-
-        return [$file, $line === false ? 0 : $line];
+        return $file === false ? null : $file;
     }
 
     /**

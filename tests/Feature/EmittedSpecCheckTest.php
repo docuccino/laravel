@@ -102,9 +102,10 @@ it('reports an overlay-written $ref that names nothing, at every OpenAPI version
 
 /**
  * A guard is worth what it does, not what it says: the export writes the file and then exits non-zero,
- * with the diagnostic printed. `--fail-on` is untouched here on purpose — it is how strict the reader
- * wants to be about what the document SAYS, and a file that is not a valid document of its own format
- * is a different question, which is how `docuccino:validate` already treats the UIR half.
+ * with the diagnostic printed. No `--fail-on` here on purpose — the run has to fail at the floor's
+ * default of `none`, below anything the flag can reach, because a file that is not a valid document of
+ * its own format is not a question the reader gets a say over. `docuccino:validate` already treats the
+ * UIR half that way.
  */
 it('writes the artifact and fails the export when it is not valid', function (): void {
     bindStubEngine();
@@ -120,6 +121,25 @@ it('writes the artifact and fails the export when it is not valid', function ():
     // exit code is what tells CI.
     expect(is_file($out))->toBeTrue()
         ->and((string) file_get_contents($out))->toContain('NobodyDefinesThis');
+
+    @unlink($out);
+});
+
+/**
+ * Acceptance never covers an error, so naming this code in `diagnostics.accept` does nothing — and a
+ * reader left with a failing build and a config file that claims to have accepted the failure is owed
+ * that report here for the same reason they are owed it for a build's own errors.
+ */
+it('reports an acceptance the artifact check was never going to honour', function (): void {
+    bindStubEngine();
+    danglingRefOverlay($this->overlayDir);
+    setBuild('diagnostics.accept', ['document.openapi-invalid']);
+
+    $out = sys_get_temp_dir().'/docuccino-spec-check-'.uniqid().'.json';
+
+    $this->artisan('docuccino:export', ['--format' => 'openapi-3.2', '--out' => $out])
+        ->expectsOutputToContain("config.accept-refused: diagnostics.accept names 'document.openapi-invalid'")
+        ->assertFailed();
 
     @unlink($out);
 });

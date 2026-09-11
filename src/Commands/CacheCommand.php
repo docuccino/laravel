@@ -13,8 +13,13 @@ use Illuminate\Console\Command;
 /**
  * Builds a document (or every document) and stores its OpenAPI payload in the Laravel cache, so the
  * runtime endpoint can answer `viewer.source: cache` without rebuilding. The payload is emitted for
- * the document's own viewer ({@see ViewerDrivers::emitFor()}), and the entry records that
+ * the document's own viewer ({@see ViewerDrivers::emitResultFor()}), and the entry records that
  * format so a driver switch is a cache miss rather than the wrong version served forever.
+ *
+ * This warms an artifact, so it owes the operator what the emitter said about it. A request has
+ * nobody to tell and logs instead; a command has a console, and a payload that is not a valid
+ * document of its own format would otherwise be cached, served, and reported nowhere anyone was
+ * looking.
  */
 final class CacheCommand extends Command
 {
@@ -38,12 +43,19 @@ final class CacheCommand extends Command
         return $this->forEachDocument($builder, function (string $key) use ($builder, $engine, $cache, $drivers): int {
             $result = $builder->build($key, $engine);
             $config = $builder->config($key);
-            $cache->put($key, $drivers->emitFor($config, $result->document), $drivers->formatFor($config));
+            $format = $drivers->formatFor($config);
+            $emitted = $drivers->emitResultFor($config, $result->document);
+
+            // Cached even when the emitter says it is invalid, for the reason the export still writes
+            // the file: a partial answer the reader can look at beats a viewer with nothing behind it,
+            // and the exit code is what tells CI.
+            $cache->put($key, $emitted->output, $format);
 
             $this->info(sprintf('Cached document "%s".', $key));
             $this->renderDiagnostics($key, $result->diagnostics);
+            $this->renderDiagnostics($format, $emitted->report->diagnostics);
 
-            return self::SUCCESS;
+            return $emitted->report->hasError() ? self::FAILURE : self::SUCCESS;
         });
     }
 }

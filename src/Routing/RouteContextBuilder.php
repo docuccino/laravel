@@ -69,6 +69,8 @@ final class RouteContextBuilder
         $documentedMethod = $method ?? $descriptor->primaryMethod();
         $signature = $descriptor->signature($documentedMethod);
 
+        $bindings = $this->routeBindings($reflected, $pathParameters);
+
         $context = new RouteContext(
             route: $descriptor,
             actionRef: $reflected->actionRef,
@@ -84,8 +86,10 @@ final class RouteContextBuilder
             extensions: $extensions,
             pathParameters: $pathParameters,
             optionalPathParameters: $optional,
-            routeBindings: $this->routeBindings($reflected, $pathParameters),
+            routeBindings: $bindings,
             routeBindingFields: self::bindingFields($route, $pathParameters),
+            scopedBindings: RouteBindingResolution::scoped($route, $pathParameters, $bindings),
+            customBoundParameters: RouteBindingResolution::custom($this->router, $pathParameters),
             summary: $prose['summary'],
             description: $prose['description'],
             components: $components,

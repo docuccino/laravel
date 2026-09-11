@@ -88,10 +88,11 @@ final class ContractBuild
     /** What `docuccino:export` writes with no flags — the form a failure message compares against. */
     public function canonicalEmission(ExportTarget $target): string
     {
-        return Formats::emit($target->format, $this->fresh(), DocumentEmitOptions::for($this->config())
-            ->withKeepIds()
-            ->withProvenance(ProvenanceLevel::Winners)
-            ->withYaml($target->yaml() && Formats::serialisesYaml($target->format)))->output;
+        return Formats::emit(
+            $target->format,
+            $this->fresh(),
+            DocumentEmitOptions::canonical($this->config(), $target),
+        )->output;
     }
 
     public function absolute(string $path): string
