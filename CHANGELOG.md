@@ -7,6 +7,25 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.17.0
+
+### Breaking changes
+
+- check the artifact a consumer receives wherever a run produces one ([#469](https://github.com/docuccino/docuccino/pull/469))
+  - `docuccino:validate` now exits non-zero for an artifact that is not a valid document of its own format, and for an `export.targets` list it cannot read — both at the default `--fail-on=none`, as `docuccino:export` already does. It also reports what a downlevel target loses, so `--fail-on=info`/`hint` can go red where it was green; those sit at `info`, so a pipeline gating at `warning` is untouched and an `openapi-3.2` target loses nothing on the way out. `docuccino:cache` exits non-zero for an invalid payload. Name a code under `diagnostics.accept` to keep it printing and stop it counting.
+- gate --fail-on on everything a run reports, not on the build alone ([#468](https://github.com/docuccino/docuccino/pull/468))
+  - `docuccino:export --fail-on=warning` (or `info`/`hint`) now exits non-zero for reports an emitter raised while writing an artifact, and for `config.export-path-ignored`. A pipeline that exports an `openapi-3.1`, `openapi-3.0` or `postman` target can go red on a loss it had been reading past. Ship the 3.2 artifact to consumers that can read it, or list the codes whose price you have accepted under `diagnostics.accept` — they keep printing and stop counting. An `openapi-3.2` target loses nothing on the way out and is unaffected.
+
+### Features
+
+- fill in the servers and route-binding facts the application already states ([#472](https://github.com/docuccino/docuccino/pull/472))
+
+### Bug fixes
+
+- read a Data class's inherited declarations the way the vendor does ([#471](https://github.com/docuccino/docuccino/pull/471))
+- say which exception a response is for, and whether its status was read
+- make every reading of spatie's unwrapping say which value it is about ([#451](https://github.com/docuccino/docuccino/pull/451))
+
 ## v0.16.0
 
 ### Breaking changes
