@@ -114,7 +114,7 @@ final class QueryBuilderParameters
         if ($policy->filtersDeepObject()) {
             $properties = [];
             foreach ($facts->filters as $filter) {
-                $properties[$filter->name] = $this->filterProperty($filter, $config);
+                $properties[$filter->name] = $this->filterProperty($filter, $policy, $config);
             }
 
             return [new QueryParameterSpec(
@@ -128,7 +128,7 @@ final class QueryBuilderParameters
 
         $specs = [];
         foreach ($facts->filters as $filter) {
-            [$schema, $style, $explode] = $this->filterSchema($filter, $config);
+            [$schema, $style, $explode] = $this->filterSchema($filter, $policy, $config);
             $specs[] = new QueryParameterSpec(
                 name: $config->filterKey($filter->name),
                 schema: $schema,
@@ -149,10 +149,10 @@ final class QueryBuilderParameters
      *
      * @return array{0: array<string, mixed>, 1: string|null, 2: bool|null}
      */
-    private function filterSchema(QbEntry $filter, QueryBuilderConfig $config): array
+    private function filterSchema(QbEntry $filter, RepresentationPolicy $policy, QueryBuilderConfig $config): array
     {
         if ($filter->kind === 'trashed') {
-            return [$this->withDefault(self::trashedSchema(), $filter), null, null];
+            return [$this->withDefault(self::trashedSchema($policy->enumNaming), $filter), null, null];
         }
 
         if ($filter->enumTyped && $filter->columnSchema !== null) {
@@ -211,10 +211,10 @@ final class QueryBuilderParameters
      *
      * @return array<string, mixed>
      */
-    private function filterProperty(QbEntry $filter, QueryBuilderConfig $config): array
+    private function filterProperty(QbEntry $filter, RepresentationPolicy $policy, QueryBuilderConfig $config): array
     {
         if ($filter->kind === 'trashed') {
-            $schema = self::trashedSchema();
+            $schema = self::trashedSchema($policy->enumNaming);
         } elseif ($filter->enumTyped && $filter->columnSchema !== null) {
             $schema = self::whereInSchema($filter->columnSchema, $config);
         } else {
@@ -230,13 +230,19 @@ final class QueryBuilderParameters
     }
 
     /**
-     * A string enum, never a `whereIn` array — only one mode can be selected.
+     * A string enum, never a `whereIn` array — only one mode can be selected. Decorated like every other
+     * published value set: a fixed set is still a set a generated client has to name its members from.
      *
      * @return array<string, mixed>
      */
-    private static function trashedSchema(): array
+    private static function trashedSchema(string $naming): array
     {
-        return ['type' => 'string', 'enum' => self::TRASHED_VALUES];
+        return EnumDecoration::apply(
+            ['type' => 'string', 'enum' => self::TRASHED_VALUES],
+            $naming,
+            ListValueNames::names(self::TRASHED_VALUES),
+            [],
+        );
     }
 
     /**

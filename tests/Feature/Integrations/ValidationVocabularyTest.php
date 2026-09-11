@@ -14,6 +14,7 @@ use Docuccino\Core\Inference\NullTypeEngine;
 use Docuccino\Laravel\Integrations\Support\RuleParsing;
 use Docuccino\Laravel\Integrations\Validation\RuleOrdering;
 use Docuccino\Laravel\Integrations\Validation\ValidationIntegration;
+use Workbench\App\Enums\WidgetStatus;
 
 /**
  * Exercises the Laravel rule vocabulary (the transformer set + effect-order ranking) driving the
@@ -72,6 +73,27 @@ function convertFieldRules(array $rules): ValidationSchema
  * claims a `format` only where the pattern's own values satisfy it, so no row's proposal is refused by the
  * schema its own rule wrote.
  */
+/**
+ * A rule that folded from an enum class publishes that enum's own vocabulary — case names and
+ * `#[CaseDescription]` prose — rather than a second, plainer copy of a set the document already
+ * describes elsewhere.
+ */
+it('names a folded enum rule from the enum cases, matched by value rather than by position', function (): void {
+    // A REORDERED SUBSET on purpose: by position these values would take Draft and Published, putting
+    // one case's name on another case's value in every generated client.
+    $schema = convertFieldRules([['enum', ['archived', 'draft'], WidgetStatus::class]])->schema['properties']['f'];
+
+    expect($schema['enum'])->toBe(['archived', 'draft'])
+        ->and($schema['x-enum-varnames'])->toBe(['Archived', 'Draft'])
+        ->and($schema['x-enumNames'])->toBe(['Archived', 'Draft'])
+        // The prose is keyed by value, so a subset carries the cases it lists and a gap stays a gap —
+        // and the value-keyed map is withheld while one is missing, exactly as anywhere else.
+        ->and($schema['x-enum-descriptions'])->toBe(['', 'Not yet visible to applicants.'])
+        ->and($schema)->not->toHaveKey('x-enumDescriptions')
+        // The enum's own FQCN is the author's vocabulary: it never reaches a reader.
+        ->and($schema)->not->toHaveKey('description');
+});
+
 it('maps every schema-producing string rule to its fragment', function (array $rules, array $expected): void {
     $property = convertFieldRules($rules)->schema['properties']['f'];
     ksort($property);
@@ -94,14 +116,19 @@ it('maps every schema-producing string rule to its fragment', function (array $r
     'ip' => [[['ip']], ['format' => 'ip', 'type' => 'string', 'example' => '192.0.2.1']],
     'date' => [[['date']], ['format' => 'date', 'type' => 'string', 'example' => '2024-01-01']],
 
-    // ChoiceRuleTransformer — string set and numeric set, plus the enum-FQCN note.
-    'in (string set)' => [[['in', ['draft', 'published']]], ['enum' => ['draft', 'published'], 'type' => 'string', 'example' => 'draft']],
-    'in (numeric set)' => [[['in', ['1', '2', '3']]], ['enum' => [1, 2, 3], 'type' => 'integer', 'example' => 1]],
-    'enum (folded values + note)' => [[['enum', ['a', 'b'], 'App\\Enums\\Kind']], ['description' => 'App\\Enums\\Kind', 'enum' => ['a', 'b'], 'type' => 'string', 'example' => 'a']],
+    // ChoiceRuleTransformer — string set and numeric set, plus the enum-FQCN note. A validation set is
+    // a closed set the application enforces, so it carries the member names every other published value
+    // set carries; a numeric set needs them most, since no target language names a member `1`.
+    'in (string set)' => [[['in', ['draft', 'published']]], ['enum' => ['draft', 'published'], 'type' => 'string', 'example' => 'draft', 'x-enum-varnames' => ['Draft', 'Published'], 'x-enumNames' => ['Draft', 'Published']]],
+    'in (numeric set)' => [[['in', ['1', '2', '3']]], ['enum' => [1, 2, 3], 'type' => 'integer', 'example' => 1, 'x-enum-varnames' => ['_1', '_2', '_3'], 'x-enumNames' => ['_1', '_2', '_3']]],
+    // The note is the enum's FQCN. It never reaches the document: a consumer cannot see the codebase,
+    // and a PHP namespace path in a description is the author's vocabulary published as the reader's.
+    // Unresolvable here, so the names are minted from the values; the resolvable case is its own test.
+    'enum (folded values + note)' => [[['enum', ['a', 'b'], 'App\\Enums\\Kind']], ['enum' => ['a', 'b'], 'type' => 'string', 'example' => 'a', 'x-enum-varnames' => ['A', 'B'], 'x-enumNames' => ['A', 'B']]],
     // Empty value set: the rule is consumed but contributes no enum (a bare typed field remains).
     'in (empty values)' => [[['string'], ['in', []]], ['type' => 'string']],
     // Already-typed guard: an explicit type is preserved, never overridden by the value-inferred one.
-    'in (preserves an existing type)' => [[['integer'], ['in', ['a', 'b']]], ['enum' => ['a', 'b'], 'type' => 'integer']],
+    'in (preserves an existing type)' => [[['integer'], ['in', ['a', 'b']]], ['enum' => ['a', 'b'], 'type' => 'integer', 'x-enum-varnames' => ['A', 'B'], 'x-enumNames' => ['A', 'B']]],
 
     // SizeRuleTransformer — type-aware min/max/between/size.
     'min (string length)' => [[['string'], ['min', ['2']]], ['minLength' => 2, 'type' => 'string', 'example' => 'example']],
@@ -431,7 +458,7 @@ it('maps type + format + choice + regex + date_format rules', function (): void 
 
     expect($schema['properties']['email'])->toBe(['type' => 'string', 'format' => 'email', 'example' => 'user@example.com'])
         ->and($schema['properties']['id'])->toBe(['type' => 'string', 'format' => 'uuid', 'example' => '3fa85f64-5717-4562-b3fc-2c963f66afa6'])
-        ->and($schema['properties']['status'])->toBe(['type' => 'string', 'enum' => ['draft', 'published'], 'example' => 'draft'])
+        ->and($schema['properties']['status'])->toBe(['type' => 'string', 'enum' => ['draft', 'published'], 'x-enum-varnames' => ['Draft', 'Published'], 'x-enumNames' => ['Draft', 'Published'], 'example' => 'draft'])
         ->and($schema['properties']['slug'])->toBe(['type' => 'string', 'pattern' => '^[a-z]+$', 'example' => 'example'])
         ->and($schema['properties']['when'])->toBe(['type' => 'string', 'format' => 'date', 'description' => 'Expected format: Y-m-d', 'example' => '2024-01-01'])
         ->and($schema['required'])->toBe(['email']);

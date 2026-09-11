@@ -113,7 +113,7 @@ it('drives the supported tokens through the shared chain to the expected schema'
     expect($props['email'])->toBe(['type' => 'string', 'format' => 'email', 'example' => 'user@example.com'])
         ->and($props['uuid'])->toBe(['type' => 'string', 'format' => 'uuid', 'example' => '3fa85f64-5717-4562-b3fc-2c963f66afa6'])
         ->and($props['url'])->toBe(['type' => 'string', 'format' => 'uri', 'example' => 'https://example.com'])
-        ->and($props['in'])->toBe(['type' => 'string', 'enum' => ['draft', 'published'], 'example' => 'draft'])
+        ->and($props['in'])->toBe(['type' => 'string', 'enum' => ['draft', 'published'], 'x-enum-varnames' => ['Draft', 'Published'], 'x-enumNames' => ['Draft', 'Published'], 'example' => 'draft'])
         ->and($props['max'])->toBe(['type' => 'string', 'maxLength' => 500, 'example' => 'example'])
         ->and($props['between'])->toBe(['type' => 'integer', 'minimum' => 1, 'maximum' => 10, 'example' => 1])
         ->and($props['regex'])->toBe(['type' => 'string', 'pattern' => '^[a-z]+$', 'example' => 'example'])

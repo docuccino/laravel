@@ -1689,7 +1689,15 @@
               "admin",
               "user"
             ],
-            "example": "admin"
+            "example": "admin",
+            "x-enum-varnames": [
+              "Admin",
+              "User"
+            ],
+            "x-enumNames": [
+              "Admin",
+              "User"
+            ]
           }
         },
         "required": [

@@ -89,7 +89,9 @@ it('documents a FormRequest as a request body recovered from rules()', function 
         ->and($schema['properties']['quantity'])->toBe(['type' => 'integer', 'minimum' => 1, 'example' => 1])
         // An upload gets no example: bytes are not an illustration.
         ->and($schema['properties']['avatar'])->toBe(['type' => ['string', 'null'], 'format' => 'binary', 'description' => 'An image file.'])
-        ->and($schema['properties']['role'])->toBe(['type' => 'string', 'enum' => ['admin', 'user'], 'example' => 'admin']);
+        // A rule's value set is named like every other set the document publishes — a client generated
+        // from this request body can name the two members rather than retyping the strings.
+        ->and($schema['properties']['role'])->toBe(['type' => 'string', 'enum' => ['admin', 'user'], 'x-enum-varnames' => ['Admin', 'User'], 'x-enumNames' => ['Admin', 'User'], 'example' => 'admin']);
 });
 
 /**

@@ -108,8 +108,11 @@ it('types each recovered filter kind off the model and applies the custom-filter
     expect($byName['filter[opaque]'])->toHaveKey('schema')
         ->and($byName['filter[opaque]']['schema'])->toBe([]);
 
-    // Trashed → fixed with/only enum.
-    expect($byName['filter[trashed]']['schema']['enum'])->toBe(['with', 'only']);
+    // Trashed → fixed with/only enum, named like every other published set: a fixed set is still one
+    // a generated client has to name its members from.
+    expect($byName['filter[trashed]']['schema']['enum'])->toBe(['with', 'only'])
+        ->and($byName['filter[trashed]']['schema']['x-enum-varnames'])->toBe(['With', 'Only'])
+        ->and($byName['filter[trashed]']['schema']['x-enumNames'])->toBe(['With', 'Only']);
 });
 
 it('emits a partial-on-enum info nudge for a partial filter over an enum column, and only for that filter', function () use ($chain): void {

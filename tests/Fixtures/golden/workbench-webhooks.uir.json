@@ -4890,7 +4890,15 @@
               "admin",
               "user"
             ],
-            "example": "admin"
+            "example": "admin",
+            "x-enum-varnames": [
+              "Admin",
+              "User"
+            ],
+            "x-enumNames": [
+              "Admin",
+              "User"
+            ]
           }
         },
         "required": [
@@ -5129,7 +5137,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "a0c79d4aead16d93b4b37bfcd21306a1e5d536653870a4849ffb903971488d49",
-      "contentHash": "45f05e2ad54c17376371116dd0757bf86cdba34b00468e17280e99b549f2b0cb"
+      "contentHash": "3303c65bb3d663371900b1200e1824f4977c60307ddac4a7f19d1e1b1f758d9d"
     },
     "generator": {
       "name": "docuccino/laravel",
