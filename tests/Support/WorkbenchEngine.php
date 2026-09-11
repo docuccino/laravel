@@ -105,7 +105,14 @@ final class WorkbenchEngine
                 // The include/sparse-fieldset endpoint: the allow-list comment, the relation docblock and
                 // the column summary each describe a value, so the golden locks the whole ladder.
                 'Workbench\\App\\Http\\Controllers\\LedgerQueryController::index' => TraceScript::forChain(<<<'PHP'
-                    QueryBuilder::for(\Workbench\App\Models\Ledger::class)->allowedIncludes([
+                    QueryBuilder::for(\Workbench\App\Models\Ledger::class)->allowedFilters([
+                        AllowedFilter::callback('search', static function (Builder $query, mixed $value): void {
+                            $query->where(static function (Builder $inner) use ($value): void {
+                                $inner->where('reference', 'like', '%'.$value.'%')
+                                    ->orWhere('opened_at', 'like', '%'.$value.'%');
+                            });
+                        }),
+                    ])->allowedIncludes([
                         // The forms filed against this ledger.
                         'entries',
                         'auditor',

@@ -193,7 +193,17 @@ final class QueryBuilderParameters
      */
     private static function schemaWithoutColumn(QbEntry $filter): array
     {
-        return in_array($filter->kind, self::OPAQUE_KINDS, true) ? [] : ['type' => 'string'];
+        return self::publishesNoType($filter) ? [] : ['type' => 'string'];
+    }
+
+    /**
+     * Whether this filter reaches the document claiming no type at all — the one reading of it, because
+     * the extension reports the same fact as a diagnostic and a second reading would report a parameter
+     * that is typed, or stay quiet about one that is not.
+     */
+    public static function publishesNoType(QbEntry $filter): bool
+    {
+        return $filter->columnSchema === null && in_array($filter->kind, self::OPAQUE_KINDS, true);
     }
 
     /**

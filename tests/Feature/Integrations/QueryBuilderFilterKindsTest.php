@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Composer\InstalledVersions;
+use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Draft\OperationDraft;
 use Docuccino\Core\Extensions\Context\AttributeSet;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
@@ -133,6 +134,32 @@ it('types a belongsTo foreign-key filter off the related model\'s uuid key and k
     expect($byName['filter[beacon_id]']['schema']['type'])->toBe('string')
         ->and($byName['filter[beacon_id]']['schema']['format'])->toBe('uuid')
         ->and($files)->toContain((new ReflectionClass(Beacon::class))->getFileName());
+});
+
+it('reports the filter it published with no type, naming it and what types it', function () use ($chain): void {
+    [$byName, $diagnostics] = runFilterKinds($chain);
+
+    $untyped = array_values(array_filter(
+        $diagnostics,
+        static fn ($d): bool => $d->code === 'query-builder.untyped-filter',
+    ));
+
+    // One report, for the one parameter that reached the document claiming nothing — a report against
+    // a filter that IS typed would train a reader to skip the channel.
+    expect($untyped)->toHaveCount(1)
+        ->and($untyped[0]->message)->toContain('opaque')
+        ->and($untyped[0]->severity)->toBe(Severity::Info)
+        // The reader can act, and the help says how: it names the attribute, which is where a type for
+        // a filter the application handles itself has to come from.
+        ->and($untyped[0]->help)->toContain('#[QueryParameter(')
+        ->and($byName['filter[opaque]']['schema'])->toBe([]);
+
+    // Every other filter in the chain is typed, and none of them is reported.
+    foreach ($byName as $name => $parameter) {
+        if ($name !== 'filter[opaque]') {
+            expect($parameter['schema'])->not->toBe([], "$name is typed, so nothing should report it as untyped");
+        }
+    }
 });
 
 it('does not nudge when a partial filter targets a non-enum column', function (): void {

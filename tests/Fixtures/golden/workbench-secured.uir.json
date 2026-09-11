@@ -1908,7 +1908,7 @@
               ],
               "source": {
                 "file": "workbench/app/Http/Controllers/LedgerQueryController.php",
-                "line": 24,
+                "line": 28,
                 "symbol": "Workbench\\App\\Http\\Controllers\\LedgerQueryController::index"
               }
             },
@@ -1949,7 +1949,7 @@
                   ],
                   "source": {
                     "file": "workbench/app/Http/Controllers/LedgerQueryController.php",
-                    "line": 24,
+                    "line": 28,
                     "symbol": "Workbench\\App\\Http\\Controllers\\LedgerQueryController::index"
                   }
                 }
@@ -1973,7 +1973,7 @@
                     ],
                     "source": {
                       "file": "workbench/app/Http/Controllers/LedgerQueryController.php",
-                      "line": 24,
+                      "line": 28,
                       "symbol": "Workbench\\App\\Http\\Controllers\\LedgerQueryController::index"
                     }
                   }
@@ -2016,7 +2016,7 @@
                   ],
                   "source": {
                     "file": "workbench/app/Http/Controllers/LedgerQueryController.php",
-                    "line": 24,
+                    "line": 28,
                     "symbol": "Workbench\\App\\Http\\Controllers\\LedgerQueryController::index"
                   }
                 }
@@ -2040,7 +2040,7 @@
                     ],
                     "source": {
                       "file": "workbench/app/Http/Controllers/LedgerQueryController.php",
-                      "line": 24,
+                      "line": 28,
                       "symbol": "Workbench\\App\\Http\\Controllers\\LedgerQueryController::index"
                     }
                   }
@@ -2063,6 +2063,31 @@
           },
           {
             "x-docuccino": {
+              "id": "par:v1:ms67ofvnckjamx76",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/LedgerQueryController.php",
+                    "line": 28,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\LedgerQueryController::index"
+                  }
+                }
+              ]
+            },
+            "name": "filter[search]",
+            "in": "query",
+            "description": "Filters the result set by `search`.",
+            "required": false,
+            "schema": {}
+          },
+          {
+            "x-docuccino": {
               "id": "par:v1:nb64xzkqj67zk5nv",
               "provenance": [
                 {
@@ -2076,7 +2101,7 @@
                   ],
                   "source": {
                     "file": "workbench/app/Http/Controllers/LedgerQueryController.php",
-                    "line": 24,
+                    "line": 28,
                     "symbol": "Workbench\\App\\Http\\Controllers\\LedgerQueryController::index"
                   }
                 }
@@ -2100,7 +2125,7 @@
                     ],
                     "source": {
                       "file": "workbench/app/Http/Controllers/LedgerQueryController.php",
-                      "line": 24,
+                      "line": 28,
                       "symbol": "Workbench\\App\\Http\\Controllers\\LedgerQueryController::index"
                     }
                   }
@@ -2165,7 +2190,7 @@
                   ],
                   "source": {
                     "file": "workbench/app/Http/Controllers/LedgerQueryController.php",
-                    "line": 24,
+                    "line": 28,
                     "symbol": "Workbench\\App\\Http\\Controllers\\LedgerQueryController::index"
                   }
                 }
@@ -2188,7 +2213,7 @@
                     ],
                     "source": {
                       "file": "workbench/app/Http/Controllers/LedgerQueryController.php",
-                      "line": 24,
+                      "line": 28,
                       "symbol": "Workbench\\App\\Http\\Controllers\\LedgerQueryController::index"
                     }
                   }
@@ -2214,7 +2239,7 @@
                   ],
                   "source": {
                     "file": "workbench/app/Http/Controllers/LedgerQueryController.php",
-                    "line": 24,
+                    "line": 28,
                     "symbol": "query-builder:strict-mode"
                   }
                 }
@@ -4800,7 +4825,7 @@
     "document": {
       "id": "doc:secured",
       "configHash": "d89a86d522eb398c0a3d894b165ad3d553ea98b9606eab23fb4d7a6a100fb07f",
-      "contentHash": "998672094f5e02cad230d2cac1bf7e720d0beca0ef1a8d3dcfe81b5188a0541f"
+      "contentHash": "03598b76529ec7bc2e93b0c47528079df599b9c5a7e85f6ab98b4a25cc512971"
     },
     "generator": {
       "name": "docuccino/laravel",

@@ -627,6 +627,13 @@
             }
           },
           {
+            "name": "filter[search]",
+            "in": "query",
+            "description": "Filters the result set by `search`.",
+            "required": false,
+            "schema": {}
+          },
+          {
             "name": "include",
             "in": "query",
             "description": "Include related resources: entries, auditor.",
