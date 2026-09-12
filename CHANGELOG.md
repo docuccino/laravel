@@ -7,6 +7,19 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.18.0
+
+### Breaking changes
+
+- publish a validated enum as the component it already has ([#479](https://github.com/docuccino/docuccino/pull/479))
+  - a request field validated against a backed enum class now publishes `$ref: '#/components/schemas/<Enum>'` (or an `anyOf` with `null` where it is nullable) in place of an inline `enum` of the same values. A client generated from the document gains one shared type for that enum and loses the per-field anonymous one, so a name referring to the old inline type changes. `representation.enums.components: false` restores the inline form. A rule listing only some of an enum's cases, and a rule with no enum class behind it, are unchanged.
+
+### Bug fixes
+
+- name the members of every value set the document publishes ([#477](https://github.com/docuccino/docuccino/pull/477))
+- report the filter that reached the document with no type ([#476](https://github.com/docuccino/docuccino/pull/476))
+- hold the shipped viewer bundles to the decoration they render ([#475](https://github.com/docuccino/docuccino/pull/475))
+
 ## v0.17.0
 
 ### Breaking changes
