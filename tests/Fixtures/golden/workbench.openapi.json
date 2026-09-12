@@ -1698,6 +1698,9 @@
               "Admin",
               "User"
             ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/WidgetStatus"
           }
         },
         "required": [

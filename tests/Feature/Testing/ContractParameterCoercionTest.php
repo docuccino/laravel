@@ -29,12 +29,19 @@ use Workbench\App\Http\Requests\StoreWidgetRequest;
 it('reads a query value back as the type a generated document wrote inside an anyOf', function (): void {
     app('router')->get('api/coerced-widgets', [ValidationController::class, 'store']);
 
-    app()->instance(TypeEngine::class, WorkbenchEngine::make(analysisOverrides: [
-        StoreWidgetRequest::class.'::rules' => new ActionAnalysis(returns: [new ReturnSite(
-            new ArrayShapeT([new ArrayShapeField('per_page', new LiteralT('nullable|integer|min:1'))]),
-            new SourceLocation(''),
-        )]),
-    ]));
+    // Rules are recovered down TWO paths — the analysed shape and the walked method — so narrowing this
+    // request to one field means answering for both. Scripting only the shape would leave the walk
+    // recovering the real `rules()` beside it, and the document would carry fields this test never
+    // asked for.
+    app()->instance(TypeEngine::class, WorkbenchEngine::make(
+        analysisOverrides: [
+            StoreWidgetRequest::class.'::rules' => new ActionAnalysis(returns: [new ReturnSite(
+                new ArrayShapeT([new ArrayShapeField('per_page', new LiteralT('nullable|integer|min:1'))]),
+                new SourceLocation(''),
+            )]),
+        ],
+        traceOverrides: [StoreWidgetRequest::class.'::rules' => static function (): void {}],
+    ));
 
     $json = (new UirEmitter)->emit(generateDocument(static function (array $raw): array {
         $representation = is_array($raw['representation'] ?? null) ? $raw['representation'] : [];
@@ -46,11 +53,18 @@ it('reads a query value back as the type a generated document wrote inside an an
 
     /** @var array<string, mixed> $document */
     $document = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
-    $parameter = $document['paths']['/api/coerced-widgets']['get']['parameters'][0];
+    // Selected by NAME: a position is not an identity, and an unrelated field arriving on the same
+    // operation would otherwise silently move this assertion onto a different parameter.
+    $parameters = [];
+    foreach ($document['paths']['/api/coerced-widgets']['get']['parameters'] as $entry) {
+        $parameters[$entry['name']] = $entry;
+    }
+
+    $parameter = $parameters['per_page'] ?? [];
 
     // The premise, pinned: the generator really does put the type inside the anyOf under this policy.
     // Without this the two checks below would pass over a schema that never had the shape at issue.
-    expect($parameter['name'])->toBe('per_page')
+    expect($parameter['name'] ?? null)->toBe('per_page')
         ->and($parameter['schema'])->toHaveKey('anyOf')
         ->and($parameter['schema'])->not->toHaveKey('type');
 

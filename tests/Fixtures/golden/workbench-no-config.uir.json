@@ -4657,6 +4657,9 @@
               "Admin",
               "User"
             ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/WidgetStatus"
           }
         },
         "required": [
@@ -4895,7 +4898,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "48ddc5d56508900ed302561994befac297bb8402be944adaef6f2752f3f24c42",
-      "contentHash": "e8e557f628cfeacdf84c45dc57d33cb3251cac3672f641f066d4ce5c5dfb7c64"
+      "contentHash": "638d19fa3b23d023a461220f8751366e08cc98278ed47edbaed3f4ea3be97a88"
     },
     "generator": {
       "name": "docuccino/laravel",

@@ -28,6 +28,8 @@ use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Inference\TraceVisitor;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
+use ReflectionClass;
+use Workbench\App\Http\Requests\StoreWidgetRequest;
 
 /**
  * Builds the deterministic stub {@see TypeEngine} the feature tests bind for the workbench: canned
@@ -144,6 +146,15 @@ final class WorkbenchEngine
                 self::CONTROLLER.'storeCreatedArticle' => TraceScript::forChain(
                     'new \\'.self::ARTICLE_RESOURCE.'(\\'.self::WIDGET_MODEL.'::create([]))',
                     'Illuminate\\Database\\Eloquent\\Builder',
+                ),
+                // The FormRequest's DESCRIPTOR path: `rules()` walked as written, so `Rule::enum(...)`
+                // folds to a descriptor here exactly as the analyser folds it. Without this the stub
+                // supplies only the literal shape below, and the descriptor half of the recovery —
+                // and everything the document publishes from it — is unreachable from any golden.
+                'Workbench\\App\\Http\\Requests\\StoreWidgetRequest::rules' => TraceScript::forMethod(
+                    (string) (new ReflectionClass(StoreWidgetRequest::class))->getFileName(),
+                    StoreWidgetRequest::class,
+                    'rules',
                 ),
                 ...$traceOverrides,
             ],

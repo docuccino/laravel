@@ -35,6 +35,10 @@ function publicExtensionSurface(): array
         // QB integration describing include/sort values must read prose and emit hint keys EXACTLY as
         // core's enum mapper does, or the document carries two decoration standards.
         'Docuccino\Core\Extensions\Schema\DocSummary',
+        // The one place an enum class becomes a published component — its body, its name, its identity.
+        // An integration that reached a component any other way would be minting a second answer to
+        // "what is this enum called", which is the duplication the class exists to prevent.
+        'Docuccino\Core\Extensions\Schema\EnumComponent',
         'Docuccino\Core\Extensions\Schema\EnumDecoration',
         'Docuccino\Core\Extensions\Schema\EnumReflection',
         // The one reader of #[Mock], for the same reason SchemaIdentity is here: every class-hoisting
