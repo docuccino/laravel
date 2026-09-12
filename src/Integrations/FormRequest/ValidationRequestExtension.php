@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\FormRequest;
 
-use Docuccino\Core\Diagnostics\Diagnostic;
-use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Draft\OperationDraft;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\OperationExtension;
@@ -22,7 +20,9 @@ use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
  * chain. Body verbs get a request body under the recovered media type (JSON, or multipart once a file rule
  * appears); read verbs get query parameters. Attributes still override, as this writes at the integration
  * layer — and a `#[BodyParameter]` overrides by PATCHING the body this wrote, which is why the
- * attribute body extension runs behind this one.
+ * attribute body extension runs behind this one — and why the recovery notes read the declarations for
+ * wherever these rules landed before they say a field went undocumented, since one naming a field
+ * publishes it after this runs.
  */
 final class ValidationRequestExtension implements OperationExtension
 {
@@ -76,27 +76,20 @@ final class ValidationRequestExtension implements OperationExtension
 
         $inline = $visitor->ruleSet();
 
+        // An inline body has no source class, so the route's own attribute bag is the whole of what can
+        // still document a field this trace could not read.
+        $notes = new UnrecoveredRules(RecoveredRequest::declaredFields($context, null));
+
         foreach ($visitor->unrecoverableFields() as $field) {
             if ($inline->fields[$field] ?? null) {
                 continue;
             }
-            $context->components->addDiagnostic(new Diagnostic(
-                severity: Severity::Info,
-                code: 'validation.rule-unrecoverable',
-                message: sprintf('Inline validation field "%s" has no statically recoverable rules; it is omitted from the request schema.', $field),
-                help: RulesHarvestingVisitor::UNRECOVERABLE_HELP,
-                routeSignature: $context->route->signature(),
-            ));
+
+            $notes->unrecoverable($context, $field, sprintf('Inline validation field "%s" has no statically recoverable rules; it is omitted from %s.', $field, RecoveredRequest::destination($context)));
         }
 
         foreach ($visitor->widenedFields() as $field) {
-            $context->components->addDiagnostic(new Diagnostic(
-                severity: Severity::Info,
-                code: 'validation.rule-values-unread',
-                message: sprintf('Inline validation field "%s" states values this build cannot read, so that constraint is left off the request schema; the rest of its rules are documented.', $field),
-                help: RulesHarvestingVisitor::WIDENED_HELP,
-                routeSignature: $context->route->signature(),
-            ));
+            $notes->widened($context, $field, sprintf('Inline validation field "%s" states values this build cannot read, so that constraint is left off %s; the rest of its rules are documented.', $field, RecoveredRequest::destination($context)));
         }
 
         return $inline->isEmpty() ? [null, null] : [$inline, null];

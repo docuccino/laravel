@@ -1,0 +1,302 @@
+{
+  "$schema": "https://spec.docuccino.app/uir/1.0/schema.json",
+  "uir": "1.0.0",
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "App-filtered API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/app-filtered": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:dqt7im362zgpi376",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/AppFilteredListController.php",
+                "line": 29,
+                "symbol": "Workbench\\App\\Http\\Controllers\\AppFilteredListController::index"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.app-filtered",
+        "summary": "List gadgets, with a free-text search, a maker lookup and a date window.",
+        "tags": [
+          "AppFilteredList"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:m7q3rnxqy63fovwf",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "explode",
+                    "required",
+                    "style"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/AppFilteredListController.php",
+                    "line": 29,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\AppFilteredListController::index"
+                  }
+                }
+              ]
+            },
+            "name": "filter",
+            "in": "query",
+            "description": "Filter the result set.",
+            "required": false,
+            "style": "deepObject",
+            "explode": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/AppFilteredListController.php",
+                      "line": 29,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\AppFilteredListController::index"
+                    }
+                  }
+                ]
+              },
+              "type": "object",
+              "properties": {
+                "label": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "attribute",
+                        "layer": "attribute",
+                        "fields": [
+                          "description",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/AppFilteredListController.php",
+                          "line": 29,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\AppFilteredListController::index"
+                        },
+                        "overrode": [
+                          {
+                            "field": "description",
+                            "value": "Filters the result set by `label`.",
+                            "producer": "integration:query-builder"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "description": "The maker to list gadgets for.",
+                  "type": "string"
+                },
+                "min_days": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:form-request",
+                        "layer": "integration",
+                        "fields": [
+                          "example",
+                          "maximum",
+                          "minimum",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/AppFilteredListController.php",
+                          "line": 29,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\AppFilteredListController::index"
+                        }
+                      },
+                      {
+                        "producer": "integration:query-builder",
+                        "layer": "integration",
+                        "fields": [
+                          "description"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/AppFilteredListController.php",
+                          "line": 29,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\AppFilteredListController::index"
+                        }
+                      }
+                    ]
+                  },
+                  "description": "Filters the result set by `min_days`.",
+                  "type": "integer",
+                  "maximum": 90,
+                  "minimum": 1,
+                  "example": 1
+                },
+                "search": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:query-builder",
+                        "layer": "integration",
+                        "fields": [
+                          "description"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/AppFilteredListController.php",
+                          "line": 29,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\AppFilteredListController::index"
+                        }
+                      }
+                    ]
+                  },
+                  "description": "Filters the result set by `search`."
+                }
+              }
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:ip3dpyxn43tnww2h",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/AppFilteredListController.php",
+                    "line": 29,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\AppFilteredListController::index"
+                  }
+                }
+              ]
+            },
+            "name": "page",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/AppFilteredListController.php",
+                      "line": 29,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\AppFilteredListController::index"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "x-docuccino": {
+              "id": "res:v1:lctrrvyf47rivdmj",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/AppFilteredListController.php",
+                    "line": 29,
+                    "symbol": "query-builder:strict-mode"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "BadRequest"
+              }
+            },
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:query-builder",
+                        "layer": "integration",
+                        "fields": [
+                          "properties",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/AppFilteredListController.php",
+                          "line": 29,
+                          "symbol": "query-builder:strict-mode"
+                        }
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "ea6bfd93e3167e0c49a4fb2af52f7fc478b1574f5b39a144841391e149f7df73",
+      "contentHash": "bdfe48087482fb995316c07893d3eed85c1bde73f3ef0395f0061a213c80a009"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.18.0",
+      "specVersion": "1.0.0"
+    }
+  }
+}

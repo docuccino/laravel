@@ -92,8 +92,12 @@ final class WrapResolver
     /**
      * The diagnostic a root whose envelope could not be settled earns, or null where it was settled.
      *
-     * It is only ever raised where an envelope IS published under doubt: with no wrap configured and no
+     * It is only ever raised where an envelope IS applied under doubt: with no wrap configured and no
      * override there is no envelope either way, so there would be nothing for a reader to act on.
+     *
+     * The sentence names the envelope this read applied rather than the one the finished response
+     * carries, which an overlay or a later statement can still answer for
+     * (docs/design/defect-classes.md §"A diagnostic that asserts an outcome it never reads").
      */
     public function diagnose(string $fqcn): ?Diagnostic
     {
@@ -110,7 +114,7 @@ final class WrapResolver
             severity: Severity::Warning,
             code: 'spatie-data.root-wrap-unsettled',
             message: sprintf(
-                '%s is documented with a {"%s": … } response envelope because `data.wrap` resolves to it, but %s — so whether the envelope is really sent could not be established.',
+                'The response shape recovered for %s carries a {"%s": … } envelope because `data.wrap` resolves to it, but %s — so whether the envelope is really sent could not be established.',
                 $fqcn,
                 $key,
                 $unsettled->because(),

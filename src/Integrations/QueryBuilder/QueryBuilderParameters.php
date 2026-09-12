@@ -130,7 +130,7 @@ final class QueryBuilderParameters
         foreach ($facts->filters as $filter) {
             [$schema, $style, $explode] = $this->filterSchema($filter, $policy, $config);
             $specs[] = new QueryParameterSpec(
-                name: $config->filterKey($filter->name),
+                name: self::filterParameter($filter->name, $policy, $config),
                 schema: $schema,
                 description: $this->filterDescription($filter, $config),
                 style: $style,
@@ -193,17 +193,30 @@ final class QueryBuilderParameters
      */
     private static function schemaWithoutColumn(QbEntry $filter): array
     {
-        return self::publishesNoType($filter) ? [] : ['type' => 'string'];
+        return self::typesNothing($filter) ? [] : ['type' => 'string'];
     }
 
     /**
-     * Whether this filter reaches the document claiming no type at all — the one reading of it, because
-     * the extension reports the same fact as a diagnostic and a second reading would report a parameter
-     * that is typed, or stay quiet about one that is not.
+     * Whether this producer leaves the filter claiming no type at all — the one reading of it, because
+     * the same fact decides what it publishes and what {@see UntypedFilters} records, and a second
+     * reading could disagree with either. It is about this layer and NOT about the document: a validation
+     * rule or an attribute can still type the same parameter, so anything claiming the outcome reads the
+     * draft as it finally stands ({@see QueryBuilderUntypedFilterExtension}).
      */
-    public static function publishesNoType(QbEntry $filter): bool
+    public static function typesNothing(QbEntry $filter): bool
     {
         return $filter->columnSchema === null && in_array($filter->kind, self::OPAQUE_KINDS, true);
+    }
+
+    /**
+     * The query parameter one filter's value is published under — its own bracketed key, or the single
+     * object parameter the deepObject representation nests every filter in. Public because a report about
+     * what the document published has to be addressed where the filter actually landed
+     * ({@see UntypedFilters}).
+     */
+    public static function filterParameter(string $name, RepresentationPolicy $policy, QueryBuilderConfig $config): string
+    {
+        return $policy->filtersDeepObject() ? $config->filter : $config->filterKey($name);
     }
 
     /**

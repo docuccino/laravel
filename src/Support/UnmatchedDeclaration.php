@@ -38,9 +38,11 @@ use Docuccino\Core\Support\NameList;
 final class UnmatchedDeclaration
 {
     /**
-     * A name that matched no parameter. `$published` is what the operation is left documenting, as
-     * `in:name` keys — read AFTER the pass has done its removals, because the remedy has to name what
-     * the document actually publishes rather than what it held mid-build.
+     * A name that matched no parameter. `$published` is what the operation is left documenting, as the
+     * `in:name` addresses a declaration can name — read AFTER the pass has done its removals, because
+     * the remedy has to name what the document actually publishes rather than what it held mid-build.
+     * Where a representation publishes a surface as one container, its members are addresses too, so the
+     * caller lists them under the bracketed names that drop them.
      *
      * @param  list<string>  $published
      */
@@ -53,7 +55,7 @@ final class UnmatchedDeclaration
         return new Diagnostic(
             severity: Severity::Warning,
             code: 'attribute.ignore-param-unmatched',
-            message: $declaration.' dropped nothing: this operation documents no such parameter. '.self::documenting('parameters', $published),
+            message: $declaration.' dropped nothing: this operation documents no such parameter or member. '.self::documenting('parameters', $published),
             source: $source,
             routeSignature: $routeSignature,
             help: 'Correct the name to one this operation documents, or delete the declaration — a parameter that was renamed keeps its old spelling only in the attribute. A key only some of a controller\'s actions take belongs on the class, where an action that never documented it is not a mistake.',

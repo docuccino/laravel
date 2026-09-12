@@ -1,0 +1,926 @@
+{
+  "$schema": "https://spec.docuccino.app/uir/1.0/schema.json",
+  "uir": "1.0.0",
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "Deep required API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/deep-required/contested": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:w254v3nznsm75ikw",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                "line": 33,
+                "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::contested"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.deep-required.contested",
+        "summary": "List gadgets. `status` is required by the declaration and `min_days` by the application's own\nrules — two producers, two layers, one list.",
+        "tags": [
+          "DeepObjectRequired"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:qp3sbubdfo7p25ue",
+              "provenance": [
+                {
+                  "producer": "attribute",
+                  "layer": "attribute",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                    "line": 33,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::contested"
+                  }
+                },
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "explode",
+                    "style"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                    "line": 33,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::contested"
+                  }
+                }
+              ]
+            },
+            "name": "filter",
+            "in": "query",
+            "description": "Filter the result set.",
+            "required": true,
+            "style": "deepObject",
+            "explode": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "attribute",
+                    "layer": "attribute",
+                    "fields": [
+                      "required"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                      "line": 33,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::contested"
+                    }
+                  },
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                      "line": 33,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::contested"
+                    }
+                  }
+                ]
+              },
+              "type": "object",
+              "properties": {
+                "min_days": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:query-builder",
+                        "layer": "integration",
+                        "fields": [
+                          "description",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                          "line": 33,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::contested"
+                        },
+                        "overrode": [
+                          {
+                            "field": "type",
+                            "value": "integer",
+                            "producer": "integration:form-request"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "description": "Exact match on `min_days`.",
+                  "type": "string"
+                },
+                "status": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:query-builder",
+                        "layer": "integration",
+                        "fields": [
+                          "description",
+                          "items",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                          "line": 33,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::contested"
+                        },
+                        "overrode": [
+                          {
+                            "field": "type",
+                            "value": "string",
+                            "producer": "integration:form-request"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "description": "Exact match on `status`. Accepts a comma-separated list of values (matched as `whereIn`).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WidgetStatus"
+                  }
+                },
+                "window": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:query-builder",
+                        "layer": "integration",
+                        "fields": [
+                          "description"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                          "line": 33,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::contested"
+                        }
+                      }
+                    ]
+                  },
+                  "description": "Filters the result set by `window`."
+                }
+              },
+              "required": [
+                "status",
+                "min_days"
+              ]
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:iocvhm3h2tehcnrl",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                    "line": 33,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::contested"
+                  }
+                }
+              ]
+            },
+            "name": "page",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                      "line": 33,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::contested"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "x-docuccino": {
+              "id": "res:v1:et6tijovjgzmazto",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                    "line": 33,
+                    "symbol": "query-builder:strict-mode"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "BadRequest"
+              }
+            },
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/api/deep-required/nested": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:6wklxlsd4yhskbfv",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                "line": 43,
+                "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::nested"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.deep-required.nested",
+        "summary": "The same surface whose only requirement is the start of the window — a member of a member.",
+        "tags": [
+          "DeepObjectRequired"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:mz6k7ardlzjwtpft",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                    "line": 43,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::nested"
+                  }
+                },
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "explode",
+                    "style"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                    "line": 43,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::nested"
+                  }
+                }
+              ]
+            },
+            "name": "filter",
+            "in": "query",
+            "description": "Filter the result set.",
+            "required": true,
+            "style": "deepObject",
+            "explode": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                      "line": 43,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::nested"
+                    }
+                  }
+                ]
+              },
+              "type": "object",
+              "properties": {
+                "min_days": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:query-builder",
+                        "layer": "integration",
+                        "fields": [
+                          "description",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                          "line": 43,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::nested"
+                        }
+                      }
+                    ]
+                  },
+                  "description": "Exact match on `min_days`.",
+                  "type": "string"
+                },
+                "status": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:query-builder",
+                        "layer": "integration",
+                        "fields": [
+                          "description",
+                          "items",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                          "line": 43,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::nested"
+                        }
+                      }
+                    ]
+                  },
+                  "description": "Exact match on `status`. Accepts a comma-separated list of values (matched as `whereIn`).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WidgetStatus"
+                  }
+                },
+                "window": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:form-request",
+                        "layer": "integration",
+                        "fields": [
+                          "required"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                          "line": 43,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::nested"
+                        }
+                      },
+                      {
+                        "producer": "integration:query-builder",
+                        "layer": "integration",
+                        "fields": [
+                          "description"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                          "line": 43,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::nested"
+                        }
+                      }
+                    ]
+                  },
+                  "description": "Filters the result set by `window`.",
+                  "properties": {
+                    "from": {
+                      "x-docuccino": {
+                        "provenance": [
+                          {
+                            "producer": "integration:form-request",
+                            "layer": "integration",
+                            "fields": [
+                              "example",
+                              "format",
+                              "type"
+                            ],
+                            "source": {
+                              "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                              "line": 43,
+                              "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::nested"
+                            }
+                          }
+                        ]
+                      },
+                      "type": "string",
+                      "format": "date",
+                      "example": "2024-01-01"
+                    },
+                    "to": {
+                      "x-docuccino": {
+                        "provenance": [
+                          {
+                            "producer": "integration:form-request",
+                            "layer": "integration",
+                            "fields": [
+                              "example",
+                              "format",
+                              "type"
+                            ],
+                            "source": {
+                              "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                              "line": 43,
+                              "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::nested"
+                            }
+                          }
+                        ]
+                      },
+                      "type": "string",
+                      "format": "date",
+                      "example": "2024-01-01"
+                    }
+                  },
+                  "required": [
+                    "from"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:azayawqgooulw36m",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                    "line": 43,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::nested"
+                  }
+                }
+              ]
+            },
+            "name": "page",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                      "line": 43,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::nested"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "x-docuccino": {
+              "id": "res:v1:h5qment22tymnuoq",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                    "line": 43,
+                    "symbol": "query-builder:strict-mode"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "BadRequest"
+              }
+            },
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/api/deep-required/optional": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:wjtbtppqekmji4jn",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                "line": 55,
+                "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::optional"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.deep-required.optional",
+        "summary": "The same required member, under an author who states the container itself optional: send no\nfilter at all and the server is content, send one and it must carry `min_days`.",
+        "tags": [
+          "DeepObjectRequired"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:q3vqhqxazsge4qa7",
+              "provenance": [
+                {
+                  "producer": "attribute",
+                  "layer": "attribute",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                    "line": 55,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::optional"
+                  },
+                  "overrode": [
+                    {
+                      "field": "required",
+                      "value": false,
+                      "producer": "integration:query-builder"
+                    }
+                  ]
+                },
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "explode",
+                    "style"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                    "line": 55,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::optional"
+                  }
+                }
+              ]
+            },
+            "name": "filter",
+            "in": "query",
+            "description": "Filter the result set.",
+            "required": false,
+            "style": "deepObject",
+            "explode": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "required"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                      "line": 55,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::optional"
+                    }
+                  },
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                      "line": 55,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::optional"
+                    }
+                  }
+                ]
+              },
+              "type": "object",
+              "properties": {
+                "min_days": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:query-builder",
+                        "layer": "integration",
+                        "fields": [
+                          "description",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                          "line": 55,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::optional"
+                        },
+                        "overrode": [
+                          {
+                            "field": "type",
+                            "value": "integer",
+                            "producer": "integration:form-request"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "description": "Exact match on `min_days`.",
+                  "type": "string"
+                },
+                "status": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:query-builder",
+                        "layer": "integration",
+                        "fields": [
+                          "description",
+                          "items",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                          "line": 55,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::optional"
+                        },
+                        "overrode": [
+                          {
+                            "field": "type",
+                            "value": "string",
+                            "producer": "integration:form-request"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "description": "Exact match on `status`. Accepts a comma-separated list of values (matched as `whereIn`).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WidgetStatus"
+                  }
+                },
+                "window": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:query-builder",
+                        "layer": "integration",
+                        "fields": [
+                          "description"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                          "line": 55,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::optional"
+                        }
+                      }
+                    ]
+                  },
+                  "description": "Filters the result set by `window`."
+                }
+              },
+              "required": [
+                "min_days"
+              ]
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:sdoahevngj7llcw6",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                    "line": 55,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::optional"
+                  }
+                }
+              ]
+            },
+            "name": "page",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                      "line": 55,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\DeepObjectRequiredController::optional"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "x-docuccino": {
+              "id": "res:v1:hii66rpoxx5fzccv",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                    "line": 55,
+                    "symbol": "query-builder:strict-mode"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "BadRequest"
+              }
+            },
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BadRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:s46jnknuwmxt4uep"
+        },
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "WidgetStatus": {
+        "x-docuccino": {
+          "id": "sch:v1:xxkbfhrj65orbrgo"
+        },
+        "type": "string",
+        "enum": [
+          "draft",
+          "published",
+          "archived"
+        ],
+        "x-enum-descriptions": [
+          "Not yet visible to applicants.",
+          "Live and accepting traffic.",
+          ""
+        ],
+        "x-enum-varnames": [
+          "Draft",
+          "Published",
+          "Archived"
+        ],
+        "x-enumNames": [
+          "Draft",
+          "Published",
+          "Archived"
+        ]
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad Request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/BadRequest"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "1f83564a5bc7b01f951172a9dde37d44bfa50dd0535b39dab4cbe32db6e172d9",
+      "contentHash": "16d1de3cf99bca3f95a418846bde0be08ab9443207adaea25ed64919221294a8"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.18.0",
+      "specVersion": "1.0.0"
+    }
+  }
+}

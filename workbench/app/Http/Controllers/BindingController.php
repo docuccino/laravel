@@ -7,8 +7,10 @@ namespace Workbench\App\Http\Controllers;
 use Docuccino\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Workbench\App\Enums\Season;
+use Workbench\App\Models\Almanac;
 use Workbench\App\Models\Article;
 use Workbench\App\Models\Form;
+use Workbench\App\Models\Journal;
 use Workbench\App\Models\Ledger;
 
 /**
@@ -39,6 +41,20 @@ final class BindingController
     public function showEntryByTitle(Ledger $ledger, Form $entry): JsonResponse
     {
         return response()->json($entry);
+    }
+
+    /** Show one journal, found by the day it was filed. */
+    #[Group('Bindings')]
+    public function showJournal(Journal $journal): JsonResponse
+    {
+        return response()->json($journal);
+    }
+
+    /** Show one almanac, found by the day it was recorded. */
+    #[Group('Bindings')]
+    public function showAlmanac(Almanac $almanac): JsonResponse
+    {
+        return response()->json($almanac);
     }
 
     /** Show an article. */

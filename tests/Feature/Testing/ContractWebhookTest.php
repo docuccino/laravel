@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Carbon\CarbonImmutable;
 use Docuccino\Core\Emit\OpenApi30DownlevelEmitter;
 use Docuccino\Laravel\Testing\ApiContract;
 use Docuccino\Laravel\Testing\WebhookPayload;
@@ -28,7 +29,7 @@ it('passes the payload class the webhook is documented from', function (): void 
     // The delivered object itself — the shape `#[Webhook]` published, dispatched as the code holds it.
     // No `expect()` here on purpose: a passing check registers itself as the assertion it is, so a test
     // whose only check is this one is not reported as having performed none.
-    ApiContract::assertions()->assertValidWebhook('form.submitted', new FormSubmitted(7, '2026-01-01T00:00:00Z'));
+    ApiContract::assertions()->assertValidWebhook('form.submitted', new FormSubmitted(7, new CarbonImmutable('2026-01-01T00:00:00Z')));
 });
 
 it('passes a payload named by the attribute rather than by the annotated class', function (): void {
@@ -44,7 +45,7 @@ it('takes the payload as an array, as JSON text and as the object, all the same 
 
     ApiContract::assertions()->assertValidWebhook('form.submitted', $payload);
 })->with([
-    'the object' => [new FormSubmitted(7, '2026-01-01T00:00:00Z')],
+    'the object' => [new FormSubmitted(7, new CarbonImmutable('2026-01-01T00:00:00Z'))],
     'an array' => [['formId' => 7, 'submittedAt' => '2026-01-01T00:00:00Z']],
     'JSON text' => ['{"formId":7,"submittedAt":"2026-01-01T00:00:00Z"}'],
 ]);
@@ -158,7 +159,7 @@ it('refuses to guess between the methods one name is published under', function 
 it('counts a webhook it asserted, and the ones the suite never delivered', function (): void {
     workbenchWebhookContract();
 
-    ApiContract::assertions()->assertValidWebhook('form.submitted', new FormSubmitted(7, '2026-01-01T00:00:00Z'));
+    ApiContract::assertions()->assertValidWebhook('form.submitted', new FormSubmitted(7, new CarbonImmutable('2026-01-01T00:00:00Z')));
 
     $report = ApiContract::report();
     $deliveries = [];
@@ -184,7 +185,7 @@ it('writes a delivery to the coverage log a bootstrap asked for, like any other 
         workbenchWebhookContract();
         ApiContract::recordCoverage($directory);
 
-        ApiContract::assertions()->assertValidWebhook('form.submitted', new FormSubmitted(7, '2026-01-01T00:00:00Z'));
+        ApiContract::assertions()->assertValidWebhook('form.submitted', new FormSubmitted(7, new CarbonImmutable('2026-01-01T00:00:00Z')));
 
         $exercised = ApiContract::coverage()->exercised();
 
@@ -228,7 +229,7 @@ it('says nothing at all about a delivery it checked in full', function (): void 
     workbenchWebhookContract();
 
     expect(warningsRaisedBy(static function (): void {
-        ApiContract::assertions()->assertValidWebhook('form.submitted', new FormSubmitted(7, '2026-01-01T00:00:00Z'));
+        ApiContract::assertions()->assertValidWebhook('form.submitted', new FormSubmitted(7, new CarbonImmutable('2026-01-01T00:00:00Z')));
     }))->toBe([]);
 });
 
@@ -250,7 +251,7 @@ it('fails a webhook the document publishes no delivered body for at all', functi
     ApiContract::using($path);
 
     try {
-        ApiContract::assertions()->assertValidWebhook('form.submitted', new FormSubmitted(7, '2026-01-01T00:00:00Z'));
+        ApiContract::assertions()->assertValidWebhook('form.submitted', new FormSubmitted(7, new CarbonImmutable('2026-01-01T00:00:00Z')));
     } catch (AssertionFailedError $failure) {
         expect($failure->getMessage())
             ->toContain('The payload dispatched for POST webhooks.form.submitted does not match the documented contract.')
@@ -347,7 +348,9 @@ it('reduces every form of payload to the bytes the receiver would see', function
     'an array' => [['id' => 1], '{"id":1}'],
     'a list' => [[1, 2], '[1,2]'],
     'a plain object' => [(object) ['id' => 1], '{"id":1}'],
-    'a payload class' => [new FormSubmitted(1, 'now'), '{"formId":1,"submittedAt":"now"}'],
+    // A payload class holding a date-time: the bytes the receiver sees are the class's own JSON form,
+    // which is the form the published schema claims a `date-time` for.
+    'a payload class' => [new FormSubmitted(1, new CarbonImmutable('2026-01-01T00:00:00Z')), '{"formId":1,"submittedAt":"2026-01-01T00:00:00.000000Z"}'],
     'a backed enum' => [WidgetStatus::Draft, '"draft"'],
     'null' => [null, 'null'],
     'a slash, unescaped, as it goes on the wire' => [['url' => 'a/b'], '{"url":"a/b"}'],

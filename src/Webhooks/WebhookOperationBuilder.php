@@ -121,7 +121,7 @@ final readonly class WebhookOperationBuilder
                 severity: Severity::Warning,
                 code: 'webhook.payload-unresolved',
                 message: sprintf(
-                    'The webhook "%s" names the payload type "%s", which resolves to no shape — its body is documented as an unconstrained object.',
+                    'The webhook "%s" names the payload type "%s", which resolves to no shape — the body recovered for it is an unconstrained object.',
                     $webhook->name,
                     $webhook->payload,
                 ),

@@ -1,0 +1,16 @@
+[
+    {
+        "severity": "info",
+        "code": "query-builder.default-config",
+        "message": "The query-builder config was not readable; documented parameter names use the package defaults (filter/sort/include/fields).",
+        "routeSignature": "GET /api/app-filtered",
+        "help": "Publish the config (php artisan vendor:publish --tag=query-builder-config) so custom parameter names are reflected in the docs."
+    },
+    {
+        "severity": "info",
+        "code": "query-builder.untyped-filter",
+        "message": "Filter \"search\" is handled by your own code and nothing types its value, so it is documented with no type at all.",
+        "routeSignature": "GET /api/app-filtered",
+        "help": "Add #[QueryParameter(type: 'string')] to the filter class, or to the action, to give \"search\" a documented type."
+    }
+]

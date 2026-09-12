@@ -1697,10 +1697,7 @@
                         "producer": "integration:json-api-paginate",
                         "layer": "integration",
                         "fields": [
-                          "$ref",
-                          "properties",
-                          "required",
-                          "type"
+                          "$ref"
                         ],
                         "source": {
                           "file": "workbench/app/Http/Controllers/IntegrationsController.php",
@@ -2732,10 +2729,7 @@
                         "producer": "integration:api-resources",
                         "layer": "integration",
                         "fields": [
-                          "$ref",
-                          "properties",
-                          "required",
-                          "type"
+                          "$ref"
                         ],
                         "source": {
                           "file": "workbench/app/Http/Controllers/IntegrationsController.php",
@@ -4198,7 +4192,7 @@
               ],
               "source": {
                 "file": "workbench/app/Webhooks/FormSubmitted.php",
-                "line": 18,
+                "line": 19,
                 "symbol": "FormSubmitted"
               }
             },
@@ -4211,7 +4205,7 @@
               ],
               "source": {
                 "file": "workbench/app/Webhooks/FormSubmitted.php",
-                "line": 18,
+                "line": 19,
                 "symbol": "FormSubmitted"
               }
             },
@@ -4223,7 +4217,7 @@
               ],
               "source": {
                 "file": "workbench/app/Webhooks/FormSubmitted.php",
-                "line": 18,
+                "line": 19,
                 "symbol": "FormSubmitted"
               }
             }
@@ -4257,7 +4251,7 @@
                   ],
                   "source": {
                     "file": "workbench/app/Webhooks/FormSubmitted.php",
-                    "line": 18,
+                    "line": 19,
                     "symbol": "FormSubmitted"
                   }
                 }
@@ -4701,7 +4695,8 @@
             "type": "integer"
           },
           "submittedAt": {
-            "type": "string"
+            "type": "string",
+            "format": "date-time"
           }
         },
         "required": [
@@ -5140,7 +5135,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "a0c79d4aead16d93b4b37bfcd21306a1e5d536653870a4849ffb903971488d49",
-      "contentHash": "0bfbc149a097d0285a79f72eb4dad9d2310c809442de4c97056cd67aa16d4360"
+      "contentHash": "e42b0535f963223a0b2586316e8e53427b7a81c600ad7530be1a04b6c281289e"
     },
     "generator": {
       "name": "docuccino/laravel",

@@ -28,7 +28,7 @@ it('types a bound column from what the real engine recovered for it', function (
     // The row proves nothing if the engine reported no such column in the first place.
     expect(array_map(static fn ($property): string => $property->name, $twin->properties))->toContain($column);
 
-    expect((new EloquentModelReflector)->columnSchemaFor(Post::class, $column, $twin))->toBe($expected);
+    expect((new EloquentModelReflector)->columnSchemaFor(Post::class, $column, $twin))->toBe([$expected, false]);
 })->with([
     'a @property string column' => ['title', ['type' => 'string']],
     'a @property int column' => ['id', ['type' => 'integer']],

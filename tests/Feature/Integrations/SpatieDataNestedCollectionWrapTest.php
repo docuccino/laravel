@@ -47,6 +47,11 @@ it('says a nested collection will be wrapped, in every spelling one is written',
         ->and($diagnostic->message)->toContain('$things')
         ->and($diagnostic->message)->toContain(NESTED_WRAP_ITEM)
         ->and($diagnostic->message)->toContain('{"data": [ … ]}')
+        // The schema this read produced, not the one the response ends up with: the help's own second
+        // remedy is an overlay, which answers that node
+        // (docs/design/defect-classes.md §"A diagnostic that asserts an outcome it never reads").
+        ->and($diagnostic->message)->toContain('the schema recovered for the property is a bare array, with no envelope.')
+        ->and($diagnostic->message)->not->toContain('this document')
         ->and($diagnostic->help)->toContain('overlay');
 })->with([
     'a plain array with a recovered generic' => [NestedWrapListData::class, null],

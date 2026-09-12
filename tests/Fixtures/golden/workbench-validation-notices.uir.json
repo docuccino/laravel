@@ -1,0 +1,445 @@
+{
+  "$schema": "https://spec.docuccino.app/uir/1.0/schema.json",
+  "uir": "1.0.0",
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/field-notices": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:pipz7jlofd3lvlnm",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeFieldsController.php",
+                "line": 25,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeFieldsController::index"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.field-notices",
+        "tags": [
+          "NoticeFields"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:seolzof6znngbaa2"
+            },
+            "name": "marker",
+            "in": "query",
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "attribute",
+                    "layer": "attribute",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/NoticeFieldsController.php",
+                      "line": 25,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\NoticeFieldsController::index"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:xl5dw2yeuj7eyvlx",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "explode",
+                    "required",
+                    "style"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/NoticeFieldsController.php",
+                    "line": 25,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\NoticeFieldsController::index"
+                  }
+                }
+              ]
+            },
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "style": "deepObject",
+            "explode": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "attribute",
+                    "layer": "attribute",
+                    "fields": [
+                      "additionalProperties",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/NoticeFieldsController.php",
+                      "line": 25,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\NoticeFieldsController::index"
+                    },
+                    "overrode": [
+                      {
+                        "field": "type",
+                        "value": [
+                          "array",
+                          "object"
+                        ],
+                        "producer": "integration:form-request"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "type": "object",
+              "additionalProperties": {}
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:y2o2d7x3xtaxoqid",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "explode",
+                    "required",
+                    "style"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/NoticeFieldsController.php",
+                    "line": 25,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\NoticeFieldsController::index"
+                  }
+                }
+              ]
+            },
+            "name": "window",
+            "in": "query",
+            "required": false,
+            "style": "deepObject",
+            "explode": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/NoticeFieldsController.php",
+                      "line": 25,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\NoticeFieldsController::index"
+                    }
+                  }
+                ]
+              },
+              "type": [
+                "array",
+                "object"
+              ]
+            }
+          }
+        ]
+      },
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:kllxu2wvmd4zwgg3",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeFieldsController.php",
+                "line": 18,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeFieldsController::store"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:form-request",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeFieldsController.php",
+                "line": 18,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeFieldsController::store"
+              }
+            }
+          ]
+        },
+        "operationId": "post.api.field-notices",
+        "tags": [
+          "NoticeFields"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreNoticeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "422": {
+            "x-docuccino": {
+              "id": "res:v1:4s5y64mt3p32vvj7",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/NoticeFieldsController.php",
+                    "line": 18,
+                    "symbol": "implicit:validated-request"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "UnprocessableEntity"
+              }
+            },
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/api/field-notices/inline": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:ito2ynbhayptbgw4",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "requestBody",
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/InlineValidationController.php",
+                "line": 18,
+                "symbol": "Workbench\\App\\Http\\Controllers\\InlineValidationController::store"
+              },
+              "overrode": [
+                {
+                  "field": "requestBody",
+                  "value": {
+                    "content": {
+                      "application/json": {
+                        "schema": {
+                          "properties": {
+                            "title": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "title"
+                          ],
+                          "type": "object"
+                        }
+                      }
+                    },
+                    "required": true
+                  },
+                  "producer": "integration:form-request"
+                }
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.field-notices.inline",
+        "tags": [
+          "InlineValidation"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "payload": {
+                    "description": "Whatever the callback accepts.",
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "title"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "422": {
+            "x-docuccino": {
+              "id": "res:v1:seauibzlweti7nkm",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/InlineValidationController.php",
+                    "line": 18,
+                    "symbol": "implicit:validated-request"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "UnprocessableEntity"
+              }
+            },
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StoreNoticeRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:zrgupxq7qsqyu23a"
+        },
+        "type": "object",
+        "properties": {
+          "attachment": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "meta": {
+            "type": [
+              "array",
+              "object"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "visibility": {}
+        },
+        "required": [
+          "status",
+          "visibility"
+        ]
+      },
+      "UnprocessableEntity": {
+        "x-docuccino": {
+          "id": "sch:v1:f3tcwvg2vhs255gy"
+        },
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "errors"
+        ]
+      }
+    },
+    "responses": {
+      "UnprocessableEntity": {
+        "description": "Unprocessable Entity",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/UnprocessableEntity"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "1dc0690c5364ccd0373d8fd82a587cf48865c4bfae70cfeced9491da6fbcd7e6"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.18.0",
+      "specVersion": "1.0.0"
+    }
+  }
+}

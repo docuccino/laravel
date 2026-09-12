@@ -130,11 +130,13 @@ it('reads no hand-written type string with the analyser grammar', function (): v
 
 /**
  * A scan that matches nothing passes forever, so the count the assertion above is worth is stated: the
- * declaration sites are still there, still typed, and still reached by the scanner. Seven is the number
- * the sweep left behind — a plausible minimum, not a pin, so adding a declaration site is not a failure.
+ * declaration sites are still there, still typed, and still reached by the scanner. Six is what the
+ * adapter holds today — a plausible minimum, not a pin, so adding a declaration site is not a failure.
+ * The seventh moved into core with the reading it belonged to, where `DeclaredFields` reads a declared
+ * type the way the writer beside it will.
  */
 it('is scanning something', function (): void {
-    expect(count(typeStringParserCallsIn(dirname(__DIR__, 2).'/src', 'parseDeclared')))->toBeGreaterThanOrEqual(7);
+    expect(count(typeStringParserCallsIn(dirname(__DIR__, 2).'/src', 'parseDeclared')))->toBeGreaterThanOrEqual(6);
 });
 
 /**

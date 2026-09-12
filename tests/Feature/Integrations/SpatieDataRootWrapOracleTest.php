@@ -85,7 +85,12 @@ it('pins the two answers it degrades, and the diagnostic that carries each', fun
     expect(array_keys($render()))->toBe($wire)
         ->and($resolver->key($case))->toBe($published)
         ->and($resolver->diagnose($case)?->code)->toBe('spatie-data.root-wrap-unsettled')
-        ->and($resolver->diagnose($case)?->message)->toContain($case);
+        ->and($resolver->diagnose($case)?->message)->toContain($case)
+        // The envelope this read applied, not the one the finished response carries — the help offers an
+        // overlay, which answers that node (docs/design/defect-classes.md §"A diagnostic that asserts an
+        // outcome it never reads").
+        ->and($resolver->diagnose($case)?->message)->toStartWith('The response shape recovered for ')
+        ->and($resolver->diagnose($case)?->message)->not->toContain('is documented with');
 })->with([
     // The wire is unwrapped and the document publishes the envelope. Both answers are a lie of the
     // same size to a client, so the envelope falls to what the configuration says the framework does

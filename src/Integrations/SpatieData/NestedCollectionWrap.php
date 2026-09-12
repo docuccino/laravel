@@ -9,7 +9,7 @@ use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Inference\DType\DType;
 
 /**
- * Says when laravel-data will wrap a nested collection that this document describes as a bare array.
+ * Says when laravel-data will wrap a nested collection the read here recovered as a bare array.
  *
  * Spatie unwraps a nested single Data object but re-wraps a nested COLLECTION, so a property typed as
  * a list of Data serialises as `{"data": […]}` under a global `data.wrap` while the schema says
@@ -70,7 +70,7 @@ final class NestedCollectionWrap
             severity: Severity::Warning,
             code: 'spatie-data.nested-collection-wrap',
             message: sprintf(
-                '%s::$%s is a nested collection of %s, which laravel-data serialises as {"%s": [ … ]} because `data.wrap` is set — this document describes it as a bare array.',
+                '%s::$%s is a nested collection of %s, which laravel-data serialises as {"%s": [ … ]} because `data.wrap` is set — the schema recovered for the property is a bare array, with no envelope.',
                 $fqcn,
                 $property,
                 $item,

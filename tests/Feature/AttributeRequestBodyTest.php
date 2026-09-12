@@ -13,8 +13,6 @@ use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
 use Docuccino\Core\Extensions\ResolvedExtensions;
-use Docuccino\Core\Extensions\Validation\RuleSet;
-use Docuccino\Core\Extensions\Validation\ValidationRule;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Inference\NullTypeEngine;
 use Docuccino\Core\Patch\Contribution;
@@ -23,7 +21,6 @@ use Docuccino\Laravel\Extensions\AttributeRequestBodyExtension;
 use Docuccino\Laravel\Integrations\FormRequest\ValidationRequestExtension;
 use Docuccino\Laravel\Integrations\LaravelActions\ActionValidationExtension;
 use Docuccino\Laravel\Integrations\SpatieData\DataRequestExtension;
-use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
 use Docuccino\Laravel\Registry\DefaultExtensions;
 use Docuccino\Laravel\Registry\ExtensionRegistry;
 
@@ -462,64 +459,12 @@ it('lands, or refuses by name, every shape a field path can take', function (arr
     ];
 });
 
-/**
- * The other half of settling the container: the field the rules left open stops being reported as open,
- * because the document no longer says "either". A note asking for rules that would say what a
- * declaration has already said fires exactly where nothing can be done.
- *
- * The rows below the first few are the other half of THAT: a declaration that names the field and
- * decides nothing about it, or names no field at all, leaves the question open — and standing the note
- * down for one of those would leave the reader wider than the rules left them, with nothing said.
+/*
+ * The container-undecided note's declaration table — which declarations settle the field the rules left
+ * open, across both layers and every verb — lives with the producer that raises it, in
+ * `RuleSetNormalizerTest`. It was stated here and there over two overlapping halves, neither a superset
+ * of the other, so it is now one table over the whole domain.
  */
-it('stops reporting a container as undecided only for a declaration that settles it', function (?BodyParameter $declared, array $reported): void {
-    $rules = new RuleSet([
-        'meta' => [ValidationRule::of('array')],
-        'other' => [ValidationRule::of('array')],
-    ]);
-
-    $context = new RouteContext(
-        route: new RouteDescriptor(['POST'], 'api/things'),
-        actionRef: new ActionRef('', null, 'store'),
-        attributes: new AttributeSet($declared === null ? [] : [$declared]),
-        engine: new NullTypeEngine,
-        document: new DocumentConfig('default', []),
-        extensions: new ResolvedExtensions,
-    );
-
-    RuleSetNormalizer::report((new RuleSetNormalizer)->normalize($rules), $context, null);
-
-    $fields = array_map(
-        static fn (Diagnostic $d): string => (string) preg_replace('/^Validation field "([^"]+)".*$/', '$1', $d->message),
-        $context->components->diagnostics(),
-    );
-
-    expect($fields)->toBe($reported);
-})->with([
-    'nothing declared leaves both open' => [null, ['meta', 'other']],
-    'a key inside one settles that one' => [new BodyParameter(name: 'meta.scoring'), ['other']],
-    'a key deep inside one settles it too' => [new BodyParameter(name: 'meta.scoring.scores'), ['other']],
-    'a wildcard element settles it as a list' => [new BodyParameter(name: 'meta.*'), ['other']],
-    // Naming the field says what the field IS, so what it says has to be read: with no `type` the
-    // attribute's own default publishes a string, which is not "either" any more.
-    'naming the field with no type at all settles it as the string it publishes' => [new BodyParameter(name: 'meta'), ['other']],
-    'naming the field with a shape settles it' => [new BodyParameter(name: 'meta', type: 'list<string>'), ['other']],
-    // The word for a free-form map: the answer for a field with no keys to enumerate, and the reason
-    // the notice points at this attribute at all.
-    'naming the field as an object settles it' => [new BodyParameter(name: 'meta', type: 'object'), ['other']],
-    // …and the words that decide nothing. `array` is the very word the question is about, and a type
-    // that resolves to no shape publishes the empty schema — wider than the "either" the note names,
-    // with the note gone. The read is the write's own parser, so the two agree on what a shape is.
-    'naming the field as an array settles nothing, being the word the question is about' => [new BodyParameter(name: 'meta', type: 'array'), ['meta', 'other']],
-    'naming the field as mixed settles nothing either' => [new BodyParameter(name: 'meta', type: 'mixed'), ['meta', 'other']],
-    // A path with an empty segment names no field, is reported as that mistake, and documents nothing
-    // — so there is nothing for it to have settled.
-    'a trailing dot names no field, so it settles nothing' => [new BodyParameter(name: 'meta.'), ['meta', 'other']],
-    'a doubled dot names no field either' => [new BodyParameter(name: 'meta..scoring'), ['meta', 'other']],
-    'a sibling field settles neither' => [new BodyParameter(name: 'unrelated.key'), ['meta', 'other']],
-    // The escape is why this is a path comparison and not a string prefix: `meta\.scoring` is one
-    // field whose own name holds a dot, and it says nothing about what `meta` is.
-    'a field whose name holds a dot settles neither' => [new BodyParameter(name: 'meta\.scoring'), ['meta', 'other']],
-]);
 
 /**
  * `required` is the recovered body's, not the declaration's. The attribute's own `required` defaults to
@@ -565,44 +510,6 @@ it('leaves a recovered required list alone, at any depth, when a declaration say
         ->and($scoring['properties']['scores'])->toBe(['type' => 'object', 'additionalProperties' => []])
         ->and($diagnostics)->toBe([]);
 });
-
-it('stands the note down only where a body declaration can reach the field', function (string $verb, array $reported): void {
-    // `report()` runs ahead of the verb branch, and a read verb sends the recovered rules to QUERY
-    // parameters instead of a body ({@see RecoveredRequest}). A #[BodyParameter] reaches a request body
-    // and nothing else, so on a GET it settles nothing about the query parameter the rules produced —
-    // and standing the notice down for it would leave that parameter wider than the rules left it with
-    // nothing said, which is the exact case the consult exists to avoid.
-    $rules = new RuleSet([
-        'meta' => [ValidationRule::of('array')],
-        'other' => [ValidationRule::of('array')],
-    ]);
-
-    $context = new RouteContext(
-        route: new RouteDescriptor([strtoupper($verb)], 'api/things'),
-        actionRef: new ActionRef('', null, 'index'),
-        attributes: new AttributeSet([new BodyParameter(name: 'meta.scoring')]),
-        engine: new NullTypeEngine,
-        document: new DocumentConfig('default', []),
-        extensions: new ResolvedExtensions,
-    );
-
-    RuleSetNormalizer::report((new RuleSetNormalizer)->normalize($rules), $context, null);
-
-    $fields = array_map(
-        static fn (Diagnostic $d): string => (string) preg_replace('/^Validation field "([^"]+)".*$/', '$1', $d->message),
-        $context->components->diagnostics(),
-    );
-
-    expect($fields)->toBe($reported);
-})->with([
-    // The verbs whose recovered rules become a body: the declaration reaches the field and settles it.
-    'post' => ['post', ['other']],
-    'put' => ['put', ['other']],
-    'patch' => ['patch', ['other']],
-    // …and the verbs whose rules become query parameters, where it reaches nothing.
-    'get' => ['get', ['meta', 'other']],
-    'head' => ['head', ['meta', 'other']],
-]);
 
 it('takes a written `required: false` off the list, at any depth, and leaves the siblings', function (): void {
     // The other half of "says nothing about it": the declaration now has a way to say `optional`, and a

@@ -131,6 +131,41 @@ it('reports the same loss where the values come from a call rather than a spread
         ->and($diagnostics[0]->message)->toContain('"status"');
 });
 
+/**
+ * A note names the field, and on the class path the request class it was read from — neither of which
+ * tells a reader WHICH ROUTE reached it, and one FormRequest is reachable from many. So the route
+ * travels with every note from either recovery. Stated from what the reader needs rather than from what
+ * either producer does, and asserted over BOTH at once: the two composed their own address, the class
+ * path composed none, and the artifact carried records naming a class and no route at all.
+ */
+it('delivers a rules note to the route it was raised for, from either recovery', function (): void {
+    $inline = unreadValuesContext('App\\ListingController::store', <<<'PHP'
+        $request->validate([
+            'status' => ['required', \Illuminate\Validation\Rule::in('any', $this->fallbackStatus())],
+        ]);
+        PHP);
+    (new ValidationRequestExtension)->handle(new OperationDraft, $inline);
+
+    $fromClass = unreadValuesContext(CustomRuleRequest::class.'::rules', <<<'PHP'
+        return [
+            'status' => ['required', \Illuminate\Validation\Rule::in('any', $this->fallbackStatus())],
+        ];
+        PHP);
+    (new RulesFromClass)->analyse($fromClass, CustomRuleRequest::class);
+
+    foreach (['inline' => $inline, 'from a class' => $fromClass] as $shape => $context) {
+        $notes = array_values(array_filter(
+            $context->components->diagnostics(),
+            static fn ($d): bool => $d->code === 'validation.rule-values-unread',
+        ));
+
+        // Anti-vacuity: a shape that stopped reporting would otherwise pass the address assertion by
+        // having no note to address.
+        expect($notes)->toHaveCount(1, $shape)
+            ->and($notes[0]->routeSignature)->toBe('POST api/listings', $shape);
+    }
+});
+
 it('reports nothing where every value is written at the rule', function (): void {
     $context = unreadValuesContext(
         'App\\ListingController::store',

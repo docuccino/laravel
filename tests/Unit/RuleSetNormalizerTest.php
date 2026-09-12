@@ -2,14 +2,10 @@
 
 declare(strict_types=1);
 
-use Docuccino\Core\Extensions\Context\AttributeSet;
-use Docuccino\Core\Extensions\Context\DocumentConfig;
-use Docuccino\Core\Extensions\Context\RouteContext;
-use Docuccino\Core\Extensions\Context\RouteDescriptor;
+use Docuccino\Attributes\BodyParameter;
+use Docuccino\Attributes\QueryParameter;
 use Docuccino\Core\Extensions\Validation\RuleSet;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
-use Docuccino\Core\Inference\ActionRef;
-use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
 
 /**
@@ -206,29 +202,43 @@ it('publishes both containers, and bounds both, for a field the rules leave open
     ]);
 });
 
-/** @return list<string> */
-function undecidedMessages(array $fields): array
+/**
+ * @param  array<string, list<string>>  $fields
+ * @param  list<object>  $declarations
+ * @return list<string>
+ */
+function undecidedMessages(array $fields, array $declarations = [], string $verb = 'POST'): array
 {
     $set = (new RuleSetNormalizer)->normalize(new RuleSet(array_map(
         static fn (array $names): array => array_map(static fn (string $name): ValidationRule => ValidationRule::of($name), $names),
         $fields,
     )));
 
-    $context = new RouteContext(
-        route: new RouteDescriptor(['POST'], 'api/nodes'),
-        actionRef: new ActionRef('', 'App\\C', 'store'),
-        attributes: new AttributeSet,
-        engine: new StubTypeEngine,
-        document: new DocumentConfig('default', []),
-    );
-
     // No source class: these rules are an inline `validate()` call's, so the action bag is every
     // declaration site there is.
+    $context = validationRulesContext(declarations: $declarations, verb: $verb);
     RuleSetNormalizer::report($set, $context, null);
 
     return array_values(array_map(
         static fn ($d): string => $d->code.': '.$d->message,
         $context->components->diagnostics(),
+    ));
+}
+
+/**
+ * The undecided fields `report()` named, in the order it named them, over a rule set of TWO open
+ * fields — so a row says which field a declaration settled and not merely how many notes there were.
+ *
+ * @param  list<object>  $declarations
+ * @return list<string>
+ */
+function undecidedFields(array $declarations = [], string $verb = 'POST'): array
+{
+    $messages = undecidedMessages(['meta' => ['array'], 'other' => ['array']], $declarations, $verb);
+
+    return array_values(array_map(
+        static fn (string $message): string => (string) preg_replace('/^.*Validation field "([^"]+)".*$/s', '$1', $message),
+        $messages,
     ));
 }
 
@@ -251,21 +261,84 @@ it('reports the field whose container it could not decide, and only that field',
 });
 
 /**
- * One reader for both declaration sites is only worth what stops a caller reading half of it. A caller
- * that named no source class would weigh the action bag alone and ask for rules a declaration on the
- * TYPE had already answered — a note fired where nothing can be done, in a published document. So the
- * argument is required, and this is the call that proves PHP refuses it.
+ * One reader for both declaration sites is only worth what stops a caller reading half of it, so the
+ * argument is required rather than defaulted — and this is the call that proves PHP refuses it.
  */
 it('refuses a caller that says nothing about a source class', function (): void {
-    $context = new RouteContext(
-        route: new RouteDescriptor(['POST'], 'api/nodes'),
-        actionRef: new ActionRef('', 'App\\C', 'store'),
-        attributes: new AttributeSet,
-        engine: new StubTypeEngine,
-        document: new DocumentConfig('default', []),
-    );
+    $context = validationRulesContext();
 
     /* @phpstan-ignore-next-line arguments.count — the missing argument IS the test */
     expect(static fn () => RuleSetNormalizer::report(new RuleSet(['meta' => [ValidationRule::of('array')]]), $context))
         ->toThrow(ArgumentCountError::class);
+});
+
+/**
+ * The declaration half of the note, as ONE table over the whole domain — a body table and a query table
+ * each covered their own half and nothing between, so the layers and the verbs are crossed here in full.
+ * What clears the question is a function of the layer the rules LAND in, and `DeclaredFields` states how
+ * the two writers differ.
+ *
+ * Two fields, so every row says WHICH one it settled: a declaration that settled the wrong field would
+ * otherwise pass. Standing the note down where the document still says "either" hides a widening from
+ * the author; keeping it where the document has decided is a note nothing can clear.
+ */
+it('asks only where a declaration has not already decided the container', function (array $declarations, string $verb, array $reported): void {
+    expect(undecidedFields($declarations, $verb))->toBe($reported);
+})->with([
+    'nothing declared' => [[], 'POST', ['meta', 'other']],
+
+    // The BODY layer at a body verb: a declaration anywhere on the field's branch decides it.
+    'a body declaration typed as a free-form map' => [[new BodyParameter(name: 'meta', type: 'object')], 'POST', ['other']],
+    'a body declaration typed with a shape' => [[new BodyParameter(name: 'meta', type: 'list<string>')], 'POST', ['other']],
+    // The body writes the attribute's own default of `string` for a declaration with no type, which is
+    // an answer — not the shape the rules left open, but not "either" either.
+    'a body declaration with no type' => [[new BodyParameter(name: 'meta')], 'POST', ['other']],
+    'a body declaration naming a key inside' => [[new BodyParameter(name: 'meta.scoring')], 'POST', ['other']],
+    'a body declaration naming a key deep inside' => [[new BodyParameter(name: 'meta.scoring.scores')], 'POST', ['other']],
+    'a body declaration naming a wildcard element' => [[new BodyParameter(name: 'meta.*')], 'POST', ['other']],
+    'a body declaration naming a typed key inside' => [[new BodyParameter(name: 'meta.locale', type: 'string')], 'POST', ['other']],
+
+    // …and the words and names that decide nothing. `array` is the very word the question is about, and
+    // a type resolving to no shape publishes the empty schema — wider than the "either" the note names,
+    // with the note gone. The read is the write's own parser, so the two agree on what a shape is.
+    'a body declaration typed as the word the question is about' => [[new BodyParameter(name: 'meta', type: 'array')], 'POST', ['meta', 'other']],
+    'a body declaration typed as mixed' => [[new BodyParameter(name: 'meta', type: 'mixed')], 'POST', ['meta', 'other']],
+    'a body declaration naming a sibling field' => [[new BodyParameter(name: 'unrelated.key')], 'POST', ['meta', 'other']],
+    // A path with an empty segment names no field, is reported as that mistake, and documents nothing —
+    // so there is nothing for it to have settled.
+    'a body declaration with a trailing dot' => [[new BodyParameter(name: 'meta.')], 'POST', ['meta', 'other']],
+    'a body declaration with a doubled dot' => [[new BodyParameter(name: 'meta..scoring')], 'POST', ['meta', 'other']],
+    // The escape is why this is a path comparison and not a string prefix: `meta\.scoring` is one field
+    // whose own name holds a dot, and it says nothing about what `meta` is.
+    'a body declaration whose name holds a dot' => [[new BodyParameter(name: 'meta\.scoring')], 'POST', ['meta', 'other']],
+
+    // The verb axis, over one declaration that would settle the field if it could reach it: `report()`
+    // runs ahead of the verb branch, and a read verb sends the rules to QUERY parameters instead of a
+    // body, which a #[BodyParameter] never reaches.
+    'a body declaration at put' => [[new BodyParameter(name: 'meta.scoring')], 'PUT', ['other']],
+    'a body declaration at patch' => [[new BodyParameter(name: 'meta.scoring')], 'PATCH', ['other']],
+    'a body declaration at get' => [[new BodyParameter(name: 'meta.scoring')], 'GET', ['meta', 'other']],
+    'a body declaration at head' => [[new BodyParameter(name: 'meta.scoring')], 'HEAD', ['meta', 'other']],
+
+    // The QUERY layer, which mints one parameter per name: only a type stated AT the field decides.
+    'a query declaration with a deciding type' => [[new QueryParameter(name: 'meta', type: 'object')], 'GET', ['other']],
+    // Nothing is written for a query declaration with no type, so the recovered "either" still stands…
+    'a query declaration with no type' => [[new QueryParameter(name: 'meta')], 'GET', ['meta', 'other']],
+    // …and a bracketed one patches a property of the parameter without touching the parameter's own
+    // type, so it leaves the question exactly as open as it found it.
+    'a query declaration naming a key inside' => [[new QueryParameter(name: 'meta[locale]', type: 'string')], 'GET', ['meta', 'other']],
+    'a query declaration at a body verb' => [[new QueryParameter(name: 'meta', type: 'object')], 'POST', ['meta', 'other']],
+]);
+
+/**
+ * The field the note is about is the field the declaration has to be read against. A container named
+ * ABOVE an undecided field is written over it whole, so the field is not in the document at all — and a
+ * note saying it is "documented as either" is false of the build that emitted it, with a remedy that
+ * changes nothing.
+ */
+it('says nothing about a field a declaration above it replaces', function (): void {
+    expect(undecidedMessages(
+        ['meta.tags' => ['array'], 'meta.name' => ['string']],
+        [new BodyParameter(name: 'meta', type: 'object')],
+    ))->toBe([]);
 });

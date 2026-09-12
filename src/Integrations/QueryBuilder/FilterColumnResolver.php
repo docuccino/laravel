@@ -15,10 +15,14 @@ use Docuccino\Laravel\Integrations\Eloquent\EloquentModelReflector;
  * primary-key schema when the column IS the key — reusing the Eloquent integration's recovery
  * ({@see EloquentModelReflector} reads `$casts` and the key facts by reflection — never booting the
  * model — and {@see CastSchema} maps a native cast to a schema fragment) and the shared
- * {@see EnumReflection} machinery. Precedence mirrors {@see EloquentModelReflector::columnSchemaFor()}
- * so a filter and a path parameter can't document the same column differently. Pure reflection: no
- * PHPStan, no engine, so it runs equally in-process (the parameters extension) and out-of-process
- * (the real-engine fixture proof).
+ * {@see EnumReflection} machinery. Pure reflection: no PHPStan, no engine, so it runs equally in-process
+ * (the parameters extension) and out-of-process (the real-engine fixture proof).
+ *
+ * A bound path segment asks this same question of the same column down its own ladder
+ * ({@see EloquentModelReflector::columnSchemaFor()}), and the key/cast bracket here mirrors that one so
+ * the shared rungs answer alike. They are NOT the same ladder: this one has no date-policy branch, so a
+ * date column nothing casts is a plain string here and the policy's shape there. `ColumnLadderAgreement`
+ * pins every rung of both, differences included — read it before changing either.
  *
  * A column nothing on the model types may still be a `belongsTo` foreign key, in which case the
  * RELATED model's referenced key types it ({@see BelongsToReader}). A relation-path column
@@ -70,7 +74,7 @@ final class FilterColumnResolver
                 return FilterColumn::enum($enum, $file !== null ? [$file] : []);
             }
 
-            $scalar = CastSchema::forCast($cast);
+            $scalar = CastSchema::accepted($cast);
             if ($scalar !== null) {
                 return FilterColumn::scalar($scalar);
             }

@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use Carbon\Carbon;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Docuccino\Core\Draft\OperationDraft;
+use Docuccino\Core\Extensions\BuiltIn\DateTimeTypeToSchema;
 use Docuccino\Core\Extensions\BuiltIn\DefaultTypeMappers;
 use Docuccino\Core\Extensions\Context\AttributeSet;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
@@ -26,6 +29,8 @@ use Docuccino\Core\Inference\PropertyMetadata;
 use Docuccino\Core\Inference\ReturnSite;
 use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
+use Docuccino\Laravel\Integrations\Eloquent\DateColumnSchema;
+use Docuccino\Laravel\Integrations\Eloquent\EloquentModelReflector;
 use Docuccino\Laravel\Integrations\SpatieData\DataRequestExtension;
 use Docuccino\Laravel\Integrations\SpatieData\DataSchema;
 use Docuccino\Laravel\Integrations\SpatieData\DataValidationRules;
@@ -33,6 +38,9 @@ use Docuccino\Laravel\Integrations\Support\DateWireFormat;
 use Docuccino\Laravel\Integrations\Validation\RuleOrdering;
 use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
 use Docuccino\Laravel\Integrations\Validation\ValidationIntegration;
+use Docuccino\Laravel\Tests\Fixtures\Dates\HeritableDate;
+use Docuccino\Laravel\Tests\Fixtures\Dates\RestatedDate;
+use Docuccino\Laravel\Tests\Fixtures\Eloquent\Ledger;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\DateLadderController;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\DateLadderData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\DateOverrideData;
@@ -40,6 +48,7 @@ use Illuminate\Routing\Router;
 use Spatie\LaravelData\Attributes\Validation\DateFormat;
 use Spatie\LaravelData\Attributes\WithCast;
 use Spatie\LaravelData\Optional;
+use Workbench\App\Support\StampedDate;
 
 /**
  * What a date-typed property publishes, in BOTH directions, from one class. The invariant: one value is
@@ -400,6 +409,91 @@ it('documents the format the app configured, through the container', function ()
     expect($request['properties']['declaredOnly'] ?? null)->toBe(['type' => 'string', 'format' => 'date', 'example' => '2024-01-01'])
         ->and($response['properties']['declaredOnly'] ?? null)->toBe(['type' => 'string', 'format' => 'date']);
 });
+
+/**
+ * The generic half: a date-time reaching the converter with no producer to state its wire format. Three
+ * sites answer "what does a value written the framework's default way publish" — core's date-time
+ * mapper, the Eloquent date policy, and the date-format table they both read — and the document is only
+ * consistent if they answer alike.
+ */
+it('answers alike at every site that publishes a framework-default date-time', function (): void {
+    // The rule from Carbon rather than from any of them: what a date-time writes is its own JSON form,
+    // and the pattern that renders is the one the `format` is read off.
+    expect(json_encode(new CarbonImmutable('2024-01-01T00:00:00+00:00'), JSON_THROW_ON_ERROR))
+        ->toBe('"'.DateWireFormat::example(DateColumnSchema::DEFAULT_FORMAT).'"');
+
+    expect(DateTimeTypeToSchema::SCHEMA)
+        ->toBe(DateWireFormat::serializedSchema(DateColumnSchema::DEFAULT_FORMAT))
+        ->toBe(DateColumnSchema::schema((new EloquentModelReflector)->facts(Ledger::class)));
+});
+
+it('publishes every date class an application may name as the string it sends, and hoists none of them', function (string $fqcn): void {
+    // The population is the framework's date classes under all the names an application writes — its own
+    // alias, the two vendor ones, the vendor interface, and its own subclass — because a `@property` tag
+    // names whichever the file imported. The component check is the second half of the defect: these
+    // classes document their calendar fields as `@property` tags, so reflecting one publishes a
+    // two-hundred-member object AND a component named after a date.
+    $registry = new ComponentRegistry;
+    $schema = (new SchemaConverter(DefaultTypeMappers::all(), new StubTypeEngine, $registry))
+        ->toSchema(new ClassT($fqcn))
+        ->schema;
+
+    expect($schema)->toBe(DateTimeTypeToSchema::SCHEMA)
+        ->and($registry->schemas())->toBe([]);
+})->with([
+    'the framework alias' => ['Illuminate\Support\Carbon'],
+    'the mutable vendor class' => [Carbon::class],
+    'the immutable vendor class' => [CarbonImmutable::class],
+    'the vendor interface' => [CarbonInterface::class],
+    'an application subclass that leaves serialisation alone' => [HeritableDate::class],
+]);
+
+it('publishes a date-time format only where the bytes were read, and the bytes say so', function (): void {
+    // The catalogue guard over the mapper's own list, so an entry cannot be added without its bytes
+    // being read: every concrete name is INSTANTIATED and encoded, and the value has to be the form the
+    // one date policy publishes. An interface has no bytes of its own, so a concrete entry must
+    // implement it — which is what makes claiming for the interface true.
+    $read = (new ReflectionClass(DateTimeTypeToSchema::class))->getConstant('READ_JSON_FORM');
+    expect($read)->toBeArray()->not->toBeEmpty();
+
+    $concrete = [];
+
+    foreach ($read as $fqcn) {
+        expect(class_exists($fqcn) || interface_exists($fqcn))->toBeTrue($fqcn.' is not installed');
+
+        if (interface_exists($fqcn)) {
+            continue;
+        }
+
+        $concrete[] = $fqcn;
+        expect(json_encode(new $fqcn('2024-01-01T00:00:00+00:00'), JSON_THROW_ON_ERROR))
+            ->toBe('"'.DateWireFormat::example(DateColumnSchema::DEFAULT_FORMAT).'"', $fqcn.' writes another form');
+    }
+
+    foreach ($read as $fqcn) {
+        if (interface_exists($fqcn)) {
+            expect(array_filter($concrete, static fn (string $class): bool => is_a($class, $fqcn, true)))
+                ->not->toBeEmpty($fqcn.' has no read implementation');
+        }
+    }
+
+    expect($concrete)->toHaveCount(2);
+});
+
+it('widens a date class whose own JSON form it has not read', function (string $fqcn, string $sends): void {
+    // The unknown-entry degradation, and why the list is matched on the DECLARING class rather than by
+    // inheritance: a subclass restating `jsonSerialize()` writes whatever it likes, and only the bytes
+    // separate it from one that did not.
+    $schema = (new SchemaConverter(DefaultTypeMappers::all(), new StubTypeEngine, new ComponentRegistry))
+        ->toSchema(new ClassT($fqcn))
+        ->schema;
+
+    expect($schema)->toBe([])
+        ->and(json_encode(new $fqcn('2024-01-01T00:00:00+00:00'), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES))->toBe($sends);
+})->with([
+    'a Carbon subclass that restates the form' => [RestatedDate::class, '"01/01/2024"'],
+    'a date class of the application\'s own' => [StampedDate::class, '"01/01/2024"'],
+]);
 
 /**
  * The emitted `default` document with one route over the date ladder, built through the container so the

@@ -1,0 +1,884 @@
+{
+  "$schema": "https://spec.docuccino.app/uir/1.0/schema.json",
+  "uir": "1.0.0",
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "Ignored members API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/ignored-members/list": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:j54kftw7imnyd7zc",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                "line": 33,
+                "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::members"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.ignored-members.list",
+        "summary": "List gadgets. The `opaque` filter is the application's own business and not for publication; the\ndate window is published, less the bound the document has no business naming.",
+        "tags": [
+          "IgnoredMembers"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:xngkclxww2ecalfa",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "explode",
+                    "required",
+                    "style"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                    "line": 33,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::members"
+                  }
+                }
+              ]
+            },
+            "name": "filter",
+            "in": "query",
+            "description": "Filter the result set.",
+            "required": false,
+            "style": "deepObject",
+            "explode": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                      "line": 33,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::members"
+                    }
+                  }
+                ]
+              },
+              "type": "object",
+              "properties": {
+                "status": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:query-builder",
+                        "layer": "integration",
+                        "fields": [
+                          "description",
+                          "items",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                          "line": 33,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::members"
+                        }
+                      }
+                    ]
+                  },
+                  "description": "Exact match on `status`. Accepts a comma-separated list of values (matched as `whereIn`).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WidgetStatus"
+                  }
+                },
+                "window": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:query-builder",
+                        "layer": "integration",
+                        "fields": [
+                          "description"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                          "line": 33,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::members"
+                        }
+                      }
+                    ]
+                  },
+                  "description": "Filters the result set by `window`.",
+                  "properties": {
+                    "to": {
+                      "x-docuccino": {
+                        "provenance": [
+                          {
+                            "producer": "integration:form-request",
+                            "layer": "integration",
+                            "fields": [
+                              "example",
+                              "format",
+                              "type"
+                            ],
+                            "source": {
+                              "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                              "line": 33,
+                              "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::members"
+                            }
+                          }
+                        ]
+                      },
+                      "type": "string",
+                      "format": "date",
+                      "example": "2024-01-01"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:c5zmy22u5c2awbhj",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                    "line": 33,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::members"
+                  }
+                }
+              ]
+            },
+            "name": "page",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                      "line": 33,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::members"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "x-docuccino": {
+              "id": "res:v1:2fwqx4q52p2ftyui",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                    "line": 33,
+                    "symbol": "query-builder:strict-mode"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "BadRequest"
+              }
+            },
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/api/ignored-members/repeated": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:dqjthtjhurijavvg",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                "line": 59,
+                "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::repeated"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.ignored-members.repeated",
+        "summary": "The same member named twice, in two spellings that do not dedupe. Both did their job: which\ndeclarations matched is decided against the members standing before ANY of them removed anything,\nor the second would report the member the first had just taken away as one that was never there.",
+        "tags": [
+          "IgnoredMembers"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:vszjjsjm55fxtyxc",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "explode",
+                    "required",
+                    "style"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                    "line": 59,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::repeated"
+                  }
+                }
+              ]
+            },
+            "name": "filter",
+            "in": "query",
+            "description": "Filter the result set.",
+            "required": false,
+            "style": "deepObject",
+            "explode": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                      "line": 59,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::repeated"
+                    }
+                  }
+                ]
+              },
+              "type": "object",
+              "properties": {
+                "status": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:query-builder",
+                        "layer": "integration",
+                        "fields": [
+                          "description",
+                          "items",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                          "line": 59,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::repeated"
+                        }
+                      }
+                    ]
+                  },
+                  "description": "Exact match on `status`. Accepts a comma-separated list of values (matched as `whereIn`).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WidgetStatus"
+                  }
+                },
+                "window": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:query-builder",
+                        "layer": "integration",
+                        "fields": [
+                          "description"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                          "line": 59,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::repeated"
+                        }
+                      }
+                    ]
+                  },
+                  "description": "Filters the result set by `window`.",
+                  "properties": {
+                    "from": {
+                      "x-docuccino": {
+                        "provenance": [
+                          {
+                            "producer": "integration:form-request",
+                            "layer": "integration",
+                            "fields": [
+                              "example",
+                              "format",
+                              "type"
+                            ],
+                            "source": {
+                              "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                              "line": 59,
+                              "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::repeated"
+                            }
+                          }
+                        ]
+                      },
+                      "type": "string",
+                      "format": "date",
+                      "example": "2024-01-01"
+                    },
+                    "to": {
+                      "x-docuccino": {
+                        "provenance": [
+                          {
+                            "producer": "integration:form-request",
+                            "layer": "integration",
+                            "fields": [
+                              "example",
+                              "format",
+                              "type"
+                            ],
+                            "source": {
+                              "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                              "line": 59,
+                              "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::repeated"
+                            }
+                          }
+                        ]
+                      },
+                      "type": "string",
+                      "format": "date",
+                      "example": "2024-01-01"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:yzfykdxmge74kb2j",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                    "line": 59,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::repeated"
+                  }
+                }
+              ]
+            },
+            "name": "page",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                      "line": 59,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::repeated"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "x-docuccino": {
+              "id": "res:v1:brexbmnjm2zc7zmw",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                    "line": 59,
+                    "symbol": "query-builder:strict-mode"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "BadRequest"
+              }
+            },
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/api/ignored-members/typo": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:5tx3yu6wyzht3vwe",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                "line": 45,
+                "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::typo"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.ignored-members.typo",
+        "summary": "The same surface with a misspelled member. Nothing is dropped, so the filter the author meant to\nhide is published — which is why the declaration is reported rather than left silent.",
+        "tags": [
+          "IgnoredMembers"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:kzkxcgeegzqtjwvy",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                    "line": 45,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::typo"
+                  }
+                },
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "explode",
+                    "style"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                    "line": 45,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::typo"
+                  }
+                }
+              ]
+            },
+            "name": "filter",
+            "in": "query",
+            "description": "Filter the result set.",
+            "required": true,
+            "style": "deepObject",
+            "explode": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "required"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                      "line": 45,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::typo"
+                    }
+                  },
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                      "line": 45,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::typo"
+                    }
+                  }
+                ]
+              },
+              "type": "object",
+              "properties": {
+                "opaque": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:form-request",
+                        "layer": "integration",
+                        "fields": [
+                          "example",
+                          "maxLength",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                          "line": 45,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::typo"
+                        }
+                      },
+                      {
+                        "producer": "integration:query-builder",
+                        "layer": "integration",
+                        "fields": [
+                          "description"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                          "line": 45,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::typo"
+                        }
+                      }
+                    ]
+                  },
+                  "description": "Filters the result set by `opaque`.",
+                  "type": "string",
+                  "maxLength": 40,
+                  "example": "example"
+                },
+                "status": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:query-builder",
+                        "layer": "integration",
+                        "fields": [
+                          "description",
+                          "items",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                          "line": 45,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::typo"
+                        }
+                      }
+                    ]
+                  },
+                  "description": "Exact match on `status`. Accepts a comma-separated list of values (matched as `whereIn`).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WidgetStatus"
+                  }
+                },
+                "window": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:query-builder",
+                        "layer": "integration",
+                        "fields": [
+                          "description"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                          "line": 45,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::typo"
+                        }
+                      }
+                    ]
+                  },
+                  "description": "Filters the result set by `window`.",
+                  "properties": {
+                    "from": {
+                      "x-docuccino": {
+                        "provenance": [
+                          {
+                            "producer": "integration:form-request",
+                            "layer": "integration",
+                            "fields": [
+                              "example",
+                              "format",
+                              "type"
+                            ],
+                            "source": {
+                              "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                              "line": 45,
+                              "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::typo"
+                            }
+                          }
+                        ]
+                      },
+                      "type": "string",
+                      "format": "date",
+                      "example": "2024-01-01"
+                    },
+                    "to": {
+                      "x-docuccino": {
+                        "provenance": [
+                          {
+                            "producer": "integration:form-request",
+                            "layer": "integration",
+                            "fields": [
+                              "example",
+                              "format",
+                              "type"
+                            ],
+                            "source": {
+                              "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                              "line": 45,
+                              "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::typo"
+                            }
+                          }
+                        ]
+                      },
+                      "type": "string",
+                      "format": "date",
+                      "example": "2024-01-01"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "opaque"
+              ]
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:eln4te6eh2ssqhbf",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                    "line": 45,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::typo"
+                  }
+                }
+              ]
+            },
+            "name": "page",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                      "line": 45,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::typo"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "x-docuccino": {
+              "id": "res:v1:7i5a435xppbdfisf",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+                    "line": 45,
+                    "symbol": "query-builder:strict-mode"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "BadRequest"
+              }
+            },
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BadRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:s46jnknuwmxt4uep"
+        },
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "WidgetStatus": {
+        "x-docuccino": {
+          "id": "sch:v1:xxkbfhrj65orbrgo"
+        },
+        "type": "string",
+        "enum": [
+          "draft",
+          "published",
+          "archived"
+        ],
+        "x-enum-descriptions": [
+          "Not yet visible to applicants.",
+          "Live and accepting traffic.",
+          ""
+        ],
+        "x-enum-varnames": [
+          "Draft",
+          "Published",
+          "Archived"
+        ],
+        "x-enumNames": [
+          "Draft",
+          "Published",
+          "Archived"
+        ]
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad Request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/BadRequest"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "216b314eca77e6face97a16874c1d669ffed98a0da8c1a407694f44b90612dd6",
+      "contentHash": "1bfbbc3b1396b6cbbded29d50aa004e063dc431f3471b44143870272d1c18246"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.18.0",
+      "specVersion": "1.0.0"
+    }
+  }
+}

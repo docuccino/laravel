@@ -14,8 +14,8 @@ use Docuccino\Core\Draft\SchemaDraft;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
+use Docuccino\Core\Extensions\Validation\DeepObjectMembers;
 use Docuccino\Core\Patch\Contribution;
-use Docuccino\Core\Patch\Remove;
 use Docuccino\Core\TypeGrammar\TypeStringParser;
 use Docuccino\Laravel\Support\UnmatchedDeclaration;
 
@@ -28,11 +28,12 @@ use Docuccino\Laravel\Support\UnmatchedDeclaration;
  * A `#[PathParameter]` naming no segment of the route template is withheld and reported rather than
  * minted — see {@see applyPathParameters()}, the one member here whose name cannot create what it names.
  *
- * A bracketed name (`#[QueryParameter('filter[status]')]`) patches the matching property of a
- * deepObject container parameter when one exists — type/description/format/example/default onto the
- * property schema, a stated `required` onto or off the container's `required` list — so the deepObject
- * and flat bracketed representations behave identically. With no such container it patches a flat `filter[status]`
- * parameter instead. Both create the member if it's missing.
+ * A bracketed name (`#[QueryParameter('filter[status]')]`) patches the matching property of a deepObject
+ * container parameter when one exists — type/description/format/example/default onto the property
+ * schema, a stated `required` onto or off the container's `required` list — so the deepObject and flat
+ * bracketed representations behave identically. Which container a bracketed name belongs to is
+ * {@see DeepObjectMembers}'s reading, shared with the producer that recovers query parameters from
+ * validation rules, so one name cannot land in two places depending on who wrote it.
  */
 final class AttributeParametersExtension implements OperationExtension
 {
@@ -47,11 +48,9 @@ final class AttributeParametersExtension implements OperationExtension
 
     public function handle(OperationDraft $operation, RouteContext $context): void
     {
-        // Accumulate per container and write the `required` list once — a second equal-layer write
-        // would shadow rather than append. A later declaration of one child wins over an earlier one.
-        $deepRequired = [];
+        $members = new DeepObjectMembers($operation);
         foreach ($context->attributes->all(QueryParameter::class) as $attribute) {
-            $property = $this->deepObjectProperty($operation, $attribute->name);
+            $property = $members->schemaFor($attribute->name);
             if ($property === null) {
                 $parameter = $operation->parameter('query', $attribute->name);
                 $this->apply($parameter, $context, $attribute->type, $attribute->description, $attribute->format, $attribute->required, $attribute->default, $attribute->example);
@@ -59,13 +58,10 @@ final class AttributeParametersExtension implements OperationExtension
                 continue;
             }
 
-            [$parentName, $childName, $schema] = $property;
-            $this->applyToProperty($schema, $context, $attribute->type, $attribute->description, $attribute->format, $attribute->default, $attribute->example);
-            if ($attribute->required !== null) {
-                $deepRequired[$parentName][$childName] = $attribute->required;
-            }
+            $this->applyToProperty($property, $context, $attribute->type, $attribute->description, $attribute->format, $attribute->default, $attribute->example);
+            $members->stateRequired($attribute->name, $attribute->required);
         }
-        $this->applyDeepRequired($operation, $context, $deepRequired);
+        $members->flush(Contribution::attribute($context->actionSource()));
 
         foreach ($context->attributes->all(HeaderParameter::class) as $attribute) {
             $parameter = $operation->parameter('header', $attribute->name);
@@ -161,31 +157,6 @@ final class AttributeParametersExtension implements OperationExtension
         }
     }
 
-    /**
-     * For a bracketed `parent[child]` name where a deepObject query parameter `parent` exists: the
-     * `child` property draft (created if absent) plus both names. Null means patch a flat parameter.
-     *
-     * @return array{0: string, 1: string, 2: SchemaDraft}|null
-     */
-    private function deepObjectProperty(OperationDraft $operation, string $name): ?array
-    {
-        if (preg_match('/^([^\[\]]+)\[([^\[\]]+)\]$/', $name, $matches) !== 1) {
-            return null;
-        }
-
-        [, $parent, $child] = $matches;
-        if (! $operation->hasParameter('query', $parent)) {
-            return null;
-        }
-
-        $container = $operation->parameter('query', $parent);
-        if ($container->resolvedField('style') !== 'deepObject') {
-            return null;
-        }
-
-        return [$parent, $child, $container->schema()->property($child)];
-    }
-
     /** Type/description/format/default/example onto a deepObject property's schema. */
     private function applyToProperty(
         SchemaDraft $property,
@@ -212,36 +183,6 @@ final class AttributeParametersExtension implements OperationExtension
         }
         if ($example !== null) {
             $property->set('example', $example, $contribution);
-        }
-    }
-
-    /**
-     * Merges each container's stated child requirements into its schema's `required` list, once per
-     * container: an equal-layer rewrite would shadow, not merge. Only the children a declaration spoke
-     * about reach here — a `true` joins the list, a `false` leaves it — so the ones nobody mentioned
-     * keep whatever the integration recovered, in the order it recovered them.
-     *
-     * @param  array<string, array<string, bool>>  $deepRequired
-     */
-    private function applyDeepRequired(OperationDraft $operation, RouteContext $context, array $deepRequired): void
-    {
-        foreach ($deepRequired as $parent => $children) {
-            $schema = $operation->parameter('query', $parent)->schema();
-            $existing = $schema->resolvedField('required') ?? [];
-            $existingNames = is_array($existing) ? array_values(array_filter($existing, 'is_string')) : [];
-
-            $added = array_keys(array_filter($children));
-            $merged = array_values(array_unique([...$existingNames, ...$added]));
-            $merged = array_values(array_filter($merged, static fn (string $each): bool => $children[$each] ?? true));
-
-            if ($merged === $existingNames) {
-                continue;
-            }
-
-            // Emptied rather than emptied-out: every other producer of a `required` list omits the
-            // keyword when it has no members, so a declaration that takes the last one off owes the
-            // same shape — and only the removal sentinel reaches "absent" through the guard.
-            $schema->set('required', $merged === [] ? Remove::value() : $merged, Contribution::attribute($context->actionSource()));
         }
     }
 }

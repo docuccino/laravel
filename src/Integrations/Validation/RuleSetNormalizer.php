@@ -4,17 +4,14 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\Validation;
 
-use Docuccino\Attributes\BodyParameter;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\RuleTransformer;
-use Docuccino\Core\Extensions\Validation\FieldPath;
+use Docuccino\Core\Extensions\Validation\DeclaredFields;
 use Docuccino\Core\Extensions\Validation\RecoveredRequest;
 use Docuccino\Core\Extensions\Validation\RuleSet;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
-use Docuccino\Core\Inference\DType\UnknownT;
-use Docuccino\Core\TypeGrammar\TypeStringParser;
 use Docuccino\Laravel\Integrations\Support\FieldPaths;
 use Docuccino\Laravel\Integrations\Validation\Transformers\SizeRuleTransformer;
 
@@ -76,24 +73,18 @@ final class RuleSetNormalizer
      * left open, so the widening reaches the author rather than degrading quietly. Every recovery
      * integration calls this with the set it just normalized.
      *
-     * Rules are not the only way to answer it. A `#[BodyParameter]` that SETTLES the field — see
-     * {@see settles()} for what that takes — says what the container is at a layer that outranks this
-     * one, so the document will not say "either" and asking for rules that would say it again is a note
-     * fired where nothing can be done. A declaration that settles nothing is not one of those, and
+     * Rules are not the only way to answer it. A declaration that SETTLES the field
+     * ({@see DeclaredFields::decidesContainer()}) says what the container is at a layer that outranks
+     * this one, so the document will not say "either" and asking for rules that would say it again is a
+     * note fired where nothing can be done. A declaration that settles nothing is not one of those, and
      * standing the note down for it would leave the field wider than the rules left it with nothing said.
      *
-     * Only where a body is written at all: this runs ahead of the verb branch, and a read verb sends the
-     * same rules to QUERY parameters ({@see RecoveredRequest::documentsBody()}), which a declaration
-     * about the body cannot reach. Reading the declarations there would stand the note down for a
-     * parameter nothing had answered the question for.
-     *
-     * Both declaration sites, which is why `$sourceClass` is here: a `#[BodyParameter]` on the request
-     * TYPE settles a container exactly as one on the action does, and a guard that read fewer sites than
-     * the write it guards would ask for rules that a declaration had already answered — the note firing
-     * where nothing can be done. {@see RecoveredRequest::declaredOn()} is that one reader, so the two
-     * cannot drift. It has no default either: a caller with a source class that passed no argument here
-     * would read one of the two sites, so PHP refuses the call rather than a consumer finding the note
-     * in the document. `null` is a caller saying there is no class — an inline `validate()`.
+     * `$sourceClass` is here because a body has two declaration sites, and it has no default: a caller
+     * with a source class that passed no argument would read one of them, so PHP refuses the call rather
+     * than a consumer finding the note in the document. `null` is a caller saying there is no class — an
+     * inline `validate()`. Which sites there are at all is
+     * {@see RecoveredRequest::declaredFields()}'s, shared with the rules recoverers' own notes so none
+     * of them can drift.
      */
     public static function report(RuleSet $normalized, RouteContext $context, ?string $sourceClass): void
     {
@@ -102,16 +93,11 @@ final class RuleSetNormalizer
             return;
         }
 
-        $declared = RecoveredRequest::documentsBody($context)
-            ? [...$context->attributes->all(BodyParameter::class), ...RecoveredRequest::declaredOn($sourceClass, $context)]
-            : [];
-        $types = new TypeStringParser;
+        $declared = RecoveredRequest::declaredFields($context, $sourceClass);
 
         foreach ($undecided as $field) {
-            foreach ($declared as $attribute) {
-                if (self::settles($attribute, $field, $types)) {
-                    continue 2;
-                }
+            if ($declared->decidesContainer($field)) {
+                continue;
             }
 
             $context->components->addDiagnostic(new Diagnostic(
@@ -121,41 +107,29 @@ final class RuleSetNormalizer
                     'Validation field "%s" is an array rule with no item or key rules, so a JSON array and a JSON object both satisfy it; it is documented as either.',
                     $field,
                 ),
-                help: sprintf(
-                    'Add "%1$s.*" rules for a list, or dotted "%1$s.<key>" rules for an object, and the document states the one the endpoint means. A #[BodyParameter] naming a key inside "%1$s", or naming it with a type of its own, answers it too — the one for a free-form map with no keys to enumerate.',
-                    $field,
-                ),
+                help: self::undecidedHelp($field, RecoveredRequest::documentsBody($context)),
                 routeSignature: $context->route->signature(),
             ));
         }
     }
 
     /**
-     * Whether one declaration answers the container question for `$field` — asked of the declaration
-     * rather than of its name, since a name is only where a declaration points. A path naming something
-     * strictly INSIDE the field settles it by existing: a key proves an object, a `*` proves a list. A
-     * path naming the field ITSELF settles it only as far as its type does, read by the parser that will
-     * do the writing, because a guard recognising fewer spellings than the fold it protects is a hole —
-     * `array` and `mixed` resolve to no shape and publish the empty schema, which decides neither
-     * container, while no type at all publishes the attribute's own default of `string`. A path with an
-     * empty segment names no field and documents nothing, so there is nothing for it to have settled.
-     *
-     * A well-formed path the body then turns out not to be able to carry — a scalar, a composition or a
-     * `$ref` parent — still stands the note down: this runs during recovery, with no body yet to ask, and
-     * the refusal is reported where it happens, against the declaration itself, where a second note
-     * asking for rules would name the wrong remedy for the same mistake.
+     * What clears the note for one field. Rules clear it wherever they land; a declaration clears it on
+     * the terms its own layer writes on ({@see DeclaredFields}), so the sentence naming one has to name
+     * the layer this route's rules actually reach — a body, where a key named inside the field proves
+     * the container by being written there, or query parameters, which are one parameter per name and
+     * decide nothing but by their own `type:`.
      */
-    private static function settles(BodyParameter $attribute, string $field, TypeStringParser $types): bool
+    private static function undecidedHelp(string $field, bool $body): string
     {
-        if (! FieldPath::isWellFormed($attribute->name) || ! FieldPath::isAtOrUnder($attribute->name, $field)) {
-            return false;
-        }
+        $declaration = $body
+            ? 'A #[BodyParameter] naming a key inside "%1$s", or naming it with a type of its own, answers it too — the one for a free-form map with no keys to enumerate.'
+            : 'A #[QueryParameter] naming "%1$s" with a type of its own answers it too — `object` for a free-form map with no keys to enumerate.';
 
-        if (count(FieldPath::segments($attribute->name)) > count(FieldPath::segments($field))) {
-            return true;
-        }
-
-        return $attribute->type === null || ! $types->parseDeclared($attribute->type) instanceof UnknownT;
+        return sprintf(
+            'Add "%1$s.*" rules for a list, or dotted "%1$s.<key>" rules for an object, and the document states the one the endpoint means. '.$declaration,
+            $field,
+        );
     }
 
     /**

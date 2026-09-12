@@ -85,7 +85,11 @@ it('patches the matching member in each representation, applying every field to 
         expect($status['description'])->toBe('Only active records.')
             ->and($status['default'])->toBe('active')
             ->and($status['example'])->toBe('active')
-            ->and($params['filter']['schema']['required'])->toContain('status');
+            ->and($params['filter']['schema']['required'])->toContain('status')
+            // The member has no parameter of its own here, so the container carries the requirement the
+            // flat spelling states on `filter[status]` itself. An optional container with a required
+            // member would tell a consumer that omitting `filter` altogether is a valid request.
+            ->and($params['filter']['required'])->toBeTrue();
 
         return;
     }
@@ -117,6 +121,16 @@ it('creates a missing member in each representation (create-on-miss parity)', fu
     expect($params)->toHaveKey('filter[unknown]')
         ->and($params['filter[unknown]']['description'])->toBe('Only active records.');
 })->with(['deepObject', 'bracketed']);
+
+it('leaves the container optional while no member is required', function (): void {
+    // The other half of the reading above: requiredness is raised by a member that states it, never by
+    // the container merely having members — a container required for nothing would mark a working
+    // request invalid.
+    $params = runParity(paritySeedDeepObject(...), 'filter[status]');
+
+    expect($params['filter']['schema'])->not->toHaveKey('required')
+        ->and($params['filter']['required'])->toBeFalse();
+});
 
 it('records attribute-layer provenance on the patched deepObject property (overrode kept)', function (): void {
     $params = runParity(paritySeedDeepObject(...), 'filter[status]', true);

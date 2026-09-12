@@ -22,8 +22,10 @@ use Illuminate\Database\Eloquent\Relations\Relation;
  * `oneOf` rather than a bare `anyOf`; a nullable morph keeps its `null` branch.
  *
  * A `discriminator` (propertyName `type`, mapping from `Relation::morphMap()`) needs EVERY variant to be
- * mapped. If one isn't, the mapper emits a bare `oneOf` plus an info diagnostic per unmapped variant — a
- * partial mapping with unstable FQCN values would make a client mis-parse, which is worse than none.
+ * mapped AND referenceable. If one isn't, the mapper emits a bare `oneOf` — a partial mapping with
+ * unstable FQCN values would make a client mis-parse, which is worse than none. An unregistered alias is
+ * the author's to fix and gets an info diagnostic per variant; a variant with no `$ref` to map onto is
+ * not, so it is dropped silently.
  */
 #[ExtensionOrder(priority: Priorities::EARLY)]
 final class MorphToSchema implements TypeToSchema
@@ -75,8 +77,12 @@ final class MorphToSchema implements TypeToSchema
             $variants[] = ['type' => 'null'];
         }
 
+        // Every variant, or none: a mapping short of the variant list sends a client to the wrong schema
+        // for the aliases it omits, which is worse than leaving them to match the `oneOf` themselves. It
+        // falls short two ways — an alias nothing registered (reported above), and a variant another
+        // mapper published inline, which has no `$ref` to map an alias onto and is nobody's to fix.
         $schema = ['oneOf' => $variants];
-        if ($allMapped && $mapping !== []) {
+        if ($allMapped && count($mapping) === count($models)) {
             $schema['discriminator'] = ['propertyName' => self::DISCRIMINATOR_PROPERTY, 'mapping' => $mapping];
         }
 

@@ -139,7 +139,7 @@ final class DataRequestExtension implements OperationExtension
             $context->components->addDiagnostic(new Diagnostic(
                 severity: Severity::Info,
                 code: 'spatie-data.unknown-mapper',
-                message: sprintf('Data class %s uses an unrecognised name mapper %s; its property names are documented unmapped.', $fqcn, $mapper),
+                message: sprintf('Data class %s uses an unrecognised name mapper %s, so the names recovered for its properties are the properties\' own, unmapped.', $fqcn, $mapper),
                 routeSignature: $context->route->signature(),
             ));
         }

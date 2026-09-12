@@ -761,7 +761,7 @@ it('leaves an untypable filter untyped only where the kind is user code', functi
         // The predicate the extension reports from and the schema this publishes are one fact, so
         // they answer alike for every kind — a filter reported as untyped that carries a type, or a
         // typed-looking one nothing reports, is the same drift seen from two sides.
-        ->and(QueryBuilderParameters::publishesNoType(new QbEntry('thing', $kind)))->toBe($type === null);
+        ->and(QueryBuilderParameters::typesNothing(new QbEntry('thing', $kind)))->toBe($type === null);
 })->with([
     'callback (opaque)' => ['callback', null],
     'custom (opaque)' => ['custom', null],

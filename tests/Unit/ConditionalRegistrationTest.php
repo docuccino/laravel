@@ -22,6 +22,7 @@ use Docuccino\Laravel\Integrations\Permission\PermissionExtension;
 use Docuccino\Laravel\Integrations\Permission\PermissionIntegration;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderIntegration;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParametersExtension;
+use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderUntypedFilterExtension;
 use Docuccino\Laravel\Integrations\Sanctum\SanctumIntegration;
 use Docuccino\Laravel\Integrations\Sanctum\SanctumSecurityExtension;
 use Docuccino\Laravel\Integrations\SpatieData\DataRequestExtension;
@@ -59,7 +60,7 @@ it('drops a conditional integration from the resolved set when its package is ab
     }
 })->with([
     'spatie/laravel-data' => [SpatieDataIntegration::class, [DataSchema::class, DataRequestExtension::class]],
-    'spatie/laravel-query-builder' => [QueryBuilderIntegration::class, [QueryBuilderParametersExtension::class]],
+    'spatie/laravel-query-builder' => [QueryBuilderIntegration::class, [QueryBuilderParametersExtension::class, QueryBuilderUntypedFilterExtension::class]],
     'laravel/sanctum' => [SanctumIntegration::class, [SanctumSecurityExtension::class]],
     'laravel/passport' => [PassportIntegration::class, [PassportSecurityExtension::class]],
     'spatie/laravel-permission' => [PermissionIntegration::class, [PermissionExtension::class]],

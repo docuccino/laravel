@@ -1,0 +1,44 @@
+[
+    {
+        "severity": "info",
+        "code": "validation.container-undecided",
+        "message": "Validation field \"window\" is an array rule with no item or key rules, so a JSON array and a JSON object both satisfy it; it is documented as either.",
+        "routeSignature": "GET /api/field-notices",
+        "help": "Add \"window.*\" rules for a list, or dotted \"window.<key>\" rules for an object, and the document states the one the endpoint means. A #[QueryParameter] naming \"window\" with a type of its own answers it too \u2014 `object` for a free-form map with no keys to enumerate."
+    },
+    {
+        "severity": "info",
+        "code": "validation.rule-unrecoverable",
+        "message": "Validation field \"secret\" on Workbench\\App\\Http\\Requests\\SearchNoticesRequest has no statically recoverable rules; it is omitted from the query parameters.",
+        "routeSignature": "GET /api/field-notices",
+        "help": "Its rules are a closure, a custom Rule object with no #[RuleSchema], or a Rule::when()/conditional descriptor. Express the field with recoverable rules (string/array rules, Rule::enum(), Rule::in(), \u2026), or annotate the rule class with #[RuleSchema], so it is documented."
+    },
+    {
+        "severity": "info",
+        "code": "validation.container-undecided",
+        "message": "Validation field \"meta\" is an array rule with no item or key rules, so a JSON array and a JSON object both satisfy it; it is documented as either.",
+        "routeSignature": "POST /api/field-notices",
+        "help": "Add \"meta.*\" rules for a list, or dotted \"meta.<key>\" rules for an object, and the document states the one the endpoint means. A #[BodyParameter] naming a key inside \"meta\", or naming it with a type of its own, answers it too \u2014 the one for a free-form map with no keys to enumerate."
+    },
+    {
+        "severity": "info",
+        "code": "validation.rule-unrecoverable",
+        "message": "Validation field \"secret\" on Workbench\\App\\Http\\Requests\\StoreNoticeRequest has no statically recoverable rules; it is omitted from the request schema.",
+        "routeSignature": "POST /api/field-notices",
+        "help": "Its rules are a closure, a custom Rule object with no #[RuleSchema], or a Rule::when()/conditional descriptor. Express the field with recoverable rules (string/array rules, Rule::enum(), Rule::in(), \u2026), or annotate the rule class with #[RuleSchema], so it is documented."
+    },
+    {
+        "severity": "info",
+        "code": "validation.rule-values-unread",
+        "message": "Validation field \"visibility\" on Workbench\\App\\Http\\Requests\\StoreNoticeRequest states values this build cannot read, so that constraint is left off the request schema; the rest of its rules are documented.",
+        "routeSignature": "POST /api/field-notices",
+        "help": "A value the rule states is not written at the rule \u2014 it comes from a call, a variable or a spread \u2014 and a partial list would make a client reject a value the API accepts. Write every value where the rule is, which is what settles it; an overlay corrects the document instead, and this notice keeps naming the rule."
+    },
+    {
+        "severity": "info",
+        "code": "validation.rule-unrecoverable",
+        "message": "Inline validation field \"secret\" has no statically recoverable rules; it is omitted from the request schema.",
+        "routeSignature": "POST /api/field-notices/inline",
+        "help": "Its rules are a closure, a custom Rule object with no #[RuleSchema], or a Rule::when()/conditional descriptor. Express the field with recoverable rules (string/array rules, Rule::enum(), Rule::in(), \u2026), or annotate the rule class with #[RuleSchema], so it is documented."
+    }
+]

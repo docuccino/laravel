@@ -147,7 +147,12 @@ it('raises one diagnostic naming the Data class and the mapper it could not read
     expect($diagnostics)->toHaveCount(1)
         ->and($diagnostics[0]->severity)->toBe(Severity::Info)
         ->and($diagnostics[0]->message)->toContain(ScreamingMappedData::class)
-        ->and($diagnostics[0]->message)->toContain(ScreamingNameMapper::class);
+        ->and($diagnostics[0]->message)->toContain(ScreamingNameMapper::class)
+        // The names this recovery came back with, not the ones the body ends up published under: a
+        // #[BodyParameter] writes those at a layer above this one
+        // (docs/design/defect-classes.md §"A diagnostic that asserts an outcome it never reads").
+        ->and($diagnostics[0]->message)->toEndWith('so the names recovered for its properties are the properties\' own, unmapped.')
+        ->and($diagnostics[0]->message)->not->toContain('documented');
 });
 
 it('renames every key through a class-level mapper (input and output)', function (): void {

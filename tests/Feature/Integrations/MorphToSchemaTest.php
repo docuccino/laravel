@@ -3,10 +3,14 @@
 declare(strict_types=1);
 
 use Docuccino\Core\Extensions\BuiltIn\DefaultTypeMappers;
+use Docuccino\Core\Extensions\Contracts\SchemaContext;
+use Docuccino\Core\Extensions\Contracts\TypeToSchema;
 use Docuccino\Core\Extensions\Schema\ComponentRegistry;
 use Docuccino\Core\Extensions\Schema\SchemaConverter;
+use Docuccino\Core\Extensions\Schema\SchemaResult;
 use Docuccino\Core\Inference\ClassMetadata;
 use Docuccino\Core\Inference\DType\ClassT;
+use Docuccino\Core\Inference\DType\DType;
 use Docuccino\Core\Inference\DType\NullT;
 use Docuccino\Core\Inference\DType\ScalarT;
 use Docuccino\Core\Inference\DType\UnionT;
@@ -131,6 +135,41 @@ it('drops the discriminator (bare oneOf) + raises an info diagnostic when a vari
 
     $codes = array_map(static fn ($d): string => $d->code, $components->diagnostics());
     expect($codes)->toContain('eloquent.unmapped-morph');
+});
+
+it('drops the discriminator rather than map only the variants that hoisted', function (): void {
+    // A mapping is an alias → `$ref` table, so a variant another mapper published inline has nothing to
+    // map onto. Publishing the rest anyway hands a client a table it will trust for aliases it does not
+    // list: `Gadget` arrives, no entry matches, and the discriminator has made the union harder to read
+    // than the bare `oneOf` it came from. Nothing is reported — the author mapped every variant, and the
+    // mapper that inlined one is not theirs to change.
+    Relation::morphMap(['widget' => Widget::class, 'gadget' => Gadget::class], false);
+
+    $inlining = new class implements TypeToSchema
+    {
+        public function supports(DType $type): bool
+        {
+            return $type instanceof ClassT && $type->fqcn === Gadget::class;
+        }
+
+        public function toSchema(DType $type, SchemaContext $context): ?SchemaResult
+        {
+            return new SchemaResult(['type' => 'object', 'properties' => ['id' => ['type' => 'integer']]]);
+        }
+    };
+
+    $components = new ComponentRegistry;
+    $engine = new StubTypeEngine(classes: [
+        Widget::class => new ClassMetadata(Widget::class, [new PropertyMetadata('id', ScalarT::int())]),
+    ]);
+    $schema = (new SchemaConverter([new MorphToSchema, $inlining, new ModelSchema, ...DefaultTypeMappers::all()], $engine, $components))
+        ->toSchema(morphUnion())
+        ->schema;
+
+    expect($schema)->toHaveKey('oneOf')
+        ->and($schema)->not->toHaveKey('discriminator')
+        ->and($schema['oneOf'])->toHaveCount(2)
+        ->and($components->diagnostics())->toBe([]);
 });
 
 it('keeps a null branch for a nullable morph', function (): void {

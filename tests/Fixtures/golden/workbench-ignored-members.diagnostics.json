@@ -1,0 +1,35 @@
+[
+    {
+        "severity": "info",
+        "code": "query-builder.default-config",
+        "message": "The query-builder config was not readable; documented parameter names use the package defaults (filter/sort/include/fields).",
+        "routeSignature": "GET /api/ignored-members/list",
+        "help": "Publish the config (php artisan vendor:publish --tag=query-builder-config) so custom parameter names are reflected in the docs."
+    },
+    {
+        "severity": "info",
+        "code": "query-builder.default-config",
+        "message": "The query-builder config was not readable; documented parameter names use the package defaults (filter/sort/include/fields).",
+        "routeSignature": "GET /api/ignored-members/repeated",
+        "help": "Publish the config (php artisan vendor:publish --tag=query-builder-config) so custom parameter names are reflected in the docs."
+    },
+    {
+        "severity": "warning",
+        "code": "attribute.ignore-param-unmatched",
+        "message": "#[IgnoreParam(name: \"filter[opaqu]\", in: \"query\")] dropped nothing: this operation documents no such parameter or member. It documents query:filter, query:filter[opaque], query:filter[status], query:filter[window], query:filter[window][from], query:filter[window][to], query:page.",
+        "source": {
+            "file": "workbench/app/Http/Controllers/IgnoredMembersController.php",
+            "line": 45,
+            "symbol": "Workbench\\App\\Http\\Controllers\\IgnoredMembersController::typo"
+        },
+        "routeSignature": "GET /api/ignored-members/typo",
+        "help": "Correct the name to one this operation documents, or delete the declaration \u2014 a parameter that was renamed keeps its old spelling only in the attribute. A key only some of a controller's actions take belongs on the class, where an action that never documented it is not a mistake."
+    },
+    {
+        "severity": "info",
+        "code": "query-builder.default-config",
+        "message": "The query-builder config was not readable; documented parameter names use the package defaults (filter/sort/include/fields).",
+        "routeSignature": "GET /api/ignored-members/typo",
+        "help": "Publish the config (php artisan vendor:publish --tag=query-builder-config) so custom parameter names are reflected in the docs."
+    }
+]

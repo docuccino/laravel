@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Workbench\App\Webhooks;
 
+use Carbon\CarbonImmutable;
 use Docuccino\Attributes\Group;
 use Docuccino\Attributes\Webhook;
 
@@ -19,6 +20,6 @@ final readonly class FormSubmitted
 {
     public function __construct(
         public int $formId,
-        public string $submittedAt,
+        public CarbonImmutable $submittedAt,
     ) {}
 }

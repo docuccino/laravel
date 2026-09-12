@@ -7,15 +7,17 @@ namespace Docuccino\Laravel\Integrations\Eloquent;
 use Docuccino\Laravel\Integrations\Support\DateWireFormat;
 
 /**
- * Maps an Eloquent `$casts` entry to the JSON Schema fragment it serialises to: datetime casts get a
- * `date-time`/`date` format honouring a `datetime:FORMAT` parameter, native casts fix a type,
- * decimal/hashed stay strings, `array`/`collection`/`json` admit object OR array, and
- * `encrypted:<inner>` decrypts-then-casts to the inner type.
+ * Maps an Eloquent `$casts` entry to a JSON Schema fragment: native casts fix a type, decimal/hashed stay
+ * strings, `array`/`collection`/`json` admit object OR array, `encrypted:<inner>` takes the inner type.
  *
- * Anything enum-valued returns null here and is routed through the Enum integration by
- * {@see ModelSchema}, which owns that machinery — a backed-enum cast, `AsEnumCollection:Enum` and
- * `AsEnumArrayObject:Enum` (whose enum parameter {@see enumCollectionEnum()} exposes). An unrecognised
- * custom caster also returns null, leaving the column on its inferred type.
+ * Read in TWO directions, because a column's two appearances answer different questions:
+ * {@see written()} is what a response body carries, {@see accepted()} what a request may put in. Every
+ * row answers both alike except the date casts (docs/design/defect-classes.md §"One table answering both
+ * directions of the wire").
+ *
+ * Anything enum-valued returns null both ways and is routed through the Enum integration by
+ * {@see ModelSchema} — a backed-enum cast, `AsEnumCollection:Enum`, `AsEnumArrayObject:Enum`. An
+ * unrecognised custom caster returns null too, leaving the column on its inferred type.
  */
 final class CastSchema
 {
@@ -45,20 +47,44 @@ final class CastSchema
         self::AS_NAMESPACE.'AsEnumArrayObject',
     ];
 
-    private const DATE_CASTS = [
-        'datetime',
-        'immutable_datetime',
-        'custom_datetime',
+    /**
+     * The casts `HasAttributes::addCastAttributesToArray()` hands to `serializeDate()`, matched as it
+     * matches them — the whole cast value, so a parameterised one is not among them. `custom_datetime` is
+     * absent deliberately: it is the framework's INTERNAL name and reaches no branch of that method.
+     */
+    private const DATE_HOOK_CASTS = [
         'date',
+        'datetime',
         'immutable_date',
+        'immutable_datetime',
     ];
 
+    /** Every cast whose `:FORMAT` parameter is a date pattern — the hook's four plus the internal name. */
+    private const DATE_CASTS = [...self::DATE_HOOK_CASTS, 'custom_datetime'];
+
     /**
-     * The schema fragment for a cast, or null to fall back to the inferred column type.
+     * What a response body carries, or null where the fragment is not this table's to give — a
+     * hook-governed cast is the date policy's ({@see serializesThroughDateHook()}), and an enum-valued or
+     * unrecognised one is routed or falls back as the header says.
      *
      * @return array<string, mixed>|null
      */
-    public static function forCast(string $cast): ?array
+    public static function written(string $cast): ?array
+    {
+        if (self::serializesThroughDateHook($cast)) {
+            return null;
+        }
+
+        return self::ownDateFormat($cast) ?? self::accepted($cast);
+    }
+
+    /**
+     * What a request may put in — a filter value, a scope argument, a bound path segment. This is the
+     * table itself, which is why {@see written()} reads it for everything but the date casts.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function accepted(string $cast): ?array
     {
         $parts = explode(':', $cast, 2);
         $base = $parts[0];
@@ -71,11 +97,12 @@ final class CastSchema
 
         // `encrypted:<inner>` serialises as the inner type, not an opaque string.
         if (strtolower($base) === 'encrypted' && $parameter !== null && $parameter !== '') {
-            return self::forCast($parameter);
+            return self::accepted($parameter);
         }
 
+        // The date rows are the REQUEST answer — the domain the column stores.
         return match (strtolower($base)) {
-            'datetime', 'immutable_datetime', 'custom_datetime' => self::datetime($parameter),
+            'datetime', 'immutable_datetime', 'custom_datetime' => ['type' => 'string', 'format' => 'date-time'],
             'date', 'immutable_date' => ['type' => 'string', 'format' => 'date'],
             'timestamp' => ['type' => 'integer'],
             'boolean', 'bool' => ['type' => 'boolean'],
@@ -91,20 +118,20 @@ final class CastSchema
     }
 
     /**
-     * A `datetime` cast honouring its `datetime:FORMAT` parameter, read through the one date policy
-     * ({@see DateWireFormat}): an ISO form claims the `format` its values satisfy, and a bespoke one is a
-     * plain string with the format noted in the description — better than a `format` claim that would be
-     * wrong. An unparameterised cast serialises through the model's own `serializeDate`, which is ISO.
+     * What a date cast's OWN `:FORMAT` writes, or null for one naming none — Eloquent formats such a
+     * column with the parameter and never reaches `serializeDate()`. Through {@see DateWireFormat}, so an
+     * ISO pattern claims a `format` and a bespoke one names the pattern in prose.
      *
-     * @return array<string, mixed>
+     * @return array<string, mixed>|null
      */
-    private static function datetime(?string $format): array
+    private static function ownDateFormat(string $cast): ?array
     {
-        if ($format === null || $format === '') {
-            return ['type' => 'string', 'format' => 'date-time'];
-        }
+        $parts = explode(':', $cast, 2);
+        $parameter = $parts[1] ?? '';
 
-        return DateWireFormat::serializedSchema($format);
+        return $parameter !== '' && in_array(strtolower($parts[0]), self::DATE_CASTS, true)
+            ? DateWireFormat::serializedSchema($parameter)
+            : null;
     }
 
     /** Whether a cast value names an enum. */
@@ -127,11 +154,16 @@ final class CastSchema
     }
 
     /**
-     * Whether a cast serialises through `serializeDate()` — a model overriding that method makes these
-     * formats unknowable. `timestamp` is excluded: it serialises as a unix integer, bypassing the hook.
+     * Whether `Model::serializeDate()` serialises this cast's value — the whole of when a date column's
+     * wire format stops being knowable ({@see DateColumnSchema}). `timestamp` is a unix integer and a
+     * PARAMETERISED cast never reaches the hook; "parameterised" is read exactly as
+     * {@see ownDateFormat()} reads it, so the guard cannot see fewer forms than the answer it decides.
      */
-    public static function isDateCast(string $cast): bool
+    public static function serializesThroughDateHook(string $cast): bool
     {
-        return in_array(strtolower(explode(':', $cast, 2)[0]), self::DATE_CASTS, true);
+        $parts = explode(':', $cast, 2);
+
+        return ($parts[1] ?? '') === ''
+            && in_array(strtolower($parts[0]), self::DATE_HOOK_CASTS, true);
     }
 }

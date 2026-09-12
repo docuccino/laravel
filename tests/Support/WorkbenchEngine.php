@@ -30,6 +30,7 @@ use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
 use ReflectionClass;
 use Workbench\App\Http\Requests\StoreWidgetRequest;
+use Workbench\App\Support\StampedDate;
 
 /**
  * Builds the deterministic stub {@see TypeEngine} the feature tests bind for the workbench: canned
@@ -281,6 +282,15 @@ final class WorkbenchEngine
                     returns: [new ReturnSite($jsonResponse(new ArrayShapeT([new ArrayShapeField('ok', ScalarT::bool())]), 200), $location)],
                     throws: [new ThrownException(self::PAYMENT_EXCEPTION, 402, [], ThrowConfidence::Certain, ThrowDisposition::Signal)],
                 ),
+                // A model bound on one of its own date columns, returned as the response body — so the
+                // same weakened date is read in a path segment and in a component.
+                'Workbench\\App\\Http\\Controllers\\BindingController::showJournal' => new ActionAnalysis(
+                    returns: [new ReturnSite($jsonResponse(new ClassT(self::JOURNAL_MODEL), 200), $location)],
+                ),
+                // The same shape without the override, so the two components differ by that alone.
+                'Workbench\\App\\Http\\Controllers\\BindingController::showAlmanac' => new ActionAnalysis(
+                    returns: [new ReturnSite($jsonResponse(new ClassT(self::ALMANAC_MODEL), 200), $location)],
+                ),
                 ...$analysisOverrides,
             ],
             classes: [
@@ -289,7 +299,8 @@ final class WorkbenchEngine
                 // The webhook payload class, as the engine recovers it from promoted properties.
                 'Workbench\\App\\Webhooks\\FormSubmitted' => new ClassMetadata('Workbench\\App\\Webhooks\\FormSubmitted', [
                     new PropertyMetadata('formId', ScalarT::int()),
-                    new PropertyMetadata('submittedAt', ScalarT::string()),
+                    // A date-time the payload holds as the object, which is what it is delivered as.
+                    new PropertyMetadata('submittedAt', new ClassT('Carbon\\CarbonImmutable')),
                 ]),
                 'Workbench\\App\\Data\\WidgetData' => $widgetData,
                 self::ARTICLE_DATA => new ClassMetadata(self::ARTICLE_DATA, [
@@ -340,6 +351,27 @@ final class WorkbenchEngine
                     new PropertyMetadata('id', ScalarT::int()),
                     new PropertyMetadata('reference', ScalarT::string(), 'The ledger\'s human reference.'),
                     new PropertyMetadata('opened_at', UnionT::of([ScalarT::string(), new NullT])),
+                ]),
+                // ide-helper's tags: every column typed, the dates by the Carbon class they hold.
+                self::ALMANAC_MODEL => new ClassMetadata(self::ALMANAC_MODEL, [
+                    new PropertyMetadata('id', ScalarT::int()),
+                    new PropertyMetadata('title', ScalarT::string()),
+                    new PropertyMetadata('created_at', new ClassT('Illuminate\\Support\\Carbon')),
+                    new PropertyMetadata('updated_at', new ClassT('Illuminate\\Support\\Carbon')),
+                    new PropertyMetadata('recorded_on', new ClassT('Illuminate\\Support\\Carbon')),
+                    new PropertyMetadata('observed_on', new ClassT('Illuminate\\Support\\Carbon')),
+                    new PropertyMetadata('closed_on', new ClassT('Illuminate\\Support\\Carbon')),
+                    // The two date types no declaration states a wire form for.
+                    new PropertyMetadata('stamped_on', new ClassT(StampedDate::class)),
+                    new PropertyMetadata('noted_at', new ClassT('DateTimeInterface')),
+                ]),
+                self::JOURNAL_MODEL => new ClassMetadata(self::JOURNAL_MODEL, [
+                    new PropertyMetadata('id', ScalarT::int()),
+                    new PropertyMetadata('title', ScalarT::string()),
+                    new PropertyMetadata('created_at', new ClassT('Illuminate\\Support\\Carbon')),
+                    new PropertyMetadata('updated_at', new ClassT('Illuminate\\Support\\Carbon')),
+                    new PropertyMetadata('filed_on', new ClassT('Illuminate\\Support\\Carbon')),
+                    new PropertyMetadata('settled_on', new ClassT('Illuminate\\Support\\Carbon')),
                 ]),
                 self::GADGET_MODEL => new ClassMetadata(self::GADGET_MODEL, [
                     new PropertyMetadata('id', ScalarT::int()),
@@ -433,6 +465,10 @@ final class WorkbenchEngine
     private const POST_MODEL = 'Docuccino\\Laravel\\Tests\\Fixtures\\Eloquent\\Post';
 
     private const MERCHANT_MODEL = 'Docuccino\\Laravel\\Tests\\Fixtures\\Eloquent\\Merchant';
+
+    private const ALMANAC_MODEL = 'Workbench\\App\\Models\\Almanac';
+
+    private const JOURNAL_MODEL = 'Workbench\\App\\Models\\Journal';
 
     private const LEDGER_MODEL = 'Workbench\\App\\Models\\Ledger';
 

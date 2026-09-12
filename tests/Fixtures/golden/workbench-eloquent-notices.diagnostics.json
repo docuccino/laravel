@@ -1,0 +1,14 @@
+[
+    {
+        "severity": "info",
+        "code": "eloquent.custom-date-serialization",
+        "message": "Model Docuccino\\Laravel\\Tests\\Fixtures\\Eloquent\\Chronicle overrides serializeDate(), so the wire format of the date attributes it serialises through that hook (created_at, published_at, updated_at) is not statically known and the shapes recovered for them are plain strings with no format.",
+        "help": "Those columns are recovered as `type: string` without a `format`, and no annotation puts one back: no attribute carries a column format, and a docblock type has no format to state. If clients need an exact one, state it in an overlay, which corrects the document and leaves this notice naming the model. A column whose cast names its own format (`datetime:d/m/Y`) is not among them."
+    },
+    {
+        "severity": "info",
+        "code": "eloquent.no-columns",
+        "message": "Model Docuccino\\Laravel\\Tests\\Fixtures\\Eloquent\\Blank exposes no documentable columns; its response is documented as a bare object.",
+        "help": "Add `@property` (or `@property-read`) docblock tags for the model's attributes \u2014 e.g. `@property int $id` \u2014 so its columns and their types are recovered."
+    }
+]

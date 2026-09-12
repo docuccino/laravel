@@ -148,6 +148,10 @@ it('degrades what it cannot take at its word, publishes what it can, and says so
     $result = generateDocument(withWebhooksIn('tests/Fixtures/Webhooks/Degraded'));
     $document = $result->document->toArray();
     $codes = array_map(static fn (Diagnostic $d): string => $d->code, $result->diagnostics);
+    $unresolved = array_values(array_filter(
+        $result->diagnostics,
+        static fn (Diagnostic $d): bool => $d->code === 'webhook.payload-unresolved',
+    ));
 
     expect($codes)->toContain('webhook.name-invalid', 'webhook.method-unknown', 'webhook.payload-unresolved')
         // A nameless webhook has no key to be published under, so it is omitted rather than guessed at.
@@ -157,6 +161,11 @@ it('degrades what it cannot take at its word, publishes what it can, and says so
         ->and(array_keys($document['webhooks']['degraded.odd-method']))->toBe(['post'])
         // A payload that resolves to no shape is published as an unconstrained body — vague and true.
         ->and($document['webhooks']['degraded.unresolvable']['post']['requestBody']['content']['application/json']['schema'])->toBe([])
+        // And the notice says what the RECOVERY came back with: an overlay answers the same body, so a
+        // claim about the finished webhook would be one no edit could clear
+        // (docs/design/defect-classes.md §"A diagnostic that asserts an outcome it never reads").
+        ->and($unresolved[0]->message)->toContain('the body recovered for it is an unconstrained object')
+        ->and($unresolved[0]->message)->not->toContain('documented')
         // …and the webhook beside them is untouched by any of it.
         ->and($document['webhooks']['degraded.untouched']['post']['operationId'])->toBe('degraded.untouched');
 });

@@ -68,6 +68,11 @@ function publicExtensionSurface(): array
         // an integration folding an escaped dot its own way is how a field whose name holds one and a
         // nested pair of fields start being told apart differently on each side of the build.
         'Docuccino\Core\Extensions\Validation\FieldPath',
+        // The same exemption one step along: the ONE reading of what an author's parameter declarations
+        // already say about a field, which every rules-recovery note asks before it reports what became
+        // of a field it could not read. Spelled twice, the container note and the rule notes start
+        // disagreeing about the same declaration.
+        'Docuccino\Core\Extensions\Validation\DeclaredFields',
         'Docuccino\Core\Extensions\Validation\RecoveredRequest',
         'Docuccino\Core\Extensions\Validation\ResponseDraftApplier',
         'Docuccino\Core\Extensions\Validation\RuleSet',

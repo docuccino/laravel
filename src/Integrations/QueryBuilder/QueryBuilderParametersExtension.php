@@ -90,12 +90,14 @@ final class QueryBuilderParametersExtension implements OperationExtension
 
         $contribution = Contribution::integration('query-builder', $context->actionSource());
 
-        foreach ($this->builder->build($facts, $context->representation(), $this->effectiveConfig($context), $describer) as $spec) {
+        $config = $this->effectiveConfig($context);
+
+        foreach ($this->builder->build($facts, $context->representation(), $config, $describer) as $spec) {
             $spec->applyTo($operation->parameter('query', $spec->name), $contribution);
         }
 
         $this->reportUnresolved($facts, $context);
-        $this->reportUntypedFilters($facts, $context);
+        $this->recordUntypedFilters($facts, $context, $config);
         $this->reportNoAllowLists($facts, $context);
         $this->reportDefaultConfig($context);
         $this->reportLegacyPackage($facts, $context);
@@ -355,7 +357,7 @@ final class QueryBuilderParametersExtension implements OperationExtension
             return FilterColumn::enum($type, $file !== null ? [$file] : []);
         }
 
-        $schema = CastSchema::forCast($type);
+        $schema = CastSchema::accepted($type);
 
         return $schema === null ? FilterColumn::none() : FilterColumn::scalar($schema);
     }
@@ -380,38 +382,37 @@ final class QueryBuilderParametersExtension implements OperationExtension
     }
 
     /**
-     * A filter handled by the application's own code, which nothing typed: it reaches the document with
-     * no type at all — true, and thinner than a generated client can use, since a parameter claiming
-     * nothing becomes an untyped value at every call site. Reported per filter rather than per route,
-     * because the fix is per filter and the reader needs to know which one.
-     *
-     * The condition is {@see QueryBuilderParameters::publishesNoType()} rather than a second reading of
-     * the same kinds: what is reported and what is published then cannot disagree.
+     * A filter this layer could not type, recorded against the parameter it was just published under —
+     * recorded rather than reported, because whether the document ends up with no type is not knowable
+     * here ({@see QueryBuilderUntypedFilterExtension}). Condition and address are the same readings the
+     * publication above is made under, so the record cannot disagree with what was written.
      */
-    private function reportUntypedFilters(QueryBuilderFacts $facts, RouteContext $context): void
+    private function recordUntypedFilters(QueryBuilderFacts $facts, RouteContext $context, QueryBuilderConfig $config): void
     {
         foreach ($facts->filters as $filter) {
-            if (! QueryBuilderParameters::publishesNoType($filter)) {
-                continue;
+            if (QueryBuilderParameters::typesNothing($filter)) {
+                UntypedFilters::record(
+                    $context,
+                    QueryBuilderParameters::filterParameter($filter->name, $context->representation(), $config),
+                    $filter->name,
+                );
             }
-
-            $context->components->addDiagnostic(new Diagnostic(
-                severity: Severity::Info,
-                code: 'query-builder.untyped-filter',
-                message: sprintf('Filter "%s" is handled by your own code and nothing types its value, so it is documented with no type at all.', $filter->name),
-                routeSignature: $context->route->signature(),
-                help: sprintf('Add #[QueryParameter(type: \'string\')] to the filter class, or to the action, to give "%s" a documented type.', $filter->name),
-            ));
         }
     }
 
+    /**
+     * An allow-list entry the fold could not read, named by its call site — which is all there is to name
+     * it by, since the expression that would have given it a name is the one that did not fold. With no
+     * name there is nothing to look an outcome up by, so the claim is about the RECOVERY, which stays
+     * true however the author documents the endpoint by hand.
+     */
     private function reportUnresolved(QueryBuilderFacts $facts, RouteContext $context): void
     {
         foreach ($facts->unresolved as $expression) {
             $context->components->addDiagnostic(new Diagnostic(
                 severity: Severity::Warning,
                 code: 'query-builder.unresolved-entry',
-                message: sprintf('Could not statically resolve a Query Builder allow-list entry (%s); it is omitted from the docs.', $expression),
+                message: sprintf('Could not statically resolve a Query Builder allow-list entry (%s), so nothing it declares is in the allow-list recovered from the chain.', $expression),
                 routeSignature: $context->route->signature(),
                 help: 'Use a literal value or a factory call (e.g. AllowedFilter::exact(\'status\')) so it can be recovered.',
             ));
@@ -452,6 +453,11 @@ final class QueryBuilderParametersExtension implements OperationExtension
      * degrades all three to plain strings ({@see QueryBuilderParameters::listSchema()}) — said only
      * where one of those lists was actually recovered, per route the way {@see reportDefaultConfig()}
      * is.
+     *
+     * The sentence is about what this integration typed, not about the finished parameters: a rule in a
+     * form request publishes an enum over any of the three, and the notice would then be false for the
+     * reader who wrote one (docs/design/defect-classes.md §"A diagnostic that asserts an outcome it
+     * never reads").
      */
     private function reportLegacyPackage(QueryBuilderFacts $facts, RouteContext $context): void
     {
@@ -464,7 +470,7 @@ final class QueryBuilderParametersExtension implements OperationExtension
         $context->components->addDiagnostic(new Diagnostic(
             severity: Severity::Info,
             code: 'query-builder.legacy-package-version',
-            message: 'spatie/laravel-query-builder below v7 is installed, so the sort/include/fields allow-lists are documented as plain strings rather than value enums.',
+            message: 'spatie/laravel-query-builder below v7 is installed, so this integration types the sort/include/fields allow-lists it recovered as plain strings rather than value enums.',
             routeSignature: $context->route->signature(),
             help: 'Upgrade to spatie/laravel-query-builder ^7 to document the sort/include/fields allow-lists as enums.',
         ));

@@ -217,10 +217,7 @@
                         "producer": "integration:api-resources",
                         "layer": "integration",
                         "fields": [
-                          "$ref",
-                          "properties",
-                          "required",
-                          "type"
+                          "$ref"
                         ],
                         "source": {
                           "file": "workbench/app/Http/Controllers/QbListController.php",
@@ -466,7 +463,7 @@
     "document": {
       "id": "doc:qb-list",
       "configHash": "ec45f90ff9da3b7d3c9f334a29bd4914e590195beb24cfb9113527bb1ee14e78",
-      "contentHash": "d8b18ab498d6cc68edeb287d5a605fbc1e750e2e8341e54685ac2cf4fa541e48"
+      "contentHash": "96cd139c009984b8e0133a2c02d3075037f4bb6874b607ad73d89b42255fcf1c"
     },
     "generator": {
       "name": "docuccino/laravel",

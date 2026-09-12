@@ -162,10 +162,7 @@
                         "producer": "integration:api-resources",
                         "layer": "integration",
                         "fields": [
-                          "$ref",
-                          "properties",
-                          "required",
-                          "type"
+                          "$ref"
                         ],
                         "source": {
                           "file": "workbench/app/Http/Controllers/PagedListController.php",
@@ -320,10 +317,7 @@
                         "producer": "integration:api-resources",
                         "layer": "integration",
                         "fields": [
-                          "$ref",
-                          "properties",
-                          "required",
-                          "type"
+                          "$ref"
                         ],
                         "source": {
                           "file": "workbench/app/Http/Controllers/PagedListController.php",
@@ -523,10 +517,7 @@
                         "producer": "integration:api-resources",
                         "layer": "integration",
                         "fields": [
-                          "$ref",
-                          "properties",
-                          "required",
-                          "type"
+                          "$ref"
                         ],
                         "source": {
                           "file": "workbench/app/Http/Controllers/PagedListController.php",
@@ -681,10 +672,7 @@
                         "producer": "integration:api-resources",
                         "layer": "integration",
                         "fields": [
-                          "$ref",
-                          "properties",
-                          "required",
-                          "type"
+                          "$ref"
                         ],
                         "source": {
                           "file": "workbench/app/Http/Controllers/PagedListController.php",
@@ -877,7 +865,7 @@
     "document": {
       "id": "doc:page-size",
       "configHash": "0902620ee05e979fb634964a8073c35becef86a216e111fc8b3a10b9f3472468",
-      "contentHash": "62b3828698706fed932497a561916e92f0112ca1d5bcbb3341b4071857ea8803"
+      "contentHash": "a647fd57704b529aade9145f594e10b08fb44d5bea76315a3e9afa6166e9472c"
     },
     "generator": {
       "name": "docuccino/laravel",

@@ -66,7 +66,7 @@ final class ScopeParameterResolver
 
     private static function scalar(string $type): FilterColumn
     {
-        $schema = CastSchema::forCast($type);
+        $schema = CastSchema::accepted($type);
 
         return $schema === null ? FilterColumn::none() : FilterColumn::scalar($schema);
     }

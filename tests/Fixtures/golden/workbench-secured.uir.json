@@ -1635,10 +1635,7 @@
                         "producer": "integration:json-api-paginate",
                         "layer": "integration",
                         "fields": [
-                          "$ref",
-                          "properties",
-                          "required",
-                          "type"
+                          "$ref"
                         ],
                         "source": {
                           "file": "workbench/app/Http/Controllers/IntegrationsController.php",
@@ -2670,10 +2667,7 @@
                         "producer": "integration:api-resources",
                         "layer": "integration",
                         "fields": [
-                          "$ref",
-                          "properties",
-                          "required",
-                          "type"
+                          "$ref"
                         ],
                         "source": {
                           "file": "workbench/app/Http/Controllers/IntegrationsController.php",
@@ -4836,7 +4830,7 @@
     "document": {
       "id": "doc:secured",
       "configHash": "d89a86d522eb398c0a3d894b165ad3d553ea98b9606eab23fb4d7a6a100fb07f",
-      "contentHash": "f6cd2e9358092e8f26b2e1ac73f3dea6eed2c1fbf09f7a11c97700051c7034b2"
+      "contentHash": "d304b338425239793e9825131324dff2609bcf7656fb93b1514f58b540b88cb1"
     },
     "generator": {
       "name": "docuccino/laravel",
