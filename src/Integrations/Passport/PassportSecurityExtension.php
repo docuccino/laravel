@@ -134,15 +134,19 @@ final class PassportSecurityExtension implements OperationExtension
      * good STRING and the fallback below never fires — the document then tells every client to get its
      * tokens from the machine the build ran on. The URLs stay — OAS requires a `tokenUrl` on every
      * flow, and removing one is the worse defect — and a diagnostic says where they came from.
+     *
+     * Both sources go out through {@see publishable()}, the pin included: a URL is no less a leak for
+     * having been written in docuccino.yaml, and a branch that returns early is a branch the rule
+     * does not reach.
      */
     private function baseUrl(RouteContext $context): string
     {
+        $signature = $context->route->signature($context->httpMethod());
         $configured = $context->document->integration('passport')['url'] ?? null;
         if (is_string($configured) && $configured !== '') {
-            return $configured;
+            return $this->publishable($context, $configured, "docuccino's 'integrations.passport.url'", $signature);
         }
 
-        $signature = $context->route->signature($context->httpMethod());
         $appUrl = $this->config->get('app.url');
 
         if (! is_string($appUrl) || $appUrl === '') {
@@ -161,6 +165,17 @@ final class PassportSecurityExtension implements OperationExtension
             $context->components->addDiagnostic($report);
         }
 
-        return $appUrl;
+        return $this->publishable($context, $appUrl, "the application's 'app.url'", $signature);
+    }
+
+    /** A URL on its way into the document, with its credentials taken off and reported. */
+    private function publishable(RouteContext $context, string $url, string $source, string $signature): string
+    {
+        $report = MachineDependentValue::forCredentials(self::PUBLISHED, $url, $source, $signature);
+        if ($report !== null) {
+            $context->components->addDiagnostic($report);
+        }
+
+        return MachineDependentValue::withoutCredentials($url);
     }
 }

@@ -1,0 +1,876 @@
+{
+  "$schema": "https://spec.docuccino.app/uir/1.0/schema.json",
+  "uir": "1.0.0",
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-cursor-articles": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:lkoneudw4xetmvcr",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/Pagination/PagesController.php",
+                "line": 34,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\Pagination\\PagesController::cursorArticles"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-cursor-articles",
+        "tags": [
+          "Pages"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:romzacmtb7gsz575",
+              "provenance": [
+                {
+                  "producer": "integration:api-resources",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/Pagination/PagesController.php",
+                    "line": 34,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\Pagination\\PagesController::cursorArticles"
+                  }
+                }
+              ]
+            },
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor for the next/previous page.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:api-resources",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/Pagination/PagesController.php",
+                      "line": 34,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\Pagination\\PagesController::cursorArticles"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:vtjpy6cypt75qycq",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:api-resources",
+                        "layer": "integration",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "source": {
+                          "file": "tests/Fixtures/Pagination/PagesController.php",
+                          "line": 34,
+                          "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\Pagination\\PagesController::cursorArticles"
+                        },
+                        "overrode": [
+                          {
+                            "field": "type",
+                            "value": "object",
+                            "producer": "inference"
+                          },
+                          {
+                            "field": "properties",
+                            "value": {
+                              "data": {
+                                "items": {
+                                  "$ref": "#/components/schemas/ArticleResource"
+                                },
+                                "type": "array"
+                              }
+                            },
+                            "producer": "inference"
+                          },
+                          {
+                            "field": "required",
+                            "value": [
+                              "data"
+                            ],
+                            "producer": "inference"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/ArticleResourceCursorPage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-data-author-feed": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:gcyisl47uyjxvs66",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/SpatieData/PaginatedCollectionController.php",
+                "line": 28,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SpatieData\\PaginatedCollectionController::feed"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-data-author-feed",
+        "tags": [
+          "PaginatedCollection"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:phflmbp6xeg6h4jo",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/AuthorDataCursorPage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-data-authors": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:g2zh7palcb2ud7py",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/SpatieData/PaginatedCollectionController.php",
+                "line": 19,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SpatieData\\PaginatedCollectionController::index"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-data-authors",
+        "tags": [
+          "PaginatedCollection"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:pauhxxggxqvm23tg",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/AuthorDataPage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-simple-articles": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:tztodwwpfeuztvty",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/Pagination/PagesController.php",
+                "line": 29,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\Pagination\\PagesController::simpleArticles"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-simple-articles",
+        "tags": [
+          "Pages"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:zzqtk6lxq5hslv2a",
+              "provenance": [
+                {
+                  "producer": "integration:api-resources",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/Pagination/PagesController.php",
+                    "line": 29,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\Pagination\\PagesController::simpleArticles"
+                  }
+                }
+              ]
+            },
+            "name": "page",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:api-resources",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/Pagination/PagesController.php",
+                      "line": 29,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\Pagination\\PagesController::simpleArticles"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:4oz27a5f7ov5zprd",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:api-resources",
+                        "layer": "integration",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "source": {
+                          "file": "tests/Fixtures/Pagination/PagesController.php",
+                          "line": 29,
+                          "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\Pagination\\PagesController::simpleArticles"
+                        },
+                        "overrode": [
+                          {
+                            "field": "type",
+                            "value": "object",
+                            "producer": "inference"
+                          },
+                          {
+                            "field": "properties",
+                            "value": {
+                              "data": {
+                                "items": {
+                                  "$ref": "#/components/schemas/ArticleResource"
+                                },
+                                "type": "array"
+                              }
+                            },
+                            "producer": "inference"
+                          },
+                          {
+                            "field": "required",
+                            "value": [
+                              "data"
+                            ],
+                            "producer": "inference"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/ArticleResourceSimplePage"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ArticleResource": {
+        "x-docuccino": {
+          "id": "sch:v1:enlevzeqn7cjoivp"
+        },
+        "type": "object",
+        "properties": {
+          "author": {
+            "$ref": "#/components/schemas/AuthorResource"
+          },
+          "excerpt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ]
+      },
+      "ArticleResourceCursorPage": {
+        "x-docuccino": {
+          "id": "sch:v1:3b5zabjwf7ecf75o"
+        },
+        "description": "One page of results, with the cursors that fetch the pages either side of it.",
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArticleResource"
+            }
+          },
+          "links": {
+            "$ref": "#/components/schemas/PaginationLinks"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/CursorPaginationMeta"
+          }
+        },
+        "required": [
+          "data",
+          "links",
+          "meta"
+        ]
+      },
+      "ArticleResourceSimplePage": {
+        "x-docuccino": {
+          "id": "sch:v1:q5ptc3tw4f47ctmp"
+        },
+        "description": "One page of results, with links to the pages around it; the result set is never counted, so it carries no totals.",
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArticleResource"
+            }
+          },
+          "links": {
+            "$ref": "#/components/schemas/SimplePaginationLinks"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/SimplePaginationMeta"
+          }
+        },
+        "required": [
+          "data",
+          "links",
+          "meta"
+        ]
+      },
+      "AuthorData": {
+        "x-docuccino": {
+          "id": "sch:v1:nvvcd64vvb5o4tui"
+        },
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "email"
+        ]
+      },
+      "AuthorDataCursorPage": {
+        "x-docuccino": {
+          "id": "sch:v1:nuh2zyihzrm2uwwt"
+        },
+        "description": "One page of results, with the cursors that fetch the pages either side of it.",
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuthorData"
+            }
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaginationLink"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/DataCursorPaginationMeta"
+          }
+        },
+        "required": [
+          "data",
+          "links",
+          "meta"
+        ]
+      },
+      "AuthorDataPage": {
+        "x-docuccino": {
+          "id": "sch:v1:uwojygnypu2t3rfa"
+        },
+        "description": "One page of results, with links to the pages around it and totals for the whole result set.",
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuthorData"
+            }
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaginationLink"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/DataPaginationMeta"
+          }
+        },
+        "required": [
+          "data",
+          "links",
+          "meta"
+        ]
+      },
+      "AuthorResource": {
+        "x-docuccino": {
+          "id": "sch:v1:hbaqt4d6pcrt4sii"
+        },
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "email"
+        ]
+      },
+      "CursorPaginationMeta": {
+        "x-docuccino": {
+          "id": "sch:v1:37m6bwtquvwsblrc"
+        },
+        "description": "Where this page sits in a cursor-paginated result set: the page size, the base URL its page links are built from, and the cursors addressing the next and previous pages — null where there is no page that way.",
+        "type": "object",
+        "properties": {
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "per_page": {
+            "type": "integer"
+          },
+          "prev_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "DataCursorPaginationMeta": {
+        "x-docuccino": {
+          "id": "sch:v1:vade6vhyncduge4a"
+        },
+        "description": "Where this page sits in a cursor-paginated result set: the page size, the base URL its page links are built from, and the cursor and URL for the next and previous pages — null where there is no page that way.",
+        "type": "object",
+        "properties": {
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "next_page_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "per_page": {
+            "type": "integer"
+          },
+          "prev_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "prev_page_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "DataPaginationMeta": {
+        "x-docuccino": {
+          "id": "sch:v1:jiq2lerfxf3pkzd2"
+        },
+        "description": "Where this page sits in the result set: the page number and size, the number of the last page, the record total, the index of the first and last record on this page, the base URL its page links are built from, and a URL for the first, last, previous and next pages.",
+        "type": "object",
+        "properties": {
+          "current_page": {
+            "type": "integer"
+          },
+          "first_page_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "from": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "last_page": {
+            "type": "integer"
+          },
+          "last_page_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "next_page_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "per_page": {
+            "type": "integer"
+          },
+          "prev_page_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "to": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      },
+      "PaginationLink": {
+        "x-docuccino": {
+          "id": "sch:v1:kvrvnj2swx25r6r2"
+        },
+        "description": "One entry in a page link list: the URL of that page, the label to show for it, and whether it is the page you are on.",
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "label": {
+            "type": "string"
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "PaginationLinks": {
+        "x-docuccino": {
+          "id": "sch:v1:ziy4rsrw65knnpeh"
+        },
+        "description": "URLs for the first, last, previous and next pages of this result set; null where there is no such page.",
+        "type": "object",
+        "properties": {
+          "first": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "prev": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "SimplePaginationLinks": {
+        "x-docuccino": {
+          "id": "sch:v1:tp6zubrijzuik5ze"
+        },
+        "description": "URLs for the first, previous and next pages of this result set; the result set is never counted, so there is no last page to link to.",
+        "type": "object",
+        "properties": {
+          "first": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "prev": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "SimplePaginationMeta": {
+        "x-docuccino": {
+          "id": "sch:v1:ssycgzty6prt7cbd"
+        },
+        "description": "Where this page sits in the result set: the page number and size, the index of the first and last record on it, and the base URL its page links are built from. Nothing counts the result set, so there is no record total.",
+        "type": "object",
+        "properties": {
+          "current_page": {
+            "type": "integer"
+          },
+          "from": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "per_page": {
+            "type": "integer"
+          },
+          "to": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "9b951bfa6a4e6d8000ebd88a73c8febf12050fcf7fe0be7893c6121a6b6d3a07"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.18.1",
+      "specVersion": "1.0.0"
+    }
+  }
+}

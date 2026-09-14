@@ -76,15 +76,25 @@ it('publishes a request field as a $ref to the same component the type chain use
         ->and($field)->not->toHaveKey('type');
 });
 
-it('keeps its own values where the rule states fewer cases than the enum has', function (): void {
+it('keeps its own values where the rule states fewer cases than the enum has', function (RepresentationPolicy $policy): void {
     // A subset is a narrower domain than the component publishes. Referencing it would tell a consumer
-    // the server accepts `published`, which this endpoint rejects.
-    [$field, , $components] = convertRulesBesideType([['enum', ['draft', 'archived'], WidgetStatus::class]]);
+    // the server accepts `published`, which this endpoint rejects — and the sentence the enum states is
+    // about that same wider domain, so it is declined on the same grounds rather than sitting over a set
+    // it does not describe. What the field DOES keep is the per-VALUE vocabulary, matched by value: a
+    // case's name and its prose stay true of the value they land on, which a domain-wide fact does not.
+    [$field, , $components] = convertRulesBesideType([['enum', ['draft', 'archived'], WidgetStatus::class]], null, $policy);
 
     expect($field)->not->toHaveKey('$ref')
+        ->and($field)->not->toHaveKey('description')
         ->and($field['enum'])->toBe(['draft', 'archived'])
+        ->and($field['x-enum-varnames'])->toBe(['Draft', 'Archived'])
         ->and($components)->toBe([]);
-});
+})->with([
+    'components on' => new RepresentationPolicy,
+    // The same answer with no component to point at either way, so the row records a decision about the
+    // DOMAIN rather than one about hoisting.
+    'components off' => new RepresentationPolicy(enumComponents: false),
+]);
 
 it('composes a nullable reference rather than constraining it with a type', function (): void {
     [$field] = convertRulesBesideType([
@@ -108,9 +118,14 @@ it('restores the inline set when the document turns enum components off', functi
         new RepresentationPolicy(enumComponents: false),
     );
 
+    // The sentence too. With no component anywhere, the field is the only place the enum's own
+    // description can be published — and a document that dropped it here would say less about one enum
+    // under one policy than it says about the same enum under the other, which is the whole point of
+    // there being one body for it.
     expect($field)->not->toHaveKey('$ref')
         ->and($field['enum'])->toBe(['draft', 'published', 'archived'])
         ->and($field['x-enum-varnames'])->toBe(['Draft', 'Published', 'Archived'])
+        ->and($field['description'])->toBe('Where a widget stands in its publication lifecycle.')
         ->and($components)->toBe([]);
 });
 
@@ -124,4 +139,34 @@ it('keeps the facts about this field beside the reference', function (): void {
     // alongside as a sibling — which is the shape a property of that type already publishes.
     expect($field['$ref'])->toBe('#/components/schemas/WidgetStatus')
         ->and($field['description'])->toBe('Where the widget is in its lifecycle.');
+});
+
+it('states what this field means after what the value is, where there is one slot for both', function (): void {
+    // Inline there is no component to hold the type's sentence, so the two facts the $ref form keeps
+    // apart share the field's one `description` — the type's first, then this field's, appended as an
+    // authored description is appended to any note an earlier rule left. Nothing is dropped to make room.
+    [$field] = convertRulesBesideType(
+        [
+            ['enum', ['draft', 'published', 'archived'], WidgetStatus::class],
+            ['description', ['Where the widget is in its lifecycle.']],
+        ],
+        null,
+        new RepresentationPolicy(enumComponents: false),
+    );
+
+    expect($field['description'])
+        ->toBe('Where a widget stands in its publication lifecycle. Where the widget is in its lifecycle.');
+});
+
+it('publishes the enum\'s own sentence whichever producer reached it', function (): void {
+    // Each producer into a registry of its OWN. A registry reuses a component by IDENTITY, so two
+    // producers disagreeing about one enum would be settled silently by whichever registered first —
+    // and every row above, which shares one registry, would still pass. The rule the two owe each
+    // other: one enum is one described type, so the body a validation rule publishes for a class and
+    // the body the type chain publishes for it are the same body, description included.
+    [, , $fromRule] = convertRulesBesideType([['enum', ['draft', 'published', 'archived'], WidgetStatus::class]]);
+    [, , $fromType] = convertRulesBesideType([['string']], new EnumT(WidgetStatus::class, ['Draft', 'Published', 'Archived']));
+
+    expect($fromRule['WidgetStatus']['description'])->toBe('Where a widget stands in its publication lifecycle.')
+        ->and($fromRule)->toBe($fromType);
 });

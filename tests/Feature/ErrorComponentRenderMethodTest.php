@@ -26,6 +26,7 @@ use Docuccino\Core\Patch\Contribution;
 use Docuccino\Core\Pipeline\GenerationResult;
 use Docuccino\Laravel\Facades\Docuccino;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\DeclaredErrorsController;
+use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\DescribedMissingException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\OverridingApiException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\ThingMissingException;
 use Docuccino\Laravel\Tests\Support\CountingTypeEngine;
@@ -467,4 +468,30 @@ it('invalidates a fragment when the file the render method declared its name in 
     } finally {
         @unlink($declaring);
     }
+});
+
+it('publishes no description for a name the render method declared', function (): void {
+    // The decision this anchor owes, recorded rather than left in the gap. `#[Description]` beside
+    // `#[ErrorComponent]` on an exception CLASS publishes the sentence on the schema the name names, and
+    // the same pairing on a render method does not — because a `ComponentDeclaration` carries a name and
+    // nothing else, and it is the engine, not the adapter, that reads the render path.
+    //
+    // Widening it is a change to the engine↔core analysis contract and to what a serialised return site
+    // holds, and what a real analyser recovers off a render method is only provable against real code —
+    // the fixture group, not this one. So it is owed its own change, and until then the boundary is that
+    // a method-declared name publishes exactly the bytes it published before descriptions existed.
+    //
+    // The exception thrown here DOES describe itself, which is what makes the row say something: the
+    // method anchor outranks the class one, so the class's declaration never claims this response and its
+    // sentence never travels. That is the cost of the deferral rather than a second rule — the class
+    // anchor speaks for the body the class raises, and this body is the one the METHOD built.
+    $document = renderMethodBuild(
+        ['first' => [DescribedMissingException::class, 409], 'second' => [DescribedMissingException::class, 409]],
+        [DescribedMissingException::class => renderedResponse(409, ['detail'], renderMethodDeclaration('RenderedRejection'))],
+    )->document->toArray();
+
+    expect($document['components']['schemas'])->toHaveKey('RenderedRejection')
+        ->and($document['components']['schemas']['RenderedRejection'])->not->toHaveKey('description')
+        ->and($document['components']['schemas'])->not->toHaveKey('ResourceMissing')
+        ->and(json_encode($document))->not->toContain('No record matches the identifier in the path.');
 });

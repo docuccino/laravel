@@ -27,20 +27,25 @@ use Docuccino\Core\Extensions\Contracts\SchemaContext;
  * the member's place, a shape some operation varied — keeps what it had, because a shared component
  * over it would publish a body that operation never yields.
  *
+ * A part's sentence is part of its SHAPE, so it is stated wherever the shape is: the component carries
+ * it when the member is hoisted, and the member carries it when it isn't. Nothing an application has
+ * written is behind these objects, so the sentence is the only thing that tells a reader what one is,
+ * and where a shape is stated is a placement policy rather than a licence to say less.
+ *
  * @phpstan-type Part array{name: string, schema: array<string, mixed>, list: bool}
  */
 final class PaginationParts
 {
     /**
-     * One envelope member: the component name its shape publishes under, the shape itself, and whether
-     * the member is a LIST of that shape rather than the shape.
+     * One envelope member: the component name its shape publishes under, the sentence that shape
+     * publishes, the shape itself, and whether the member is a LIST of that shape rather than the shape.
      *
      * @param  array<string, mixed>  $schema
      * @return Part
      */
-    public static function part(string $name, array $schema, bool $list = false): array
+    public static function part(string $name, string $description, array $schema, bool $list = false): array
     {
-        return ['name' => $name, 'schema' => $schema, 'list' => $list];
+        return ['name' => $name, 'schema' => ['description' => $description, ...$schema], 'list' => $list];
     }
 
     /**

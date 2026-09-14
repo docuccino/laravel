@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use Docuccino\Core\Diagnostics\Severity;
+use Docuccino\Laravel\Config\DerivedServers;
 use Docuccino\Laravel\Support\MachineDependentValue;
+use Illuminate\Config\Repository;
 
 /**
  * The shared rule behind the machine-dependent-value reports. The host tables are lookup tables, so
@@ -179,3 +181,137 @@ it('reports a value no config key supplied as the fallback default it is', funct
         ->and($diagnostic->message)->toContain('fallback default')
         ->and($diagnostic->help)->toContain('integrations.sanctum.cookie');
 });
+
+/*
+ * A published URL carries no credentials — the rule stated from the contract rather than from the
+ * code. A document is a committed artifact handed to people who do not have the application's
+ * secrets, and every URL in it is an address a client dials: `https://api.acme.com/oauth/token` is
+ * the endpoint, and the `svc:s3cr3t@` in front of it is no part of which endpoint that is. So the
+ * publisher widens to the address alone rather than refusing a URL that is otherwise correct — OAS
+ * requires a `tokenUrl` on every flow object, and a local preview has to keep working.
+ */
+it('publishes a URL without the credentials it arrived with', function (string $url, string $expected): void {
+    expect(MachineDependentValue::withoutCredentials($url))->toBe($expected);
+})->with([
+    'a user and a password' => ['https://svc:s3cr3t@api.acme.com/oauth', 'https://api.acme.com/oauth'],
+    'a user alone' => ['https://svc@api.acme.com/oauth', 'https://api.acme.com/oauth'],
+    'an empty user with a password' => ['https://:s3cr3t@api.acme.com', 'https://api.acme.com'],
+    // `@` with nothing in front of it is still userinfo, and still not an address.
+    'an empty userinfo' => ['https://@api.acme.com', 'https://api.acme.com'],
+    // A password holding the delimiter: the strip has to take the WHOLE userinfo, not up to the first
+    // `@`, or the published URL would be `ss@api.acme.com` — a different host, confidently wrong.
+    'a password holding an at sign' => ['https://svc:p@ss@api.acme.com', 'https://api.acme.com'],
+    'a port after the credentials' => ['http://svc:s3cr3t@api.acme.com:8443/v1', 'http://api.acme.com:8443/v1'],
+]);
+
+it('leaves a URL carrying no credentials byte-identical', function (string $url): void {
+    expect(MachineDependentValue::withoutCredentials($url))->toBe($url);
+})->with([
+    'a plain host' => ['https://api.acme.com'],
+    'a base path' => ['https://api.acme.com/v1'],
+    // An `@` in the PATH is not userinfo, and a strip that read it as one would cut the path in half.
+    'an at sign in the path' => ['https://api.acme.com/users/a@b'],
+    'a query string' => ['https://api.acme.com?tenant=acme'],
+    // Degrade honestly: a value parse_url refuses tells us nothing, so nothing is changed about it.
+    'a URL parse_url refuses' => ['https://'],
+    'a value that is not a URL at all' => ['laravel_session'],
+    'an empty string' => [''],
+]);
+
+/**
+ * The guard, executed rather than asserted. `forCredentials()` decides whether to report and
+ * `withoutCredentials()` decides what to publish; a guard that recognised fewer spellings than the
+ * strip it announces would publish a corrected URL and say nothing, or report one it did not touch.
+ * So the two are held to each other over every row either test above uses.
+ */
+it('reports exactly the URLs it changes', function (string $url): void {
+    $report = MachineDependentValue::forCredentials('The scheme', $url, "the application's 'app.url'");
+    $changed = MachineDependentValue::withoutCredentials($url) !== $url;
+
+    expect($report !== null)->toBe($changed);
+})->with([
+    'a user and a password' => ['https://svc:s3cr3t@api.acme.com/oauth'],
+    'a user alone' => ['https://svc@api.acme.com/oauth'],
+    'an empty user with a password' => ['https://:s3cr3t@api.acme.com'],
+    'an empty userinfo' => ['https://@api.acme.com'],
+    'a password holding an at sign' => ['https://svc:p@ss@api.acme.com'],
+    'a port after the credentials' => ['http://svc:s3cr3t@api.acme.com:8443/v1'],
+    'a plain host' => ['https://api.acme.com'],
+    'a base path' => ['https://api.acme.com/v1'],
+    'an at sign in the path' => ['https://api.acme.com/users/a@b'],
+    'a query string' => ['https://api.acme.com?tenant=acme'],
+    'a URL parse_url refuses' => ['https://'],
+    'a value that is not a URL at all' => ['laravel_session'],
+    'an empty string' => [''],
+]);
+
+it('names where to go, what is published now, and never the secret', function (): void {
+    $diagnostic = MachineDependentValue::forCredentials(
+        "The Passport scheme's OAuth2 flow URLs",
+        'https://svc:s3cr3t@api.acme.com',
+        "the application's 'app.url'",
+        'GET api/x',
+    );
+
+    expect($diagnostic)->not->toBeNull()
+        ->and($diagnostic->severity)->toBe(Severity::Warning)
+        ->and($diagnostic->code)->toBe('config.url-credentials-removed')
+        ->and($diagnostic->routeSignature)->toBe('GET api/x')
+        ->and($diagnostic->message)->toContain("the application's 'app.url'")
+        ->and($diagnostic->message)->toContain("'https://api.acme.com'")
+        ->and($diagnostic->message)->not->toContain('s3cr3t')
+        ->and($diagnostic->message)->not->toContain('svc')
+        ->and($diagnostic->help)->not->toBeNull()
+        ->and($diagnostic->help)->toContain("the application's 'app.url'")
+        ->and($diagnostic->help)->not->toContain('s3cr3t')
+        ->and($diagnostic->help)->not->toContain('svc');
+});
+
+/**
+ * Whether a URL carries credentials, decided from the URL's own grammar and not by asking the product.
+ * RFC 3986 puts the userinfo inside the authority, in front of the host and ending at an `@` — so the
+ * authority is everything after `://` and before the first `/`, `?` or `#`, and a URL carries
+ * credentials exactly when that span holds an `@`.
+ */
+function urlAuthorityCarriesCredentials(string $url): bool
+{
+    $scheme = strpos($url, '://');
+    if ($scheme === false) {
+        return false;
+    }
+
+    $authority = substr($url, $scheme + 3);
+
+    return str_contains(substr($authority, 0, strcspn($authority, '/?#')), '@');
+}
+
+/**
+ * One fact, three readers. The derived root server refuses a credential-bearing `app.url`, the flow
+ * URLs and the host-bound operation server publish one stripped, and each of those hangs off the same
+ * answer to "does this URL carry credentials" — so a spelling one of them missed is a leak on one side
+ * or a silently dropped server on the other. The expectation is stated from RFC 3986 rather than read
+ * back off the product: a guard that asks the code for its own rule agrees with whatever the code
+ * does, which is precisely what makes three readers sharing one reader worth checking at all.
+ */
+it('gives every reader of a URL the same answer about its credentials', function (string $url): void {
+    $expected = urlAuthorityCarriesCredentials($url);
+
+    expect(MachineDependentValue::carriesCredentials($url))->toBe($expected)
+        ->and(MachineDependentValue::withoutCredentials($url) !== $url)->toBe($expected)
+        ->and(MachineDependentValue::forCredentials('The scheme', $url, "the application's 'app.url'") !== null)->toBe($expected)
+        // Every row below is publishable on every OTHER axis the derived server judges — a routable
+        // public host, http(s), no query, no fragment — so the credential answer is the only thing
+        // deciding it, and a row that agreed for some other reason would prove nothing.
+        ->and(DerivedServers::for(new Repository(['app' => ['url' => $url]])) === [])->toBe($expected);
+})->with([
+    'a user and a password' => ['https://svc:s3cr3t@api.acme.com'],
+    'a user alone' => ['https://svc@api.acme.com'],
+    'an empty user with a password' => ['https://:s3cr3t@api.acme.com'],
+    'an empty userinfo' => ['https://@api.acme.com'],
+    'a password holding an at sign' => ['https://svc:p@ss@api.acme.com'],
+    'credentials before a port' => ['https://svc:s3cr3t@api.acme.com:8443'],
+    'a plain host' => ['https://api.acme.com'],
+    'a base path' => ['https://api.acme.com/v1'],
+    'an at sign in the path' => ['https://api.acme.com/users/a@b'],
+    'an at sign in a path under a port' => ['https://api.acme.com:8443/users/a@b'],
+]);

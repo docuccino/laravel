@@ -285,14 +285,18 @@ final class DataClassReflector
         return false;
     }
 
-    /** Envelope selector: `cursor`/`length` for the paginated variants, `simple` for a plain one. */
+    /**
+     * Envelope selector: `cursor`/`length` for the paginated variants, `plain` for an unpaginated
+     * collection. Never `simple`: that token is a paginator KIND in the envelope builders, and a plain
+     * collection is the absence of a paginator rather than one of them.
+     */
     public function collectionKind(string $fqcn): string
     {
         if (is_a($fqcn, self::CURSOR_PAGINATED_COLLECTION, true)) {
             return 'cursor';
         }
 
-        return is_a($fqcn, self::PAGINATED_COLLECTION, true) ? 'length' : 'simple';
+        return is_a($fqcn, self::PAGINATED_COLLECTION, true) ? 'length' : 'plain';
     }
 
     /**
@@ -800,18 +804,18 @@ final class DataClassReflector
     }
 
     /**
-     * The Data item of a SIMPLE nested collection, or null where the property is not one.
+     * The Data item of a PLAIN nested collection, or null where the property is not one.
      *
-     * Simple is the whole point: a paginated collection carries `meta` and `links` beside its items and
-     * {@see DataSchema} already publishes that envelope, so it is not a nested-wrap question at all.
-     * {@see DataValidationRules::nestedData()} asks a related but different one — it descends for
+     * Unpaginated is the whole point: a paginated collection carries `meta` and `links` beside its
+     * items and {@see DataSchema} already publishes that envelope, so it is not a nested-wrap question
+     * at all. {@see DataValidationRules::nestedData()} asks a related but different one — it descends for
      * request rules and has no reason to exclude a paginated shape.
      */
     public function nestedCollectionItem(string $fqcn, string $property, DType $clean): ?string
     {
         foreach ($clean instanceof UnionT ? $clean->members : [$clean] as $member) {
             // A collectable names its kind on the type, whatever the attribute says about its items.
-            if ($member instanceof ClassT && self::isDataCollection($member->fqcn) && $this->collectionKind($member->fqcn) !== 'simple') {
+            if ($member instanceof ClassT && self::isDataCollection($member->fqcn) && $this->collectionKind($member->fqcn) !== 'plain') {
                 return null;
             }
         }

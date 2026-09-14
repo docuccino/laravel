@@ -28,8 +28,9 @@ final class DerivedServers
 {
     /**
      * The derived array, or `[]` when the configured URL proves nothing. It has to be a whole URL a
-     * client can prepend to a path: a scheme it can speak, a host it can resolve, and no credentials
-     * or query string, none of which belong in an OAS Server Object.
+     * client can prepend to a path: a scheme it can speak, a host it can resolve, no query string or
+     * fragment, which an OAS Server Object cannot carry, and no credentials, which no published URL
+     * carries anywhere.
      *
      * @return list<array{url: string}>
      */
@@ -52,7 +53,18 @@ final class DerivedServers
             return [];
         }
 
-        if (isset($parts['user']) || isset($parts['pass']) || isset($parts['query']) || isset($parts['fragment'])) {
+        // Two different questions, one of them asked elsewhere. A query string or a fragment makes the
+        // value malformed AS a Server Object — the url is concatenated with a path that follows it —
+        // so there is nothing here to publish. Credentials are not malformed, just not ours to carry,
+        // and the rule for those has one owner ({@see MachineDependentValue::carriesCredentials()}) so
+        // that this and the flow URLs cannot recognise different spellings of the same userinfo. Where
+        // they differ is what they DO about it: a flow URL has no fallback and so publishes stripped,
+        // while an absent `servers` already reads as the origin the document is served from.
+        if (MachineDependentValue::carriesCredentials($url)) {
+            return [];
+        }
+
+        if (isset($parts['query']) || isset($parts['fragment'])) {
             return [];
         }
 

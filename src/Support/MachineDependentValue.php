@@ -13,10 +13,17 @@ use Docuccino\Core\Diagnostics\Severity;
  * contract-bearing (OAS requires a `tokenUrl` on every flow object, and an `apiKey`-in-cookie scheme
  * with the wrong `name` sends the client's request without the cookie), and a local preview has to keep
  * working. Which signal each kind of value is judged on, and why the tier is Warning: design §9.
+ *
+ * It also owns the one rule that holds for a published URL whatever it was read from: it carries no
+ * credentials. That rule sits here because it is the same reading — {@see userinfo()} answers both the
+ * strip and the redaction a message needs — and because a second reader of a URL's userinfo is a
+ * second answer to "does this one carry credentials".
  */
 final class MachineDependentValue
 {
     public const CODE = 'config.machine-dependent-value';
+
+    public const CREDENTIALS_CODE = 'config.url-credentials-removed';
 
     /**
      * Hosts that name the build machine by NAME. Every numeric spelling is decided by
@@ -150,6 +157,63 @@ final class MachineDependentValue
     }
 
     /**
+     * `$url` as a document may publish it: the same URL with any `user:pass@` removed. A credential is
+     * no part of an endpoint's identity — `https://api.example.com/oauth/token` is the address, and the
+     * userinfo in front of it is a secret riding into an artifact whose readers do not control it — so
+     * the publisher degrades by WIDENING to the address alone rather than by refusing a URL that is
+     * otherwise correct. A URL carrying none comes back byte-identical, including one `parse_url`
+     * refuses outright.
+     */
+    public static function withoutCredentials(string $url): string
+    {
+        return self::replaceUserinfo($url, '');
+    }
+
+    /**
+     * Whether `$url` carries credentials at all. Every rule that judges a URL's userinfo asks this one,
+     * so a guard cannot recognise fewer spellings than the strip beside it.
+     */
+    public static function carriesCredentials(string $url): bool
+    {
+        return self::userinfo($url) !== null;
+    }
+
+    /**
+     * The report for a URL a producer had to take credentials out of, or null when it carried none —
+     * so it is non-null exactly when {@see withoutCredentials()} changes something. `$source` is the
+     * place the author goes and edits, named as prose rather than as a key, because a route's own
+     * `Route::domain()` is one of them and no config key answers for it. It fires wherever the value
+     * came from, `app.url` or a docuccino pin, because the leak is the same either way. What it quotes
+     * is the URL as PUBLISHED — the author is told what the document now says, and quoting the value as
+     * it arrived would move the secret out of one committed artifact and into another.
+     */
+    public static function forCredentials(string $subject, string $url, string $source, ?string $routeSignature = null): ?Diagnostic
+    {
+        if (! self::carriesCredentials($url)) {
+            return null;
+        }
+
+        // Constructed here rather than through report(), which owns the machine-dependent code: the
+        // scan behind the diagnostics reference reads the constructor's `code:` argument, so a code
+        // reaching it through a parameter is a code the reference page can go stale on unnoticed.
+        return new Diagnostic(
+            severity: Severity::Warning,
+            code: self::CREDENTIALS_CODE,
+            message: sprintf(
+                "%s: the URL read from %s carries HTTP credentials in front of its host, so they were removed and '%s' is published instead. A document is handed to people who do not have that secret and should not be given it, and an endpoint's address needs nothing that was in it.",
+                $subject,
+                $source,
+                self::withoutCredentials($url),
+            ),
+            routeSignature: $routeSignature,
+            help: sprintf(
+                "Take the 'user:password@' out of %s. Where the endpoint really is behind HTTP authentication, say so as a security scheme — that is the member a client reads for it, and a URL cannot carry it.",
+                $source,
+            ),
+        );
+    }
+
+    /**
      * Whether a host that IS an address names the build machine: anything in `127.0.0.0/8`, the
      * unspecified address, the IPv6 loopback, and the IPv4-mapped spelling of either. Null when the
      * host is a name rather than an address, so it falls through to the tables above.
@@ -186,18 +250,39 @@ final class MachineDependentValue
      */
     private static function redact(string $url): string
     {
-        $parts = parse_url($url);
-        $user = is_array($parts) ? ($parts['user'] ?? null) : null;
+        return self::replaceUserinfo($url, '***@');
+    }
+
+    /**
+     * The `user[:pass]@` `$url` carries in front of its host, spelled as the URL spells it, with the
+     * offset it starts at — or null where the URL carries none, which includes one `parse_url` refuses
+     * to read at all. The ONE reading of a URL's credentials: the strip a publisher owes, the redaction
+     * a message owes and the check a server URL is refused on all ask this, so none of them can
+     * recognise a spelling another misses.
+     *
+     * @return array{0: string, 1: int}|null
+     */
+    private static function userinfo(string $url): ?array
+    {
+        $user = parse_url($url, PHP_URL_USER);
         if (! is_string($user)) {
-            return $url;
+            return null;
         }
 
-        $password = is_array($parts) ? ($parts['pass'] ?? null) : null;
+        $password = parse_url($url, PHP_URL_PASS);
         $userinfo = $user.(is_string($password) ? ':'.$password : '');
 
         $at = strpos($url, $userinfo.'@');
 
-        return $at === false ? $url : substr_replace($url, '***@', $at, strlen($userinfo) + 1);
+        return $at === false ? null : [$userinfo, $at];
+    }
+
+    /** `$url` with its userinfo and the `@` after it replaced by `$with`, or unchanged where it has none. */
+    private static function replaceUserinfo(string $url, string $with): string
+    {
+        $userinfo = self::userinfo($url);
+
+        return $userinfo === null ? $url : substr_replace($url, $with, $userinfo[1], strlen($userinfo[0]) + 1);
     }
 
     private static function pinHelp(string $pin): string

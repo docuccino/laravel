@@ -11,6 +11,7 @@ use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\ExceptionToResponse;
 use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
+use Docuccino\Core\Extensions\Schema\ClassAnnotations;
 use Docuccino\Core\Extensions\Schema\ComponentNames;
 use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Docuccino\Core\Extensions\Validation\ResponseDraftApplier;
@@ -34,6 +35,9 @@ use Docuccino\Laravel\Support\IgnoredResponses;
  * visible, which is the engine, and claimed by the tier that built the body from it. On anything else it
  * is read by nothing, which {@see DeclaredErrorComponentsExtension} reports — from `Finalize`, so it is
  * not lost to this class's early return.
+ *
+ * The `#[Description]` beside it travels with the name ({@see stated()}): a shared error component is the
+ * type a consumer catches, and a type publishes what it is.
  */
 final class ErrorResponsesExtension implements OperationExtension
 {
@@ -143,9 +147,51 @@ final class ErrorResponsesExtension implements OperationExtension
 
             // Exactly one, since a status only appears here once something declared for it.
             foreach ($declarations as $declaration) {
-                $response->claimComponentName($declaration->name, Contribution::attribute($this->declarationSource($context, $declaration)));
+                $response->claimComponentName(
+                    $declaration->name,
+                    Contribution::attribute($this->declarationSource($context, $declaration)),
+                    description: $this->stated($context, $declaration),
+                );
             }
         }
+    }
+
+    /**
+     * What the winning declaration says the error it named IS — the `#[Description]` on the class that
+     * declared the NAME, and on no other.
+     *
+     * The component is deduped by body and named for a cause, so its sentence has to come from that same
+     * cause or it describes a different error under this one's name. Only the declaring class is that
+     * cause: walking for a sentence of its own would let a base's prose about `ApiFailure` describe the
+     * `PolicyRefused` a subclass renamed, and reading the thrown class's would describe a name it did not
+     * choose. The price is an inherited name whose subclass restates it and states no prose of its own,
+     * which publishes none — and there is deliberately no diagnostic for it, because a base describing
+     * the error IT names while subclasses name their own is correct and would be reported at every throw.
+     *
+     * The prose itself goes through {@see ClassAnnotations::stated()}, the reader every other schema
+     * description goes through, so a `file:`, a `request:` or a both-and-neither declaration is refused
+     * here on identical terms. Its refusals are reported on this route's fragment, so a warm build
+     * repeats them.
+     */
+    private function stated(RouteContext $context, DeclaredErrorComponent $declaration): ?string
+    {
+        $diagnostics = [];
+        $text = ClassAnnotations::stated($declaration->declaredBy, $diagnostics);
+
+        // Re-sited rather than re-worded: the reader's sentence is the one every schema description
+        // refuses with, and what it cannot know is which file it was written in or which route asked.
+        foreach ($diagnostics as $diagnostic) {
+            $context->components->addDiagnostic(new Diagnostic(
+                severity: $diagnostic->severity,
+                code: $diagnostic->code,
+                message: $diagnostic->message,
+                source: $this->declarationSource($context, $declaration),
+                routeSignature: $context->route->signature(),
+                help: $diagnostic->help,
+            ));
+        }
+
+        return $text;
     }
 
     /** Where the winning `#[ErrorComponent]` was written — the class that declared it, not the throw site. */

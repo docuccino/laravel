@@ -12,6 +12,8 @@ use Docuccino\Core\Inference\DType\EnumT;
 use Docuccino\Core\Inference\DType\NullT;
 use Docuccino\Core\Inference\DType\UnionT;
 use Docuccino\Core\Inference\NullTypeEngine;
+use Docuccino\Core\Inference\TypeEngine;
+use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Workbench\App\Enums\Season;
 use Workbench\App\Enums\WidgetKind;
 use Workbench\App\Enums\WidgetPriority;
@@ -61,6 +63,7 @@ it('hoists a backed enum to a $ref-ed component carrying its values and case des
             'x-enum-descriptions' => ['Not yet visible to applicants.', 'Live and accepting traffic.', ''],
             'x-enum-varnames' => ['Draft', 'Published', 'Archived'],
             'x-enumNames' => ['Draft', 'Published', 'Archived'],
+            'description' => 'Where a widget stands in its publication lifecycle.',
         ]);
 });
 
@@ -76,6 +79,7 @@ it('inlines the enum schema byte-for-byte when the components policy is opted ou
         'x-enum-descriptions' => ['Not yet visible to applicants.', 'Live and accepting traffic.', ''],
         'x-enum-varnames' => ['Draft', 'Published', 'Archived'],
         'x-enumNames' => ['Draft', 'Published', 'Archived'],
+        'description' => 'Where a widget stands in its publication lifecycle.',
     ])->and($components)->toBe([]);
 });
 
@@ -222,6 +226,7 @@ it('inlines nullable enum composition when components are opted out (both polici
             'x-enum-descriptions' => ['Not yet visible to applicants.', 'Live and accepting traffic.', ''],
             'x-enum-varnames' => ['Draft', 'Published', 'Archived'],
             'x-enumNames' => ['Draft', 'Published', 'Archived'],
+            'description' => 'Where a widget stands in its publication lifecycle.',
         ],
     ],
     'anyof expresses null as a branch' => [
@@ -234,6 +239,7 @@ it('inlines nullable enum composition when components are opted out (both polici
                     'x-enum-descriptions' => ['Not yet visible to applicants.', 'Live and accepting traffic.', ''],
                     'x-enum-varnames' => ['Draft', 'Published', 'Archived'],
                     'x-enumNames' => ['Draft', 'Published', 'Archived'],
+                    'description' => 'Where a widget stands in its publication lifecycle.',
                 ],
                 ['type' => 'null'],
             ],
@@ -262,4 +268,24 @@ it('degrades to a plain string schema when no values or case names are known', f
 
     expect($result->schema)->toBe(['type' => 'string'])
         ->and($result->confidence)->toBe(0.5);
+});
+
+it('describes the enum a request rule inlines when the whole document opts out of enum components', function (): void {
+    // The population the converter rows above stand in, built as an application builds it: a real route,
+    // a real FormRequest, `Rule::enum(WidgetStatus::class)` folded by the engine, and the one policy that
+    // leaves the rule nowhere to point. With components ON this property is a `$ref` and the sentence
+    // rides the component; with them off the property IS the enum, so the sentence rides the property or
+    // the document has quietly said less about the same type.
+    app()->instance(TypeEngine::class, WorkbenchEngine::make());
+    setBuild('documents.default.representation.enums.components', false);
+
+    $document = generateDocument()->document->toArray();
+
+    /** @var array<string, mixed> $status */
+    $status = $document['components']['schemas']['StoreWidgetRequest']['properties']['status'];
+
+    expect($status)->not->toHaveKey('$ref')
+        ->and($status['enum'])->toBe(['draft', 'published', 'archived'])
+        ->and($status['description'])->toBe('Where a widget stands in its publication lifecycle.')
+        ->and($document['components']['schemas'])->not->toHaveKey('WidgetStatus');
 });

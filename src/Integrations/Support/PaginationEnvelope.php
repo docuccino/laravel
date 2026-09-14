@@ -11,7 +11,9 @@ namespace Docuccino\Laravel\Integrations\Support;
  * required.
  *
  * `links` and `meta` are a function of the paginator kind alone, so they are declared as named parts
- * ({@see PaginationParts}) and hoisted to one component per shape; only `data` is per item type.
+ * ({@see PaginationParts}) and hoisted to one component per shape; only `data` is per item type. Each
+ * part states what it is beside the shape it is, and the page itself takes the sentence for its kind
+ * from {@see PageComponent}.
  *
  * This is Laravel's `AbstractPaginator` envelope. `spatie/laravel-data` has its own
  * ({@see SpatieDataEnvelope}); the two are NOT interchangeable.
@@ -29,7 +31,22 @@ final class PaginationEnvelope
      */
     public static function of(string $kind, array $items): array
     {
-        return self::wrap($items, self::parts($kind));
+        $built = self::builds($kind);
+
+        return self::wrap($items, self::parts($built), PageComponent::description($built));
+    }
+
+    /**
+     * The kind whose shape this builder actually produces for `$kind`. The sentence is taken for THIS
+     * kind rather than the one asked for, so a kind the document can describe but this builder has no
+     * arm for cannot be handed prose about a shape it did not get.
+     */
+    public static function builds(string $kind): string
+    {
+        return match ($kind) {
+            'simple', 'cursor' => $kind,
+            default => 'length',
+        };
     }
 
     /**
@@ -44,21 +61,21 @@ final class PaginationEnvelope
      */
     public static function parts(string $kind): array
     {
-        $pageLinks = PaginationParts::part('PaginationLinks', SchemaShorthand::object([
+        $pageLinks = PaginationParts::part('PaginationLinks', 'URLs for the first, last, previous and next pages of this result set; null where there is no such page.', SchemaShorthand::object([
             'first' => SchemaShorthand::nullableString(),
             'last' => SchemaShorthand::nullableString(),
             'prev' => SchemaShorthand::nullableString(),
             'next' => SchemaShorthand::nullableString(),
         ]));
 
-        return match ($kind) {
+        return match (self::builds($kind)) {
             'simple' => [
-                'links' => PaginationParts::part('SimplePaginationLinks', SchemaShorthand::object([
+                'links' => PaginationParts::part('SimplePaginationLinks', 'URLs for the first, previous and next pages of this result set; the result set is never counted, so there is no last page to link to.', SchemaShorthand::object([
                     'first' => SchemaShorthand::nullableString(),
                     'prev' => SchemaShorthand::nullableString(),
                     'next' => SchemaShorthand::nullableString(),
                 ])),
-                'meta' => PaginationParts::part('SimplePaginationMeta', SchemaShorthand::object([
+                'meta' => PaginationParts::part('SimplePaginationMeta', 'Where this page sits in the result set: the page number and size, the index of the first and last record on it, and the base URL its page links are built from. Nothing counts the result set, so there is no record total.', SchemaShorthand::object([
                     'current_page' => ['type' => 'integer'],
                     'from' => SchemaShorthand::nullableInteger(),
                     'path' => SchemaShorthand::nullableString(),
@@ -68,7 +85,7 @@ final class PaginationEnvelope
             ],
             'cursor' => [
                 'links' => $pageLinks,
-                'meta' => PaginationParts::part('CursorPaginationMeta', SchemaShorthand::object([
+                'meta' => PaginationParts::part('CursorPaginationMeta', 'Where this page sits in a cursor-paginated result set: the page size, the base URL its page links are built from, and the cursors addressing the next and previous pages — null where there is no page that way.', SchemaShorthand::object([
                     'path' => SchemaShorthand::nullableString(),
                     'per_page' => ['type' => 'integer'],
                     'next_cursor' => SchemaShorthand::nullableString(),
@@ -77,7 +94,7 @@ final class PaginationEnvelope
             ],
             default => [
                 'links' => $pageLinks,
-                'meta' => PaginationParts::part('PaginationMeta', SchemaShorthand::object([
+                'meta' => PaginationParts::part('PaginationMeta', 'Where this page sits in the result set: the page number and size, the number of the last page, the record total, the index of the first and last record on this page, and the base URL its page links are built from.', SchemaShorthand::object([
                     'current_page' => ['type' => 'integer'],
                     'from' => SchemaShorthand::nullableInteger(),
                     'last_page' => ['type' => 'integer'],
@@ -95,7 +112,7 @@ final class PaginationEnvelope
      * @param  array<string, Part>  $parts
      * @return array<string, mixed>
      */
-    private static function wrap(array $items, array $parts): array
+    private static function wrap(array $items, array $parts, string $description): array
     {
         $properties = ['data' => ['type' => 'array', 'items' => $items]];
         foreach ($parts as $member => $part) {
@@ -103,6 +120,7 @@ final class PaginationEnvelope
         }
 
         return [
+            'description' => $description,
             'type' => 'object',
             'properties' => $properties,
             'required' => ['data', 'links', 'meta'],

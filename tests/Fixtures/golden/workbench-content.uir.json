@@ -4383,6 +4383,7 @@
         "x-docuccino": {
           "id": "sch:v1:ml6bn2m2gvl7a5fe"
         },
+        "description": "One page of results, with links to the pages around it and totals for the whole result set.",
         "type": "object",
         "properties": {
           "data": {
@@ -4537,8 +4538,9 @@
       },
       "PaginationLinks": {
         "x-docuccino": {
-          "id": "sch:v1:cn3i5qf4y7huo2hk"
+          "id": "sch:v1:ziy4rsrw65knnpeh"
         },
+        "description": "URLs for the first, last, previous and next pages of this result set; null where there is no such page.",
         "type": "object",
         "properties": {
           "first": {
@@ -4569,8 +4571,9 @@
       },
       "PaginationMeta": {
         "x-docuccino": {
-          "id": "sch:v1:ex4annm3ko66tkrv"
+          "id": "sch:v1:t4gugvq46cfzr4or"
         },
+        "description": "Where this page sits in the result set: the page number and size, the number of the last page, the record total, the index of the first and last record on this page, and the base URL its page links are built from.",
         "type": "object",
         "properties": {
           "current_page": {
@@ -4840,6 +4843,7 @@
         "x-docuccino": {
           "id": "sch:v1:xxkbfhrj65orbrgo"
         },
+        "description": "Where a widget stands in its publication lifecycle.",
         "type": "string",
         "enum": [
           "draft",
@@ -4920,7 +4924,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "5b3e04c541cd00ac0d845576d587b12439154a28681b367b482d7ca66a98b3f6",
-      "contentHash": "c7a86dffc42c926a69d62c55b62960a25de1676b236838a7f79768e0c7ef6ff4"
+      "contentHash": "55668b146b75fa08fe772da58f94438cbc3096d2d570cbe638e7c9feb2843e4a"
     },
     "generator": {
       "name": "docuccino/laravel",

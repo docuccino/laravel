@@ -31,6 +31,13 @@ use Docuccino\Core\Support\Fqcn;
  * those shapes are a function of the paginator kind alone, so they are the same bytes whether the item
  * type was named or converted well, and an envelope stuck on the operation duplicates them just as
  * badly as a component would.
+ *
+ * What a page SAYS is a function of the kind alone too, so the sentence lives here beside the facet
+ * rather than in either envelope builder — both build a page of the same kind and would otherwise drift
+ * apart a sentence at a time. Deriving it from the item instead would couple a published sentence to a
+ * name-minting decision, and renaming one class would then rewrite prose on a page of another.
+ *
+ * @phpstan-type Kind array{facet: string, description: string}
  */
 final class PageComponent
 {
@@ -38,15 +45,37 @@ final class PageComponent
     private const SCHEMAS = '#/components/schemas/';
 
     /**
-     * Paginator kind → the facet of the item's identity a page of it is. The length-aware page is
-     * plain `page`: it is the kind an application reaches for unless it says otherwise, and the
-     * qualified names read as the departures they are.
+     * Paginator kind → the facet of the item's identity a page of it is, and what a page of it tells
+     * the consumer. One row per kind, so the name and the sentence cannot answer for different sets.
+     * The length-aware facet is plain `page`: it is the kind an application reaches for unless it says
+     * otherwise, and the qualified names read as the departures they are.
+     *
+     * @var array<string, Kind>
      */
-    private const FACETS = [
-        'length' => 'page',
-        'simple' => 'simplePage',
-        'cursor' => 'cursorPage',
+    private const KINDS = [
+        'length' => [
+            'facet' => 'page',
+            'description' => 'One page of results, with links to the pages around it and totals for the whole result set.',
+        ],
+        'simple' => [
+            'facet' => 'simplePage',
+            'description' => 'One page of results, with links to the pages around it; the result set is never counted, so it carries no totals.',
+        ],
+        'cursor' => [
+            'facet' => 'cursorPage',
+            'description' => 'One page of results, with the cursors that fetch the pages either side of it.',
+        ],
     ];
+
+    /**
+     * The sentence a page of `$kind` publishes. An unknown kind gets the length-aware one, because that
+     * is the SHAPE both envelope builders give it — a sentence describing some other shape would be the
+     * confident lie a vague answer exists to avoid.
+     */
+    public static function description(string $kind): string
+    {
+        return (self::KINDS[$kind] ?? self::KINDS['length'])['description'];
+    }
 
     /**
      * The `{"$ref": …}` a paginated body may point at instead of carrying `$envelope`, or null when
@@ -59,7 +88,7 @@ final class PageComponent
      */
     public static function reference(SchemaContext $context, string $kind, ?string $itemFqcn, array $items, array $envelope): ?array
     {
-        $facet = self::FACETS[$kind] ?? null;
+        $facet = self::KINDS[$kind]['facet'] ?? null;
         if ($facet === null || $itemFqcn === null || ! $context->representation()->paginationComponents) {
             return null;
         }

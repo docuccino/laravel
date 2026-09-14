@@ -77,6 +77,9 @@ it('types an enum-factory filter off its backed-enum class-string argument (scal
             'x-enum-descriptions' => ['Not yet visible to applicants.', 'Live and accepting traffic.', ''],
             'x-enum-varnames' => ['Draft', 'Published', 'Archived'],
             'x-enumNames' => ['Draft', 'Published', 'Archived'],
+            // The enum's own sentence rides the component a filter $refs, exactly as it rides the one a
+            // typed property or a validation rule $refs: one enum, one described type.
+            'description' => 'Where a widget stands in its publication lifecycle.',
         ]);
 });
 

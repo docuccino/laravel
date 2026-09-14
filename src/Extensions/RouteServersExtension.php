@@ -47,7 +47,19 @@ final class RouteServersExtension implements OperationExtension
 
         [$scheme, $authority, $path, $inherited] = $this->base($context);
 
+        // `Route::domain()` strips a scheme and nothing else, so whatever the route was bound to
+        // reaches here intact — userinfo included, where the domain came from an environment value that
+        // carried some. The URL publishes without it, which is the same rule the flow URLs and the
+        // derived server obey; the host's own identity is untouched, so nothing else moves.
+        $signature = $context->route->signature($context->httpMethod());
         $url = $scheme.'://'.$host.$authority.$path;
+
+        $credentials = MachineDependentValue::forCredentials(self::PUBLISHED, $url, "the route's own domain", $signature);
+        if ($credentials !== null) {
+            $context->components->addDiagnostic($credentials);
+            $url = MachineDependentValue::withoutCredentials($url);
+        }
+
         $server = ['url' => $url];
 
         $variables = $this->variables($host) + $this->inheritedVariables($inherited, $path);
@@ -58,9 +70,7 @@ final class RouteServersExtension implements OperationExtension
         // The host is written into the route, so nothing in the document pins it: a domain read out of
         // the environment publishes a URL only this machine can reach, exactly as an unpinned `app.url`
         // does, and the rule is the same one.
-        $report = MachineDependentValue::forHost(
-            self::PUBLISHED, $url, $context->route->signature($context->httpMethod()),
-        );
+        $report = MachineDependentValue::forHost(self::PUBLISHED, $url, $signature);
         if ($report !== null) {
             $context->components->addDiagnostic($report);
         }

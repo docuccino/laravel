@@ -82,6 +82,36 @@ it('points a page at the components its envelope members name', function (string
     'cursor' => ['cursorArticles', 'PaginationLinks', 'CursorPaginationMeta'],
 ]);
 
+it('says what every component it mints is', function (): void {
+    // Nothing an application wrote is behind a page or its members — no class to annotate, no docblock
+    // to lift — so unless the producer states it, a generated client gets types called `PaginationMeta`
+    // and `ArticleResourcePage` with nothing anywhere saying what either holds. Read off the document
+    // rather than off the builders, because this is the half that proves the sentence survives the
+    // registry, the draft and the emitter.
+    $schemas = emittedArray(generateDocument())['components']['schemas'];
+
+    $minted = array_filter(
+        array_keys($schemas),
+        static fn (string $name): bool => str_contains($name, 'Pagination') || str_ends_with($name, 'Page'),
+    );
+
+    // A scan that matched nothing would pass forever. These routes publish four pages and five members
+    // between them; the floor sits well under that, so ordinary work never trips it and a scanner that
+    // stopped recognising a minted name still fails loudly.
+    expect(count($minted))->toBeGreaterThanOrEqual(6);
+
+    foreach ($minted as $name) {
+        expect($schemas[$name]['description'] ?? null)
+            ->toBeString($name.' says nothing about itself')
+            ->not->toBe('', $name.' says nothing about itself');
+    }
+
+    // Two item types paginated the same way read the same, and two kinds of page do not: the sentence
+    // is a fact about the paginator, so adding or renaming a resource can never rewrite it.
+    expect($schemas['AuthorResourcePage']['description'])->toBe($schemas['ArticleResourcePage']['description'])
+        ->and($schemas['ArticleResourceCursorPage']['description'])->not->toBe($schemas['ArticleResourcePage']['description']);
+});
+
 it('lands two item types paginated the same way on one set of envelope members', function (): void {
     $document = generateDocument()->document->toArray();
     $schemas = $document['components']['schemas'];
@@ -154,12 +184,15 @@ it('serves the page components from a warm cache byte-identically', function ():
 });
 
 it('restores the inline envelope byte-for-byte when hoisting is off', function (): void {
-    $hoisted = generateDocument()->document->toArray();
-    $inline = generateDocument(function (array $raw): array {
+    // Read through the emitter: the claim below is about emitted BYTES, and only the canonicalizer
+    // settles member order — a component and an operation body reach the document by different routes
+    // and state one schema's keywords in whatever order each was built in.
+    $hoisted = emittedArray(generateDocument());
+    $inline = emittedArray(generateDocument(function (array $raw): array {
         $raw['representation']['pagination']['components'] = false;
 
         return $raw;
-    })->document->toArray();
+    }));
 
     $body = static fn (array $document, string $action): array => $document['paths']['/api/zz-pages-'.$action]['get']['responses']['200']['content']['application/json']['schema'];
 

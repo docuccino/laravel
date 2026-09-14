@@ -348,6 +348,7 @@
         "x-docuccino": {
           "id": "sch:v1:ml6bn2m2gvl7a5fe"
         },
+        "description": "One page of results, with links to the pages around it and totals for the whole result set.",
         "type": "object",
         "properties": {
           "data": {
@@ -389,8 +390,9 @@
       },
       "PaginationLinks": {
         "x-docuccino": {
-          "id": "sch:v1:cn3i5qf4y7huo2hk"
+          "id": "sch:v1:ziy4rsrw65knnpeh"
         },
+        "description": "URLs for the first, last, previous and next pages of this result set; null where there is no such page.",
         "type": "object",
         "properties": {
           "first": {
@@ -421,8 +423,9 @@
       },
       "PaginationMeta": {
         "x-docuccino": {
-          "id": "sch:v1:ex4annm3ko66tkrv"
+          "id": "sch:v1:t4gugvq46cfzr4or"
         },
+        "description": "Where this page sits in the result set: the page number and size, the number of the last page, the record total, the index of the first and last record on this page, and the base URL its page links are built from.",
         "type": "object",
         "properties": {
           "current_page": {
@@ -463,7 +466,7 @@
     "document": {
       "id": "doc:qb-list",
       "configHash": "ec45f90ff9da3b7d3c9f334a29bd4914e590195beb24cfb9113527bb1ee14e78",
-      "contentHash": "96cd139c009984b8e0133a2c02d3075037f4bb6874b607ad73d89b42255fcf1c"
+      "contentHash": "2e54c6815f32135537e69bff979df82dbaf7af99578b3462e2771d9986e08145"
     },
     "generator": {
       "name": "docuccino/laravel",

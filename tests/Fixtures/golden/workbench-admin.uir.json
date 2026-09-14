@@ -129,6 +129,7 @@
         "x-docuccino": {
           "id": "sch:v1:xxkbfhrj65orbrgo"
         },
+        "description": "Where a widget stands in its publication lifecycle.",
         "type": "string",
         "enum": [
           "draft",
@@ -157,7 +158,7 @@
     "document": {
       "id": "doc:admin",
       "configHash": "f7ea3a4314fc0a4ece2303d4e9a87bb93318ea2d6fd4c67951fa4bab3284a741",
-      "contentHash": "d933007772756502c45ca9d257ceaf17fd273e259b9229f110be194bb4b80e05"
+      "contentHash": "d5cf5081db04526072baf759bb4f56247ca1c864c43425d957e88c8fc4e345ef"
     },
     "generator": {
       "name": "docuccino/laravel",

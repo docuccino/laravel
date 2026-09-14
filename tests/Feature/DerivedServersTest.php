@@ -136,6 +136,47 @@ it('lets a host-bound operation inherit the derived scheme and base path', funct
         ->and($document['paths']['/api/moderation']['get']['servers'])->toBe([['url' => 'http://admin.acme.com/v2']]);
 });
 
+/*
+ * The other end of the same rule. `Route::domain()` accepts a scheme and the framework strips THAT and
+ * nothing else, so a domain read out of an environment value arrives with whatever was in front of the
+ * host still attached — and the operation server is assembled by concatenation, not by rebuilding from
+ * the parts the way the derived root entry is. An operation server is an address a client dials, so it
+ * publishes without the credentials and says so.
+ */
+function credentialedDomainRoutes(): callable
+{
+    return static function (Router $router): void {
+        $router->get('api/forms', [FormController::class, 'index']);
+        $router->domain('svc:s3cr3t@admin.acme.com')->get('api/moderation', [FormController::class, 'index']);
+    };
+}
+
+it('publishes no credentials in the server URL a host-bound route names', function (): void {
+    config()->set('app.url', 'https://api.acme.com');
+
+    $result = localityBuild(credentialedDomainRoutes());
+    $document = emittedArray($result);
+
+    expect($document['paths']['/api/moderation']['get']['servers'])->toBe([['url' => 'https://admin.acme.com']]);
+
+    $reported = array_values(array_filter(
+        $result->diagnostics,
+        static fn ($diagnostic): bool => $diagnostic->code === MachineDependentValue::CREDENTIALS_CODE,
+    ));
+
+    expect($reported)->toHaveCount(1)
+        ->and($reported[0]->message)->toContain("the route's own domain");
+
+    // The whole document, not only the server it was stripped from: the domain also seeds an
+    // operationId and a route key, and a secret reaching any of those is the same leak.
+    expect(json_encode($document))->not->toContain('s3cr3t');
+
+    foreach ($result->diagnostics as $diagnostic) {
+        expect($diagnostic->message)->not->toContain('s3cr3t')
+            ->and((string) $diagnostic->help)->not->toContain('s3cr3t');
+    }
+});
+
 it('serves a warm build the same bytes and diagnostics as a cold one', function (): void {
     config()->set('app.url', 'https://api.acme.com');
 

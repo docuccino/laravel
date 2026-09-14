@@ -23,6 +23,12 @@ use Docuccino\Laravel\Support\ListValueNames;
  * A rule listing a SUBSET keeps its own values: the component's set is wider than what this endpoint
  * accepts, and referencing it would mark values valid that the server rejects.
  *
+ * A field publishing the whole set INLINE — the enum-components policy off, so there is no component
+ * anywhere — still carries the sentence the enum states about itself, because one enum is one described
+ * type however a document reaches it. A SUBSET carries none: the field's `enum` is a narrower domain
+ * than the one that sentence is about, and prose describing a set the field does not publish is the
+ * confident-but-wrong answer the same rule refuses the `$ref` for.
+ *
  * The set is decorated like every other value set the document publishes ({@see EnumDecoration}):
  * a validation rule is a closed set the application enforces, so it owes the same SDK member names a
  * component enum and an allow-list parameter carry — without them a generated client has values and
@@ -70,7 +76,9 @@ final class ChoiceRuleTransformer implements RuleTransformer
             $context->dependsOn($file);
         }
 
-        $reference = $this->reference($enum, $rule->note, $context);
+        $wholeEnum = $this->wholeEnum($enum, $rule->note);
+
+        $reference = $wholeEnum === null ? null : $this->reference($wholeEnum, $context);
         if ($reference !== null) {
             // The component states the type, the values and their whole vocabulary. Setting any of it
             // here as well would publish one fact in two places — which is the duplication the
@@ -82,40 +90,28 @@ final class ChoiceRuleTransformer implements RuleTransformer
 
         $field->set('enum', $enum);
         $this->decorate($enum, $rule->note, $field, $context);
-    }
 
-    /**
-     * The `$ref` this field publishes instead of its own copy of the set, or null where it keeps one:
-     * no enum class behind the rule, a class the policy does not hoist, or — the one that matters —
-     * a rule stating FEWER cases than the enum has. A subset is a narrower domain than the component
-     * publishes, and referencing it would tell a consumer the server accepts values it rejects.
-     *
-     * @param  list<int|string>  $enum
-     * @return array<string, string>|null
-     */
-    private function reference(array $enum, ?string $note, SchemaContext $context): ?array
-    {
-        if ($note === null || ! $this->statesEveryCase($enum, $note) || ! EnumComponent::hoists($note, $context)) {
-            return null;
+        if ($wholeEnum !== null) {
+            $this->describe($wholeEnum, $field, $context);
         }
-
-        $body = EnumComponent::body($note, $context);
-
-        return $body === null ? null : EnumComponent::reference($note, $body, $context);
     }
 
     /**
-     * Whether the rule's values are the enum's whole case set. Compared as SETS — a rule may list them
-     * in any order and still be the same domain — but never as a subset: `Rule::enum(X::class)->only(…)`
-     * accepts fewer values than the component publishes, and a `$ref` to it would tell a consumer the
-     * server takes values it will reject.
+     * The enum class whose WHOLE case set this rule publishes, or null where none does: no enum class
+     * behind the rule, or — the one that matters — a rule stating FEWER cases than the enum has.
+     * Compared as SETS, since a rule may list them in any order and still be the same domain.
+     *
+     * The one question both the `$ref` and the enum's own sentence hang off, because both are facts
+     * about the enum's whole domain: `Rule::enum(X::class)->only(…)` publishes a narrower one, so a
+     * `$ref` to the component would tell a consumer the server takes values it rejects, and the
+     * sentence would describe a set this field does not accept.
      *
      * @param  list<int|string>  $enum
      */
-    private function statesEveryCase(array $enum, string $fqcn): bool
+    private function wholeEnum(array $enum, ?string $fqcn): ?string
     {
-        if (! enum_exists($fqcn)) {
-            return false;
+        if ($fqcn === null || ! enum_exists($fqcn)) {
+            return null;
         }
 
         $cases = array_map(strval(...), EnumReflection::values($fqcn));
@@ -124,7 +120,43 @@ final class ChoiceRuleTransformer implements RuleTransformer
         sort($cases);
         sort($stated);
 
-        return $cases !== [] && $cases === $stated;
+        return $cases !== [] && $cases === $stated ? $fqcn : null;
+    }
+
+    /**
+     * The `$ref` this field publishes instead of its own copy of the set, or null where the policy does
+     * not hoist this class — an un-autoloadable enum, or `enums.components` off.
+     *
+     * @return array<string, string>|null
+     */
+    private function reference(string $fqcn, SchemaContext $context): ?array
+    {
+        if (! EnumComponent::hoists($fqcn, $context)) {
+            return null;
+        }
+
+        $body = EnumComponent::body($fqcn, $context);
+
+        return $body === null ? null : EnumComponent::reference($fqcn, $body, $context);
+    }
+
+    /**
+     * The sentence the enum states about itself, onto a field publishing its set inline — where no
+     * component exists to carry it, so the field does or nothing does. Read and refused by
+     * {@see EnumComponent::description()} on the same terms as any other schema class's.
+     *
+     * A description already on the field is this field's own and outranks the type's; a `#[RuleSchema]`
+     * one arrives after this rule ({@see RuleOrdering}) and appends to this, as it appends to any note an
+     * earlier rule left — which is the `$ref` form's two descriptions flattened into the one slot an
+     * inline field has.
+     */
+    private function describe(string $fqcn, ValidationField $field, SchemaContext $context): void
+    {
+        $description = EnumComponent::description($fqcn, $context);
+
+        if ($description !== null && ! $field->has('description')) {
+            $field->set('description', $description);
+        }
     }
 
     /**

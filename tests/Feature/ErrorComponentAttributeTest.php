@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Draft\ResponseDraft;
+use Docuccino\Core\Emit\UirEmitter;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\ExceptionToResponse;
+use Docuccino\Core\Extensions\Schema\ClassAnnotations;
 use Docuccino\Core\Extensions\Schema\ComponentRegistry;
 use Docuccino\Core\Inference\ActionAnalysis;
 use Docuccino\Core\Inference\ThrowConfidence;
@@ -14,17 +16,27 @@ use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Patch\Contribution;
 use Docuccino\Core\Pipeline\GenerationResult;
+use Docuccino\Laravel\Exceptions\DeclaredErrorComponent;
 use Docuccino\Laravel\Facades\Docuccino;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\BaseNamedController;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\DeclaredErrorsController;
+use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\DescribedMissingException;
+use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\DoublyDescribedException;
+use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\EmptyDescribedException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\EscapedNameException;
+use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\FileDescribedException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\HttpConflictException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\InheritedApiException;
+use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\InheritedDescribedException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\InheritingErrorsController;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\MalformedNameException;
+use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\MistypedDescriptionException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\MistypedNameException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\OtherThingMissingException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\OverridingApiException;
+use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\RedescribedMissingException;
+use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\RenamedDescribedException;
+use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\RequestDescribedException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\ThingMissingException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\UndeclaredException;
 use Docuccino\Laravel\Tests\Fixtures\DeclaredErrors\ValidationFailedException;
@@ -902,4 +914,314 @@ it('leaves a response that is only a reference for its component to name', funct
         ->and($response['$ref'])->toBe('#/components/responses/SharedConflict')
         ->and($response['x-docuccino']['facts'] ?? [])->not->toHaveKey('component')
         ->and($document['components']['responses'])->not->toHaveKey('ResourceMissing');
+});
+
+/*
+ * What an exception class SAYS about the error it names.
+ *
+ * `#[ErrorComponent]` gives the shared component a name a consumer can catch; `#[Description]` beside it
+ * gives that name a meaning. OpenAPI holds `description` on any Schema Object, and
+ * `SchemaClassAttributes::HONOURED` already promises `#[Description]` is read as the schema description
+ * of every schema class — so a schema class that publishes nothing from one is the odd case, not the
+ * other way round. Somebody catching `ResourceMissing` in a generated client cannot see the codebase,
+ * and a type with no sentence beside it tells them only its status.
+ *
+ * The one rule everything below follows: the sentence comes from the SAME declaration that produced the
+ * NAME. The component is deduped by body and named for a cause, so a sentence settled any other way ends
+ * up describing a different cause's error under this one's name.
+ */
+
+/** The description published on a schema component, or null where it publishes none. */
+function describedComponent(array $document, string $name): ?string
+{
+    $description = $document['components']['schemas'][$name]['description'] ?? null;
+
+    return is_string($description) ? $description : null;
+}
+
+it('publishes what the exception class declaring the name says the error is', function (): void {
+    $document = declaringBuild([
+        'first' => [DescribedMissingException::class, 409],
+        'second' => [DescribedMissingException::class, 409],
+    ])->document->toArray();
+
+    expect(describedComponent($document, 'ResourceMissing'))
+        ->toBe('No record matches the identifier in the path.')
+        // On the SCHEMA, which is the type a generated client is written against. The response component
+        // keeps the wording its arms state, which `spoken()` settles and this does not touch.
+        ->and($document['components']['responses']['ResourceMissing']['description'])->toBe('Conflict');
+});
+
+it('publishes no description for an exception class that names its error and says nothing about it', function (): void {
+    // The control. An absent sentence is the honest answer for a class that wrote none, and the name is
+    // published exactly as it was before there was a sentence to publish at all.
+    $document = declaringBuild([
+        'first' => [ThingMissingException::class, 409],
+        'second' => [ThingMissingException::class, 409],
+    ])->document->toArray();
+
+    expect($document['components']['schemas'])->toHaveKey('ResourceMissing')
+        ->and(describedComponent($document, 'ResourceMissing'))->toBeNull();
+});
+
+it('keeps the sentence where one class states it and another naming the same error states none', function (): void {
+    // Silence is not dissent. A class that describes nothing has no wording of its own to lose, so it
+    // takes the one the rest of the name's claimants agreed on — the rule a shared response's prose
+    // already follows, one bucket over.
+    $result = declaringBuild([
+        'first' => [DescribedMissingException::class, 409],
+        'second' => [ThingMissingException::class, 409],
+    ]);
+
+    expect(describedComponent($result->document->toArray(), 'ResourceMissing'))
+        ->toBe('No record matches the identifier in the path.')
+        ->and(diagnosticsCoded($result->diagnostics, 'components.description-conflict'))->toBeEmpty();
+});
+
+it('publishes no description where two classes naming one error describe it differently, and warns', function (): void {
+    // Two causes spelled one name and disagree about what it means. Publishing either would put one
+    // author's sentence on a type the other also named, and which one won would depend on which routes
+    // the application happens to have — the defect the naming ladder exists to prevent, one field over.
+    // A Schema Object's `description` is OPTIONAL, so unlike a response's wording this can refuse: absent
+    // is vague and true, and the reader is told so rather than left hunting for a sentence they wrote.
+    $result = declaringBuild([
+        'first' => [DescribedMissingException::class, 409],
+        'second' => [RedescribedMissingException::class, 409],
+    ]);
+    $document = $result->document->toArray();
+    $conflict = diagnosticsCoded($result->diagnostics, 'components.description-conflict');
+
+    expect($document['components']['schemas'])->toHaveKey('ResourceMissing')
+        ->and(describedComponent($document, 'ResourceMissing'))->toBeNull()
+        ->and($conflict)->toHaveCount(1)
+        ->and($conflict[0]->severity)->toBe(Severity::Warning)
+        ->and($conflict[0]->message)->toContain('ResourceMissing')
+        ->and($conflict[0]->message)->toContain('No record matches the identifier in the path.')
+        ->and($conflict[0]->message)->toContain('The record was removed and will not come back.')
+        // The NAME is untouched: the disagreement is about prose, and prose has never decided identity
+        // here, so nothing climbed the ladder and no client's type was renamed.
+        ->and(diagnosticsCoded($result->diagnostics, 'components.name-collision'))->toBeEmpty();
+});
+
+it('inherits both halves from a base exception that declares them', function (): void {
+    // The same walk the name takes: an application base naming and describing its error once is the shape
+    // worth serving, and a subclass that declares nothing is that error.
+    $document = declaringBuild([
+        'first' => [InheritedDescribedException::class, 409],
+        'second' => [InheritedDescribedException::class, 409],
+    ])->document->toArray();
+
+    expect($document['components']['schemas'])->toHaveKey('DescribedFailure')
+        ->and(describedComponent($document, 'DescribedFailure'))->toBe('The request could not be completed.');
+});
+
+it('leaves a base\'s sentence behind when a subclass renames the error', function (): void {
+    // The rule that makes the whole thing safe, at the one place it costs something. `RenamedFailure` is a
+    // different error from the `DescribedFailure` the base describes, so the base's sentence is not about
+    // it — carrying it down would publish prose about one error on another's type, which is worse than no
+    // prose at all. The price is a subclass that renames and describes nothing publishing nothing, and
+    // there is deliberately no diagnostic: a base describing the error IT names while its subclasses name
+    // their own is correct, so a report would fire at every throw where the author has nothing to fix.
+    $result = declaringBuild([
+        'first' => [RenamedDescribedException::class, 409],
+        'second' => [RenamedDescribedException::class, 409],
+    ]);
+    $document = $result->document->toArray();
+
+    expect($document['components']['schemas'])->toHaveKey('RenamedFailure')
+        ->and(describedComponent($document, 'RenamedFailure'))->toBeNull()
+        ->and($document['components']['schemas'])->not->toHaveKey('DescribedFailure')
+        ->and(json_encode($document))->not->toContain('The request could not be completed.')
+        ->and(diagnosticsCoded($result->diagnostics, 'components.description-conflict'))->toBeEmpty();
+});
+
+it('refuses a #[Description] a schema cannot hold and says which form it was', function (string $case, string $exception, string $component, string $code, string $fragment): void {
+    // Every form `DescribedText` refuses, through this anchor — one row per form, so a form that stopped
+    // being refused here fails rather than quietly publishing something an operation-level declaration
+    // meant. `file:` in particular: no application root reaches a schema mapper to resolve a path
+    // against, so it is refused here for exactly the reason it is refused on a property.
+    $result = declaringBuild([
+        'first' => [$exception, 409],
+        'second' => [$exception, 409],
+    ]);
+    $document = $result->document->toArray();
+    $refused = diagnosticsCoded($result->diagnostics, $code);
+
+    expect($document['components']['schemas'])->toHaveKey($component)
+        ->and(describedComponent($document, $component))->toBeNull()
+        // One per route the class is signalled from, riding that route's fragment like every other.
+        ->and($refused)->toHaveCount(2)
+        ->and($refused[0]->severity)->toBe(Severity::Warning)
+        ->and($refused[0]->message)->toContain($exception)
+        ->and($refused[0]->message)->toContain($fragment)
+        // Sited where the author has to go: the file the attribute is written in, and the route that
+        // asked. The reader alone cannot say either, so the adapter adds them.
+        ->and($refused[0]->source?->file)->toContain('Exception.php')
+        ->and($refused[0]->routeSignature)->toContain('zz-declared');
+})->with([
+    ['a markdown file', FileDescribedException::class, 'FileDescribed', 'attribute.property-unsupported', '#[Description(file: …)]'],
+    ['a request body', RequestDescribedException::class, 'RequestDescribed', 'attribute.property-unsupported', '#[Description(request: true)]'],
+    ['neither text nor file', EmptyDescribedException::class, 'EmptyDescribed', 'attribute.description-unusable', 'neither `text:` nor `file:`'],
+]);
+
+it('documents a route whose exception mistyped the #[Description], and prints no path into the document', function (): void {
+    // The sibling of the mistyped `#[ErrorComponent]` row above, and it owes the same discipline:
+    // `#[Description(5)]` cannot be constructed, and the `TypeError` that says so names the absolute file
+    // it was written in. The reader swallows it, so the class simply described nothing.
+    $result = declaringBuild([
+        'first' => [MistypedDescriptionException::class, 409],
+        'second' => [MistypedDescriptionException::class, 409],
+    ]);
+    $document = $result->document->toArray();
+
+    $failed = array_values(array_filter(
+        diagnosticsCoded($result->diagnostics, 'route.build-failed'),
+        static fn ($diagnostic): bool => str_contains((string) $diagnostic->routeSignature, 'zz-declared'),
+    ));
+
+    expect($failed)->toBeEmpty()
+        // The name it declared still publishes: one broken attribute does not cost the other.
+        ->and($document['components']['schemas'])->toHaveKey('MistypedDescription')
+        ->and(describedComponent($document, 'MistypedDescription'))->toBeNull()
+        ->and(json_encode($document))->not->toContain(dirname(__DIR__, 4));
+});
+
+it('describes only the component the declaration named, not a body sharing its status', function (): void {
+    // An undeclared body keys on its status alone and publishes what it always published. A sentence
+    // written about `ResourceMissing` has nothing to say about the `Conflict` beside it, and the two
+    // never meet: the claim is in the schema's dedupe scope, so they are different buckets.
+    $document = declaringBuild([
+        'first' => [DescribedMissingException::class, 409],
+        'second' => [UndeclaredException::class, 409],
+    ])->document->toArray();
+
+    expect(describedComponent($document, 'ResourceMissing'))
+        ->toBe('No record matches the identifier in the path.')
+        ->and($document['components']['schemas'])->toHaveKey('Conflict')
+        ->and(describedComponent($document, 'Conflict'))->toBeNull();
+});
+
+it('does not move an operation an exception it never throws learns to describe', function (): void {
+    // Locality. Two unrelated routes starting to publish a described 409 must leave the workbench form
+    // route's own 404 byte-identical.
+    assertUnaffectedByUnrelatedRoute(
+        declaringRoutes(),
+        static function (Router $router): void {
+            $router->get('api/zz-declared-first', [DeclaredErrorsController::class, 'first']);
+            $router->get('api/zz-declared-second', [DeclaredErrorsController::class, 'second']);
+        },
+        'GET /api/forms/{form}',
+        declaringEngine([
+            'first' => [DescribedMissingException::class, 409],
+            'second' => [DescribedMissingException::class, 409],
+        ]),
+    );
+});
+
+it('publishes the same description and the same diagnostics on a warm fragment-cache build', function (): void {
+    // The sentence is read while a route is built, so it travels on that route's fragment or not at all —
+    // and the file it came from is already keyed, because the class that declares the name is in the
+    // hierarchy whose files this route records. A warm hit that lost either half would publish a
+    // described component cold and a bare one warm.
+    $engine = declaringEngine([
+        'first' => [DescribedMissingException::class, 409],
+        'second' => [DescribedMissingException::class, 409],
+    ]);
+
+    $warm = assertWarmEqualsCold(declaringRoutes('first'), declaringRoutes('first', 'second'), $engine);
+
+    expect(describedComponent($warm->document->toArray(), 'ResourceMissing'))
+        ->toBe('No record matches the identifier in the path.');
+});
+
+it('replays a refused #[Description]\'s warning on a warm fragment-cache build', function (): void {
+    // A warm build reporting less than a cold one is a silent degradation: the author fixes the
+    // declaration they were told about and never hears about the one they were not.
+    $engine = declaringEngine([
+        'first' => [FileDescribedException::class, 409],
+        'second' => [FileDescribedException::class, 409],
+    ]);
+
+    $warm = assertWarmEqualsCold(declaringRoutes('first'), declaringRoutes('first', 'second'), $engine);
+
+    expect(diagnosticsCoded($warm->diagnostics, 'attribute.property-unsupported'))->toHaveCount(2);
+});
+
+/**
+ * What EVERY form of a `#[Description]` on a class must publish and report, stated here and not asked of
+ * any reader — `[case, exception class, the sentence a schema publishes, the codes it raises]`.
+ *
+ * The domain is the declaration's own parameter space: `text:` and `file:` present or absent is four
+ * combinations, `request:` adds the one case that only arises beside a text, and an argument PHP cannot
+ * construct is the fifth thing an author can write. Nothing else is reachable, so these rows are the
+ * whole of it.
+ *
+ * @return list<array{string, class-string, ?string, list<string>}>
+ */
+function classSentenceContract(): array
+{
+    return [
+        ['text alone', DescribedMissingException::class, 'No record matches the identifier in the path.', []],
+        ['no declaration', ThingMissingException::class, null, []],
+        ['file alone', FileDescribedException::class, null, ['attribute.property-unsupported']],
+        ['text and file', DoublyDescribedException::class, null, ['attribute.description-unusable']],
+        ['neither text nor file', EmptyDescribedException::class, null, ['attribute.description-unusable']],
+        ['text with request', RequestDescribedException::class, null, ['attribute.property-unsupported']],
+        ['an argument PHP cannot construct', MistypedDescriptionException::class, null, []],
+    ];
+}
+
+it('reads a class\'s own sentence the same way wherever the product publishes one', function (string $case, string $fqcn, ?string $published, array $codes): void {
+    // Two publishers read one fact: a schema minted for a class, and the shared error component an
+    // exception class names. Covering both is not the same as their AGREEING, so this asserts they agree
+    // — against the table above rather than against either of them, since a guard that asks the code for
+    // its own rule agrees with whatever the code does.
+    $diagnostics = [];
+    [$schema] = ClassAnnotations::describe([], $fqcn);
+    ClassAnnotations::stated($fqcn, $diagnostics);
+
+    // The schema-class publisher.
+    expect($schema['description'] ?? null)->toBe($published)
+        ->and(array_map(static fn ($d): string => $d->code, $diagnostics))->toBe($codes);
+
+    // The error-component publisher, through the whole adapter.
+    $declaration = DeclaredErrorComponent::on($fqcn);
+    $result = declaringBuild(['first' => [$fqcn, 409], 'second' => [$fqcn, 409]]);
+    $document = $result->document->toArray();
+    $component = $declaration?->name ?? 'Conflict';
+
+    $raised = array_values(array_unique(array_map(
+        static fn ($d): string => $d->code,
+        array_filter($result->diagnostics, static fn ($d): bool => str_starts_with($d->code, 'attribute.') && str_contains($d->message, $fqcn)),
+    )));
+
+    expect($document['components']['schemas'])->toHaveKey($component)
+        ->and(describedComponent($document, $component))->toBe($published)
+        ->and($raised)->toBe($codes);
+})->with(classSentenceContract());
+
+it('byte-locks a document whose error components say what they are', function (): void {
+    // The corpus had no document in this population at all: no golden carried an `#[ErrorComponent]` on an
+    // exception class, so nothing in it could move when a described one started publishing. Both halves of
+    // the rule are here — a class that names and describes its own error, and a base that does both for a
+    // subclass declaring neither — over a warm build, which is where a fact read while a route was built
+    // is easiest to lose.
+    $engine = declaringEngine([
+        'first' => [DescribedMissingException::class, 409],
+        'second' => [DescribedMissingException::class, 409],
+        'third' => [InheritedDescribedException::class, 410],
+        'fourth' => [InheritedDescribedException::class, 410],
+    ]);
+
+    $warm = assertWarmEqualsCold(
+        declaringRoutes('first', 'third'),
+        declaringRoutes('first', 'second', 'third', 'fourth'),
+        $engine,
+    );
+    $document = $warm->document->toArray();
+
+    expect(describedComponent($document, 'ResourceMissing'))->toBe('No record matches the identifier in the path.')
+        ->and(describedComponent($document, 'DescribedFailure'))->toBe('The request could not be completed.');
+
+    assertGolden('workbench-described-error.uir.json', (new UirEmitter)->emit($warm->document));
 });
