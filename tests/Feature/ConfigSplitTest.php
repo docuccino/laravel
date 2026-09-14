@@ -6,6 +6,7 @@ use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Laravel\Config\ConfigSplit;
 use Docuccino\Laravel\Pipeline\DocumentBuilder;
 use Docuccino\Laravel\Tests\Support\BuildSettings;
+use Docuccino\Laravel\Tests\Support\FrameworkConfig;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 
 /**
@@ -46,9 +47,10 @@ it('refuses to build an application whose settings are all still in the framewor
         ->and($errors[0]->message)->toContain('2 settings the build no longer reads')
         ->and($errors[0]->message)->toContain('documents.default.routes')
         ->and($errors[0]->message)->toContain('on_route_error')
-        // The remedy names the command that carries the settings over, and not the one that publishes
-        // defaults: `docuccino:install` would write a file with none of these in it.
-        ->and($errors[0]->help)->toContain('docuccino:migrate-config');
+        // The remedy is the move itself, named as a move: `docuccino:install` publishes a file with
+        // none of these in it, so pointing at it here would answer with the wrong document.
+        ->and($errors[0]->help)->toContain('Write the settings you still want into docuccino.yaml')
+        ->and($errors[0]->help)->toContain('delete them from config/docuccino.php');
 });
 
 it('names the two files one report each, not one per key, and counts what it does not name', function (): void {
@@ -105,6 +107,56 @@ it('says nothing about a framework config trimmed to what the framework reads', 
     expect(ConfigSplit::staleKeys())->toBe([])
         ->and(configSplitDiagnostics('config.stale-php-keys'))->toBe([])
         ->and(configSplitDiagnostics('config.not-migrated'))->toBe([]);
+});
+
+it('names every build setting a populated framework config holds, and none the framework keeps', function (): void {
+    // What the report and `docuccino:install` both print as the COMPLETE list of what to move, read
+    // against a `config/docuccino.php` of the shape the last release shipped — every build setting set,
+    // and a document carrying nothing but a viewer. A key this misses is a setting its author is never
+    // told about and silently stops having.
+    //
+    // Stated independently of the split: the framework's three keys are written out, and everything
+    // else in the file at the depth they are decided at is a build key. A guard that asked ConfigSplit
+    // which keys it owns would agree with whatever it answered.
+    BuildSettings::none();
+    config()->set('docuccino', FrameworkConfig::populated());
+
+    $expected = [];
+    foreach (FrameworkConfig::populated() as $key => $value) {
+        if ($key === 'enabled') {
+            continue;
+        }
+
+        if ($key === 'cache') {
+            foreach (array_keys((array) $value) as $inner) {
+                if ($inner !== 'store') {
+                    $expected[] = 'cache.'.$inner;
+                }
+            }
+
+            continue;
+        }
+
+        if ($key === 'documents') {
+            foreach ((array) $value as $document => $bag) {
+                foreach (array_keys((array) $bag) as $inner) {
+                    if ($inner !== 'viewer') {
+                        $expected[] = 'documents.'.$document.'.'.$inner;
+                    }
+                }
+            }
+
+            continue;
+        }
+
+        $expected[] = $key;
+    }
+
+    sort($expected, SORT_STRING);
+
+    expect(ConfigSplit::staleKeys())->toBe($expected)
+        // A corpus that stopped holding build settings would make the comparison above vacuous.
+        ->and(count($expected))->toBeGreaterThan(10);
 });
 
 it('publishes the four codes this file names, under those names', function (): void {

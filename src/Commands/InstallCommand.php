@@ -30,11 +30,10 @@ use Illuminate\Support\Facades\URL;
  *
  * The config half is timid: an existing configuration file is a decision somebody made, and neither
  * of the two is ever replaced without `--force`. Build settings still sitting in `config/docuccino.php`
- * are a decision too, so an application holding those gets `docuccino.yaml` written from THEM — by
- * {@see MigrateConfigCommand}, which owns that — rather than from the shipped defaults. Everything
- * else here is a read, so a second run reports the same and changes nothing. None of it is a
- * diagnostic — a diagnostic tells the document's author about the document, and this tells an operator
- * about their machine ({@see ExplainCommand} set the precedent).
+ * are a decision too, so an application holding those gets nothing written over them — it gets told
+ * what is there and what to move. Everything else here is a read, so a second run reports the same and
+ * changes nothing. None of it is a diagnostic — a diagnostic tells the document's author about the
+ * document, and this tells an operator about their machine ({@see ExplainCommand} set the precedent).
  */
 final class InstallCommand extends Command
 {
@@ -43,6 +42,9 @@ final class InstallCommand extends Command
 
     /** How many route prefixes are worth listing when nothing matched. */
     private const int PREFIX_LIMIT = 8;
+
+    /** Set where the configuration file was withheld, because an export from here cannot succeed. */
+    private bool $withheld = false;
 
     protected $signature = 'docuccino:install
         {--force : Replace existing configuration files with the shipped defaults}
@@ -106,8 +108,8 @@ final class InstallCommand extends Command
         $path = $this->projectPath($publisher->target());
         $existed = $publisher->published();
 
-        if (! $existed && $this->option('force') !== true && $this->owesMigration($publisher)) {
-            return $this->migrate($publisher);
+        if (! $existed && $this->option('force') !== true && $this->holdsStrayedSettings($publisher)) {
+            return $this->withhold();
         }
 
         if ($existed && $this->option('force') !== true) {
@@ -140,41 +142,51 @@ final class InstallCommand extends Command
      * document is assembled from defaults, and the `config.stale-php-keys` warning that follows tells
      * its reader to delete the only remaining copy of what they configured.
      */
-    private function owesMigration(ConfigPublisher $publisher): bool
+    private function holdsStrayedSettings(ConfigPublisher $publisher): bool
     {
         return basename($publisher->target()) === ConfigFile::NAME && ConfigSplit::staleKeys() !== [];
     }
 
     /**
-     * Write that file from the settings the application already has, by running the one command that
-     * knows how — rather than holding a second opinion about what belongs in it.
+     * Say what is in the way and write nothing, which is the whole of what this can honestly do.
      *
-     * Its exit code is not read: a setting it could not carry over is news for the operator, not a
-     * reason for the setup to stop. Whether the file arrived is read instead, because every step after
-     * this one reports on a configuration the application would not have.
+     * Reading those settings back out is not setup's to attempt: the values `config()` hands over have
+     * had their `env()` calls resolved away and a closure or an enum case has no form in the file at
+     * all, so a file written from here would be a confident guess at a configuration its author is
+     * still holding the only copy of. Naming the keys and leaving both files alone is the recoverable
+     * answer — and `config.not-migrated` goes on refusing builds until it is done, so nothing about
+     * this state is quiet.
+     *
+     * True, because setup carries on: the routes and engine below are worth reporting on an
+     * application in any config state, and only the export is withheld with the file.
      */
-    private function migrate(ConfigPublisher $publisher): bool
+    private function withhold(): bool
     {
         $stale = ConfigSplit::staleKeys();
 
         $this->line(sprintf(
-            'config/docuccino.php holds %d build setting%s the build no longer reads, so %s is written',
+            'config/docuccino.php holds %d build setting%s the build no longer reads, and there is no %s,',
             count($stale),
             count($stale) === 1 ? '' : 's',
             ConfigFile::NAME,
         ));
-        $this->line('from those rather than from the shipped defaults.');
+        $this->line('so nothing was written here: the shipped defaults would have documented something else.');
         $this->newLine();
-
-        $this->call(MigrateConfigCommand::NAME);
-
-        if ($publisher->published()) {
-            return true;
+        $this->line(sprintf('Write %s yourself, with these settings under the same names:', ConfigFile::NAME));
+        foreach ($stale as $key) {
+            $this->line(sprintf('  <fg=gray>%s</>', TerminalText::of($key)));
         }
+        $this->newLine();
+        $this->line(sprintf(
+            '<fg=gray>Then delete them from config/docuccino.php, which keeps only %s.</>',
+            implode(', ', ConfigSplit::FRAMEWORK_KEYS),
+        ));
+        $this->line('<fg=gray>php artisan docuccino:install --force writes the shipped file to start from, and</>');
+        $this->line('<fg=gray>the configuration reference documents every setting there is.</>');
 
-        $this->error(sprintf('Could not write %s.', $this->projectPath($publisher->target())));
+        $this->withheld = true;
 
-        return false;
+        return true;
     }
 
     /**
@@ -317,6 +329,15 @@ final class InstallCommand extends Command
      */
     private function firstExport(): int
     {
+        // Not offered rather than offered and refused: the export would stop on `config.not-migrated`,
+        // and a prompt whose only answer is a failure is a worse way to say what was already said.
+        if ($this->withheld) {
+            $this->line(sprintf('Not yet — there is no %s to build from.', ConfigFile::NAME));
+            $this->line('<fg=gray>Write it as described above, then php artisan docuccino:export.</>');
+
+            return self::FAILURE;
+        }
+
         if ($this->option('no-export') === true || ! $this->confirm('Export one now?', true)) {
             $this->line('Skipped. <fg=gray>php artisan docuccino:export writes it when you are ready.</>');
 

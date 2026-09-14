@@ -5,12 +5,8 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Tests\Support;
 
 /**
- * A `config/docuccino.php` of the shape the last release shipped, for the two guards that need one:
- * the migration's round trip, and the report on the file it writes.
- *
- * Shared because the two are readings of one corpus. A migration whose output the build then reports
- * as naming no setting is exactly the state the command exists to clear, and a second copy of these
- * settings would let the two drift until only one of them noticed.
+ * A `config/docuccino.php` of the shape the last release shipped — the corpus the split is read
+ * against, since what an unmigrated application actually holds is the question every guard here asks.
  */
 final class FrameworkConfig
 {
@@ -19,9 +15,9 @@ final class FrameworkConfig
      * to something OTHER than its default, so a value that failed to travel shows up as a value and not
      * as a missing key.
      *
-     * `documents.public` carries a viewer and nothing else, which is the shape that proves a document key
-     * survives: everything in that bag belongs to the framework, so a migration reading only stray keys
-     * would delete the document and leave its viewer routed at nothing.
+     * `documents.public` carries a viewer and nothing else, which is the shape that proves the split is
+     * read one level into a document bag: everything in that bag belongs to the framework, and naming
+     * any of it would send its author to delete their own viewer.
      *
      * @return array<string, mixed>
      */

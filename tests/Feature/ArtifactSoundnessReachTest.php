@@ -109,12 +109,6 @@ function artifactSoundnessTable(): array
             'runnable' => null,
             'why' => 'Writes the two config files. Builds nothing. Not driven here: it writes into the project.',
         ],
-        'docuccino:migrate-config' => [
-            'emits' => false, 'reaches' => false, 'fails' => false,
-            'runnable' => null,
-            'why' => 'Moves build settings out of the PHP config file. Builds nothing. Not driven here: it '
-                .'rewrites config files.',
-        ],
         'viewer request' => [
             'emits' => true, 'reaches' => true, 'fails' => false,
             'runnable' => null,
@@ -184,7 +178,7 @@ it('holds a row for every registered command', function (): void {
     sort($tabled);
 
     // Anti-vacuity: a scan that matched nothing would agree with an empty table.
-    expect(count($registered))->toBeGreaterThanOrEqual(11)
+    expect(count($registered))->toBeGreaterThanOrEqual(10)
         ->and($tabled)->toBe($registered);
 });
 

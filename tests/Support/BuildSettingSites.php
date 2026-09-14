@@ -36,7 +36,6 @@ final class BuildSettingSites
         'Feature/DefaultDocumentTest.php' => 'plants build settings with no configuration file, to prove the build refuses rather than inventing a document',
         'Feature/UnreadConfigRefusalTest.php' => 'plants build settings with no configuration file, to prove every command refuses the same way',
         'Feature/InstallCommandTest.php' => 'plants build settings in the framework config, which is what install has to find there and report',
-        'Feature/MigrateConfigCommandTest.php' => 'plants build settings in the framework config, which is the input the migration exists to read',
     ];
 
     /**

@@ -119,8 +119,7 @@ it('replaces docuccino.yaml only when --force asks for it', function (): void {
 
 /**
  * An unmigrated application, with the publishers AND the project root pointed at one temp root — in a
- * real install they are the same directory, and the migration writes to the root rather than through a
- * publisher.
+ * real install they are the same directory.
  *
  * @return array{0: string, 1: string}
  */
@@ -142,23 +141,49 @@ function unmigratedInstallRoot(): array
     return [$root.'/'.ConfigFile::NAME, $root];
 }
 
-it('writes docuccino.yaml from the settings an application already has, not from the defaults', function (): void {
+it('writes no docuccino.yaml over settings an application already has, and names them instead', function (): void {
     // Build settings in `config/docuccino.php` are a decision somebody made, the same way an existing
     // file is. Publishing defaults over them would put a file on disk that stops the build refusing
     // and documents something else — and the warning that follows would then say to delete the only
-    // copy of what its author configured.
+    // copy of what its author configured. Reading them back out is not setup's to attempt either, so
+    // what is left is to say what is there and touch nothing.
     [$settings, $root] = unmigratedInstallRoot();
     $this->withoutMockingConsoleOutput();
 
     try {
-        expect($this->artisan('docuccino:install', ['--no-export' => true]))->toBe(0);
+        // Exit 1: the application is not set up, and a script that ran this has to hear so.
+        expect($this->artisan('docuccino:install', ['--no-export' => true]))->toBe(1);
 
         expect(Artisan::output())
             ->toContain('config/docuccino.php holds 2 build settings the build no longer reads')
-            ->toContain('Wrote docuccino.yaml')
-            ->and(file_get_contents($settings))->not->toBe(shippedSettings())
-            ->and((string) file_get_contents($settings))->toContain('api/v7/*')
-            ->and((string) file_get_contents($settings))->toContain('on_route_error: omit');
+            // Every key named, since this is the list its author has to work from — at the depth the
+            // split is decided at, which is one level into a document bag.
+            ->toContain('documents.default.routes')
+            ->toContain('on_route_error')
+            ->toContain('Write docuccino.yaml yourself')
+            // The rest of setup still ran: the routes and the engine are worth reporting either way.
+            ->toContain('Engine')
+            ->and(is_file($settings))->toBeFalse();
+    } finally {
+        @unlink($settings);
+        @unlink($root.'/config/docuccino.php');
+        @rmdir($root.'/config');
+        @rmdir($root);
+    }
+});
+
+it('does not offer a first export it knows would be refused', function (): void {
+    // The export would stop on `config.not-migrated` after a prompt whose only answer is a failure.
+    [$settings, $root] = unmigratedInstallRoot();
+    $this->withoutMockingConsoleOutput();
+
+    try {
+        // No `--no-export`: the prompt is what must not appear.
+        expect($this->artisan('docuccino:install'))->toBe(1);
+
+        expect(Artisan::output())
+            ->toContain('there is no docuccino.yaml to build from')
+            ->not->toContain('Export one now?');
     } finally {
         @unlink($settings);
         @unlink($root.'/config/docuccino.php');

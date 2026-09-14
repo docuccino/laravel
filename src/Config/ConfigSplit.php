@@ -94,79 +94,10 @@ final class ConfigSplit
     }
 
     /**
-     * The same settings as {@see staleKeys()}, nested the way `docuccino.yaml` nests them — what
-     * `docuccino:migrate-config` writes out.
-     *
-     * Two derivations of one rule, so which keys are build keys is decided in {@see strayed()} and
-     * nowhere else. A migration that read the split for itself would be a second opinion about it, and
-     * the two would disagree the first time a key moved between the files.
-     *
-     * One thing is added that {@see staleKeys()} has no reason to carry: a document that declares
-     * nothing but a viewer contributes no stray key at all, and dropping its KEY would delete the
-     * document — leaving its viewer registered against a document the build no longer defines. So the
-     * document set is preserved whole, and a document with no build settings of its own arrives as an
-     * empty bag, which is exactly what it is.
-     *
-     * @return array<string, mixed>
-     */
-    public static function buildSettings(): array
-    {
-        $strayed = self::strayed();
-
-        // Nothing strayed, nothing to write — and that has to be an EMPTY answer rather than a bare
-        // document set. An application whose framework config holds only what the framework keeps is
-        // migrated already, and handing back its document keys would read as settings to carry and put
-        // a file on disk for an application that needs none.
-        if ($strayed === []) {
-            return [];
-        }
-
-        $documents = [];
-        foreach (array_keys(Hydrate::map(config('docuccino.documents'))) as $document) {
-            $documents[$document] = [];
-        }
-
-        $settings = $documents === [] ? [] : ['documents' => $documents];
-
-        foreach ($strayed as $setting) {
-            $settings = self::nested($settings, $setting['path'], $setting['value']);
-        }
-
-        return $settings;
-    }
-
-    /**
-     * `$settings` with `$value` written at `$path`, creating the bags on the way and replacing whatever
-     * a segment held that was not one.
-     *
-     * @param  array<string, mixed>  $settings
-     * @param  list<string>  $path
-     * @return array<string, mixed>
-     */
-    private static function nested(array $settings, array $path, mixed $value): array
-    {
-        $segment = array_shift($path);
-
-        if ($segment === null) {
-            return $settings;
-        }
-
-        if ($path === []) {
-            $settings[$segment] = $value;
-
-            return $settings;
-        }
-
-        $settings[$segment] = self::nested(Hydrate::map($settings[$segment] ?? null), $path, $value);
-
-        return $settings;
-    }
-
-    /**
      * Every setting in `config/docuccino.php` that is not the framework's to keep, as the path it sits
      * at against the value written there.
      *
-     * THE definition of the split, read by both derivations above. The path is a list of segments and
+     * THE definition of the split, and the only place it is decided. The path is a list of segments and
      * never a dotted string, because a document key is an application's word and may hold a dot of its
      * own — joining here would make `documents.my.api.info` a path nothing could nest again.
      *
@@ -279,7 +210,7 @@ final class ConfigSplit
                 $names,
             ),
             help: sprintf(
-                'Delete them from config/docuccino.php, which keeps only %s. Nothing there is merged over %s — so if these never made it in, `php artisan docuccino:migrate-config --force` writes them there first.',
+                'Delete them from config/docuccino.php, which keeps only %s. Nothing there is merged over %s — so any of these you still want have to be written into it by hand first.',
                 implode(', ', self::FRAMEWORK_KEYS),
                 ConfigFile::NAME,
             ),
@@ -305,7 +236,7 @@ final class ConfigSplit
                 NameList::of($stale) ?? '',
             ),
             help: sprintf(
-                'Run `php artisan docuccino:migrate-config` to write %s from the settings already there, then delete them from config/docuccino.php — which keeps only %s.',
+                'Write the settings you still want into %s under the same names, then delete them from config/docuccino.php — which keeps only %s.',
                 ConfigFile::NAME,
                 implode(', ', self::FRAMEWORK_KEYS),
             ),

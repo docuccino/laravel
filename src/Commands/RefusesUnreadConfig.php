@@ -31,10 +31,10 @@ use Illuminate\Console\Command;
  * genuinely the product — and what its severity should be is a question about the diagnostic, not
  * about this gate.
  *
- * `docuccino:migrate-config` is exempt because it IS the remedy — it writes `docuccino.yaml` from the
- * settings this refusal is about — and `docuccino:install` because it runs that one on an application
- * in this state. `docuccino:clear` is exempt because it reads no configuration: it empties caches,
- * which is the one thing still worth doing here.
+ * `docuccino:install` is exempt because it is the command that writes the file this refusal is about,
+ * and because an application in this state is exactly what it has to report on. `docuccino:clear` is
+ * exempt because it reads no configuration: it empties caches, which is the one thing still worth
+ * doing here.
  *
  * @mixin Command
  */

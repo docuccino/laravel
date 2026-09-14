@@ -44,32 +44,34 @@ function registeredDocuccinoCommands(): array
 }
 
 /**
- * Command class => whether it must refuse, and how it is invoked. Written out rather than read off the
- * traits, because a guard that asked the commands which of them refuse would agree with any answer.
+ * Command class => whether it must refuse, how it is invoked, and the code it exits with on an
+ * unmigrated application. Written out rather than read off the traits, because a guard that asked the
+ * commands which of them refuse would agree with any answer.
  *
- * @return array<string, array{class-string, bool, array<string, mixed>}>
+ * Refusing and exiting non-zero are not the same fact, which is why the code is a column of its own:
+ * `docuccino:install` raises no refusal here — it is what writes the file this state is about — and
+ * still exits 1, because the application it was asked to set up is not set up.
+ *
+ * @return array<string, array{class-string, bool, array<string, mixed>, int}>
  */
 function unreadConfigRefusalRows(): array
 {
     return [
         // Everything that reads the configuration to produce or check a document.
-        'export' => ['Docuccino\Laravel\Commands\ExportCommand', true, ['--format' => 'uir']],
-        'validate' => ['Docuccino\Laravel\Commands\ValidateCommand', true, []],
-        'cache' => ['Docuccino\Laravel\Commands\CacheCommand', true, []],
-        'diff' => ['Docuccino\Laravel\Commands\DiffCommand', true, ['old' => 'docs/openapi.json']],
-        'coverage' => ['Docuccino\Laravel\Commands\CoverageCommand', true, []],
-        'explain' => ['Docuccino\Laravel\Commands\ExplainCommand', true, ['route' => 'GET /api/forms']],
-        'version-changes' => ['Docuccino\Laravel\Commands\VersionChangesCommand', true, ['old' => 'docs/openapi.json']],
-        'watch' => ['Docuccino\Laravel\Commands\WatchCommand', true, []],
-        // The remedy: refusing to run it would leave the reader with no way out of the state.
-        'install' => ['Docuccino\Laravel\Commands\InstallCommand', false, ['--no-export' => true]],
-        // The remedy proper — this state is the one it exists to clear. Run as a dry run, because the
-        // real thing writes `docuccino.yaml` at the project root and every parallel process shares one
-        // workbench; what it WRITES is covered where it can own a root of its own.
-        'migrate-config' => ['Docuccino\Laravel\Commands\MigrateConfigCommand', false, ['--dry-run' => true]],
+        'export' => ['Docuccino\Laravel\Commands\ExportCommand', true, ['--format' => 'uir'], 1],
+        'validate' => ['Docuccino\Laravel\Commands\ValidateCommand', true, [], 1],
+        'cache' => ['Docuccino\Laravel\Commands\CacheCommand', true, [], 1],
+        'diff' => ['Docuccino\Laravel\Commands\DiffCommand', true, ['old' => 'docs/openapi.json'], 1],
+        'coverage' => ['Docuccino\Laravel\Commands\CoverageCommand', true, [], 1],
+        'explain' => ['Docuccino\Laravel\Commands\ExplainCommand', true, ['route' => 'GET /api/forms'], 1],
+        'version-changes' => ['Docuccino\Laravel\Commands\VersionChangesCommand', true, ['old' => 'docs/openapi.json'], 1],
+        'watch' => ['Docuccino\Laravel\Commands\WatchCommand', true, [], 1],
+        // The way out: it writes the file this refusal is about, and reports the settings still sitting
+        // in the framework config. Refusing to run it would leave the reader with nothing to run.
+        'install' => ['Docuccino\Laravel\Commands\InstallCommand', false, ['--no-export' => true], 1],
         // Reads no configuration. Emptying a cache built from the wrong settings is the one thing
         // still worth doing here, so it is not gated on fixing them.
-        'clear' => ['Docuccino\Laravel\Commands\ClearCommand', false, []],
+        'clear' => ['Docuccino\Laravel\Commands\ClearCommand', false, [], 0],
     ];
 }
 
@@ -108,7 +110,7 @@ function unreadConfigStates(): array
 
 it('gives every registered command a row', function (): void {
     $rows = [];
-    foreach (unreadConfigRefusalRows() as [$class, $refuses, $arguments]) {
+    foreach (unreadConfigRefusalRows() as [$class]) {
         $rows[] = $class;
     }
 
@@ -119,21 +121,21 @@ it('gives every registered command a row', function (): void {
     sort($registered);
 
     expect($rows)->toBe($registered)
-        ->and($rows)->toHaveCount(11);
+        ->and($rows)->toHaveCount(10);
 });
 
 it('declares the refusal exactly where the rows say it does', function (): void {
     // The trait is what makes a command refuse, so the rows and the code are held to each other. A
     // command that grew the trait without a row here — or lost it with the row still claiming it —
     // fails on this line rather than at the next report from an application.
-    foreach (unreadConfigRefusalRows() as $name => [$class, $refuses, $arguments]) {
+    foreach (unreadConfigRefusalRows() as $name => [$class, $refuses]) {
         expect(in_array(RefusesUnreadConfig::class, class_uses_recursive($class), true))
             ->toBe($refuses, $name.' disagrees with its row');
     }
 });
 
 it('refuses, naming the code, before it builds anything', function (string $name): void {
-    [$class, $refuses, $arguments] = unreadConfigRefusalRows()[$name];
+    [$class, , $arguments, $exit] = unreadConfigRefusalRows()[$name];
 
     arrangeUnmigrated();
     bindStubEngine();
@@ -143,8 +145,9 @@ it('refuses, naming the code, before it builds anything', function (string $name
     // exit 0 under. Nothing here can turn the refusal off.
     test()->artisan($class, $arguments)
         ->expectsOutputToContain('config.not-migrated')
-        ->expectsOutputToContain('docuccino:migrate-config')
-        ->assertExitCode(1);
+        // The help travels with the refusal, so a reader meets the move wherever they hit it.
+        ->expectsOutputToContain('Write the settings you still want into docuccino.yaml')
+        ->assertExitCode($exit);
 })->with(array_keys(array_filter(unreadConfigRefusalRows(), static fn (array $row): bool => $row[1])));
 
 it('refuses every state a configuration can be unreadable in, not only the one that was reported', function (Closure $arrange, string $code): void {
@@ -192,14 +195,16 @@ it('writes nothing while it refuses', function (): void {
 });
 
 it('runs the commands that owe no refusal', function (string $name): void {
-    [$class, $refuses, $arguments] = unreadConfigRefusalRows()[$name];
+    [$class, , $arguments, $exit] = unreadConfigRefusalRows()[$name];
 
     arrangeUnmigrated();
     bindStubEngine();
 
+    // The refusal is what must not appear. The exit code is the row's own, because a command that
+    // reports this state honestly and then says the application is not ready has not refused anything.
     test()->artisan($class, $arguments)
         ->doesntExpectOutputToContain('config.not-migrated')
-        ->assertExitCode(0);
+        ->assertExitCode($exit);
 })->with(array_keys(array_filter(unreadConfigRefusalRows(), static fn (array $row): bool => ! $row[1])));
 
 it('says nothing about the one file state that is not an error', function (): void {
