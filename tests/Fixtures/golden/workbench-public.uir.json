@@ -1,6 +1,6 @@
 {
-  "$schema": "https://spec.docuccino.app/uir/1.0/schema.json",
-  "uir": "1.0.0",
+  "$schema": "https://spec.docuccino.app/uir/1.1/schema.json",
+  "uir": "1.1.0",
   "openapi": "3.2.0",
   "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
   "info": {
@@ -21,7 +21,7 @@
               ],
               "source": {
                 "file": "workbench/app/Http/Controllers/FormController.php",
-                "line": 23,
+                "line": 25,
                 "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
               }
             },
@@ -48,7 +48,7 @@
               ],
               "source": {
                 "file": "workbench/app/Http/Controllers/FormController.php",
-                "line": 23,
+                "line": 25,
                 "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
               }
             }
@@ -120,7 +120,7 @@
               ],
               "source": {
                 "file": "workbench/app/Http/Controllers/FormController.php",
-                "line": 23,
+                "line": 25,
                 "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
               }
             },
@@ -147,7 +147,7 @@
               ],
               "source": {
                 "file": "workbench/app/Http/Controllers/FormController.php",
-                "line": 23,
+                "line": 25,
                 "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
               }
             }
@@ -219,7 +219,7 @@
               ],
               "source": {
                 "file": "workbench/app/Http/Controllers/FormController.php",
-                "line": 23,
+                "line": 25,
                 "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
               }
             },
@@ -246,7 +246,7 @@
               ],
               "source": {
                 "file": "workbench/app/Http/Controllers/FormController.php",
-                "line": 23,
+                "line": 25,
                 "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
               }
             }
@@ -370,12 +370,26 @@
     "document": {
       "id": "doc:public",
       "configHash": "325af5cca035e5e24961fa232b988bc292c737eb2ca9c69ffdbd0c408acb7237",
-      "contentHash": "2fe16b3bc844c9c0d999963f46d3cc09c11f7640f1d3d2070be020d243754b5e"
+      "contentHash": "b07ad2cefc20aeec90ee03c655f0bdbf2ec68887a86e3339b975fb3e4bfe6b43"
     },
     "generator": {
       "name": "docuccino/laravel",
       "version": "0.8.3",
-      "specVersion": "1.0.0"
-    }
+      "specVersion": "1.1.0"
+    },
+    "workflows": [
+      {
+        "id": "browse-forms",
+        "steps": [
+          {
+            "id": "list",
+            "operation": "op:v1:xic3nix4uv5i3t5d",
+            "outputs": {
+              "formId": "$response.body#/data/0/id"
+            }
+          }
+        ]
+      }
+    ]
   }
 }

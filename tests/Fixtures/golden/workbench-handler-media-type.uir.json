@@ -1,6 +1,6 @@
 {
-  "$schema": "https://spec.docuccino.app/uir/1.0/schema.json",
-  "uir": "1.0.0",
+  "$schema": "https://spec.docuccino.app/uir/1.1/schema.json",
+  "uir": "1.1.0",
   "openapi": "3.2.0",
   "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
   "info": {
@@ -21,7 +21,7 @@
               ],
               "source": {
                 "file": "workbench/app/Http/Controllers/FormController.php",
-                "line": 32,
+                "line": 35,
                 "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
               }
             },
@@ -60,7 +60,7 @@
                   ],
                   "source": {
                     "file": "workbench/app/Http/Controllers/FormController.php",
-                    "line": 32,
+                    "line": 35,
                     "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
                   }
                 }
@@ -86,7 +86,7 @@
                     ],
                     "source": {
                       "file": "workbench/app/Http/Controllers/FormController.php",
-                      "line": 32,
+                      "line": 35,
                       "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
                     }
                   }
@@ -143,7 +143,7 @@
                   ],
                   "source": {
                     "file": "workbench/app/Http/Controllers/FormController.php",
-                    "line": 32,
+                    "line": 35,
                     "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
                   }
                 }
@@ -192,12 +192,30 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "037decd91e17b4e83acdbd4dbcdc8731442380f27f46138c528d6592ef6c0aeb"
+      "contentHash": "7bb43cd34e369e2f24822d8655c2967d002405101bd3bc9e82450d400e0157e9"
     },
     "generator": {
       "name": "docuccino/laravel",
       "version": "0.13.1",
-      "specVersion": "1.0.0"
-    }
+      "specVersion": "1.1.0"
+    },
+    "workflows": [
+      {
+        "id": "browse-forms",
+        "steps": [
+          {
+            "id": "read",
+            "operation": "op:v1:kjfhztxw4ipjzvhc",
+            "parameters": [
+              {
+                "name": "form",
+                "in": "path",
+                "value": "$steps.list.outputs.formId"
+              }
+            ]
+          }
+        ]
+      }
+    ]
   }
 }

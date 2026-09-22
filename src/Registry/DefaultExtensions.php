@@ -46,6 +46,8 @@ use Docuccino\Laravel\Routing\LaravelRouteResolver;
 use Docuccino\Laravel\Support\GatePoliciesDigestContributor;
 use Docuccino\Laravel\Support\LeakageDigestContributor;
 use Docuccino\Laravel\Versioning\ApiVersionTransformer;
+use Docuccino\Laravel\Workflows\WorkflowAssembly;
+use Docuccino\Laravel\Workflows\WorkflowStepExtension;
 
 /**
  * The built-in extension set, dogfooding the public API: everything here implements only the core
@@ -148,6 +150,11 @@ final class DefaultExtensions
             // lints, so they read what will be emitted. A document declaring no `api_version` is not a
             // version and this moves nothing.
             ApiVersionTransformer::class,
+            // Records what each operation says about the workflows it takes part in, and reconciles the
+            // sequence once the whole route set has been seen. One registration each: the observation
+            // rides the operation fragment, so a warm build assembles the same workflows a cold one does.
+            WorkflowStepExtension::class,
+            WorkflowAssembly::class,
             // The document lints. All diagnostics-only, and all pinned to Priorities::LAST so they read
             // what will be emitted — this list's order is not what settles that, the attribute is.
             SensitiveFieldLint::class,

@@ -106,6 +106,16 @@ documents:
     # as `['resources/docs/overlays/*.yaml']`.
     overlays: []
 
+    # Prose and inputs for the workflows your `#[WorkflowStep]` attributes declare, keyed by workflow id.
+    # Enrichment only — config never creates a workflow, the way `tags.definitions` never creates a tag.
+    # An entry naming a workflow no operation declares is reported rather than published. `inputs` is a
+    # JSON Schema describing what the workflow is started with.
+    # workflows:
+    #   checkout:
+    #     summary: 'Take payment for a basket'
+    #     description: 'Reserve the basket, take payment, then confirm.'
+    #     inputs: {}
+
     # How inferred facts are expressed in the spec. Every default below is the shape most codegen
     # tools expect; change one only if your consumers prefer the alternative.
     representation:
@@ -172,7 +182,7 @@ documents:
     export:
       path: 'docs/openapi.json'
       # A list of targets REPLACES `path`: one build, one artifact per entry. One target per format
-      # — openapi-3.2, openapi-3.1, openapi-3.0, uir, postman — and the extension picks the
+      # — every format `docuccino:export --format` names — and the extension picks the
       # serialisation (.yaml/.yml emit YAML).
       # targets:
       #   - { format: 'openapi-3.2', path: 'docs/openapi.json' }

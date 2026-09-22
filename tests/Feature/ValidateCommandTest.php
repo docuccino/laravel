@@ -10,7 +10,7 @@ it('validates the workbench document against the bundled UIR schema', function (
     bindStubEngine();
 
     $this->artisan('docuccino:validate')
-        ->expectsOutputToContain('default: valid against UIR 1.0.0.')
+        ->expectsOutputToContain('default: valid against UIR 1.1.0.')
         ->assertSuccessful();
 });
 

@@ -44,6 +44,52 @@ final class DocumentEmitOptions
         return self::for($config)
             ->withKeepIds()
             ->withProvenance(ProvenanceLevel::Winners)
-            ->withYaml($target->yaml() && Formats::serialisesYaml($target->format));
+            ->withYaml($target->yaml() && Formats::serialisesYaml($target->format))
+            ->withSourceUrl(self::openApiBeside($config, $target));
+    }
+
+    /**
+     * What an artifact that POINTS AT the OpenAPI document should call it — today the Arazzo workflow
+     * description, whose `sourceDescriptions` names the description its steps' operations live in.
+     *
+     * **Relative to the pointing artifact's own directory, and never absolute.** The two files are
+     * exported side by side and the pointer travels with them, so a relative reference is the one that
+     * keeps working wherever they are served. An absolute path would also put the machine that built
+     * the document into a file that gets PUBLISHED, which is the leak the whole build guards against
+     * everywhere else.
+     *
+     * Falls back to the OpenAPI default name where the document configures no OpenAPI target: a
+     * pointer at the conventional name beats no source description, which Arazzo does not allow.
+     */
+    private static function openApiBeside(DocumentConfig $config, ExportTarget $target): string
+    {
+        foreach ($config->exportTargets() as $candidate) {
+            if (str_starts_with($candidate->format, 'openapi-')) {
+                return self::relative($candidate->path, $target->path);
+            }
+        }
+
+        return 'openapi.json';
+    }
+
+    /**
+     * `$path` as seen from the directory `$from` sits in. Both are project-relative already, so this is
+     * a walk over their segments rather than anything that touches the filesystem — nothing here may
+     * resolve against the build machine.
+     */
+    private static function relative(string $path, string $from): string
+    {
+        $to = array_values(array_filter(explode('/', str_replace('\\', '/', $path)), static fn (string $part): bool => $part !== ''));
+        $base = array_values(array_filter(explode('/', str_replace('\\', '/', $from)), static fn (string $part): bool => $part !== ''));
+
+        // The file's own name is not part of the directory it sits in.
+        array_pop($base);
+
+        while ($to !== [] && $base !== [] && $to[0] === $base[0]) {
+            array_shift($to);
+            array_shift($base);
+        }
+
+        return implode('/', [...array_fill(0, count($base), '..'), ...$to]);
     }
 }

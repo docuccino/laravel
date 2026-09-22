@@ -43,7 +43,7 @@ final class ExportCommand extends Command
 
     protected $signature = 'docuccino:export
         {document? : The configured document key (defaults to every document)}
-        {--format= : uir | openapi-3.2 | openapi-3.1 | openapi-3.0 | postman — writes this one format instead of the configured targets}
+        {--format= : uir | openapi-3.2 | openapi-3.1 | openapi-3.0 | postman | arazzo — writes this one format instead of the configured targets}
         {--out= : Output path (defaults to the matching target, else the document export path)}
         {--fail-on=none : none | error | warning | info | hint — the quietest severity that still makes the command exit non-zero}
         {--provenance=winners : none | winners | full — UIR provenance detail}
@@ -275,6 +275,21 @@ final class ExportCommand extends Command
         $result = Formats::emit($target->format, $document, $this->emitOptions($target, $config));
 
         $path = Paths::absolute($this->stringOption('out') ?? $target->path, base_path());
+
+        // An emitter that produced nothing is one whose format has no empty form — an Arazzo
+        // description must carry a workflow, and a document that declares none has nothing to say in
+        // it. Writing the zero bytes would TRUNCATE a committed artifact and report success, so the
+        // file is left exactly as it was and the emitter's own report says why.
+        //
+        // Judged on the bytes rather than on the format: any emitter that can legitimately produce
+        // nothing inherits this, which is the half a per-format check would have missed.
+        if ($result->output === '') {
+            $this->line(sprintf('<fg=gray>Wrote nothing for %s (%s) — see below.</>', $path, $target->format));
+            $this->renderDiagnostics($target->format, $this->withAcceptanceNotes($result->report->diagnostics));
+
+            return ! $result->report->hasError();
+        }
+
         $directory = dirname($path);
         if (! Directory::ensure($directory)) {
             $this->error(sprintf('Could not create %s.', $directory));

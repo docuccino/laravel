@@ -26,6 +26,7 @@ use Docuccino\Core\Pipeline\Assembler;
 use Docuccino\Core\Pipeline\FragmentCache;
 use Docuccino\Core\Provenance\RootRelativeSourcePathResolver;
 use Docuccino\Core\Provenance\SourcePathResolver;
+use Docuccino\Core\Spec\UirSpec;
 use Docuccino\Core\Support\ConfiguredFlag;
 use Docuccino\Laravel\Commands\CacheCommand;
 use Docuccino\Laravel\Commands\ClearCommand;
@@ -268,7 +269,7 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
                 enabled: $store->enabled,
                 path: $store->path,
                 toolVersion: self::VERSION.self::sourceReference(),
-                specVersion: '1.0.0',
+                specVersion: UirSpec::VERSION,
                 identityVersion: 'v1',
             );
         });

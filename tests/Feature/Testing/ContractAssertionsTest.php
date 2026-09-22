@@ -57,7 +57,7 @@ it('names the file and line a failing path parameter was inferred from', functio
         expect($failure->getMessage())
             ->toContain('path {form}')
             ->toContain('must match the type: integer')
-            ->toContain('from     inference (inference) — workbench/app/Http/Controllers/FormController.php:32');
+            ->toContain('from     inference (inference) — workbench/app/Http/Controllers/FormController.php:35');
 
         return;
     }

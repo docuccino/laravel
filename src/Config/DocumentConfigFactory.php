@@ -85,6 +85,7 @@ final readonly class DocumentConfigFactory
             security: $security,
             tags: $tags,
             representation: Hydrate::map($config['representation'] ?? []),
+            workflows: Hydrate::map($config['workflows'] ?? []),
             // The one member that comes from the OTHER file: the viewer is framework-owned, because
             // boot and every viewer request read it ({@see ViewerConfig}). It shapes no emitted byte,
             // so carrying it here lets the runtime ask the document config and not the config files.

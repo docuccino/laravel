@@ -42,7 +42,7 @@ it('normalises the generator version and nothing else', function (string $find, 
         ->and(withoutGeneratorVersion($tampered))->not->toBe(withoutGeneratorVersion($golden));
 })->with([
     // The normalised member's own neighbours...
-    'the generator spec version' => ['"specVersion": "1.0.0"', '"specVersion": "9.9.9"'],
+    'the generator spec version' => ['"specVersion": "1.1.0"', '"specVersion": "9.9.9"'],
     'the generator name' => ['"name": "docuccino/laravel"', '"name": "docuccino/rails"'],
     'the document content hash' => ['"contentHash": "', '"contentHash": "0'],
     // ...and the API's OWN version, which spells the key identically and stays byte-locked.
