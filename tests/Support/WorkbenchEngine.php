@@ -76,6 +76,15 @@ final class WorkbenchEngine
             new PropertyMetadata('submittedAt', UnionT::of([ScalarT::string(), new NullT])),
         ]);
 
+        // The two published value sets a version change addresses, on one body: one described value by
+        // value, one only partly. The DType carries case NAMES; the schema chain reflects the class for
+        // the backing values, which is what a set's `enum` publishes.
+        $visibleFormData = new ClassMetadata('Workbench\\App\\Data\\VisibleFormData', [
+            new PropertyMetadata('id', ScalarT::int()),
+            new PropertyMetadata('visibility', new EnumT('Workbench\\App\\Enums\\FormVisibility', ['Public', 'Internal', 'Invited'])),
+            new PropertyMetadata('priority', new EnumT('Workbench\\App\\Enums\\WidgetPriority', ['Low', 'Normal', 'High'])),
+        ]);
+
         $widgetData = new ClassMetadata('Workbench\\App\\Data\\WidgetData', [
             new PropertyMetadata('id', ScalarT::int()),
             new PropertyMetadata('name', ScalarT::string()),
@@ -302,6 +311,7 @@ final class WorkbenchEngine
                     // A date-time the payload holds as the object, which is what it is delivered as.
                     new PropertyMetadata('submittedAt', new ClassT('Carbon\\CarbonImmutable')),
                 ]),
+                'Workbench\\App\\Data\\VisibleFormData' => $visibleFormData,
                 'Workbench\\App\\Data\\WidgetData' => $widgetData,
                 self::ARTICLE_DATA => new ClassMetadata(self::ARTICLE_DATA, [
                     new PropertyMetadata('id', ScalarT::int()),

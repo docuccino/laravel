@@ -14,6 +14,9 @@ use Docuccino\Attributes\QueryParameter;
 use Docuccino\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Workbench\App\Data\FormData;
+use Workbench\App\Data\VisibleFormData;
+use Workbench\App\Enums\FormVisibility;
+use Workbench\App\Enums\WidgetPriority;
 use Workbench\App\Http\Requests\SearchFormsRequest;
 use Workbench\App\Http\Requests\StoreVersionedFormRequest;
 
@@ -135,6 +138,23 @@ final class VersionedFormController
     public function searchEitherWay(): JsonResponse
     {
         return $this->index();
+    }
+
+    /**
+     * List forms with who can see them.
+     *
+     * The operation a value-set change has anything to say about: the body carries two published enums,
+     * one described value by value and one only partly, which are the two decoration shapes a derived
+     * version has to keep in step with the values beside them.
+     */
+    #[Group('Forms')]
+    #[OperationId('listVisibleForms')]
+    #[Response(status: 200, type: 'list<VisibleFormData>', description: 'The forms and who can see them.')]
+    public function visible(): JsonResponse
+    {
+        return response()->json([
+            new VisibleFormData(id: 1, visibility: FormVisibility::Public, priority: WidgetPriority::Normal),
+        ]);
     }
 
     /**

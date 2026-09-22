@@ -25,6 +25,13 @@ enum SchemaFacet
 
     case Request;
 
+    /**
+     * The class IS the shape — an enum, whose published set is neither the request nor the response half
+     * of anything. One component serves both directions, deduped by the class's own identity, so there
+     * is no second node a verb could resolve the wrong one of.
+     */
+    case Values;
+
     /** The identity of the node this facet of `$fqcn` is published under. */
     public function identityOf(string $fqcn, IdentityGenerator $identity): string
     {
@@ -37,7 +44,11 @@ enum SchemaFacet
     /** How a diagnostic names the half of the wire this facet is. */
     public function noun(): string
     {
-        return $this === self::Request ? 'request' : 'response';
+        return match ($this) {
+            self::Request => 'request',
+            self::Response => 'response',
+            self::Values => 'enum',
+        };
     }
 
     /**

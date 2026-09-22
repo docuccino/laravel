@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Versioning;
 
+use Docuccino\Attributes\Versioning\AddedEnumValue;
 use Docuccino\Attributes\Versioning\MadeRequestFieldOptional;
 use Docuccino\Attributes\Versioning\MadeResponseFieldOptional;
 use Docuccino\Attributes\Versioning\MadeResponseFieldRequired;
+use Docuccino\Attributes\Versioning\RemovedEnumValue;
 use Docuccino\Attributes\Versioning\RemovedResponseField;
 use Docuccino\Attributes\Versioning\RenamedParameter;
 use Docuccino\Attributes\Versioning\RenamedRequestField;
@@ -30,12 +32,16 @@ use Docuccino\Laravel\Support\ParameterLocations;
  * last and every other verb sees the spelling it was written against, and the rename re-spells
  * `properties` and `required` together at the end.
  *
- * A removal is the one verb that names a field the code does NOT spell, so that sentence does not
- * cover it — and it still goes before the rename, for the other half of the same reason. A removal
- * PUTS a member back, and where it lands is counted against the names already standing
- * ({@see MemberOrder}); run the rename first and that count is taken against names this change itself
- * invented, so the position of a re-added field would be a function of another of the change's own
- * verbs. Run it before, and every insertion is counted against the schema the CODE publishes.
+ * The two verbs that name something the code does NOT spell — a removed field and a removed enum
+ * value — are not covered by that sentence, and they still go before the rename. A removal PUTS a
+ * member back, and where it lands is counted against the names already standing ({@see MemberOrder});
+ * run the rename first and that count is taken against names this change itself invented, so the
+ * position of a re-added field would be a function of another of the change's own verbs. Run it
+ * before, and every insertion is counted against the schema the CODE publishes.
+ *
+ * The value-set verbs move no name at all — a value is not a key, and the enum a rename could collide
+ * with is a class rather than a field — so nothing orders them against the renames but the rule itself,
+ * which is the reason to have stated it as a rule.
  *
  * The rule holds unchanged for the renames that reach a REQUEST body and a parameter, and it holds for
  * the same reason rather than by extension. `#[RenamedRequestField]` renames a property of the request
@@ -92,6 +98,14 @@ final class VerbOrder
 
         foreach ($attributes->all(RemovedResponseField::class) as $declaration) {
             $verbs[] = self::removal($declaration, $class, $diagnostics);
+        }
+
+        foreach ($attributes->all(AddedEnumValue::class) as $declaration) {
+            $verbs[] = self::enumValue($declaration->enum, $declaration->value, false, '#[AddedEnumValue]', $class, $diagnostics);
+        }
+
+        foreach ($attributes->all(RemovedEnumValue::class) as $declaration) {
+            $verbs[] = self::enumValue($declaration->enum, $declaration->value, true, '#[RemovedEnumValue]', $class, $diagnostics, $declaration->name, $declaration->description);
         }
 
         foreach ($attributes->all(RenamedResponseField::class) as $declaration) {
@@ -155,6 +169,30 @@ final class VerbOrder
             $removal->required,
             $removal->description,
         );
+    }
+
+    /**
+     * The value-set pair. The class name is normalised like every other word an author typed; the VALUE
+     * is not, because it is not a word but a datum — the set can publish `" draft"` and `"draft"` side
+     * by side, and trimming would silently name the wrong member of it.
+     *
+     * @param  list<Diagnostic>  $diagnostics
+     */
+    private static function enumValue(string $enum, string|int $value, bool $publishedBefore, string $declaration, string $class, array &$diagnostics, string $name = '', string $description = ''): ?EnumValueEdit
+    {
+        $enum = trim($enum);
+
+        if ($enum === '') {
+            $diagnostics[] = VersionChangeCollector::unapplicable(
+                $class,
+                sprintf('one of its %s declarations leaves `enum:` empty', $declaration),
+                'A value belongs to a set, and the set is named by the enum class the document publishes it for.',
+            );
+
+            return null;
+        }
+
+        return new EnumValueEdit($enum, $value, $publishedBefore, $name, $description);
     }
 
     /**
