@@ -491,3 +491,70 @@ it('renames a parameter on a shared path item once when the scope covers every o
         ->and($transformed['components']['pathItems']['Trees']['get']['parameters'][0]['x-docuccino']['id'])
         ->toBe((new IdentityGenerator)->parameterId('op:v1:listTrees', 'query', 'q'));
 });
+
+/*
+ * `#[AddedOperation]` over the shapes only a hand-built document reaches: a path item behind a `$ref`,
+ * two paths addressing one item, and two selectors that overlap. Each was a review finding, and each
+ * contradicted something the transformer already said about itself.
+ */
+
+/** The tree document with its archived list published through a `$ref`'d path item. */
+function refItemDocument(): array
+{
+    $document = treeDocument(plainTreeSchemas());
+    $document['paths']['/api/versioned-trees/archived'] = ['$ref' => '#/components/pathItems/ArchivedTrees'];
+    $document['components']['pathItems'] = ['ArchivedTrees' => ['get' => treeOperation('listArchivedTrees')]];
+
+    return $document;
+}
+
+it('takes the path away with the operation behind its $ref', function (): void {
+    // Read as written, a `$ref`'d item states no method, so the entry survived pointing at an emptied
+    // component — a path a client can see and get nothing from, which is what this walk exists to
+    // prevent and what the prune's own comment had decided not to do.
+    [$document, $diagnostics] = transformedVersion(refItemDocument(), 'tests/Fixtures/Versioning/OperationAddedBehindRef');
+
+    expect($document['paths'])->not->toHaveKey('/api/versioned-trees/archived')
+        ->and($document['paths'])->toHaveKey('/api/versioned-trees')
+        ->and(array_map(static fn (Diagnostic $d): string => $d->code, $diagnostics))->toBe([]);
+});
+
+it('refuses to remove an operation two paths share, and publishes both', function (): void {
+    // The guard EXECUTED. It was documented and never run: every other reporter of
+    // `versioning.scope-unforkable` is a scoped schema edit, so the code looked covered.
+    $document = treeDocument(plainTreeSchemas());
+    $document['paths']['/api/versioned-trees'] = ['$ref' => '#/components/pathItems/Shared'];
+    $document['paths']['/api/versioned-trees/archived'] = ['$ref' => '#/components/pathItems/Shared'];
+    $document['components']['pathItems'] = ['Shared' => ['get' => treeOperation('listTrees')]];
+
+    [$transformed, $diagnostics] = transformedVersion($document, 'tests/Fixtures/Versioning/OperationAddedShared');
+
+    expect(array_map(static fn (Diagnostic $d): string => $d->code, $diagnostics))->toBe(['versioning.scope-unforkable'])
+        // Refused, not half-applied: the path the change never named still publishes its operation.
+        ->and($transformed['paths'])->toHaveKey('/api/versioned-trees')
+        ->and($transformed['paths'])->toHaveKey('/api/versioned-trees/archived')
+        ->and($transformed['components']['pathItems']['Shared'])->toHaveKey('get');
+});
+
+it('says nothing when two selectors of one change name the same operation', function (): void {
+    // Matched against the document the CHANGE found. Against the one its own sibling left, the second
+    // selector reports an operation as missing that the first had just removed — the rotted-declaration
+    // report the verb order exists to prevent, reintroduced inside the verb it was written for.
+    [$document, $diagnostics] = transformedVersion(treeDocument(plainTreeSchemas()), 'tests/Fixtures/Versioning/OperationAddedOverlapping');
+
+    expect(array_map(static fn (Diagnostic $d): string => $d->code, $diagnostics))->toBe([])
+        ->and($document['paths'])->not->toHaveKey('/api/versioned-trees/archived')
+        ->and($document['paths'])->toHaveKey('/api/versioned-trees');
+});
+
+it('leaves an entry that already published no operation alone', function (): void {
+    // Locality: removing one operation must never change what the document says about an unrelated
+    // part. An overlay-introduced entry with no methods is not this walk's to tidy.
+    $document = treeDocument(plainTreeSchemas());
+    $document['paths']['/api/legacy'] = ['description' => 'Kept for the record.'];
+
+    [$transformed] = transformedVersion($document, 'tests/Fixtures/Versioning/OperationAdded');
+
+    expect($transformed['paths'])->toHaveKey('/api/legacy')
+        ->and($transformed['paths']['/api/legacy'])->toBe(['description' => 'Kept for the record.']);
+});

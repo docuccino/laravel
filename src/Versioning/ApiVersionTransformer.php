@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Versioning;
 
+use Docuccino\Core\Contract\Refs;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Document\DocumentGraph;
+use Docuccino\Core\Document\PathItem;
 use Docuccino\Core\Extensions\Context\DocumentContext;
 use Docuccino\Core\Extensions\Contracts\DocumentTransformer;
 use Docuccino\Core\Extensions\Document\UirDocumentDraft;
@@ -80,9 +82,28 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
         // The code is the newest version, so an older document is the code with every LATER change
         // undone — newest first, each handing the shape of the version below it to the next.
         foreach ($set->after($version) as $change) {
+            // The operation set as THIS CHANGE found it. Every one of its removal verbs is matched
+            // against this rather than against the document its siblings have been editing: two
+            // selectors that overlap — `GET /api/forms/*` and `GET /api/forms/archived` on one change,
+            // or the same selector in two change classes — would otherwise have the second report an
+            // operation as missing that the first had just removed. That is the rotted-declaration
+            // report {@see VerbOrder} exists to prevent, one level down inside the verb it was written
+            // for.
+            $sites = null;
+            $wereEmpty = null;
+
             // In the order {@see VerbOrder} settles, which is the whole of what "the author's written
             // order" comes to once an AttributeSet has answered per type.
             foreach ($change->verbs as $verb) {
+                if ($verb instanceof OperationSetVerb) {
+                    $sites ??= DocumentGraph::operationSites($doc);
+                    $wereEmpty ??= self::methodless($doc);
+
+                    $doc = self::removeOperations($doc, $verb, $change, $context, $said, $sites, $wereEmpty);
+
+                    continue;
+                }
+
                 if ($verb instanceof OperationVerb) {
                     $doc = $this->applyToOperations($doc, $verb, $change, $context, $said);
 
@@ -227,6 +248,146 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
         }
 
         return $doc;
+    }
+
+    /**
+     * Takes the operations a verb names out of the document, because the version being derived did not
+     * serve them.
+     *
+     * The selector is the VERB's rather than the change's ({@see OperationSetVerb} says why), so
+     * `#[AppliesTo]` is not consulted here at all — a change that carries both narrows its other verbs
+     * and leaves this one alone.
+     *
+     * A path item left with no operations goes with them — whether it states them itself or points at a
+     * component that did. An empty one is not a path that publishes nothing; it is a path a client can
+     * see in the document and get nothing from, and OpenAPI's own shape for "this version did not serve
+     * it" is its absence. Components the removed operations were the last readers of are LEFT: an
+     * unreferenced component is valid, and pruning on the way out would delete a schema an overlay or a
+     * consumer's tooling still names.
+     *
+     * @param  array<string, mixed>  $doc
+     * @param  array<string, true>  $said
+     * @param  list<OperationSite>  $sites  the operations the CHANGE found, not the ones its siblings left
+     * @param  array<string, true>  $wereEmpty  the entries that published no operation before the change ran
+     * @return array<string, mixed>
+     */
+    private static function removeOperations(array $doc, OperationSetVerb $verb, VersionChange $change, DocumentContext $context, array &$said, array $sites, array $wereEmpty): array
+    {
+        $matched = [];
+        foreach ($sites as $index => $site) {
+            if (self::namesAny([$verb->selector()], [$site])) {
+                $matched[$index] = true;
+            }
+        }
+
+        if ($matched === []) {
+            self::reportOnce($context, $verb->unreached($change), $said);
+
+            return $doc;
+        }
+
+        $removed = false;
+
+        foreach (array_keys($matched) as $index) {
+            $site = $sites[$index];
+
+            // One node addressed by two paths is one operation to the document, so taking the method out
+            // would take it out for the path the change never named.
+            if (self::sharedWithExcluded($site, $sites, $matched)) {
+                self::reportOnce($context, $verb->refused(
+                    $site['signature'] ?? implode('/', $site['keys']),
+                    $change,
+                ), $said);
+
+                continue;
+            }
+
+            $doc = DocumentGraph::without($doc, $site['keys']);
+            $removed = true;
+        }
+
+        return $removed ? self::pruneEmptyItems($doc, $wereEmpty) : $doc;
+    }
+
+    /**
+     * Drops the path and webhook entries left holding no operation. Judged on the METHODS rather than on
+     * emptiness: a path item legitimately carries `summary`, `description`, `servers` and `parameters`
+     * shared by its operations, and one left holding only those describes nothing a client can call.
+     *
+     * @param  array<string, mixed>  $doc
+     * @param  array<string, true>  $wereEmpty  the entries that published no operation before the walk
+     * @return array<string, mixed>
+     */
+    private static function pruneEmptyItems(array $doc, array $wereEmpty): array
+    {
+        foreach (self::methodless($doc) as $key => $_) {
+            if (isset($wereEmpty[$key])) {
+                continue;
+            }
+
+            [$section, $name] = explode("\0", (string) $key, 2);
+
+            $items = $doc[$section] ?? null;
+
+            if (is_array($items)) {
+                unset($items[$name]);
+
+                // Written back even when it is now empty. `paths` is a REQUIRED member of the UIR
+                // document, so a version that removed every operation still publishes the member with
+                // nothing in it — which is the true statement — rather than a document that fails its
+                // own schema.
+                $doc[$section] = $items;
+            }
+        }
+
+        return $doc;
+    }
+
+    /**
+     * The `paths` and `webhooks` entries that publish no operation, as `section\0name`.
+     *
+     * The `$ref` is FOLLOWED, which is the half that was missing: an entry written as a pointer into
+     * `components.pathItems` states no method itself, so reading it as written left a path a client can
+     * see and get nothing from — exactly what {@see removeOperations()} says must not happen, four lines
+     * from a comment that said the opposite.
+     *
+     * Judged on the METHODS rather than on emptiness: a path item legitimately carries `summary`,
+     * `description`, `servers` and `parameters` shared by its operations, and one left holding only
+     * those describes nothing a client can call.
+     *
+     * @param  array<string, mixed>  $doc
+     * @return array<string, true>
+     */
+    private static function methodless(array $doc): array
+    {
+        $empty = [];
+
+        foreach (['paths', 'webhooks'] as $section) {
+            $items = $doc[$section] ?? null;
+
+            if (! is_array($items)) {
+                continue;
+            }
+
+            foreach ($items as $name => $item) {
+                if (! is_array($item)) {
+                    continue;
+                }
+
+                /** @var array<string, mixed> $item */
+                [$resolved] = Refs::follow($doc, $item, [$section, (string) $name]);
+
+                foreach (PathItem::METHODS as $method) {
+                    if (isset($resolved[$method])) {
+                        continue 2;
+                    }
+                }
+
+                $empty[$section."\0".$name] = true;
+            }
+        }
+
+        return $empty;
     }
 
     /**
