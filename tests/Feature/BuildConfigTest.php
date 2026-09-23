@@ -93,18 +93,16 @@ function wrongShapeFor(string $path): mixed
     };
 }
 
-/** Whether `$path` addresses an entry of a list rather than a key an author writes. */
+/**
+ * Whether `$path` addresses an entry of a list rather than a key an author writes.
+ *
+ * Off the product's own reading rather than restated here: `config.unknown-setting` asks the same
+ * question to decide whether a help may name a path as a place to indent a block into, and two
+ * spellings of "which `*` is an index" would let this selector and that answer drift apart.
+ */
 function isListEntry(string $path): bool
 {
-    $segments = explode('.', $path);
-
-    foreach ($segments as $index => $segment) {
-        if ($segment === '*' && ($index === 0 || ! in_array($segments[$index - 1], DeclaredSettings::KEYED_MAPS, true))) {
-            return true;
-        }
-    }
-
-    return false;
+    return DeclaredSettings::addressesListEntry($path);
 }
 
 /** Whether `$path` sits below a subtree whose member names are the author's. */

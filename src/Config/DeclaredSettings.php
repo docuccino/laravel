@@ -28,11 +28,18 @@ final class DeclaredSettings
 {
     /**
      * Bags whose members the application NAMES. The segment below one of these is a name and not a
-     * key, so it reads as `*` on both sides of any comparison.
+     * key, so it reads as `*` on both sides of any comparison. The name matched is a SEGMENT wherever
+     * it sits, because the file declares one bag per name.
+     *
+     * This is where an author-keyed bag belongs when Docuccino's own keys resume BELOW the name:
+     * `workflows.<id>` carries `summary`, `description` and `inputs`, each a setting worth checking.
+     * {@see UnknownSettings::OPEN} is the other answer, for a bag with nothing of ours underneath at
+     * all — it silences the whole subtree, so using it here would trade a false report on a workflow
+     * id for a misspelled `summary` that publishes nothing and says nothing.
      *
      * @var list<string>
      */
-    public const array KEYED_MAPS = ['documents'];
+    public const array KEYED_MAPS = ['documents', 'workflows'];
 
     /** A line of text. */
     public const string TEXT = 'text';
@@ -351,6 +358,28 @@ final class DeclaredSettings
         }
 
         return $segments;
+    }
+
+    /**
+     * Whether `$path` runs through a list ENTRY — a `*` that is an index rather than a name.
+     *
+     * The two kinds of `*` a normalized path carries look alike and are not: one under a
+     * {@see KEYED_MAPS} segment stands for a name the author writes (`documents.<key>`,
+     * `workflows.<id>`), and every other one stands for a position in a list
+     * (`export.targets.*.format`). Only the first is a key anybody can address, so a path with a list
+     * index in it is not somewhere a block can be indented to.
+     */
+    public static function addressesListEntry(string $path): bool
+    {
+        $segments = explode('.', $path);
+
+        foreach ($segments as $index => $segment) {
+            if ($segment === '*' && ($index === 0 || ! in_array($segments[$index - 1], self::KEYED_MAPS, true))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

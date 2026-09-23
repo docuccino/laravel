@@ -11,6 +11,7 @@ use Docuccino\Laravel\Config\UnknownSettings;
 use Docuccino\Laravel\Pipeline\DocumentBuilder;
 use Docuccino\Laravel\Tests\Support\BuildSettings;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * `config.unknown-setting`: a key in `docuccino.yaml` that names no setting, and the one Docuccino key
@@ -102,6 +103,37 @@ it('names the key, and the one key it was probably meant to be', function (strin
         'documents.default.tags.definitions.0.titel',
         'check it against the configuration reference',
     ],
+    // Under a workflow ID the keys are Docuccino's again, so the name being the author's stops at the
+    // ID. Silencing the whole subtree instead would leave a misspelled `summary` publishing nothing
+    // and saying nothing, which is the one failure this report exists to replace.
+    'a workflow\'s own prose key' => [
+        "documents:\n  default:\n    workflows:\n      placeOrder: { sumary: 'Place an order' }\n",
+        'documents.default.workflows.placeOrder.sumary',
+        'Did you mean documents.default.workflows.placeOrder.summary?',
+    ],
+    // The near miss is drawn from what the file DECLARES, never from what it illustrates: the answer
+    // here used to be "the setting called scheme sits at documents.*.security.schemes.bearer.scheme",
+    // which describes an example scheme as a setting and buries the one-edit answer.
+    'a key one edit from an author-keyed bag' => [
+        "documents:\n  default:\n    security:\n      scheme:\n        bearer: { type: 'http' }\n",
+        'documents.default.security.scheme',
+        'Did you mean documents.default.security.schemes?',
+    ],
+    // The "sits at" sentence outranks the guess below it because it states a FACT, so it may not name
+    // a field inside a list ENTRY: nothing indents a bag to `tags.definitions.*.name`, because an
+    // entry is written with `- `. A guess, marked as one, is the honest answer there.
+    'a key unique to a list entry field' => [
+        "documents:\n  default:\n    name: 'Public API'\n",
+        'documents.default.name',
+        'Did you mean documents.default.tags?',
+    ],
+    // The same population where nothing is near enough to guess at either: the page, rather than an
+    // address the author could not write even having been sent to it.
+    'a list entry field with no near miss' => [
+        "documents:\n  default:\n    weight: 3\n",
+        'documents.default.weight',
+        'check it against the configuration reference',
+    ],
 ]);
 
 it('reports a reparented bag once, not once per rule under it', function (): void {
@@ -150,6 +182,13 @@ it('says nothing about the keys an author names for themselves', function (strin
     'leakage patterns' => ["lint:\n  leakage:\n    patterns: { sortcode: 'a bank sort code' }\n"],
     'example formats' => ["documents:\n  default:\n    representation:\n      examples:\n        formats: { uuid: 'a-b-c' }\n"],
     'filter descriptions' => ["documents:\n  default:\n    integrations:\n      query_builder:\n        filter_descriptions: { exact: 'Matches %field%.' }\n"],
+    // A workflow ID is a name the application chose with `#[WorkflowStep]`, and `checkout` is only
+    // what the shipped file shows one looking like. Every other ID used to be reported while the
+    // prose under it was read and published — the report contradicting the build.
+    'workflow ids' => ["documents:\n  default:\n    workflows:\n      placeOrder: { summary: 'Place an order' }\n      refund: { description: 'Give the money back.' }\n"],
+    // And `inputs` is a JSON Schema, published as the Arazzo workflow's own `inputs`: its keywords
+    // are the spec's vocabulary, so they are no more ours to judge than an OAS Server Object is.
+    'workflow inputs' => ["documents:\n  default:\n    workflows:\n      placeOrder:\n        inputs: { type: 'object', properties: { basketId: { type: 'string' } }, required: ['basketId'] }\n"],
     // A document key is a name too, and so is a list index.
     'document keys' => ["documents:\n  public: { info: { title: 'Public' } }\n  internal: { info: { title: 'Internal' } }\n"],
     'list entries' => ["documents:\n  default:\n    overlays: ['a.yaml', 'b.yaml']\n    routes: { include: ['api/*'], exclude: ['api/internal/*'] }\n"],
@@ -311,8 +350,147 @@ it('leaves every framework-owned key unreadable from this file, and says so', fu
     // The mirror of `config.stale-php-keys`: that one covers a build setting left in the framework
     // config, and this covers a framework setting written into the build file. Between them the two
     // files' whole surface is covered in both directions, so a key in the wrong file is never silent.
+    // One needle per call: `toContain()` takes NEEDLES, not a message, so `not->toContain($key, $why)`
+    // inverts a two-needle call and passes the moment either is absent — and the reason string never
+    // appears in a key list, so it passed whatever the shipped file declared.
     foreach (ConfigSplit::FRAMEWORK_KEYS as $key) {
-        expect(DeclaredSettings::shipped())->not->toContain($key, $key.' is declared in the build file');
+        expect(in_array($key, DeclaredSettings::shipped(), true))
+            ->toBeFalse($key.' is declared in the build file');
+    }
+});
+
+it('says whose a key written anywhere in the shipped file is', function (): void {
+    // What went wrong before this guard: `documents.*.workflows` was missing from OPEN, and the only
+    // thing holding the lists together asserted AUTHOR_KEYED ⊆ OPEN — two lists that were short in the
+    // same way, agreeing with each other. A guard derived from a SUBSET is silent outside it.
+    //
+    // So the denominator is the DOMAIN, derived from the file: everywhere a key can be WRITTEN, which
+    // is every section plus every value the file shows as a bag. Both halves are needed and the second
+    // is where the second half of this defect lived — `workflows.*.inputs` is a bag and not a section,
+    // so a denominator of sections alone would have said nothing about the subtree that opened it.
+    //
+    // What each row is worth is not uniform, and saying so is the point. `a setting` and
+    // `an integration` are SETTLED here — the first by the report firing, the second by the subtree
+    // being one this report defers ({@see UnknownSettings::DEFERRED}), which names the code that
+    // covers it. `a name` and `verbatim` are both silence and the report cannot tell them apart: the
+    // file spells `security.schemes.bearer` and `info.title` identically, which is the same fact that
+    // made the original defect invisible. Those two rows record a decision for a reader rather than
+    // proving one. What the totality buys is that a new place to write a key cannot be silent without
+    // somebody having written down which of the four it is.
+    $whose = [
+        'cache' => 'a setting',
+        'diagnostics' => 'a setting',
+        // The document key itself is a name; everything under one is ours again.
+        'documents' => 'a name',
+        'documents.*' => 'a setting',
+        'documents.*.api_version' => 'a setting',
+        'documents.*.content' => 'a setting',
+        'documents.*.coverage' => 'a setting',
+        'documents.*.examples' => 'a setting',
+        'documents.*.export' => 'a setting',
+        // The OAS Info Object: `title` and `version` are ours, and every other field is published as
+        // written, so the whole object is passed through.
+        'documents.*.info' => 'verbatim',
+        'documents.*.info.description' => 'verbatim',
+        // Each member is an integration name, reported by `config.unknown-integration` instead.
+        'documents.*.integrations' => 'an integration',
+        'documents.*.integrations.api_resources' => 'a setting',
+        'documents.*.integrations.eloquent' => 'a setting',
+        'documents.*.integrations.json_api_paginate' => 'a setting',
+        'documents.*.integrations.laravel_actions' => 'a setting',
+        'documents.*.integrations.passport' => 'a setting',
+        'documents.*.integrations.permission' => 'a setting',
+        'documents.*.integrations.query_builder' => 'a setting',
+        // Filter kind => your own sentence.
+        'documents.*.integrations.query_builder.filter_descriptions' => 'a name',
+        'documents.*.integrations.rate_limit' => 'a setting',
+        'documents.*.integrations.sanctum' => 'a setting',
+        'documents.*.integrations.spatie_data' => 'a setting',
+        'documents.*.integrations.timacdonald_json_api' => 'a setting',
+        'documents.*.representation' => 'a setting',
+        'documents.*.representation.enums' => 'a setting',
+        'documents.*.representation.errors' => 'a setting',
+        'documents.*.representation.examples' => 'a setting',
+        // JSON Schema `format` => your own sample.
+        'documents.*.representation.examples.formats' => 'a name',
+        'documents.*.representation.pagination' => 'a setting',
+        'documents.*.routes' => 'a setting',
+        'documents.*.security' => 'a setting',
+        // An OAS Security Requirement: the key is a scheme name of yours, so it is a bag rather than
+        // a section and would fall outside a denominator drawn from sections alone.
+        'documents.*.security.default.*.bearer' => 'verbatim',
+        'documents.*.security.document.*.bearer' => 'verbatim',
+        // Your scheme names, each holding an OAS Security Scheme Object. The two below it are the
+        // examples the shipped file writes, so the object's own fields are passed through.
+        'documents.*.security.schemes' => 'a name',
+        'documents.*.security.schemes.apiKey' => 'verbatim',
+        'documents.*.security.schemes.bearer' => 'verbatim',
+        'documents.*.tags' => 'a setting',
+        // Raw tag => display tag.
+        'documents.*.tags.map' => 'a name',
+        'documents.*.webhooks' => 'a setting',
+        // The workflow ID your `#[WorkflowStep]` attributes declare…
+        'documents.*.workflows' => 'a name',
+        // …and `summary`, `description` and `inputs` under it, which are ours.
+        'documents.*.workflows.*' => 'a setting',
+        // …while what is written inside `inputs` is a JSON Schema, whose keywords are the spec's.
+        'documents.*.workflows.*.inputs' => 'verbatim',
+        'engine' => 'a setting',
+        'lint' => 'a setting',
+        'lint.descriptions' => 'a setting',
+        'lint.examples' => 'a setting',
+        'lint.leakage' => 'a setting',
+        // Token => label heuristics.
+        'lint.leakage.patterns' => 'a name',
+        'lint.operation_ids' => 'a setting',
+        'lint.tags' => 'a setting',
+        'lint.unpinned_redirect' => 'a setting',
+        'lint.vacuous_union' => 'a setting',
+    ];
+
+    // Everywhere a key can be written, off the file: a section holds keys, and a value the file shows
+    // as a BAG is a map somebody writes keys into. Sorted the way the reader sorts, so a row out of
+    // place is as loud as a row missing.
+    $bags = array_keys(array_filter(
+        DeclaredSettings::valueTypes(),
+        static fn (string $type): bool => $type === DeclaredSettings::BAG,
+    ));
+    $written = array_values(array_unique([...DeclaredSettings::sections(), ...$bags]));
+    sort($written);
+
+    expect(array_keys($whose))->toBe($written)
+        // Four answers and no fifth: an unknown label reads as "not a setting" to the loop below and
+        // would say nothing about why, which is the silence this guard exists to remove.
+        ->and(array_values(array_unique(array_values($whose))))
+        ->toEqualCanonicalizing(['a setting', 'a name', 'verbatim', 'an integration']);
+
+    foreach ($whose as $where => $answer) {
+        // One invented key written there. A `*` is given a name under a keyed map and a one-entry LIST
+        // anywhere else, which is what the two kinds of `*` mean — the same reading the product makes
+        // when it decides whether a path is somewhere a key can be addressed at all.
+        $node = ['no_such_setting_anywhere' => 'x'];
+        $typed = [];
+
+        foreach (array_reverse(explode('.', $where)) as $index => $segment) {
+            $list = $segment === '*'
+                && DeclaredSettings::addressesListEntry(implode('.', array_slice(explode('.', $where), 0, -$index)));
+
+            $node = $list ? [$node] : [$segment === '*' ? 'a_name_the_author_chose' : $segment => $node];
+            $typed[] = $list ? '0' : ($segment === '*' ? 'a_name_the_author_chose' : $segment);
+        }
+
+        $literal = implode('.', array_reverse($typed)).'.no_such_setting_anywhere';
+
+        // Settled: reported exactly where the key would have been Docuccino's.
+        expect(unknownSettingKeys(Yaml::dump($node, 20)))->toBe(
+            $answer === 'a setting' ? [$literal] : [],
+            $where.' answers as '.$answer,
+        );
+
+        // Settled too, and against a different fact: `an integration` claims another code covers the
+        // name, so the subtree has to be one this report really defers — and nothing else may be.
+        expect(array_key_exists($where, UnknownSettings::DEFERRED))
+            ->toBe($answer === 'an integration', $where.' answers as '.$answer);
     }
 });
 
@@ -327,15 +505,19 @@ it('names each open subtree for a reason, and none of them broadly', function ()
         'documents.*.security.default',
         'documents.*.security.document',
         'documents.*.tags.map',
+        'documents.*.workflows.*.inputs',
         'lint.leakage.patterns',
         'documents.*.integrations.query_builder.filter_descriptions',
         'documents.*.representation.examples.formats',
     ]);
 
     // No entry may be a prefix of the whole file, or of a document bag: either would take the report
-    // out with it.
+    // out with it. And each has to still name a subtree the file declares — an entry that outlived the
+    // setting it was written for is silence over nothing, and nothing else here would see it.
     foreach (UnknownSettings::OPEN as $open) {
-        expect(substr_count($open, '.'))->toBeGreaterThan(0, $open.' opens a whole top-level bag');
+        expect(substr_count($open, '.'))->toBeGreaterThan(0, $open.' opens a whole top-level bag')
+            ->and(in_array($open, DeclaredSettings::shipped(), true))
+            ->toBeTrue($open.' opens a subtree the shipped file no longer declares');
     }
 });
 

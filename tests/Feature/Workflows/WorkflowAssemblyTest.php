@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use Docuccino\Core\Diagnostics\Diagnostic;
+use Docuccino\Laravel\Pipeline\DocumentBuilder;
+use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Illuminate\Routing\Router;
 use Workbench\App\Http\Controllers\WorkflowController;
 
@@ -161,6 +163,50 @@ it('enriches a declared workflow from the configuration', function (): void {
 
     expect($workflows[0]['summary'])->toBe('Take payment for a basket')
         ->and($workflows[0]['inputs'])->toBe(['type' => 'object', 'properties' => ['basketId' => ['type' => 'string']]]);
+});
+
+it('says nothing about the configuration a workflow author writes', function (): void {
+    // A whole build, because this is the population no golden can stand in: the committed goldens
+    // carry no diagnostics at all, so the channel this moves is invisible to every one of them.
+    //
+    // The ID is the application's — `checkout` is only what the shipped file shows one looking like —
+    // and `inputs` is a JSON Schema, so its keywords are the spec's vocabulary. Both used to be
+    // reported as naming no setting Docuccino reads while the build read them and published them,
+    // which is the report contradicting the document beside it.
+    setDocuments(['default' => [
+        'info' => ['title' => 'Flows API', 'version' => '1.0.0'],
+        'routes' => ['include' => ['api/flows/reserve', 'api/flows/pay']],
+        'error_responses' => 'none',
+        'workflows' => [
+            'checkout' => [
+                'summary' => 'Take payment for a basket',
+                'inputs' => [
+                    'type' => 'object',
+                    'properties' => ['basketId' => ['type' => 'string']],
+                    'required' => ['basketId'],
+                ],
+            ],
+            'placeOrder' => ['description' => 'An ID no operation declares is its own report.'],
+        ],
+    ]]);
+
+    // Through DocumentBuilder rather than generateDocument(): the configuration report is a pass of
+    // the BUILD, so a document generated straight from a resolved config carries none of it and an
+    // assertion made there would be silent whatever the lists said.
+    $result = app(DocumentBuilder::class)->build('default', WorkbenchEngine::make());
+    $codes = array_map(static fn (Diagnostic $d): string => $d->code, $result->diagnostics);
+
+    /** @var list<array<string, mixed>> $workflows */
+    $workflows = $result->document->toArray()['x-docuccino']['workflows'];
+
+    expect($codes)->not->toContain('config.unknown-setting')
+        ->and($codes)->not->toContain('config.value-type')
+        // The other half of why that report was false: the settings under the ID really are read.
+        ->and($workflows[0]['summary'])->toBe('Take payment for a basket')
+        ->and($workflows[0]['inputs']['required'])->toBe(['basketId'])
+        // …and the unclaimed ID keeps the report that IS about it, so the silence above is this
+        // report standing down on the KEY rather than on the mistake.
+        ->and($codes)->toContain('workflow.describes-nothing');
 });
 
 it('needs no configuration to publish a workflow', function (): void {

@@ -63,6 +63,11 @@ final class UnknownSettings
         'documents.*.security.document',
         // Raw tag => display tag, both halves yours.
         'documents.*.tags.map',
+        // A JSON Schema for what a workflow is started with, published as the Arazzo workflow's
+        // `inputs`. The workflow ID above it is a name rather than a key, so it is a keyed map
+        // ({@see DeclaredSettings::KEYED_MAPS}) and `summary`, `description` and `inputs` stay
+        // checked; the schema written UNDER `inputs` is the spec's vocabulary, not ours.
+        'documents.*.workflows.*.inputs',
         // Token => label heuristics, both halves yours.
         'lint.leakage.patterns',
         // Filter kind => your own sentence. The kinds are a closed set, reported by
@@ -193,6 +198,35 @@ final class UnknownSettings
     }
 
     /**
+     * What a suggestion may point at: the declared paths, less the members the shipped file only
+     * ILLUSTRATES.
+     *
+     * The file spells `security.schemes.bearer.scheme` and `info.title` alike, so the raw declared set
+     * answered `security.scheme` — one edit from `schemes` — with "the setting called scheme sits at
+     * documents.*.security.schemes.bearer.scheme", an example described as a setting.
+     * {@see ConfiguredShapes::AUTHOR_KEYED} tells the two kinds of {@see OPEN} subtree apart; `info`
+     * and `servers` carry keys of ours and stay. Nothing below one is ever reported, so this narrows
+     * what the help points AT and never what it fires on.
+     *
+     * @return list<string>
+     */
+    private static function settings(): array
+    {
+        return array_values(array_filter(
+            DeclaredSettings::shipped(),
+            static function (string $path): bool {
+                foreach (ConfiguredShapes::AUTHOR_KEYED as $keyed) {
+                    if (str_starts_with($path, $keyed.'.')) {
+                        return false;
+                    }
+                }
+
+                return true;
+            },
+        ));
+    }
+
+    /**
      * The declared key at the same place in the file within a few edits of this one, or null.
      *
      * Siblings only: `lint.tags` and `documents.*.tags` are one edit apart and neither is a plausible
@@ -230,14 +264,22 @@ final class UnknownSettings
      * them would send its reader somewhere arbitrary; every top-level bag a misindented block can fall
      * into (`lint`, `cache`, `engine`, `extensions`, `diagnostics`, `on_route_error`) is unique, which
      * is the population this answer is for.
+     *
+     * And only where the answer is somewhere a block CAN be indented to. This sentence outranks the
+     * spelling guess below it because it states a fact, so it may not be aimed at a field inside a
+     * list entry: `name` is unique at `documents.*.tags.definitions.*.name`, and no amount of
+     * indenting puts a bag there — an entry is written with `- `. Those paths stay in
+     * {@see siblings()}, where the question is a near miss beside a key the author really did write,
+     * and `export.targets.0.pth` is answered with `path` from exactly that set.
      */
     private static function elsewhere(string $path): ?string
     {
         $leaf = self::leaf($path);
 
         $matches = array_values(array_filter(
-            DeclaredSettings::shipped(),
-            static fn (string $candidate): bool => self::leaf($candidate) === $leaf,
+            self::settings(),
+            static fn (string $candidate): bool => self::leaf($candidate) === $leaf
+                && ! DeclaredSettings::addressesListEntry($candidate),
         ));
 
         return count($matches) === 1 ? $matches[0] : null;
@@ -254,7 +296,7 @@ final class UnknownSettings
         $depth = substr_count($path, '.');
 
         return array_values(array_filter(
-            DeclaredSettings::shipped(),
+            self::settings(),
             static fn (string $candidate): bool => substr_count($candidate, '.') === $depth
                 && self::parent($candidate) === $parent,
         ));
