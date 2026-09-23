@@ -29,7 +29,8 @@ use Symfony\Component\Console\Output\OutputInterface;
  * both ({@see TerminalText::of()}). `--format=json` is the exception: nothing there is read by a terminal,
  * so it goes out raw and `json_encode`'s own escaping is the whole of its safety.
  *
- * `old` is a path to a committed UIR (preferred — it carries identities) or OpenAPI artifact, read from
+ * `old` is a path to a committed artifact in any format it was exported in — `full`
+ * preferred, since it carries identities natively — read from
  * the working tree unless `--against=<git-ref>` reads it via `git show <ref>:<old>`, in which case the
  * path must be repo-relative. `--enforce` runs the document's `versioning` policy over the changeset
  * severity and both `info.version`s, exiting non-zero on a violation.
@@ -43,7 +44,7 @@ final class DiffCommand extends Command
     use StringOptions;
 
     protected $signature = 'docuccino:diff
-        {old : Path to the committed UIR/OpenAPI artifact to diff against}
+        {old : Path to the committed artifact to diff against, in any format it was exported in}
         {document? : The configured document key to generate as the new side (defaults to "default")}
         {--against= : Read `old` from this git ref (git show <ref>:<old>) instead of the working tree}
         {--enforce : Enforce the document\'s versioning policy; exit non-zero on a violation}

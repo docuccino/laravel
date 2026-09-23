@@ -111,6 +111,34 @@ it('names the OpenAPI target the document configures, relative to the file that 
         // Arazzo requires a source description, so the conventional name beats none.
         'openapi.json',
     ],
+    // The full artifact is an OpenAPI description too, and is listed FIRST here, so a reader taking
+    // the first OpenAPI-ish target would point a PUBLISHED artifact at the one that retains
+    // provenance — source file, line, symbol. The pointer names the plain description instead.
+    //
+    // What these two rows CANNOT tell apart, now the id is `full`: the recorded defect itself, a
+    // `str_starts_with($id, 'openapi-')` in place of the column. That proxy agrees with
+    // `publishesPlainOpenApi()` on all six rows of today's table, so it produces the expected answer
+    // on both rows below and on every other case here. They still bite a first-target-wins reader,
+    // which is the other half of the defect; the prefix half is refused only by
+    // `FormatIdReaderArchTest`, and a change that weakens that scan leaves nothing executing this.
+    'a full artifact listed before the plain one' => [
+        'a full artifact listed before the plain one',
+        [
+            ['format' => 'full', 'path' => 'docs/api.full.json'],
+            ['format' => 'openapi-3.2', 'path' => 'docs/openapi.json'],
+            ['format' => 'arazzo', 'path' => 'docs/workflows.arazzo.json'],
+        ],
+        'openapi.json',
+    ],
+    // And with no plain target to find, the conventional name beats naming the full one.
+    'only a full artifact' => [
+        'only a full artifact',
+        [
+            ['format' => 'full', 'path' => 'docs/api.full.json'],
+            ['format' => 'arazzo', 'path' => 'docs/workflows.arazzo.json'],
+        ],
+        'openapi.json',
+    ],
 ]);
 
 it('never names the machine that built the document', function (): void {

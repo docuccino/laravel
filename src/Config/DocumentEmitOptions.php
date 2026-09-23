@@ -64,7 +64,7 @@ final class DocumentEmitOptions
     private static function openApiBeside(DocumentConfig $config, ExportTarget $target): string
     {
         foreach ($config->exportTargets() as $candidate) {
-            if (str_starts_with($candidate->format, 'openapi-')) {
+            if (Formats::publishesPlainOpenApi($candidate->format)) {
                 return self::relative($candidate->path, $target->path);
             }
         }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Docuccino\Core\Emit\Formats;
 use Docuccino\Core\Inference\TypeEngine;
+use Docuccino\Core\Spec\UirSpec;
 use Docuccino\Laravel\Config\DocumentEmitOptions;
 use Docuccino\Laravel\Pipeline\DocumentBuilder;
 use Docuccino\Laravel\Runtime\DocumentCache;
@@ -359,25 +360,32 @@ it('holds the same bytes a bare export writes, for every carrier a target can ha
     'openapi-3.2 as JSON' => ['openapi-3.2', '.json'],
     'openapi-3.2 as YAML' => ['openapi-3.2', '.yaml'],
     'openapi-3.0 as JSON' => ['openapi-3.0', '.json'],
-    'uir as JSON' => ['uir', '.json'],
+    'full as JSON' => ['full', '.json'],
 ]);
 
 /**
  * The line every target earns, said on the quiet path too. A reader with no way to tell the artifact
- * half ran is where this whole question started, and a format with no published schema behind it says
- * that rather than staying silent — silence beside a checked target reads as the clean answer.
+ * half ran is where this whole question started, and a format whose bytes nobody read back says that
+ * rather than staying silent — silence beside a checked target reads as the clean answer.
+ *
+ * What the quiet line says is held to being TRUE of each row it covers, which is why it no longer
+ * says the format has no published schema: `full` answers to the UIR schema, and the line two above
+ * it in this very run names the version. Only `postman` has no specification at all.
  */
 it('says which artifact it checked, and says when it could not', function (): void {
     setBuild('documents.default.export', ['targets' => [
         ['format' => 'openapi-3.2', 'path' => 'docs/openapi.json'],
-        ['format' => 'uir', 'path' => 'docs/uir.json'],
+        ['format' => 'full', 'path' => 'docs/uir.json'],
         ['format' => 'postman', 'path' => 'docs/postman.json'],
     ]]);
 
     $this->artisan('docuccino:validate')
         ->expectsOutputToContain('default: openapi-3.2 artifact valid against its published schema.')
-        ->expectsOutputToContain('default: uir has no published schema to hold an artifact to; not checked.')
-        ->expectsOutputToContain('default: postman has no published schema to hold an artifact to; not checked.')
+        ->expectsOutputToContain('default: full artifact not read back against a published schema; not checked.')
+        ->expectsOutputToContain('default: postman artifact not read back against a published schema; not checked.')
+        // And the claim the old wording made that this run disproves in its own output: the full
+        // artifact DOES answer to a published schema, and that line is printed a few above.
+        ->expectsOutputToContain('default: valid against UIR '.UirSpec::VERSION.'.')
         ->assertSuccessful();
 });
 

@@ -311,7 +311,7 @@ it('says a 3.0 artifact cannot carry webhooks rather than that the webhook is un
     } catch (AssertionFailedError $failure) {
         expect($failure->getMessage())
             ->toContain('which defines no `webhooks` member')
-            ->toContain('Assert against the UIR artifact, or a 3.1 or 3.2 export.')
+            ->toContain('Assert against the full artifact, or a 3.1 or 3.2 export.')
             ->not->toContain('is not documented');
 
         return;

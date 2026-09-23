@@ -33,20 +33,20 @@ it('writes every configured target from a single build', function (): void {
     configureTargets([
         ['format' => 'openapi-3.2', 'path' => $dir.'/openapi.json'],
         ['format' => 'openapi-3.1', 'path' => $dir.'/openapi-3.1.yaml'],
-        ['format' => 'uir', 'path' => $dir.'/api.uir.json'],
+        ['format' => 'full', 'path' => $dir.'/api.uir.json'],
     ]);
 
     $this->artisan('docuccino:export')
         ->expectsOutputToContain('openapi.json (openapi-3.2)')
         ->expectsOutputToContain('openapi-3.1.yaml (openapi-3.1)')
-        ->expectsOutputToContain('api.uir.json (uir)')
+        ->expectsOutputToContain('api.uir.json (full)')
         ->assertSuccessful();
 
     expect(file_get_contents($dir.'/openapi.json'))->toContain('"openapi": "3.2.0"')
         // The extension picked the serialisation: this one is YAML, with no flag anywhere.
         ->and(file_get_contents($dir.'/openapi-3.1.yaml'))->toContain('openapi: 3.1.1')
         ->and(str_starts_with(trim((string) file_get_contents($dir.'/openapi-3.1.yaml')), '{'))->toBeFalse()
-        ->and(file_get_contents($dir.'/api.uir.json'))->toContain('"uir":');
+        ->and(file_get_contents($dir.'/api.uir.json'))->toContain('"x-docuccino":');
 });
 
 it('writes a Postman collection alongside the OpenAPI document', function (): void {
@@ -123,10 +123,10 @@ it('replaces the configured list when --format names one format', function (): v
     $dir = targetsDir();
     configureTargets([
         ['format' => 'openapi-3.2', 'path' => $dir.'/openapi.json'],
-        ['format' => 'uir', 'path' => $dir.'/api.uir.json'],
+        ['format' => 'full', 'path' => $dir.'/api.uir.json'],
     ]);
 
-    $this->artisan('docuccino:export', ['--format' => 'uir'])->assertSuccessful();
+    $this->artisan('docuccino:export', ['--format' => 'full'])->assertSuccessful();
 
     // Only the named format was written — and it landed in the path that target configured.
     expect(file_exists($dir.'/api.uir.json'))->toBeTrue()
@@ -135,7 +135,7 @@ it('replaces the configured list when --format names one format', function (): v
 
 it('still writes a format that no target configures', function (): void {
     $dir = targetsDir();
-    configureTargets([['format' => 'uir', 'path' => $dir.'/api.uir.json']]);
+    configureTargets([['format' => 'full', 'path' => $dir.'/api.uir.json']]);
 
     // --format asks for a file NOW; it does not mean "only if you already configured one".
     $this->artisan('docuccino:export', ['--format' => 'openapi-3.0', '--out' => $dir.'/legacy.json'])
@@ -173,14 +173,14 @@ function unreadableTargetLists(): array
         'unknown format' => [[['format' => 'swagger-2.0', 'path' => '@dir/x.json']], 'config.export-unknown-format'],
         'empty list' => [[], 'config.export-no-targets'],
         'malformed entry' => [['nope'], 'config.export-target-shape'],
-        'yaml on a json-only format' => [[['format' => 'uir', 'path' => '@dir/x.yaml']], 'config.export-yaml-unsupported'],
+        'yaml on a json-only format' => [[['format' => 'full', 'path' => '@dir/x.yaml']], 'config.export-yaml-unsupported'],
         'two targets one path' => [[
             ['format' => 'openapi-3.2', 'path' => '@dir/same.json'],
             ['format' => 'openapi-3.1', 'path' => '@dir/same.json'],
         ], 'config.export-duplicate-path'],
         'two targets one format' => [[
-            ['format' => 'uir', 'path' => '@dir/a.json'],
-            ['format' => 'uir', 'path' => '@dir/b.json'],
+            ['format' => 'full', 'path' => '@dir/a.json'],
+            ['format' => 'full', 'path' => '@dir/b.json'],
         ], 'config.export-duplicate-format'],
     ];
 }
@@ -247,7 +247,7 @@ it('says a leftover export.path writes nothing, and still exports', function ():
     $dir = targetsDir();
     setBuild('documents.default.export', [
         'path' => $dir.'/ignored.json',
-        'targets' => [['format' => 'uir', 'path' => $dir.'/api.uir.json']],
+        'targets' => [['format' => 'full', 'path' => $dir.'/api.uir.json']],
     ]);
 
     $this->artisan('docuccino:export')
@@ -276,7 +276,7 @@ it('refuses --out without --format when the document configures several targets'
     configureTargets([
         ['format' => 'openapi-3.2', 'path' => $dir.'/openapi.json'],
         ['format' => 'openapi-3.1', 'path' => $dir.'/openapi-3.1.json'],
-        ['format' => 'uir', 'path' => $dir.'/api.uir.json'],
+        ['format' => 'full', 'path' => $dir.'/api.uir.json'],
     ]);
 
     // All three serialisations would land on the one path, and only the last would survive.
@@ -291,13 +291,13 @@ it('takes --out with --format against a multi-target document', function (): voi
     $dir = targetsDir();
     configureTargets([
         ['format' => 'openapi-3.2', 'path' => $dir.'/openapi.json'],
-        ['format' => 'uir', 'path' => $dir.'/api.uir.json'],
+        ['format' => 'full', 'path' => $dir.'/api.uir.json'],
     ]);
 
     // Naming the format says which of the three artifacts --out is for, so the run is unambiguous.
-    $this->artisan('docuccino:export', ['--format' => 'uir', '--out' => $dir.'/picked.json'])->assertSuccessful();
+    $this->artisan('docuccino:export', ['--format' => 'full', '--out' => $dir.'/picked.json'])->assertSuccessful();
 
-    expect(file_get_contents($dir.'/picked.json'))->toContain('"uir":')
+    expect(file_get_contents($dir.'/picked.json'))->toContain('"x-docuccino":')
         ->and(glob($dir.'/*'))->toBe([$dir.'/picked.json']);
 });
 
@@ -312,7 +312,7 @@ it('takes --out alone when the document configures one target', function (): voi
 });
 
 it('rejects --yaml for a format with no YAML serialisation', function (): void {
-    $this->artisan('docuccino:export', ['--format' => 'uir', '--yaml' => true, '--out' => targetsDir().'/x.json'])
-        ->expectsOutputToContain('--yaml cannot be used with --format=uir')
+    $this->artisan('docuccino:export', ['--format' => 'full', '--yaml' => true, '--out' => targetsDir().'/x.json'])
+        ->expectsOutputToContain('--yaml cannot be used with --format=full')
         ->assertFailed();
 });

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
+use Docuccino\Core\Emit\Formats;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Laravel\Config\ExportDiagnostics;
 
@@ -30,27 +31,39 @@ it('names every problem a target list can have', function (mixed $export, string
     'empty list' => [['targets' => []], 'config.export-no-targets', Severity::Error],
     'malformed entry' => [['targets' => ['nope']], 'config.export-target-shape', Severity::Error],
     'unknown format' => [['targets' => [['format' => 'nope', 'path' => 'x.json']]], 'config.export-unknown-format', Severity::Error],
-    'yaml unsupported' => [['targets' => [['format' => 'uir', 'path' => 'x.yaml']]], 'config.export-yaml-unsupported', Severity::Error],
+    'yaml unsupported' => [['targets' => [['format' => 'full', 'path' => 'x.yaml']]], 'config.export-yaml-unsupported', Severity::Error],
     'duplicate path' => [['targets' => [
         ['format' => 'openapi-3.2', 'path' => 'x.json'],
         ['format' => 'openapi-3.1', 'path' => 'x.json'],
     ]], 'config.export-duplicate-path', Severity::Error],
     'duplicate format' => [['targets' => [
-        ['format' => 'uir', 'path' => 'a.json'],
-        ['format' => 'uir', 'path' => 'b.json'],
+        ['format' => 'full', 'path' => 'a.json'],
+        ['format' => 'full', 'path' => 'b.json'],
     ]], 'config.export-duplicate-format', Severity::Error],
     'path ignored' => [[
         'path' => 'docs/openapi.json',
-        'targets' => [['format' => 'uir', 'path' => 'a.json']],
+        'targets' => [['format' => 'full', 'path' => 'a.json']],
     ], 'config.export-path-ignored', Severity::Info],
 ]);
 
 it('lists the valid formats when one is unknown, so the fix is in the message', function (): void {
     $diagnostics = exportDiagnosticsFor(['targets' => [['format' => 'swagger-2.0', 'path' => 'x.json']]]);
 
+    // The whole list, built the way the message builds it. A bare `toContain('full')` would pass on
+    // four common letters, and `', full,'` — the first attempt at fixing that — silently depended on
+    // `full` sitting in the middle of `Formats::TABLE`, whose order is load-bearing for other
+    // reasons and is meant to be reorderable.
     expect($diagnostics[0]->message)->toContain('swagger-2.0')
-        ->and($diagnostics[0]->message)->toContain('openapi-3.2')
-        ->and($diagnostics[0]->message)->toContain('uir');
+        ->and($diagnostics[0]->message)->toContain(implode(', ', Formats::ids()));
+});
+
+it('names the replacement when a target still asks for a retired format id', function (): void {
+    // A committed docuccino.yaml carrying `format: 'uir'` meets this diagnostic and nothing else, so
+    // it owes the same sentence the CLI gives — a reader should never have to find the release notes.
+    $diagnostics = exportDiagnosticsFor(['targets' => [['format' => 'uir', 'path' => 'x.json']]]);
+
+    expect($diagnostics[0]->code)->toBe('config.export-unknown-format')
+        ->and($diagnostics[0]->message)->toContain('"uir" is now "full".');
 });
 
 it('points at the offending entry by index', function (): void {
@@ -69,14 +82,14 @@ it('says nothing about a config with nothing wrong with it', function (mixed $ex
     'one target' => [['targets' => [['format' => 'openapi-3.2', 'path' => 'docs/openapi.json']]]],
     'several targets' => [['targets' => [
         ['format' => 'openapi-3.2', 'path' => 'docs/openapi.json'],
-        ['format' => 'uir', 'path' => 'docs/api.uir.json'],
+        ['format' => 'full', 'path' => 'docs/api.uir.json'],
     ]]],
     'nothing configured' => [null],
 ]);
 
 it('reads only an error as fatal', function (): void {
     $error = exportDiagnosticsFor(['targets' => [['format' => 'nope', 'path' => 'x.json']]]);
-    $info = exportDiagnosticsFor(['path' => 'a.json', 'targets' => [['format' => 'uir', 'path' => 'b.json']]]);
+    $info = exportDiagnosticsFor(['path' => 'a.json', 'targets' => [['format' => 'full', 'path' => 'b.json']]]);
 
     // An info diagnostic reports dead config; it must not stop a run that is otherwise fine.
     expect(ExportDiagnostics::fatal($error))->toBeTrue()

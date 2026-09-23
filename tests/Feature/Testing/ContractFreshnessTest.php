@@ -17,7 +17,7 @@ beforeEach(function (): void {
         mkdir($this->dir, 0755, true);
     }
 
-    setBuild('documents.default.export.targets', [['format' => 'uir', 'path' => $this->artifact]]);
+    setBuild('documents.default.export.targets', [['format' => 'full', 'path' => $this->artifact]]);
     bindStubEngine();
 });
 
@@ -36,7 +36,7 @@ it('passes when the committed artifact is exactly what the code produces', funct
 
 it('accepts an artifact exported at a different provenance level, which is not staleness', function (ProvenanceLevel $level, bool $keepIds): void {
     $build = ApiContract::build();
-    $emitted = Formats::emit('uir', $build->fresh(), new EmitOptions(keepIds: $keepIds, provenance: $level))->output;
+    $emitted = Formats::emit('full', $build->fresh(), new EmitOptions(keepIds: $keepIds, provenance: $level))->output;
     file_put_contents($this->artifact, $emitted);
 
     expect(fn () => ApiContract::assertions()->assertDocumentUpToDate())->not->toThrow(AssertionFailedError::class);

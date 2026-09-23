@@ -21,7 +21,7 @@ beforeEach(function (): void {
 
     file_put_contents($this->artifact, (new UirEmitter)->emit(generateDocument()->document));
 
-    setBuild('documents.default.export.targets', [['format' => 'uir', 'path' => $this->artifact]]);
+    setBuild('documents.default.export.targets', [['format' => 'full', 'path' => $this->artifact]]);
     setBuild('documents.default.coverage.log', $this->logs);
 
     $index = ContractIndex::fromJson((string) file_get_contents($this->artifact));

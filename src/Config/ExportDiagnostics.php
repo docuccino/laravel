@@ -73,7 +73,13 @@ final class ExportDiagnostics
             'unknown-format' => new Diagnostic(
                 severity: Severity::Error,
                 code: 'config.export-unknown-format',
-                message: sprintf("%s names an unknown format '%s' (valid values: %s).", $entry, $detail, implode(', ', Formats::ids())),
+                message: sprintf(
+                    "%s names an unknown format '%s' (valid values: %s).%s",
+                    $entry,
+                    $detail,
+                    implode(', ', Formats::ids()),
+                    Formats::replacementHint($detail),
+                ),
             ),
             'yaml-unsupported' => new Diagnostic(
                 severity: Severity::Error,

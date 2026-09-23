@@ -124,7 +124,7 @@ it('builds and writes that document rather than exiting 0 with nothing to show',
     $out = sys_get_temp_dir().'/docuccino-default-document-'.uniqid().'.json';
 
     try {
-        test()->artisan('docuccino:export', ['--format' => 'uir', '--out' => $out]);
+        test()->artisan('docuccino:export', ['--format' => 'full', '--out' => $out]);
 
         expect(is_file($out))->toBeTrue()
             ->and((string) file_get_contents($out))->toContain('"title": "API Documentation"');
@@ -173,7 +173,7 @@ it('names the unmigrated framework config from the command, on the population th
     $out = sys_get_temp_dir().'/docuccino-unmigrated-'.uniqid().'.json';
 
     try {
-        test()->artisan('docuccino:export', ['--format' => 'uir', '--out' => $out])
+        test()->artisan('docuccino:export', ['--format' => 'full', '--out' => $out])
             ->expectsOutputToContain('config.not-migrated')
             ->assertExitCode(1);
     } finally {

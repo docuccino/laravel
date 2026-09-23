@@ -53,7 +53,7 @@ final class VersionChangesCommand extends Command
     use StringOptions;
 
     protected $signature = 'docuccino:version-changes
-        {old : Path to the committed UIR artifact of the version this one diverges from}
+        {old : Path to the committed artifact of the version this one diverges from}
         {document? : The configured document key to build as the new side (defaults to "default")}
         {--against= : Read `old` from this git ref (git show <ref>:<old>) instead of the working tree}
         {--since= : The version the scaffolded changes shipped in (defaults to the document\'s info.version)}

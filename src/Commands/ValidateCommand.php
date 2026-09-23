@@ -10,7 +10,7 @@ use Docuccino\Core\Emit\EmitReport;
 use Docuccino\Core\Emit\Formats;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Inference\TypeEngine;
-use Docuccino\Core\Support\Hydrate;
+use Docuccino\Core\Spec\UirSpec;
 use Docuccino\Laravel\Config\DocumentEmitOptions;
 use Docuccino\Laravel\Config\ExportDiagnostics;
 use Docuccino\Laravel\Config\UnusableRouteFilterException;
@@ -62,7 +62,12 @@ final class ValidateCommand extends Command
             $schemaErrors = $this->schemaErrors($diagnostics);
 
             if ($schemaErrors === []) {
-                $this->info(sprintf('%s: valid against UIR %s.', $key, $this->uirVersion($result->document->toArray())));
+                // "UIR" names the SPEC here, not the artifact — the artifact is `full`, and
+                // the spec is what the reader fetches from spec.docuccino.app. Core's Spec\UirSpec states
+                // the distinction; do not sweep this one. The version is the bundled schema's rather than
+                // the document's, because `Validator` resolves one schema and reading the version off the
+                // subject could name one the check never used.
+                $this->info(sprintf('%s: valid against UIR %s.', $key, UirSpec::VERSION));
             } else {
                 $this->error(sprintf('%s: %d schema violation(s).', $key, count($schemaErrors)));
             }
@@ -117,10 +122,15 @@ final class ValidateCommand extends Command
      * One target's verdict, then whatever the emitter said while producing it.
      *
      * A line on the quiet path too, because a reader who cannot tell the artifact half ran is exactly
-     * where this command started — and a format nobody can check says SO rather than staying silent,
-     * since silence here reads as the clean answer. Only the OpenAPI formats have a published schema
-     * to answer to ({@see Formats::checksEmittedArtifact()}); a UIR target answered to its own schema
-     * before it was emitted, and a Postman collection has no specification to be held to.
+     * where this command started — and a format nobody checked says SO rather than staying silent,
+     * since silence here reads as the clean answer.
+     *
+     * What the quiet line may claim is only what {@see Formats::checksEmittedArtifact()} answers:
+     * whether these BYTES were read back. It must not claim the format has no published schema, which
+     * is true of `postman` alone — a `full` artifact answers to the UIR schema, which the line above
+     * this one has just named a version of, and an Arazzo description answers to the Arazzo schema in
+     * the suite rather than at run time. Three rows, three different reasons, one thing in common:
+     * nobody read these bytes back.
      */
     private function reportArtifact(string $key, string $format, EmitReport $report): void
     {
@@ -130,7 +140,7 @@ final class ValidateCommand extends Command
         ));
 
         if (! Formats::checksEmittedArtifact($format)) {
-            $this->line(sprintf('%s: %s has no published schema to hold an artifact to; not checked.', $key, $format));
+            $this->line(sprintf('%s: %s artifact not read back against a published schema; not checked.', $key, $format));
         } elseif ($findings === 0) {
             $this->info(sprintf('%s: %s artifact valid against its published schema.', $key, $format));
         } else {
@@ -189,13 +199,5 @@ final class ValidateCommand extends Command
             $diagnostics,
             static fn (Diagnostic $d): bool => $d->code === 'document.schema-invalid',
         ));
-    }
-
-    /**
-     * @param  array<string, mixed>  $document
-     */
-    private function uirVersion(array $document): string
-    {
-        return Hydrate::stringOr($document['uir'] ?? null, '1.0.0');
     }
 }

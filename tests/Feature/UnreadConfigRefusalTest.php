@@ -58,7 +58,7 @@ function unreadConfigRefusalRows(): array
 {
     return [
         // Everything that reads the configuration to produce or check a document.
-        'export' => ['Docuccino\Laravel\Commands\ExportCommand', true, ['--format' => 'uir'], 1],
+        'export' => ['Docuccino\Laravel\Commands\ExportCommand', true, ['--format' => 'full'], 1],
         'validate' => ['Docuccino\Laravel\Commands\ValidateCommand', true, [], 1],
         'cache' => ['Docuccino\Laravel\Commands\CacheCommand', true, [], 1],
         'diff' => ['Docuccino\Laravel\Commands\DiffCommand', true, ['old' => 'docs/openapi.json'], 1],
@@ -157,7 +157,7 @@ it('refuses every state a configuration can be unreadable in, not only the one t
     $out = sys_get_temp_dir().'/docuccino-unread-'.uniqid().'.json';
 
     try {
-        test()->artisan('docuccino:export', ['--format' => 'uir', '--out' => $out])
+        test()->artisan('docuccino:export', ['--format' => 'full', '--out' => $out])
             ->expectsOutputToContain($code)
             ->assertExitCode(1);
 
@@ -173,7 +173,7 @@ it('refuses even where the run explicitly asks for no gate', function (): void {
     arrangeUnmigrated();
     bindStubEngine();
 
-    test()->artisan('docuccino:export', ['--format' => 'uir', '--fail-on' => 'none'])
+    test()->artisan('docuccino:export', ['--format' => 'full', '--fail-on' => 'none'])
         ->expectsOutputToContain('config.not-migrated')
         ->assertExitCode(1);
 });
@@ -186,7 +186,7 @@ it('writes nothing while it refuses', function (): void {
     $out = sys_get_temp_dir().'/docuccino-refused-'.uniqid().'.json';
 
     try {
-        test()->artisan('docuccino:export', ['--format' => 'uir', '--out' => $out])->assertExitCode(1);
+        test()->artisan('docuccino:export', ['--format' => 'full', '--out' => $out])->assertExitCode(1);
 
         expect(is_file($out))->toBeFalse();
     } finally {
@@ -222,7 +222,7 @@ it('says nothing about the one file state that is not an error', function (): vo
     $out = $directory.'/out.json';
 
     try {
-        test()->artisan('docuccino:export', ['--format' => 'uir', '--out' => $out])
+        test()->artisan('docuccino:export', ['--format' => 'full', '--out' => $out])
             ->expectsOutputToContain('config.file-misnamed')
             ->assertExitCode(0);
 

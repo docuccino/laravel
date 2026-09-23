@@ -13,8 +13,9 @@ use Docuccino\Core\Extensions\Context\ExportTarget;
  *
  * There is deliberately no option of its own: an application that exports a document has already said
  * where it lands, so both read `export.targets` — the best of them a contract can be read back out of,
- * which is UIR when there is one because only UIR carries the provenance that makes a failure
- * actionable. A second place to name the file would be a second place to get it wrong.
+ * which is `full` when there is one because that is the only artifact carrying the
+ * provenance that makes a failure actionable. A second place to name the file would be a second place
+ * to get it wrong.
  *
  * @internal
  */

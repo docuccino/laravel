@@ -95,7 +95,6 @@ function parameterLocationTable(string $class, string $name): array
 function parameterPublishedOrder(array $locations): array
 {
     $canonical = (new Canonicalizer)->canonicalize([
-        'uir' => '1.0.0',
         'openapi' => '3.2.0',
         'info' => ['title' => 'Locations', 'version' => '1.0.0'],
         'paths' => ['/things' => ['get' => [

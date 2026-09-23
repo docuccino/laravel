@@ -167,12 +167,13 @@ it('404s a viewer route whose document is no longer configured', function (): vo
     $this->get('/docs/api.json')->assertNotFound();
 });
 
-it('serves source=artifact, re-emitting a UIR artifact as OpenAPI', function (): void {
+it('serves source=artifact, re-emitting the full artifact as plain OpenAPI', function (): void {
     config()->set('docuccino.documents.default.viewer.gate', 'viewApiDocs');
     config()->set('docuccino.documents.default.viewer.source', 'artifact');
     Gate::before(static fn ($user = null): bool => true);
 
-    // Write a UIR artifact (carries the `uir` field + x-docuccino provenance) to the export path.
+    // Write a `full` artifact — the one that retains `x-docuccino`, provenance and all —
+    // to the export path.
     $artifact = sys_get_temp_dir().'/docuccino-artifact-'.uniqid().'.json';
     file_put_contents($artifact, (new UirEmitter)->emit(
         UirDocument::fromArray(
@@ -186,14 +187,94 @@ it('serves source=artifact, re-emitting a UIR artifact as OpenAPI', function ():
 
     $body = $this->get('/docs/api.json')->assertOk()->getContent();
 
-    // Re-emitted through the OpenAPI emitter: it's OAS (no `uir` key) and leaks no internal x-docuccino
-    // provenance to the browser.
-    expect($body)->toContain('"openapi"')
-        ->and($body)->not->toContain('"uir"')
+    // Re-emitted through the OpenAPI emitter: OAS, and none of the extension the artifact on disk
+    // carries reaches the browser. The artifact is read back first, so the absence below is a strip
+    // that happened rather than a member no artifact has had since the extension move — which is what
+    // the retired `"uir"` root key had quietly become.
+    expect(file_get_contents($artifact))->toContain('"x-docuccino"')
+        ->and($body)->toContain('"openapi"')
         ->and($body)->not->toContain('x-docuccino');
 
     @unlink($artifact);
 });
+
+/*
+ * The trust boundary, executed from the shapes that used to slip through it. Provenance carries
+ * `source.file`, `source.line` and `source.symbol` — the one thing on this path that must never reach
+ * a browser — and whether to strip it turned on the root `x-docuccino` member being `isset()`.
+ * Anything that post-processes an export can defeat that: `isset(null)` is false, so a shipped file
+ * whose extension had been emptied rather than removed streamed out verbatim, node provenance and all.
+ *
+ * There is no decision left to get wrong, so these are subjects rather than cases: a document whose
+ * NODES carry provenance is served without it whatever its root looks like.
+ *
+ * The last row is also this package's one answer to "what does the viewer do with an artifact written
+ * before UIR 2.0". The empty-objects test below used to carry a root `uir` member incidentally, and
+ * taking it out is what left `OpenApi32Emitter`'s strip of that pair with no caller exercising it —
+ * so the question is asked here, once, rather than restored to a test whose subject is `{}` against
+ * `[]`. `OpenApi32EmitterTest` is the core half: it proves the strip, this proves what reaches the
+ * browser.
+ */
+it('never streams node provenance, whatever the artifact root looks like', function (array $root): void {
+    config()->set('docuccino.documents.default.viewer.gate', 'viewApiDocs');
+    config()->set('docuccino.documents.default.viewer.source', 'artifact');
+    Gate::before(static fn ($user = null): bool => true);
+
+    $artifact = sys_get_temp_dir().'/docuccino-boundary-'.uniqid().'.json';
+    file_put_contents($artifact, (string) json_encode([
+        ...$root,
+        'openapi' => '3.2.0',
+        'info' => ['title' => 'Post-processed', 'version' => '1.0.0'],
+        'paths' => ['/things' => ['get' => [
+            'x-docuccino' => [
+                'id' => 'op:v1:mfz3q8k2w9r7t1ua',
+                'provenance' => [[
+                    'producer' => 'route',
+                    'layer' => 'inference',
+                    'fields' => ['operationId'],
+                    'source' => [
+                        'file' => 'app/Http/Controllers/SecretController.php',
+                        'line' => 42,
+                        'symbol' => 'App\\Http\\Controllers\\SecretController::index',
+                    ],
+                ]],
+            ],
+            'operationId' => 'things.index',
+            'responses' => ['200' => ['description' => 'OK']],
+        ]]],
+    ], JSON_PRETTY_PRINT));
+    setBuild('documents.default.export.path', $artifact);
+
+    $body = $this->get('/docs/api.json')->assertOk()->getContent();
+
+    // The positive control first: the page is still being served the document, so the absences below
+    // are the boundary working rather than an empty body.
+    expect($body)->toContain('"openapi"')
+        ->and($body)->toContain('things.index')
+        // One needle per call: `toContain()` takes a LIST of needles, so a second argument passed as
+        // a label would have been read as another needle and quietly weakened every line of this.
+        ->and($body)->not->toContain('x-docuccino')
+        ->and($body)->not->toContain('provenance')
+        ->and($body)->not->toContain('SecretController')
+        ->and($body)->not->toContain('"uir"')
+        ->and($body)->not->toContain('"$schema"');
+
+    @unlink($artifact);
+})->with([
+    'the extension present, as an export writes it' => [['x-docuccino' => ['document' => ['id' => 'doc:x']]]],
+    // `isset()` is false for null, which is the exact hole: a post-processor that emptied the member
+    // rather than removing it published every node's source file to the browser.
+    'the extension post-processed to null' => [['x-docuccino' => null]],
+    // And removed outright, which no export writes and anything downstream of one might.
+    'the extension removed outright' => [[]],
+    // An artifact written before UIR 2.0 names itself with two root members the OpenAPI Object admits
+    // neither of, so those have to go too or the viewer serves an invalid document.
+    'an artifact written before UIR 2.0' => [[
+        '$schema' => 'https://spec.docuccino.app/uir/1.1/schema.json',
+        'uir' => '1.1.0',
+        'x-docuccino' => ['document' => ['id' => 'doc:legacy']],
+    ]],
+]);
 
 it('serves an artifact the empty objects it holds, so the viewer and the export agree', function (): void {
     // The same document, two answers. `source=artifact` re-emits what `docuccino:export` shipped, and an
@@ -205,7 +286,6 @@ it('serves an artifact the empty objects it holds, so the viewer and the export 
     Gate::before(static fn ($user = null): bool => true);
 
     $document = UirDocument::fromArray([
-        'uir' => '1.0.0',
         'openapi' => '3.2.0',
         'info' => ['title' => 'Artifact', 'version' => '1.0.0'],
         'paths' => ['/things' => ['get' => ['responses' => ['200' => [
@@ -270,9 +350,9 @@ it('picks the best servable target whatever order the list is written in', funct
     // 3.2 is the most faithful thing the viewer can serve, so it wins regardless of list order.
     expect($this->get('/docs/api.json')->assertOk()->getContent())->toContain('served-openapi-3.2');
 })->with([
-    '3.2 first' => [['openapi-3.2', 'openapi-3.1', 'uir']],
-    '3.2 last' => [['uir', 'openapi-3.1', 'openapi-3.2']],
-    '3.2 in the middle' => [['openapi-3.1', 'openapi-3.2', 'uir']],
+    '3.2 first' => [['openapi-3.2', 'openapi-3.1', 'full']],
+    '3.2 last' => [['full', 'openapi-3.1', 'openapi-3.2']],
+    '3.2 in the middle' => [['openapi-3.1', 'openapi-3.2', 'full']],
 ]);
 
 it('skips a YAML target rather than serving YAML as application/json', function (): void {
@@ -287,7 +367,7 @@ it('skips a YAML target rather than serving YAML as application/json', function 
 
     setBuild('documents.default.export', ['targets' => [
         ['format' => 'openapi-3.2', 'path' => $dir.'/openapi.yaml'],
-        ['format' => 'uir', 'path' => $dir.'/api.uir.json'],
+        ['format' => 'full', 'path' => $dir.'/api.uir.json'],
     ]]);
 
     // The 3.2 target ranks higher but is YAML, which the browser cannot read under this content type.

@@ -23,7 +23,7 @@ it('prefers the richest format a document exports, whatever order it was listed 
     expect(ArtifactLocator::preferred(locatorConfig($targets))->path)->toBe($expected);
 })->with([
     'uir beats openapi, listed second' => [
-        [['format' => 'openapi-3.2', 'path' => 'docs/openapi.json'], ['format' => 'uir', 'path' => 'docs/uir.json']],
+        [['format' => 'openapi-3.2', 'path' => 'docs/openapi.json'], ['format' => 'full', 'path' => 'docs/uir.json']],
         'docs/uir.json',
     ],
     '3.2 beats 3.1' => [

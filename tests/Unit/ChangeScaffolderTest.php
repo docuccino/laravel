@@ -49,7 +49,6 @@ function scaffoldDocument(array $properties, array $required = []): UirDocument
     }
 
     return UirDocument::fromArray([
-        'uir' => '1.0.0',
         'openapi' => '3.2.0',
         'info' => ['title' => 'Forms API', 'version' => '2026-09-01'],
         'paths' => [],
@@ -245,7 +244,6 @@ function scaffoldOperationDocument(array $properties, array $paths, array $webho
     ]];
 
     return UirDocument::fromArray([
-        'uir' => '1.0.0',
         'openapi' => '3.2.0',
         'info' => ['title' => 'Forms API', 'version' => '2026-09-01'],
         'paths' => array_map(static fn (array $schema): array => $operation('get', $schema), $paths),
@@ -343,7 +341,6 @@ function scaffoldParameterDocument(array $operations): UirDocument
     }
 
     return UirDocument::fromArray([
-        'uir' => '1.0.0',
         'openapi' => '3.2.0',
         'info' => ['title' => 'Forms API', 'version' => '2026-09-01'],
         'paths' => $paths,

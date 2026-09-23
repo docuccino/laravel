@@ -231,7 +231,7 @@ final class ApiContract
         if (! $index->supportsWebhooks()) {
             Assert::fail(ContractMessages::webhooksUnsupported(
                 $index,
-                'Export the document as UIR and point the assertions at it: php artisan docuccino:export',
+                'Export the full artifact and point the assertions at it: php artisan docuccino:export --format=full',
             ));
         }
 

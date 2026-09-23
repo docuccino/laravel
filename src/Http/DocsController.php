@@ -291,21 +291,30 @@ final class DocsController
             return '';
         }
 
-        // A UIR artifact (the `uir` field) is re-emitted as OAS — the viewer expects OAS, and a UIR's
-        // internal x-docuccino provenance must never reach the browser. Plain OpenAPI streams through
-        // untouched, so an artifact exported for a specific viewer stays that viewer's business.
+        // Every JSON object on this path is re-emitted, with no question asked about what is in it.
+        // This is a trust boundary — provenance carries `source.file`, `source.line` and
+        // `source.symbol`, and the browser is the one reader that must never see them — and it used to
+        // turn on whether the bytes carried a root `x-docuccino` member. A decision is a thing that can
+        // be wrong: a post-processed file whose extension had been emptied, or moved, streamed out
+        // verbatim with every node's provenance still on it.
+        //
+        // Re-emitting unconditionally removes the decision rather than correcting it.
+        // {@see ViewerDrivers::emitterFor()} is a closed match over the three plain OpenAPI emitters,
+        // every one of which strips the extension whole, so nothing that leaves here can carry it. It
+        // costs nothing measurable either: an already-plain export re-emits byte-identical and silent
+        // at all three versions, because that is the same canonical writer that produced it.
         //
         // Through the shared reader ({@see JsonValue}), because this re-emits: an associative decode
         // reads an `example: {}` the export wrote back as `[]`, and the viewer would then answer with
-        // a different document from the file beside it. Bytes that are not JSON at all stream on, the
-        // same as a plain OpenAPI export does.
+        // a different document from the file beside it. Bytes that are not a JSON OBJECT are not an
+        // OpenAPI document at all and stream on untouched.
         try {
             $decoded = JsonValue::decode($contents);
         } catch (JsonException) {
             return $contents;
         }
 
-        if (is_array($decoded) && isset($decoded['uir'])) {
+        if (is_array($decoded) && ! array_is_list($decoded)) {
             /** @var array<string, mixed> $decoded */
             return $this->drivers->emitFor($config, UirDocument::fromArray($decoded));
         }

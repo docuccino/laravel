@@ -67,7 +67,7 @@ it('names the key, and the one key it was probably meant to be', function (strin
         'Did you mean documents.default.integrations.sanctum.enabled?',
     ],
     'a member of an export target' => [
-        "documents:\n  default:\n    export:\n      targets:\n        - { format: 'uir', pth: 'a.json' }\n",
+        "documents:\n  default:\n    export:\n      targets:\n        - { format: 'full', pth: 'a.json' }\n",
         'documents.default.export.targets.0.pth',
         'Did you mean documents.default.export.targets.0.path?',
     ],

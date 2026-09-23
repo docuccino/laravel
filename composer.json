@@ -12,7 +12,7 @@
         "api-docs",
         "rest-api",
         "swagger",
-        "uir",
+        "openapi-3.2",
         "scramble-alternative"
     ],
     "homepage": "https://docuccino.app",

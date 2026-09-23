@@ -29,6 +29,14 @@ it('errors on an unknown --format instead of falling back', function (): void {
         ->assertFailed();
 });
 
+it('tells a pipeline still passing --format=uir what to pass instead', function (): void {
+    // The retired id ships with no alias, so this refusal IS the upgrade instruction, and it is the
+    // first thing an existing CI pipeline meets. Run rather than claimed.
+    $this->artisan('docuccino:export', ['--format' => 'uir', '--out' => sys_get_temp_dir().'/x.json'])
+        ->expectsOutputToContain('"uir" is now "full".')
+        ->assertFailed();
+});
+
 it('defaults to OpenAPI 3.2 JSON when no format is given', function (): void {
     expect(exportTo([]))->toContain('"openapi": "3.2.0"');
 });
@@ -54,9 +62,9 @@ it('emits YAML with --yaml', function (): void {
         ->and(str_starts_with(trim($yaml), '{'))->toBeFalse();
 });
 
-it('omits provenance from UIR with --provenance=none, and includes it by default', function (): void {
-    expect(exportTo(['--format' => 'uir', '--provenance' => 'none']))->not->toContain('"provenance"');
-    expect(exportTo(['--format' => 'uir']))->toContain('"provenance"');
+it('omits provenance from the full artifact with --provenance=none, and includes it by default', function (): void {
+    expect(exportTo(['--format' => 'full', '--provenance' => 'none']))->not->toContain('"provenance"');
+    expect(exportTo(['--format' => 'full']))->toContain('"provenance"');
 });
 
 it('errors on an unknown --provenance instead of coercing it to winners', function (): void {
@@ -66,8 +74,37 @@ it('errors on an unknown --provenance instead of coercing it to winners', functi
         ->assertFailed();
 });
 
+/*
+ * What this command prints, it did not write: an option as it was typed, a format id and a path out of
+ * `docuccino.yaml`. Symfony's formatter obeys `<…>` in everything a command writes and nothing strips
+ * ANSI, so a Makefile or a CI matrix interpolating a variable into `--format` is enough to recolour the
+ * log — and a `\r` ahead of it forges a "Wrote …" line over the failure that really happened. Both
+ * directions are proved below: the tags survive as text, and the control sequence does not survive as
+ * one.
+ */
+it('prints an option it could not use as text rather than as terminal instructions', function (string $option, string $expected): void {
+    $this->artisan('docuccino:export', [$option => "<fg=red>nope</>\x1B[2K", '--out' => sys_get_temp_dir().'/x.json'])
+        ->expectsOutputToContain($expected.' "<fg=red>nope</>\x1B[2K"')
+        ->assertFailed();
+})->with([
+    '--format' => ['--format', 'Unknown --format'],
+    '--provenance' => ['--provenance', 'Unknown --provenance'],
+]);
+
+it('prints the path it wrote as text too, that being the line a forged one imitates', function (): void {
+    // The success line, not an error: this is the one a forged `✔ Wrote docs/openapi.json` would have to
+    // look like, and the path comes from `--out` or from a configured target either way.
+    $out = sys_get_temp_dir().'/docuccino-<fg=green>ok</>-'.uniqid().'.json';
+
+    $this->artisan('docuccino:export', ['--out' => $out])
+        ->expectsOutputToContain('Wrote '.$out.' (openapi-3.2).')
+        ->assertSuccessful();
+
+    @unlink($out);
+});
+
 it('accepts every provenance level', function (string $level): void {
-    expect(exportTo(['--format' => 'uir', '--provenance' => $level]))->toContain('"uir"');
+    expect(exportTo(['--format' => 'full', '--provenance' => $level]))->toContain('"x-docuccino"');
 })->with(['none', 'winners', 'full']);
 
 it('keeps node identities by default, and drops them with --drop-ids', function (): void {

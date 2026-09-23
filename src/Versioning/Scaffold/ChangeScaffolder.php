@@ -55,7 +55,7 @@ final readonly class ChangeScaffolder
      * here: a verb names the CLASS behind a schema, and the only way from a published component to that
      * class is the node id the two documents share.
      */
-    private const string NO_IDENTITIES = 'The old artifact carries no Docuccino identities, so no schema in it can be tied to the class that produces it and nothing was scaffolded. Export the previous version as UIR (`docuccino:export --format=uir`) and diff against that.';
+    private const string NO_IDENTITIES = 'The old artifact carries no Docuccino identities, so no schema in it can be tied to the class that produces it and nothing was scaffolded. Export the previous version with the extension retained (`docuccino:export --format=full`) and diff against that.';
 
     /**
      * The differ's classifications for a parameter that came or went, each mapped to the half of a

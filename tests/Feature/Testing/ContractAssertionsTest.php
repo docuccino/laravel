@@ -253,7 +253,7 @@ it('refuses a document key nothing configures', function (): void {
 it('reads the document’s own uir export target when the suite names no path', function (): void {
     setBuild('documents.default.export.targets', [
         ['format' => 'openapi-3.2', 'path' => 'docs/openapi.json'],
-        ['format' => 'uir', 'path' => 'docs/api.uir.json'],
+        ['format' => 'full', 'path' => 'docs/api.uir.json'],
     ]);
 
     expect(ApiContract::artifactPath())->toEndWith('/docs/api.uir.json');

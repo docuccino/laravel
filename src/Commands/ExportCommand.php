@@ -20,6 +20,7 @@ use Docuccino\Laravel\Config\ExportDiagnostics;
 use Docuccino\Laravel\Config\UnusableRouteFilterException;
 use Docuccino\Laravel\Pipeline\DocumentBuilder;
 use Docuccino\Laravel\Support\Paths;
+use Docuccino\Laravel\Support\TerminalText;
 use Illuminate\Console\Command;
 
 /**
@@ -31,6 +32,11 @@ use Illuminate\Console\Command;
  *
  * `--format`/`--out` REPLACE the configured target list for the run rather than filtering it — asking
  * for a 3.0 file must produce one whether or not a 3.0 target happens to be configured.
+ *
+ * Every value this prints comes from outside — an option as it was typed, a format id and a path out
+ * of `docuccino.yaml`, a document key — so all of it goes out through {@see TerminalText}. The
+ * diagnostics half is already covered where it is rendered ({@see RendersDiagnostics}); these are the
+ * lines this command writes itself.
  */
 final class ExportCommand extends Command
 {
@@ -43,10 +49,10 @@ final class ExportCommand extends Command
 
     protected $signature = 'docuccino:export
         {document? : The configured document key (defaults to every document)}
-        {--format= : uir | openapi-3.2 | openapi-3.1 | openapi-3.0 | postman | arazzo — writes this one format instead of the configured targets}
+        {--format= : openapi-3.2 | openapi-3.1 | openapi-3.0 | full | postman | arazzo — writes this one format instead of the configured targets}
         {--out= : Output path (defaults to the matching target, else the document export path)}
         {--fail-on=none : none | error | warning | info | hint — the quietest severity that still makes the command exit non-zero}
-        {--provenance=winners : none | winners | full — UIR provenance detail}
+        {--provenance=winners : none | winners | full — how much provenance a --format=full artifact keeps}
         {--drop-ids : Omit the flat x-docuccino-id member OpenAPI output carries by default (the artifact then diffs by method + path)}
         {--yaml : Emit YAML instead of JSON}
         {--memory-limit= : Raise the PHP memory limit for inference (e.g. 2G)}';
@@ -117,13 +123,18 @@ final class ExportCommand extends Command
         // A typo errors out rather than falling back to OpenAPI 3.2 and shipping the wrong artifact.
         $format = $this->stringOption('format');
         if ($format !== null && ! Formats::supports($format)) {
-            $this->error(sprintf('Unknown --format "%s"; expected one of: %s.', $format, implode(', ', Formats::ids())));
+            $this->error(sprintf(
+                'Unknown --format "%s"; expected one of: %s.%s',
+                TerminalText::of($format),
+                implode(', ', Formats::ids()),
+                Formats::replacementHint($format),
+            ));
 
             return false;
         }
 
         if ($format !== null && $this->option('yaml') === true && ! Formats::serialisesYaml($format)) {
-            $this->error(sprintf('--yaml cannot be used with --format=%s, which has no YAML serialisation.', $format));
+            $this->error(sprintf('--yaml cannot be used with --format=%s, which has no YAML serialisation.', TerminalText::of($format)));
 
             return false;
         }
@@ -132,7 +143,7 @@ final class ExportCommand extends Command
         if ($provenance !== null && ProvenanceLevel::tryFrom($provenance) === null) {
             $this->error(sprintf(
                 'Unknown --provenance "%s"; expected one of: %s.',
-                $provenance,
+                TerminalText::of($provenance),
                 implode(', ', array_map(static fn (ProvenanceLevel $level): string => $level->value, ProvenanceLevel::cases())),
             ));
 
@@ -173,9 +184,9 @@ final class ExportCommand extends Command
             if (count($targets) > 1) {
                 $this->error(sprintf(
                     '--out needs --format: documents.%s configures %d export targets (%s), and one path cannot hold them all — only the last format written would survive. Pass --format to pick one, or drop --out to write each target to its configured path.',
-                    $key,
+                    TerminalText::of($key),
                     count($targets),
-                    implode(', ', array_map(static fn (ExportTarget $target): string => $target->format, $targets)),
+                    implode(', ', array_map(static fn (ExportTarget $target): string => TerminalText::of($target->format), $targets)),
                 ));
 
                 return false;
@@ -284,7 +295,7 @@ final class ExportCommand extends Command
         // Judged on the bytes rather than on the format: any emitter that can legitimately produce
         // nothing inherits this, which is the half a per-format check would have missed.
         if ($result->output === '') {
-            $this->line(sprintf('<fg=gray>Wrote nothing for %s (%s) — see below.</>', $path, $target->format));
+            $this->line(sprintf('<fg=gray>Wrote nothing for %s (%s) — see below.</>', TerminalText::of($path), TerminalText::of($target->format)));
             $this->renderDiagnostics($target->format, $this->withAcceptanceNotes($result->report->diagnostics));
 
             return ! $result->report->hasError();
@@ -292,19 +303,19 @@ final class ExportCommand extends Command
 
         $directory = dirname($path);
         if (! Directory::ensure($directory)) {
-            $this->error(sprintf('Could not create %s.', $directory));
+            $this->error(sprintf('Could not create %s.', TerminalText::of($directory)));
 
             return false;
         }
 
         // Atomic for the reason {@see AtomicFile} gives: `docuccino:watch` re-exports on every save.
         if (! AtomicFile::write($path, $result->output)) {
-            $this->error(sprintf('Could not write %s.', $path));
+            $this->error(sprintf('Could not write %s.', TerminalText::of($path)));
 
             return false;
         }
 
-        $this->info(sprintf('Wrote %s (%s).', $path, $target->format));
+        $this->info(sprintf('Wrote %s (%s).', TerminalText::of($path), TerminalText::of($target->format)));
 
         // A downlevel drops or approximates things; say so rather than shipping a quieter contract.
         // Printed like any other report, so `--fail-on` reads it and `diagnostics.accept` quiets it:
