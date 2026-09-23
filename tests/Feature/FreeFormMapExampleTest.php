@@ -28,7 +28,7 @@ it('emits the empty schema a free-form map publishes as an object, with the exam
     // sees, and the reason a check must read the canonical form instead.
     expect($metadata['type'])->toBe('object')
         ->and($metadata['additionalProperties'])->toBe([])
-        ->and($metadata['example'])->toBe(['source' => 'syndication', 'wordCount' => 1200]);
+        ->and($metadata['example'])->toBe(['wordCount' => 1200, 'source' => 'syndication']);
 
     // And the ARTIFACT publishes it as the object it means, which is what the check has to be held to.
     expect((new UirEmitter)->emit(generateDocument()->document))
@@ -69,7 +69,7 @@ it('publishes an empty object example as an object, and says nothing about it', 
 
     expect($untypable)->toBe([])
         ->and($build->document->toArray()['components']['schemas']['Article']['properties']['metadata']['example'])
-        ->toBe(['source' => 'syndication', 'wordCount' => 1200]);
+        ->toBe(['wordCount' => 1200, 'source' => 'syndication']);
 });
 
 it('says nothing about a free-form map carrying an example, and does not die trying', function (): void {

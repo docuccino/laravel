@@ -43,7 +43,7 @@ final class ArticleData extends Data
          *
          * @var array<string, mixed>
          *
-         * @example {"source": "syndication", "wordCount": 1200}
+         * @example {"wordCount": 1200, "source": "syndication"}
          */
         public array $metadata,
         /**

@@ -325,12 +325,14 @@ final class WorkbenchEngine
                     // `mixed` is UnknownT, whose schema is the EMPTY schema, so `additionalProperties`
                     // is an empty array in the draft and `{}` in the artifact. That pair — the empty
                     // schema plus an authored example — is what killed an export, and no fixture in this
-                    // repo had it when the example lint shipped.
+                    // repo had it when the example lint shipped. Its keys are written unsorted, as an
+                    // author writes them: the artifact sorts them and a fresh build does not, and a
+                    // self-diff must not read that as a change.
                     new PropertyMetadata(
                         'metadata',
                         new MapT(ScalarT::string(), new UnknownT('mixed')),
                         'Whatever the publishing system stored alongside the article.',
-                        '{"source": "syndication", "wordCount": 1200}',
+                        '{"wordCount": 1200, "source": "syndication"}',
                     ),
                     // The same map, with the EMPTY object literal beside it — the natural example on a
                     // free-form map, and the one the reader refused as untypable, dropping a valid
