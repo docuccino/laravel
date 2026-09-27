@@ -79,7 +79,7 @@ final class ErrorResponsesExtension implements OperationExtension
                 continue;
             }
 
-            $this->applier->apply($operation, $mapped->draft, $mapped->mapper->producer(), $this->throwSource($context, $throw));
+            $this->applier->apply($operation, $mapped->draft, $mapped->producer(), $this->throwSource($context, $throw));
 
             $declaration = DeclaredErrorComponent::on($throw->exceptionFqcn);
             if ($declaration === null) {

@@ -1,0 +1,585 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-attachments/draft": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:b4dleg7tdh5abb57",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/TaggedUnion/AttachmentController.php",
+                "line": 21,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\TaggedUnion\\AttachmentController::draft"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-attachments.draft",
+        "tags": [
+          "Attachment"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:je2upew556pbvcpg",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "anyOf"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/DraftAttachment"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ImageAttachment"
+                    },
+                    {
+                      "$ref": "#/components/schemas/LinkAttachment"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-attachments/forwarded": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:hi3bg42ecrwvcfv6",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/TaggedUnion/AttachmentController.php",
+                "line": 31,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\TaggedUnion\\AttachmentController::forwarded"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-attachments.forwarded",
+        "tags": [
+          "Attachment"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:j62xd7yepeiowpup",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/ForwardedAttachment"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-attachments/list": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:a2rm3p52wqdx32ds",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/TaggedUnion/AttachmentController.php",
+                "line": 11,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\TaggedUnion\\AttachmentController::index"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-attachments.list",
+        "tags": [
+          "Attachment"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:sepjwc5c2dzbf6cv",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "items",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Attachment"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-attachments/maybe": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:wi5br4ogrdzrwzzp",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/TaggedUnion/AttachmentController.php",
+                "line": 26,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\TaggedUnion\\AttachmentController::maybe"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-attachments.maybe",
+        "tags": [
+          "Attachment"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:7cx2fsd6mv6knmws",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "anyOf"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "anyOf": [
+                    {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/ImageAttachment"
+                        },
+                        {
+                          "$ref": "#/components/schemas/LinkAttachment"
+                        }
+                      ],
+                      "discriminator": {
+                        "mapping": {
+                          "image": "#/components/schemas/ImageAttachment",
+                          "link": "#/components/schemas/LinkAttachment"
+                        },
+                        "propertyName": "kind"
+                      }
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-attachments/one": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:aq6j4y4j4zbztwik",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/TaggedUnion/AttachmentController.php",
+                "line": 16,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\TaggedUnion\\AttachmentController::show"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-attachments.one",
+        "tags": [
+          "Attachment"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:udzts3bfct3sxql6",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "discriminator",
+                          "oneOf"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ImageAttachment"
+                    },
+                    {
+                      "$ref": "#/components/schemas/LinkAttachment"
+                    }
+                  ],
+                  "discriminator": {
+                    "mapping": {
+                      "image": "#/components/schemas/ImageAttachment",
+                      "link": "#/components/schemas/LinkAttachment"
+                    },
+                    "propertyName": "kind"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Attachment": {
+        "x-docuccino": {
+          "id": "sch:v1:qsx3htkvqwcqhhoj"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/FileAttachment"
+          },
+          {
+            "$ref": "#/components/schemas/ForwardedAttachment"
+          },
+          {
+            "$ref": "#/components/schemas/ImageAttachment"
+          },
+          {
+            "$ref": "#/components/schemas/LinkAttachment"
+          }
+        ],
+        "discriminator": {
+          "mapping": {
+            "file": "#/components/schemas/FileAttachment",
+            "forwarded": "#/components/schemas/ForwardedAttachment",
+            "image": "#/components/schemas/ImageAttachment",
+            "link": "#/components/schemas/LinkAttachment"
+          },
+          "propertyName": "kind"
+        }
+      },
+      "AttachmentKind": {
+        "x-docuccino": {
+          "id": "sch:v1:ptmsisnfbi5uo2r2"
+        },
+        "type": "string",
+        "enum": [
+          "image",
+          "link",
+          "file",
+          "forwarded"
+        ],
+        "x-enum-varnames": [
+          "Image",
+          "Link",
+          "File",
+          "Forwarded"
+        ],
+        "x-enumNames": [
+          "Image",
+          "Link",
+          "File",
+          "Forwarded"
+        ]
+      },
+      "DraftAttachment": {
+        "x-docuccino": {
+          "id": "sch:v1:huh2yq7w7a5nszdx"
+        },
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/AttachmentKind"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "note"
+        ]
+      },
+      "FileAttachment": {
+        "x-docuccino": {
+          "id": "sch:v1:biuthjypt74k337n"
+        },
+        "type": "object",
+        "properties": {
+          "bytes": {
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string",
+            "const": "file"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "bytes"
+        ]
+      },
+      "ForwardedAttachment": {
+        "x-docuccino": {
+          "id": "sch:v1:io4v6ipkbslkfkcb"
+        },
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "const": "forwarded"
+          },
+          "original": {
+            "$ref": "#/components/schemas/Attachment"
+          }
+        },
+        "required": [
+          "kind",
+          "original",
+          "from"
+        ]
+      },
+      "ImageAttachment": {
+        "x-docuccino": {
+          "id": "sch:v1:6ugmhpqvr53uz4rp"
+        },
+        "type": "object",
+        "properties": {
+          "height": {
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string",
+            "const": "image"
+          },
+          "url": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "url",
+          "width",
+          "height"
+        ]
+      },
+      "LinkAttachment": {
+        "x-docuccino": {
+          "id": "sch:v1:p6nvaatg2g5n264p"
+        },
+        "type": "object",
+        "properties": {
+          "href": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "const": "link"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "href"
+        ]
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "8243fed1832405e675753ccf2f6887c9c791a5a479d5bbda4a78d9f91f9ec4bd"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.20.2",
+      "specVersion": "2.0.0",
+      "schema": "https://spec.docuccino.app/uir/2.0/schema.json"
+    }
+  }
+}

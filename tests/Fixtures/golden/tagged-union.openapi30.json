@@ -1,0 +1,308 @@
+{
+  "openapi": "3.0.4",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-attachments/draft": {
+      "get": {
+        "operationId": "get.api.zz-attachments.draft",
+        "tags": [
+          "Attachment"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/DraftAttachment"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ImageAttachment"
+                    },
+                    {
+                      "$ref": "#/components/schemas/LinkAttachment"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-attachments/forwarded": {
+      "get": {
+        "operationId": "get.api.zz-attachments.forwarded",
+        "tags": [
+          "Attachment"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForwardedAttachment"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-attachments/list": {
+      "get": {
+        "operationId": "get.api.zz-attachments.list",
+        "tags": [
+          "Attachment"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Attachment"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-attachments/maybe": {
+      "get": {
+        "operationId": "get.api.zz-attachments.maybe",
+        "tags": [
+          "Attachment"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ImageAttachment"
+                    },
+                    {
+                      "$ref": "#/components/schemas/LinkAttachment"
+                    }
+                  ],
+                  "discriminator": {
+                    "mapping": {
+                      "image": "#/components/schemas/ImageAttachment",
+                      "link": "#/components/schemas/LinkAttachment"
+                    },
+                    "propertyName": "kind"
+                  },
+                  "nullable": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-attachments/one": {
+      "get": {
+        "operationId": "get.api.zz-attachments.one",
+        "tags": [
+          "Attachment"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ImageAttachment"
+                    },
+                    {
+                      "$ref": "#/components/schemas/LinkAttachment"
+                    }
+                  ],
+                  "discriminator": {
+                    "mapping": {
+                      "image": "#/components/schemas/ImageAttachment",
+                      "link": "#/components/schemas/LinkAttachment"
+                    },
+                    "propertyName": "kind"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Attachment": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/FileAttachment"
+          },
+          {
+            "$ref": "#/components/schemas/ForwardedAttachment"
+          },
+          {
+            "$ref": "#/components/schemas/ImageAttachment"
+          },
+          {
+            "$ref": "#/components/schemas/LinkAttachment"
+          }
+        ],
+        "discriminator": {
+          "mapping": {
+            "file": "#/components/schemas/FileAttachment",
+            "forwarded": "#/components/schemas/ForwardedAttachment",
+            "image": "#/components/schemas/ImageAttachment",
+            "link": "#/components/schemas/LinkAttachment"
+          },
+          "propertyName": "kind"
+        }
+      },
+      "AttachmentKind": {
+        "type": "string",
+        "enum": [
+          "image",
+          "link",
+          "file",
+          "forwarded"
+        ],
+        "x-enum-varnames": [
+          "Image",
+          "Link",
+          "File",
+          "Forwarded"
+        ],
+        "x-enumNames": [
+          "Image",
+          "Link",
+          "File",
+          "Forwarded"
+        ]
+      },
+      "DraftAttachment": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/AttachmentKind"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "note"
+        ]
+      },
+      "FileAttachment": {
+        "type": "object",
+        "properties": {
+          "bytes": {
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "file"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "bytes"
+        ]
+      },
+      "ForwardedAttachment": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "forwarded"
+            ]
+          },
+          "original": {
+            "$ref": "#/components/schemas/Attachment"
+          }
+        },
+        "required": [
+          "kind",
+          "original",
+          "from"
+        ]
+      },
+      "ImageAttachment": {
+        "type": "object",
+        "properties": {
+          "height": {
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "image"
+            ]
+          },
+          "url": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "url",
+          "width",
+          "height"
+        ]
+      },
+      "LinkAttachment": {
+        "type": "object",
+        "properties": {
+          "href": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "link"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "kind",
+          "href"
+        ]
+      }
+    }
+  }
+}

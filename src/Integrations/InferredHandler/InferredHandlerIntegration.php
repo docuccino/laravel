@@ -6,9 +6,10 @@ namespace Docuccino\Laravel\Integrations\InferredHandler;
 
 /**
  * Entry point for the inferred exception-handler tier (design §6). Always on: it documents whatever error
- * contract the app actually implements — render callbacks, exception `render()`, `Responsable` exceptions —
- * and defers to the next tier for anything it can't fold to a JSON response. The mapper is
- * container-resolved so its {@see HandlerReflector} gets the booted exception handler.
+ * contract the app actually implements — render callbacks, exception `render()`, `Responsable` exceptions,
+ * and the `respond()` callback every rendered error passes through — and defers to the next tier for
+ * anything it can't fold to a JSON response. The mapper and the finalizer are container-resolved so their
+ * {@see HandlerReflector} gets the booted exception handler.
  */
 final class InferredHandlerIntegration
 {
@@ -19,6 +20,7 @@ final class InferredHandlerIntegration
     {
         return [
             InferredHandlerExceptionToResponse::class,
+            RespondCallbackFinalizer::class,
             RenderCallbackDigestContributor::class,
             RenderCallbackSkipTransformer::class,
             // The log is registered as an extension in its own right, not just injected: it is the

@@ -272,7 +272,7 @@ final class WorkbenchEngine
                     new ReturnSite($jsonResponse(new VoidT, 204), $location),
                 ]),
 
-                // A polymorphic morph (Widget|Gadget) → discriminated oneOf keyed by the morph map.
+                // A polymorphic morph (Widget|Gadget) → the anyOf of the two models.
                 self::CONTROLLER.'showAttachment' => new ActionAnalysis(
                     returns: [new ReturnSite(UnionT::of([new ClassT(self::WIDGET_MODEL), new ClassT(self::GADGET_MODEL)]), $location)],
                 ),

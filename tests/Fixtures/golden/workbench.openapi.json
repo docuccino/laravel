@@ -167,7 +167,7 @@
     "/api/attachments/{id}": {
       "get": {
         "operationId": "get.api.attachments.@id",
-        "summary": "A polymorphic morph (Widget|Gadget) → discriminated oneOf keyed by the morph map.",
+        "summary": "A polymorphic morph (Widget|Gadget) → the anyOf of the two models.",
         "tags": [
           "Integrations"
         ],
@@ -187,21 +187,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "oneOf": [
+                  "anyOf": [
                     {
                       "$ref": "#/components/schemas/Gadget"
                     },
                     {
                       "$ref": "#/components/schemas/Widget"
                     }
-                  ],
-                  "discriminator": {
-                    "mapping": {
-                      "gadget": "#/components/schemas/Gadget",
-                      "widget": "#/components/schemas/Widget"
-                    },
-                    "propertyName": "type"
-                  }
+                  ]
                 }
               }
             }

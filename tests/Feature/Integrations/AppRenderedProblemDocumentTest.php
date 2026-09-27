@@ -13,6 +13,7 @@ use Docuccino\Inference\PhpStan\Tests\Support\FixtureRunner;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * What an application answering RFC 9457 gets with nothing configured: the `application/problem+json`
@@ -80,7 +81,7 @@ it('publishes the media type and the body an application’s own renderer proved
     // ANSWER. With no preset declaring a contract in the abstract, the answer is the one the renderer
     // gives, so the document states problem+json and never the framework's `application/json` `{message}`.
     $document = documentWithAppRenderer(
-        static fn (ModelNotFoundException $e) => response()->json([], 404),
+        static fn (NotFoundHttpException $e) => response()->json([], 404),
         ModelNotFoundException::class,
         'App\\Exceptions\\InvoiceNotFoundException',
     );

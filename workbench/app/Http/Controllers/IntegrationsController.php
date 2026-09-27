@@ -84,7 +84,7 @@ final class IntegrationsController
         throw new RuntimeException(__METHOD__.' is documented, not dispatched');
     }
 
-    /** A polymorphic morph (Widget|Gadget) → discriminated oneOf keyed by the morph map. */
+    /** A polymorphic morph (Widget|Gadget) → the anyOf of the two models. */
     public function showAttachment(string $id): Widget|Gadget
     {
         throw new RuntimeException(__METHOD__.' is documented, not dispatched');

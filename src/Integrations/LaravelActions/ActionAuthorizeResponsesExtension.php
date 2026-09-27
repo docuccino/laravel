@@ -61,7 +61,7 @@ final class ActionAuthorizeResponsesExtension implements OperationExtension
         if ($mapped !== null) {
             // The synthetic exception has no recovered throw site, so anchor the 403 to the action —
             // authorize() is where it really comes from, and a source beats none.
-            $this->applier->apply($operation, $mapped->draft, $mapped->mapper->producer(), $context->actionSource());
+            $this->applier->apply($operation, $mapped->draft, $mapped->producer(), $context->actionSource());
         }
     }
 

@@ -40,7 +40,6 @@ function environmentDigestGating(): array
         // application has — so the inferred-handler chain is not toggled either.
         'Docuccino\Laravel\Integrations\InferredHandler\RenderCallbackDigestContributor' => null,
         // A package's globals, which a document that disabled the integration must never be keyed on.
-        'Docuccino\Laravel\Integrations\Eloquent\MorphMapDigestContributor' => 'eloquent',
         'Docuccino\Laravel\Integrations\JsonApiPaginate\JsonApiPaginateConfigDigestContributor' => 'json_api_paginate',
         'Docuccino\Laravel\Integrations\Passport\PassportDigestContributor' => 'passport',
         'Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderConfigDigestContributor' => 'query_builder',
@@ -137,7 +136,7 @@ it('names every environment-digest contributor the adapter declares, and none it
 
     // The plausible minimum beside the real assertion: a scan whose pattern stopped matching would
     // otherwise agree with an empty table forever.
-    expect($declared)->toHaveCount(11)
+    expect($declared)->toHaveCount(10)
         ->and($tabled)->toBe($declared);
 });
 
@@ -189,10 +188,10 @@ it('joins every environment-digest segment on a byte no value it reads can hold'
 
     // The minimum again: one join per contributor at the least, so a tokeniser that stopped seeing
     // them cannot report a clean scan.
-    expect(count($separators))->toBeGreaterThanOrEqual(11)
+    expect(count($separators))->toBeGreaterThanOrEqual(10)
         ->and(array_values(array_unique($separators)))->toBe(['"\0"'])
-        // A literal between two `.` operators is a separator by another name, and the one the Passport
-        // and morph-map segments used to pair a key with its value.
+        // A literal between two `.` operators is a separator by another name, and the shape a
+        // segment pairing a key with its value reaches for first.
         ->and($glue)->toBe([]);
 });
 

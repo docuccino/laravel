@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Laravel\Integrations\SpatieData\RouteConditionalStatus;
 use Docuccino\Laravel\Tests\Support\StubTraceScope;
+use Illuminate\Routing\Route;
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
@@ -67,6 +68,15 @@ it('narrows a route-name ternary to the status each route takes', function (?str
     // Route::named() answers false for an unnamed route before it looks at a pattern at all.
     'a route with no name' => [null, 200],
 ]);
+
+it('settles the route-name branch as Route::named() does for the route', function (?string $name): void {
+    $route = new Route(['POST'], 'things', static fn () => null);
+    if ($name !== null) {
+        $route->name($name);
+    }
+
+    expect(walkStatusBody(routeIsBody())->statusFor($name))->toBe($route->named('*things.store') ? 201 : 200);
+})->with(['things.store', 'things.show', 'api.things.store', null]);
 
 it('reads the two spellings of the same runtime call alike', function (string $body): void {
     // routeIs() IS route()->named(); an override written the long way must fold the same.

@@ -7,8 +7,8 @@ namespace Docuccino\Laravel\Integrations\SpatieData;
 use Docuccino\Core\Inference\TraceVisitor;
 use Docuccino\Core\Inference\TypeScope;
 use Docuccino\Laravel\Integrations\Support\FoldedArguments;
+use Docuccino\Laravel\Integrations\Support\RoutePredicates;
 use Docuccino\Laravel\Support\FrameworkClasses;
-use Illuminate\Support\Str;
 use PhpParser\Node;
 
 /**
@@ -27,8 +27,7 @@ use PhpParser\Node;
  * counted them in the wild and a mechanism sized to what could be true is a maintenance cost with no
  * defect behind it. Anything unrecognised leaves the union exactly as it was.
  *
- * Matching is Laravel's own `Str::is`, and a route with no name matches nothing — the two halves of
- * how `Illuminate\Routing\Route::named()` decides it at runtime.
+ * Matching is {@see RoutePredicates::routeIs()}.
  *
  * @phpstan-type RouteNameDecision array{patterns: list<string>, negated: bool, whenTrue: int, whenFalse: int}
  */
@@ -70,7 +69,7 @@ final class RouteConditionalStatus implements TraceVisitor
             return null;
         }
 
-        $matches = $routeName !== null && Str::is($this->decision['patterns'], $routeName);
+        $matches = RoutePredicates::routeIs($this->decision['patterns'], $routeName);
         $holds = $this->decision['negated'] ? ! $matches : $matches;
 
         return $holds ? $this->decision['whenTrue'] : $this->decision['whenFalse'];

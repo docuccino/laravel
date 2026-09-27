@@ -9,12 +9,14 @@ use Illuminate\Contracts\Debug\ExceptionHandler;
 use ReflectionFunction;
 use ReflectionNamedType;
 use ReflectionObject;
+use ReflectionParameter;
 use Throwable;
 
 /**
  * Reflects the booted app's exception handler for the callbacks it registered via
- * `$exceptions->render(…)` (`Illuminate\Foundation\Exceptions\Handler::$renderCallbacks`), catching
- * provider- and package-registered handlers a static AST scan would miss (design §6). Memoised: the
+ * `$exceptions->render(…)` (`Illuminate\Foundation\Exceptions\Handler::$renderCallbacks`) and the one
+ * `$exceptions->respond(…)` stores (`$finalizeResponseCallback`, which sees every rendered response),
+ * catching provider- and package-registered handlers a static AST scan would miss (design §6). Memoised: the
  * handler is reflected once per build, and each callback's source location + first-parameter type feed
  * the engine.
  *
@@ -43,6 +45,11 @@ final class HandlerReflector
 
     private bool $discovered = false;
 
+    private ?RespondCallback $respond = null;
+
+    /** The label of a respond callback that is registered but could not be located for analysis. */
+    private ?string $respondUnlocated = null;
+
     public function __construct(private readonly ExceptionHandler $handler) {}
 
     /**
@@ -56,6 +63,25 @@ final class HandlerReflector
         $this->discover();
 
         return $this->callbacks ?? [];
+    }
+
+    /** The `respond()` callback, where one is registered and could be located. */
+    public function respondCallback(): ?RespondCallback
+    {
+        $this->discover();
+
+        return $this->respond;
+    }
+
+    /**
+     * The label of a `respond()` callback that is registered but could not be located — a bound free
+     * function, a callable with no source. Null where there is none, or it was located.
+     */
+    public function respondUnlocated(): ?string
+    {
+        $this->discover();
+
+        return $this->respondUnlocated;
     }
 
     /**
@@ -103,9 +129,58 @@ final class HandlerReflector
             }
 
             $this->callbacks = $callbacks;
+
+            $this->discoverRespond($handler);
         } catch (Throwable) {
             // Unexpected handler shape: leave the tier inert rather than fail the build.
         }
+    }
+
+    /**
+     * `respond()` stores its callable as given — not through `Closure::fromCallable()` the way a render
+     * callback is — so it is converted here, and located the same way a render callback is.
+     */
+    private function discoverRespond(ExceptionHandler $handler): void
+    {
+        $reflection = new ReflectionObject($handler);
+        if (! $reflection->hasProperty('finalizeResponseCallback')) {
+            return;
+        }
+
+        $value = $reflection->getProperty('finalizeResponseCallback')->getValue($handler);
+        if ($value === null) {
+            return;
+        }
+
+        if (! is_callable($value)) {
+            $this->respondUnlocated = $this->describe($value);
+
+            return;
+        }
+
+        $closure = Closure::fromCallable($value);
+        $function = new ReflectionFunction($closure);
+        $file = $function->getFileName();
+        $line = $function->getStartLine();
+        $class = $function->isAnonymous() ? null : $function->getClosureScopeClass()?->getName();
+
+        if ($file === false || $line === false || (! $function->isAnonymous() && $class === null)) {
+            $this->respondUnlocated = $this->describe($closure);
+
+            return;
+        }
+
+        $names = array_map(static fn (ReflectionParameter $p): string => $p->getName(), $function->getParameters());
+
+        $this->respond = new RespondCallback(
+            $file,
+            $line,
+            $names[0] ?? null,
+            $names[1] ?? null,
+            $names[2] ?? null,
+            $class,
+            $class === null ? null : $function->getName(),
+        );
     }
 
     /**

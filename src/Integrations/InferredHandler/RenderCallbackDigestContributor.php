@@ -9,10 +9,10 @@ use Illuminate\Contracts\Debug\ExceptionHandler;
 use Throwable;
 
 /**
- * Feeds the registered render-callback set (exception FQCN + source location, registration order) into the
- * environment digest (design §10). Adding, removing or replacing a `$exceptions->render(…)` handler has to
- * re-document the inferred-handler tier, and per-file dependency hashes alone miss the added-a-handler
- * case. An unresolvable handler contributes the empty string.
+ * Feeds the registered render-callback set (exception FQCN + source location, registration order) and the
+ * `respond()` callback's location into the environment digest (design §10). Adding, removing or replacing
+ * either has to re-document the inferred-handler tier, and per-file dependency hashes alone miss the
+ * added-a-handler case. An unresolvable handler contributes the empty string.
  */
 final class RenderCallbackDigestContributor implements EnvironmentDigestContributor
 {
@@ -36,7 +36,16 @@ final class RenderCallbackDigestContributor implements EnvironmentDigestContribu
 
             // An unanalysable callback still changes the tier's shape (it now reports a skip), so its label
             // goes in too; otherwise adding or removing one wouldn't invalidate the fragments.
-            return implode("\0", [...$parts, 'skipped', ...$reflector->skipped()]);
+            $parts = [...$parts, 'skipped', ...$reflector->skipped()];
+
+            $respond = $reflector->respondCallback();
+            if ($respond !== null) {
+                $parts = [...$parts, 'respond', $respond->file, (string) $respond->line, $respond->method ?? ''];
+            } elseif ($reflector->respondUnlocated() !== null) {
+                $parts = [...$parts, 'respond', (string) $reflector->respondUnlocated()];
+            }
+
+            return implode("\0", $parts);
         } catch (Throwable) {
             return '';
         }

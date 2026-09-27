@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Tests\Support;
 
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * An invokable exception renderer whose body genuinely folds to nothing: a plain (non-JSON) response
@@ -15,7 +15,7 @@ use Illuminate\Http\Response;
  */
 final class DynamicRenderer
 {
-    public function __invoke(ModelNotFoundException $e): Response
+    public function __invoke(NotFoundHttpException $e): Response
     {
         return response($e->getMessage(), $e->getCode() === 0 ? 404 : (int) $e->getCode());
     }

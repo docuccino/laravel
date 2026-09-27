@@ -9,6 +9,7 @@ use Docuccino\Core\Inference\DType\ArrayShapeField;
 use Docuccino\Core\Inference\DType\ArrayShapeT;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\DType\LiteralT;
+use Docuccino\Core\Inference\DType\NullT;
 use Docuccino\Core\Inference\DType\ScalarT;
 use Docuccino\Core\Inference\DType\StatusMarkerT;
 use Docuccino\Core\Inference\DType\UnknownT;
@@ -19,11 +20,16 @@ use Docuccino\Core\Inference\ThrowConfidence;
 use Docuccino\Core\Inference\ThrowDisposition;
 use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Inference\TypeEngine;
+use Docuccino\Laravel\Integrations\InferredHandler\ReceivedException;
 use Docuccino\Laravel\Tests\Fixtures\InferredHandler\ProbeRejection;
 use Docuccino\Laravel\Tests\Support\InvokableRenderer;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Foundation\Exceptions\Handler;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Workbench\App\Exceptions\PaymentRequiredException;
 
 /**
  * The inferred-handler tier wiring, stub-side: the mapper reflects the booted handler's render
@@ -53,13 +59,13 @@ function registerInvokableRenderCallback(object $renderer, string $exceptionType
         $function->getName(),
         0,
         $function->getParameters()[0]->getName(),
-        $exceptionType,
+        ReceivedException::byRenderCallbacks($exceptionType),
     ))->symbol();
 }
 
 it('documents the handler’s real status + shape, winning over the framework tier', function (): void {
     $symbol = registerRenderCallback(
-        static fn (ModelNotFoundException $e) => response()->json(['error' => 'gone', 'id' => 1], 410),
+        static fn (NotFoundHttpException $e) => response()->json(['error' => 'gone', 'id' => 1], 410),
         MODEL_NOT_FOUND,
     );
 
@@ -90,7 +96,7 @@ it('documents the handler’s real status + shape, winning over the framework ti
 
 it('defers to the framework tier + records a diagnostic when the body is too dynamic', function (): void {
     $symbol = registerRenderCallback(
-        static fn (ModelNotFoundException $e) => response('not json'),
+        static fn (NotFoundHttpException $e) => response('not json'),
         MODEL_NOT_FOUND,
     );
 
@@ -157,7 +163,7 @@ it('documents the recovered content type (application/problem+json) from a refin
     // The refiner recovers a JsonResponse<payload, status, contentType>, so the body is documented under
     // the recovered media type rather than the default application/json.
     $symbol = registerRenderCallback(
-        static fn (ModelNotFoundException $e) => response()->json(['type' => 'x', 'title' => 'y'], 404),
+        static fn (NotFoundHttpException $e) => response()->json(['type' => 'x', 'title' => 'y'], 404),
         MODEL_NOT_FOUND,
     );
 
@@ -188,7 +194,7 @@ it('assembles a media-type example from folded literals and const-pins each memb
     // The refiner folded the arm's literals into the body, so the adapter both const-pins each member in
     // the schema and surfaces them as a media-type example.
     $symbol = registerRenderCallback(
-        static fn (ModelNotFoundException $e) => response()->json(['type' => 'about:blank', 'title' => 'Forbidden', 'status' => 403], 403),
+        static fn (NotFoundHttpException $e) => response()->json(['type' => 'about:blank', 'title' => 'Forbidden', 'status' => 403], 403),
         MODEL_NOT_FOUND,
     );
 
@@ -239,7 +245,7 @@ it('fills a status-provenance member with the response status, completes the exa
 
     $build = function () use ($script): array {
         $symbol = registerRenderCallback(
-            static fn (ModelNotFoundException $e) => response()->json(['type' => 'about:blank'], 403),
+            static fn (NotFoundHttpException $e) => response()->json(['type' => 'about:blank'], 403),
             MODEL_NOT_FOUND,
         );
         app()->instance(TypeEngine::class, WorkbenchEngine::make([$symbol => $script()]));
@@ -267,7 +273,7 @@ it('examples an object-typed body from the component its $ref points at', functi
     // practice: one shared error component, `$ref`'d, with a per-response example beside it so a viewer has
     // something to render.
     $symbol = registerRenderCallback(
-        static fn (ModelNotFoundException $e) => response()->json(['ignored' => true], 403),
+        static fn (NotFoundHttpException $e) => response()->json(['ignored' => true], 403),
         MODEL_NOT_FOUND,
     );
 
@@ -297,7 +303,7 @@ it('falls back to the exception status hint when the recovered status did not fo
     // An enum-derived / dynamic status the refiner couldn't fold arrives as UnknownT, so the adapter
     // documents the exception's own status classification (404 here) rather than guessing 200.
     $symbol = registerRenderCallback(
-        static fn (ModelNotFoundException $e) => response()->json(['type' => 'x'], 404),
+        static fn (NotFoundHttpException $e) => response()->json(['type' => 'x'], 404),
         MODEL_NOT_FOUND,
     );
 
@@ -378,7 +384,7 @@ it('defers SILENTLY (no too-dynamic diagnostic) when an arm delegates to the fra
     // A `return null` / void arm is a framework delegation, not a fold failure, so no too-dynamic
     // deferral — the framework-default tier just fills in.
     $symbol = registerRenderCallback(
-        static fn (ModelNotFoundException $e) => null,
+        static fn (NotFoundHttpException $e) => null,
         MODEL_NOT_FOUND,
     );
 
@@ -422,7 +428,7 @@ it('leaves the body unsaid where a renderer it could not read has already replac
     // not send — publishing it puts a second error vocabulary in the document and a wrong type in every
     // generated client. The status is classification the framework does own, so it stands.
     $symbol = registerRenderCallback(
-        static fn (ModelNotFoundException $e) => response()->json(['dynamic' => true], 404),
+        static fn (NotFoundHttpException $e) => response()->json(['dynamic' => true], 404),
         MODEL_NOT_FOUND,
     );
 
@@ -461,7 +467,7 @@ it('states the representation and the loss where it folded a status and no body'
     // an empty schema; and a partial recovery that says nothing is a silent degradation, so the callback
     // whose shape was lost is named where the author will see it.
     $symbol = registerRenderCallback(
-        static fn (ModelNotFoundException $e) => response()->json(['dynamic' => true], 409),
+        static fn (NotFoundHttpException $e) => response()->json(['dynamic' => true], 409),
         MODEL_NOT_FOUND,
     );
 
@@ -502,7 +508,7 @@ it('states the representation and the loss where it folded a status and no body'
  */
 it('answers only with what the tiers behind it do not have', function (array $typeArgs, string $status, string $producer, bool $body): void {
     $symbol = registerRenderCallback(
-        static fn (ModelNotFoundException $e) => response()->json(['dynamic' => true], 404),
+        static fn (NotFoundHttpException $e) => response()->json(['dynamic' => true], 404),
         MODEL_NOT_FOUND,
     );
 
@@ -683,7 +689,7 @@ function unreadBodyBuild(Closure $render, string $exceptionFqcn, ?int $hint): ar
  */
 it('states the media type it read, unconstrained, when the body did not fold', function (): void {
     [$document, $diagnostics] = unreadBodyBuild(
-        static fn (ModelNotFoundException $e) => response()->json($e->getMessage() === '' ? [] : ['detail' => $e->getMessage()], 404, ['Content-Type' => 'application/problem+json']),
+        static fn (NotFoundHttpException $e) => response()->json($e->getMessage() === '' ? [] : ['detail' => $e->getMessage()], 404, ['Content-Type' => 'application/problem+json']),
         MODEL_NOT_FOUND,
         404,
     );
@@ -742,7 +748,7 @@ it('leaves the media type unsaid where the renderer stated none, so the tiers be
     // chain lacks, and answering would end the chain on a response with no body. The framework tier takes
     // the 404 and — seeing a renderer it could not read — states the status alone.
     $symbol = registerRenderCallback(
-        static fn (ModelNotFoundException $e) => response()->json(['dynamic' => true], 404),
+        static fn (NotFoundHttpException $e) => response()->json(['dynamic' => true], 404),
         MODEL_NOT_FOUND,
     );
     app()->instance(TypeEngine::class, WorkbenchEngine::make([$symbol => new ActionAnalysis(returns: [new ReturnSite(
@@ -757,4 +763,65 @@ it('leaves the media type unsaid where the renderer stated none, so the tiers be
 
     expect($producers)->toContain('integration:framework-errors')
         ->and(resolveResponse($document, $responses['404']))->not->toHaveKey('content');
+});
+
+it('documents a render callback only for the exception the handler really hands it', function (string $typed, int $sent): void {
+    $callback = match ($typed) {
+        'thrown' => static fn (ModelNotFoundException $e) => response()->json(['error' => 'gone'], 410),
+        'prepared' => static fn (NotFoundHttpException $e) => response()->json(['error' => 'gone'], 410),
+    };
+    $symbol = registerRenderCallback($callback, MODEL_NOT_FOUND);
+    app()->instance(TypeEngine::class, WorkbenchEngine::make([$symbol => new ActionAnalysis(returns: [new ReturnSite(
+        new ClassT('Illuminate\\Http\\JsonResponse', [new ArrayShapeT([new ArrayShapeField('error', ScalarT::string())]), new LiteralT(410)]),
+        new SourceLocation(''),
+    )])]));
+
+    // What the booted handler sends for a missing model: `prepareException()` turns it into a
+    // `NotFoundHttpException` first, so a callback typed for the model exception is never called.
+    /** @var Handler $handler */
+    $handler = app(ExceptionHandler::class);
+    $runtime = $handler->render(Request::create('/api/forms/1', server: ['HTTP_ACCEPT' => 'application/json']), new ModelNotFoundException);
+
+    $responses = generateDocument()->document->toArray()['paths']['/api/forms/{form}']['get']['responses'];
+
+    expect($runtime->getStatusCode())->toBe($sent)
+        ->and($responses)->toHaveKey((string) $sent)
+        ->and($responses)->not->toHaveKey($sent === 410 ? '404' : '410');
+})->with([
+    'typed for the class thrown' => ['thrown', 404],
+    'typed for the class it is handed' => ['prepared', 410],
+]);
+
+it('documents an exception’s own render() ahead of a catch-all render callback, as the handler renders it', function (): void {
+    $symbol = registerRenderCallback(static fn (Throwable $e) => response()->json(['caught' => true], 418), 'Workbench\\App\\Exceptions\\PaymentRequiredException');
+    app()->instance(TypeEngine::class, WorkbenchEngine::make([$symbol => new ActionAnalysis(returns: [new ReturnSite(
+        new ClassT('Illuminate\\Http\\JsonResponse', [new ArrayShapeT([new ArrayShapeField('caught', ScalarT::bool())]), new LiteralT(418)]),
+        new SourceLocation(''),
+    )])]));
+
+    /** @var Handler $handler */
+    $handler = app(ExceptionHandler::class);
+    $runtime = $handler->render(Request::create('/api/checkout', 'POST'), new PaymentRequiredException);
+
+    $responses = generateDocument()->document->toArray()['paths']['/api/checkout']['post']['responses'];
+
+    expect($runtime->getStatusCode())->toBe(402)
+        ->and($responses)->toHaveKey('402')
+        ->and($responses)->not->toHaveKey('418');
+});
+
+it('looks past an exception’s own render() that only hands back null, to the render callback after it', function (): void {
+    $symbol = registerRenderCallback(static fn (Throwable $e) => response()->json(['caught' => true], 418), 'Workbench\\App\\Exceptions\\PaymentRequiredException');
+    app()->instance(TypeEngine::class, WorkbenchEngine::make([
+        $symbol => new ActionAnalysis(returns: [new ReturnSite(
+            new ClassT('Illuminate\\Http\\JsonResponse', [new ArrayShapeT([new ArrayShapeField('caught', ScalarT::bool())]), new LiteralT(418)]),
+            new SourceLocation(''),
+        )]),
+        'Workbench\\App\\Exceptions\\PaymentRequiredException::render' => new ActionAnalysis(returns: [new ReturnSite(new NullT, new SourceLocation(''))]),
+    ]));
+
+    $responses = generateDocument()->document->toArray()['paths']['/api/checkout']['post']['responses'];
+
+    expect($responses)->toHaveKey('418')
+        ->and($responses)->not->toHaveKey('402');
 });

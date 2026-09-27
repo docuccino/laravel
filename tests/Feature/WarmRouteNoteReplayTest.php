@@ -18,6 +18,7 @@ use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Routing\RouteCollection;
 use Illuminate\Routing\Router;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Workbench\App\Http\Controllers\FormController;
 
 /**
@@ -60,7 +61,7 @@ $deferringEngine = static function (): callable {
         $function->getName(),
         0,
         $function->getParameters()[0]->getName(),
-        ModelNotFoundException::class,
+        NotFoundHttpException::class,
     ))->symbol();
 
     return static fn (): TypeEngine => WorkbenchEngine::make([

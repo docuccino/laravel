@@ -14,8 +14,8 @@ use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Laravel\Tests\Support\ProbeProblemRenderer;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Illuminate\Contracts\Debug\ExceptionHandler;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Routing\Router;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Workbench\App\Http\Controllers\FormController;
 
 /**
@@ -43,7 +43,7 @@ it('emits an error stating only the media type its handler proved, byte-identica
         $function->getName(),
         0,
         $function->getParameters()[0]->getName(),
-        ModelNotFoundException::class,
+        NotFoundHttpException::class,
     ))->symbol();
 
     $engine = static fn (): TypeEngine => WorkbenchEngine::make([

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Tests\Support;
 
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * A renderer registered as an `[$object, 'method']` pair or a first-class callable
@@ -14,7 +14,7 @@ use Illuminate\Http\JsonResponse;
  */
 final class PairRenderer
 {
-    public function handle(ModelNotFoundException $e): JsonResponse
+    public function handle(NotFoundHttpException $e): JsonResponse
     {
         return response()->json(['error' => 'gone'], 410);
     }

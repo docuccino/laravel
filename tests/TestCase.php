@@ -59,7 +59,8 @@ abstract class TestCase extends Orchestra
         // instead of on a trimmed copy of it, and a `config.stale-php-keys` warning firing anywhere is
         // a defect in the shipped file rather than an artefact of this harness.
 
-        // The morph map the /api/attachments discriminator resolves its aliases from.
+        // A morph map for the /api/attachments models, registered as an application would. Nothing
+        // published reads it (FragmentCacheTest builds under two maps and compares the bytes).
         Relation::morphMap(['widget' => Widget::class, 'gadget' => Gadget::class], false);
     }
 
@@ -142,7 +143,7 @@ abstract class TestCase extends Orchestra
         $router->delete('api/model-widgets/{id}', [IntegrationsController::class, 'destroyWidget']);
         $router->post('api/reports', [IntegrationsController::class, 'storeReport']);
 
-        // A polymorphic morph (discriminated oneOf) and a renderable exception the inferred-handler tier
+        // A polymorphic morph (the anyOf of its models) and a renderable exception the inferred-handler tier
         // documents.
         $router->get('api/attachments/{id}', [IntegrationsController::class, 'showAttachment']);
         $router->post('api/checkout', [IntegrationsController::class, 'checkout']);

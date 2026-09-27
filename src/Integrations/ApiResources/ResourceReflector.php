@@ -6,6 +6,9 @@ namespace Docuccino\Laravel\Integrations\ApiResources;
 
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\DType\DType;
+use ReflectionClass;
+use ReflectionMethod;
+use Throwable;
 
 /**
  * The one place that names Laravel's resource classes (by FQCN string — the integration is always-on
@@ -17,6 +20,8 @@ use Docuccino\Core\Inference\DType\DType;
 final class ResourceReflector
 {
     public const JSON_RESOURCE = 'Illuminate\\Http\\Resources\\Json\\JsonResource';
+
+    public const RESOURCE_COLLECTION = 'Illuminate\\Http\\Resources\\Json\\ResourceCollection';
 
     public const ANONYMOUS_COLLECTION = 'Illuminate\\Http\\Resources\\Json\\AnonymousResourceCollection';
 
@@ -36,6 +41,51 @@ final class ResourceReflector
     public static function isAnonymousCollection(string $fqcn): bool
     {
         return is_a($fqcn, self::ANONYMOUS_COLLECTION, true) || is_a($fqcn, self::JSON_API_COLLECTION, true);
+    }
+
+    /** Whether an FQCN is a `ResourceCollection` subclass of the application's own, not an anonymous one. */
+    public static function isNamedCollection(string $fqcn): bool
+    {
+        return is_a($fqcn, self::RESOURCE_COLLECTION, true) && ! self::isAnonymousCollection($fqcn);
+    }
+
+    /** Whether a named `ResourceCollection` subclass keeps Laravel's `toArray`, a list of what it collects. */
+    public static function inheritsCollectionBody(string $fqcn): bool
+    {
+        if (! self::isNamedCollection($fqcn)) {
+            return false;
+        }
+
+        try {
+            return (new ReflectionMethod($fqcn, 'toArray'))->getDeclaringClass()->getName() === self::RESOURCE_COLLECTION;
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * The resource a collection collects, as Laravel's `collects()` resolves it: the `$collects` default,
+     * else `FooCollection` → `Foo` or `FooResource`. Null when neither names a resource.
+     */
+    public static function collects(string $fqcn): ?string
+    {
+        if (! class_exists($fqcn)) {
+            return null;
+        }
+
+        $declared = (new ReflectionClass($fqcn))->getDefaultProperties()['collects'] ?? null;
+
+        $candidates = is_string($declared) && $declared !== ''
+            ? [$declared]
+            : (str_ends_with($fqcn, 'Collection') ? [substr($fqcn, 0, -10), substr($fqcn, 0, -10).'Resource'] : []);
+
+        foreach ($candidates as $candidate) {
+            if (class_exists($candidate)) {
+                return self::isResource($candidate) ? $candidate : null;
+            }
+        }
+
+        return null;
     }
 
     /** Whether an FQCN is a Laravel first-party JSON:API resource (guarded by `class_exists`). */

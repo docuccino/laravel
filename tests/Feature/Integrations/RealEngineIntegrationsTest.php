@@ -29,6 +29,8 @@ use Docuccino\Laravel\Integrations\JsonApiPaginate\JsonApiPaginateParameters;
 use Docuccino\Laravel\Integrations\SpatieData\DataValidationRules;
 use Docuccino\Laravel\Integrations\TimacdonaldJsonApi\TimacdonaldJsonApiResourceSchema;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\MultiShapeResource;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\PartlyDynamicMetaResource;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\ReleaseResource as EnvelopedFixtureResource;
 use Docuccino\Laravel\Tests\Fixtures\TimacdonaldJsonApi\TimacdonaldArticleResource;
 use PhpParser\Node;
 use PhpParser\NodeFinder;
@@ -872,4 +874,93 @@ it('leaves a soft-delete filter unresolved when its key is not written at the ca
     expect(array_map(static fn (array $filter): string => $filter['name'], $trace['filters']))->toBe(['status'])
         ->and($trace['unresolved'])->toHaveCount(1)
         ->and($trace['unresolved'][0])->toContain('TrashedFilterController.php');
+})->group('fixture');
+
+it('folds an inherited with() body into the members a root resource publishes beside its data', function (): void {
+    // The subclass inherits with() from an abstract base, so the method is analysed in the BASE file
+    // under the subclass's name — the ask the mapper makes — and the `(object)` cast of a hook's array
+    // must come back as an object, not a list or a component.
+    $analysis = ActionAnalysis::fromArray(FixtureRunner::analyze(
+        'app/Http/Resources/EnvelopedResource.php',
+        'App\\Http\\Resources\\ReleaseResource',
+        'with',
+    ));
+
+    $engine = new StubTypeEngine(analyses: [
+        EnvelopedFixtureResource::class.'::toArray' => ActionAnalysis::fromArray(FixtureRunner::analyze(
+            'app/Http/Resources/ReleaseResource.php',
+            'App\\Http\\Resources\\ReleaseResource',
+            'toArray',
+        )),
+        EnvelopedFixtureResource::class.'::with' => $analysis,
+    ]);
+    $components = new ComponentRegistry;
+    $schema = (new SchemaConverter([new JsonResourceSchema, ...DefaultTypeMappers::all()], $engine, $components))
+        ->toSchema(new ClassT(EnvelopedFixtureResource::class))->schema;
+
+    expect(array_keys($schema['properties']))->toBe(['data', 'meta', 'api_version'])
+        ->and($schema['required'])->toBe(['data', 'meta', 'api_version'])
+        ->and($schema['properties']['data'])->toBe(['$ref' => '#/components/schemas/ReleaseResource'])
+        ->and($schema['properties']['meta'])->toBe(['type' => 'object'])
+        ->and($schema['properties']['api_version']['type'])->toBe('string')
+        // The members belong to the response: the component is toArray's shape alone.
+        ->and(array_keys($components->schemas()['ReleaseResource']['properties']))->toBe(['id', 'name']);
+})->group('fixture');
+
+it('reads a with() branch returning [] as one adding nothing, so its members publish optional', function (): void {
+    // The empty branch comes back as a keyless shape, which reads as a LIST — the mapper has to count
+    // it as a site anyway, or `trace` would publish as a member every response carries.
+    $analysis = ActionAnalysis::fromArray(FixtureRunner::analyze(
+        'app/Http/Resources/TracedResource.php',
+        'App\\Http\\Resources\\TracedResource',
+        'with',
+    ));
+
+    $empty = array_filter($analysis->returns, static fn ($site): bool => $site->type instanceof ArrayShapeT && $site->type->fields === []);
+    expect($analysis->returns)->toHaveCount(2)
+        ->and($empty)->toHaveCount(1);
+
+    $engine = new StubTypeEngine(analyses: [EnvelopedFixtureResource::class.'::with' => $analysis]);
+    $schema = (new SchemaConverter([new JsonResourceSchema, ...DefaultTypeMappers::all()], $engine, new ComponentRegistry))
+        ->toSchema(new ClassT(EnvelopedFixtureResource::class))->schema;
+
+    expect(array_keys($schema['properties']))->toBe(['data', 'trace'])
+        ->and($schema['required'])->toBe(['data']);
+})->group('fixture');
+
+it('reads both arms of a ternary toArray, requiring only the key both carry', function (): void {
+    $engine = new StubTypeEngine(analyses: [
+        MultiShapeResource::class.'::toArray' => ActionAnalysis::fromArray(FixtureRunner::analyze(
+            'app/Http/Resources/CompactableResource.php',
+            'App\\Http\\Resources\\CompactableResource',
+            'toArray',
+        )),
+    ]);
+    $components = new ComponentRegistry;
+    (new SchemaConverter([new JsonResourceSchema, ...DefaultTypeMappers::all()], $engine, $components))
+        ->toSchema(new ClassT(MultiShapeResource::class));
+
+    $component = $components->schemas()['MultiShapeResource'];
+    expect(array_keys($component['properties']))->toBe(['id', 'name'])
+        ->and($component['required'])->toBe(['id']);
+})->group('fixture');
+
+it('publishes no with() member required when a with() branch returns request input', function (): void {
+    $analysis = ActionAnalysis::fromArray(FixtureRunner::analyze(
+        'app/Http/Resources/CompactableResource.php',
+        'App\\Http\\Resources\\CompactableResource',
+        'with',
+    ));
+
+    // The `only()` branch must reach the mapper as a site it cannot read, not vanish from the list.
+    $unshaped = array_filter($analysis->returns, static fn ($site): bool => ! $site->type instanceof ArrayShapeT);
+    expect($analysis->returns)->toHaveCount(2)
+        ->and($unshaped)->toHaveCount(1);
+
+    $engine = new StubTypeEngine(analyses: [PartlyDynamicMetaResource::class.'::with' => $analysis]);
+    $schema = (new SchemaConverter([new JsonResourceSchema, ...DefaultTypeMappers::all()], $engine, new ComponentRegistry))
+        ->toSchema(new ClassT(PartlyDynamicMetaResource::class))->schema;
+
+    expect(array_keys($schema['properties']))->toBe(['data', 'debug'])
+        ->and($schema['required'])->toBe(['data']);
 })->group('fixture');

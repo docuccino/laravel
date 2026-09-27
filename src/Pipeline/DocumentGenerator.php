@@ -306,7 +306,7 @@ final class DocumentGenerator
 
     /**
      * Digests the booted-app facts the fragment cache must key on beyond config, routes and
-     * extensions (design §10, A4) — morph maps, guards, registered rate limiters and friends. They're
+     * extensions (design §10, A4) — guards, registered rate limiters and friends. They're
      * global, so any change can alter any fragment: hence document-level. Each is contributed by its
      * owning ENABLED integration via the gated `EnvironmentDigestContributor` chain, so the pipeline
      * never imports an integration and a disabled one never keys the cache. Segments are keyed by

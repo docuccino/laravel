@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Tests\Support;
 
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * An invokable exception renderer that says what its error is SENT as and not what it contains: the
@@ -15,13 +15,13 @@ use Illuminate\Http\JsonResponse;
  */
 final class ProbeProblemRenderer
 {
-    public function __invoke(ModelNotFoundException $e): JsonResponse
+    public function __invoke(NotFoundHttpException $e): JsonResponse
     {
         return response()->json($this->body($e), 404, ['Content-Type' => 'application/problem+json']);
     }
 
     /** @return array<string, mixed> */
-    private function body(ModelNotFoundException $e): array
+    private function body(NotFoundHttpException $e): array
     {
         /** @var array<string, mixed> $shape */
         $shape = config('probe.problem', ['detail' => $e->getMessage()]);

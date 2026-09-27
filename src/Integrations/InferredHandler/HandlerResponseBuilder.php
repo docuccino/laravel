@@ -6,7 +6,9 @@ namespace Docuccino\Laravel\Integrations\InferredHandler;
 
 use Docuccino\Core\Draft\ResponseDraft;
 use Docuccino\Core\Extensions\Context\RouteContext;
+use Docuccino\Core\Extensions\Schema\ComponentRegistry;
 use Docuccino\Core\Inference\ActionAnalysis;
+use Docuccino\Core\Inference\ComponentDeclaration;
 use Docuccino\Core\Inference\DType\ArrayShapeT;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\DType\DType;
@@ -16,11 +18,13 @@ use Docuccino\Core\Inference\DType\NullT;
 use Docuccino\Core\Inference\DType\StatusMarkerT;
 use Docuccino\Core\Inference\DType\UnknownT;
 use Docuccino\Core\Inference\DType\VoidT;
+use Docuccino\Core\Inference\ReturnSite;
 use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Patch\Contribution;
 use Docuccino\Core\Support\BoundedNumber;
 use Docuccino\Core\Support\FormatSamples;
 use Docuccino\Laravel\Integrations\Support\FrameworkExceptionTable;
+use Docuccino\Laravel\Support\ErrorComponentDiagnostic;
 use Docuccino\Laravel\Support\FrameworkClasses;
 use stdClass;
 
@@ -51,6 +55,8 @@ use stdClass;
  * ({@see isDelegation()} — the renderer handing the type back to the framework, not a fold failure) or a
  * body too dynamic to fold — or one was recovered that says nothing worth publishing. Reason phrases come
  * from {@see FrameworkExceptionTable} so this tier can't drift from the others.
+ *
+ * @phpstan-import-type PlacedStatus from FrameworkExceptionTable
  */
 final class HandlerResponseBuilder
 {
@@ -92,10 +98,7 @@ final class HandlerResponseBuilder
             // HTTP forbids a body on, so the guard reduces to exactly "no body and no media type here".
             // …and the same call says whether the key it hands back is a reading or a stand-in, which is
             // what stops this tier publishing a placeholder the document cannot account for.
-            $placed = FrameworkExceptionTable::place(
-                self::foldStatus($statusArg, $payload, $members, $exception->httpStatusHint),
-                $exception->exceptionFqcn,
-            );
+            $placed = self::place($type, $exception);
             $status = $placed['status'];
 
             $draft = new ResponseDraft($status);
@@ -155,6 +158,68 @@ final class HandlerResponseBuilder
         }
 
         return null;
+    }
+
+    /**
+     * A render path that declared a name no component key could carry. `claimComponentName()` drops
+     * such a name at the write and says nothing, which leaves the author of the attribute with a line of
+     * code that does nothing and no reason why — and this tier, unlike the draft, is handed the channel
+     * to say it. The report is {@see ErrorComponentDiagnostic}'s, shared with the extension that reads the
+     * same attribute on an exception class. Raised per throw rather than remembered per name: a tier
+     * instance outlives a build, and a warm build that reported less than a cold one is a silent
+     * degradation, which repeating a line is not.
+     *
+     * Within one analysis it IS one report per mistake, keyed by the mistake and sorted, the way the class
+     * anchor keys its own: a renderer with three `return`s under one bad attribute is one typo, and saying
+     * it three times says nothing more.
+     */
+    public static function reportIllegalNames(ActionAnalysis $analysis, RouteContext $context, ComponentRegistry $components): void
+    {
+        /** @var array<string, ComponentDeclaration> $illegal */
+        $illegal = [];
+        foreach ($analysis->returns as $return) {
+            $declaration = $return->component;
+            if ($declaration === null || $components->isLegalName($declaration->name)) {
+                continue;
+            }
+
+            $illegal[$declaration->symbol."\0".$declaration->name] = $declaration;
+        }
+
+        ksort($illegal);
+
+        foreach ($illegal as $declaration) {
+            $components->addDiagnostic(ErrorComponentDiagnostic::illegalName(
+                $declaration->symbol,
+                $declaration->name,
+                $context->sourceAt($declaration->location, $declaration->symbol),
+                $context->route->signature(),
+            ));
+        }
+    }
+
+    /**
+     * The status a `JsonResponse` return is filed under, read exactly as {@see build()} reads it — for a
+     * caller that must know where a response lands before it builds one. Null for any other return.
+     */
+    public static function statusOf(ReturnSite $return, ThrownException $exception): ?string
+    {
+        $type = $return->type;
+
+        return $type instanceof ClassT && $type->fqcn === FrameworkClasses::JSON_RESPONSE
+            ? self::place($type, $exception)['status']
+            : null;
+    }
+
+    /**
+     * @return PlacedStatus
+     */
+    private static function place(ClassT $type, ThrownException $exception): array
+    {
+        return FrameworkExceptionTable::place(
+            self::foldStatus($type->typeArgs[1] ?? null, $type->typeArgs[0] ?? null, self::suppliedMembers($type->typeArgs[3] ?? null), $exception->httpStatusHint),
+            $exception->exceptionFqcn,
+        );
     }
 
     /**

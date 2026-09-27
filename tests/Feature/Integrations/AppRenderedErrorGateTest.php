@@ -27,12 +27,14 @@ use Docuccino\Laravel\Exceptions\DefaultExceptionToResponse;
 use Docuccino\Laravel\Integrations\FrameworkErrors\FrameworkErrorsExceptionToResponse;
 use Docuccino\Laravel\Integrations\InferredHandler\HandlerResponseBuilder;
 use Docuccino\Laravel\Integrations\InferredHandler\InferredHandlerExceptionToResponse;
+use Docuccino\Laravel\Integrations\InferredHandler\RespondCallbackFinalizer;
 use Docuccino\Laravel\Integrations\RateLimit\RateLimitResponsesExtension;
 use Docuccino\Laravel\Integrations\Support\AppRenderedErrors;
 use Docuccino\Laravel\Integrations\Support\FrameworkExceptionTable;
 use Docuccino\Laravel\Tests\Fixtures\InferredHandler\ProbeRejection;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Two TIERS publish a body that is the FRAMEWORK's rather than the application's — the framework-defaults
@@ -168,8 +170,9 @@ it('divides every producer of a framework-shaped error body between writing the 
         ->and($writers)->toBe([InferredHandlerExceptionToResponse::class])
         // A producer publishing a body of the APPLICATION's own is not the framework speaking and owes no
         // gate — but it owes a row here saying so, rather than being silently uncovered. The builder reads
-        // the shared table for a status key and a reason phrase and never for a body.
-        ->and($neither)->toBe([HandlerResponseBuilder::class]);
+        // the shared table for a status key and a reason phrase and never for a body, and so does the
+        // `respond()` finalizer, which runs once the chain has answered: no tier is left to hear a note.
+        ->and($neither)->toBe([HandlerResponseBuilder::class, RespondCallbackFinalizer::class]);
 });
 
 it('places a producer that names the note and the table through an alias', function (): void {
@@ -332,7 +335,7 @@ it('keeps the fallback body when that same renderer delegates to the framework',
 
 it('gives the framework tier its stock 404 back when the renderer only delegates', function (): void {
     $symbol = registerRenderCallback(
-        static fn (ModelNotFoundException $e) => null,
+        static fn (NotFoundHttpException $e) => null,
         ModelNotFoundException::class,
     );
     app()->instance(TypeEngine::class, WorkbenchEngine::make([

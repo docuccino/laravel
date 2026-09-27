@@ -36,13 +36,14 @@ final class JsonApiDocument
     private const JSON_API_BASES = ['TiMacDonald\\', 'Illuminate\\'];
 
     /**
-     * The members analysed from their `to*` methods.
+     * The members analysed from their `to*` methods, and whether the package filters conditional values
+     * out of what it returns — both filter attributes, and both send meta as returned.
      *
-     * @var array<string, string>
+     * @var array<string, array{0: string, 1: bool}>
      */
     private const MEMBERS = [
-        'attributes' => 'toAttributes',
-        'meta' => 'toMeta',
+        'attributes' => ['toAttributes', true],
+        'meta' => ['toMeta', false],
     ];
 
     public function __construct(
@@ -64,8 +65,8 @@ final class JsonApiDocument
                 'required' => ['id', 'type'],
             ];
 
-            foreach (self::MEMBERS as $member => $method) {
-                $analyzed = $this->toArray->analyze($type->fqcn, $method, $context);
+            foreach (self::MEMBERS as $member => [$method, $filtered]) {
+                $analyzed = $this->toArray->analyze($type->fqcn, $method, $context, $filtered);
                 if ($analyzed !== null && ($analyzed['properties'] ?? []) !== []) {
                     $data['properties'][$member] = $analyzed;
                 }

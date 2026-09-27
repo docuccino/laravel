@@ -578,7 +578,7 @@
           ]
         },
         "operationId": "get.api.attachments.@id",
-        "summary": "A polymorphic morph (Widget|Gadget) → discriminated oneOf keyed by the morph map.",
+        "summary": "A polymorphic morph (Widget|Gadget) → the anyOf of the two models.",
         "tags": [
           "Integrations"
         ],
@@ -639,28 +639,20 @@
                         "producer": "inference",
                         "layer": "inference",
                         "fields": [
-                          "discriminator",
-                          "oneOf"
+                          "anyOf"
                         ],
                         "confidence": 0.9
                       }
                     ]
                   },
-                  "oneOf": [
+                  "anyOf": [
                     {
                       "$ref": "#/components/schemas/Gadget"
                     },
                     {
                       "$ref": "#/components/schemas/Widget"
                     }
-                  ],
-                  "discriminator": {
-                    "mapping": {
-                      "gadget": "#/components/schemas/Gadget",
-                      "widget": "#/components/schemas/Widget"
-                    },
-                    "propertyName": "type"
-                  }
+                  ]
                 }
               }
             }
@@ -5137,7 +5129,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "a0c79d4aead16d93b4b37bfcd21306a1e5d536653870a4849ffb903971488d49",
-      "contentHash": "2913f3106d01280ea1c73c3444d27de1ad6cb85f787b492338c6cf9f913f7ade"
+      "contentHash": "dbee557c919516e111f9b7f6df3e24fa1a2a7be556bd12bf684c7b33f8474686"
     },
     "generator": {
       "name": "docuccino/laravel",
