@@ -140,7 +140,7 @@ final class AttributeParametersExtension implements OperationExtension
         $parameter->setDescription($description, $contribution);
 
         if ($type !== null) {
-            $parameter->schema()->declareShape($context->converter()->toSchema($this->types->parseDeclared($type))->schema, $contribution);
+            $parameter->schema()->declareShape($context->requestConverter()->toSchema($this->types->parseDeclared($type))->schema, $contribution);
         }
 
         // After the type keywords, so an explicit format wins over one the type string implied.
@@ -170,7 +170,7 @@ final class AttributeParametersExtension implements OperationExtension
         $contribution = Contribution::attribute($context->actionSource());
 
         if ($type !== null) {
-            $property->declareShape($context->converter()->toSchema($this->types->parseDeclared($type))->schema, $contribution);
+            $property->declareShape($context->requestConverter()->toSchema($this->types->parseDeclared($type))->schema, $contribution);
         }
         if ($format !== null) {
             $property->set('format', $format, $contribution);

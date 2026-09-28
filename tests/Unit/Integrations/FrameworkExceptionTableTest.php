@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Docuccino\Core\Draft\ResponseDraft;
+use Docuccino\Core\Support\ReasonPhrase;
 use Docuccino\Laravel\Integrations\FrameworkErrors\FrameworkErrorsExceptionToResponse;
 use Docuccino\Laravel\Integrations\Support\FrameworkExceptionTable;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -157,6 +158,12 @@ it('covers every mapped exception in the classification rows above', function ()
 
 it('uses the RFC reason phrase for every mapped status', function (string $status, string $reason): void {
     expect(FrameworkExceptionTable::reason($status))->toBe($reason);
+})->with(FrameworkExceptionTable::reasonPhrases());
+
+it('names every error status as every other response under that status is named', function (string $status, string $reason): void {
+    // The error tiers keep their own table because it also names components; the words in it must be the
+    // same words a success response or a declared one under that status is described with.
+    expect($reason)->toBe(ReasonPhrase::of($status));
 })->with(FrameworkExceptionTable::reasonPhrases());
 
 it('takes each phrase from the RFC that defines the status, not from RFC 9110 alone', function (): void {

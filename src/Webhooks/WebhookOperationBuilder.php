@@ -20,6 +20,7 @@ use Docuccino\Core\Extensions\Contracts\TypeSchemaConverter;
 use Docuccino\Core\Inference\DType\UnknownT;
 use Docuccino\Core\Patch\Contribution;
 use Docuccino\Core\Provenance\Source;
+use Docuccino\Core\Support\ReasonPhrase;
 use Docuccino\Core\TypeGrammar\ImportContext;
 use Docuccino\Core\TypeGrammar\TypeStringParser;
 
@@ -157,7 +158,7 @@ final readonly class WebhookOperationBuilder
 
         foreach ($webhook->attributes->all(Response::class) as $declared) {
             $response = $operation->response((string) $declared->status);
-            $response->setDescription('OK', Contribution::fallback($source));
+            $response->setDescription(ReasonPhrase::of($declared->status), Contribution::fallback($source));
             $response->setDescription($declared->description, $attribute);
 
             if ($declared->type === null || $response->isBodyless()) {

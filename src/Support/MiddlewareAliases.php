@@ -31,10 +31,11 @@ use Throwable;
  * What it cannot stand in for is an alias of the application's OWN, which is invisible wherever that
  * fill failed. Where that costs a published fact this says so ({@see unmatchedExclusion()}).
  *
- * The map reaches the published document only through the middleware list the route resolver hands on,
- * and that list is folded into {@see RouteDescriptor::cacheSignature()} verbatim — so a map edited in a
- * service provider invalidates exactly the fragments whose middleware it changed, and needs no
- * environment digest of its own.
+ * The map reaches the published document through the middleware list the route resolver hands on, and
+ * through the class a reader resolves an entry to ({@see MiddlewareClasses}). The resolver folds both
+ * into {@see RouteDescriptor::cacheSignature()} — the list verbatim, and each aliased entry's class — so
+ * a map edited in a service provider invalidates exactly the fragments whose middleware it changed, and
+ * needs no environment digest of its own.
  */
 final class MiddlewareAliases
 {

@@ -1,0 +1,1178 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/validated-query/action": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:fxpupjb6avlfcb3s",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/LaravelActions/PublishArticleAction.php",
+                "line": 39,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\LaravelActions\\PublishArticleAction::handle"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.validated-query.action",
+        "summary": "Publish an article.",
+        "tags": [
+          "PublishArticleAction"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:4k5yc2nxi3nqnoua",
+              "provenance": [
+                {
+                  "producer": "integration:laravel-actions",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/LaravelActions/PublishArticleAction.php",
+                    "line": 39,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\LaravelActions\\PublishArticleAction::handle"
+                  }
+                }
+              ]
+            },
+            "name": "body",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:laravel-actions",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/LaravelActions/PublishArticleAction.php",
+                      "line": 39,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\LaravelActions\\PublishArticleAction::handle"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:aq4aaqensrysr5tg",
+              "provenance": [
+                {
+                  "producer": "integration:laravel-actions",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/LaravelActions/PublishArticleAction.php",
+                    "line": 39,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\LaravelActions\\PublishArticleAction::handle"
+                  }
+                }
+              ]
+            },
+            "name": "title",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:laravel-actions",
+                    "layer": "integration",
+                    "fields": [
+                      "example",
+                      "maxLength",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/LaravelActions/PublishArticleAction.php",
+                      "line": 39,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\LaravelActions\\PublishArticleAction::handle"
+                    }
+                  }
+                ]
+              },
+              "type": "string",
+              "maxLength": 100,
+              "example": "example"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:ewbjei7jrhusbpq6",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "x-docuccino": {
+              "id": "res:v1:mue2ao3pwmia7kib",
+              "provenance": [
+                {
+                  "producer": "integration:framework-errors",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/LaravelActions/PublishArticleAction.php",
+                    "line": 39,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\LaravelActions\\PublishArticleAction::handle"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "Forbidden"
+              }
+            },
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:framework-errors",
+                        "layer": "integration",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "tests/Fixtures/LaravelActions/PublishArticleAction.php",
+                          "line": 39,
+                          "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\LaravelActions\\PublishArticleAction::handle"
+                        }
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "x-docuccino": {
+              "id": "res:v1:os3hmso35b2mgime",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/LaravelActions/PublishArticleAction.php",
+                    "line": 39,
+                    "symbol": "implicit:validated-request"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "UnprocessableEntity"
+              }
+            },
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/api/validated-query/data": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:bwnjsgdgefilswcc",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/SpatieData/MergedRulesController.php",
+                "line": 9,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SpatieData\\MergedRulesController::store"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.validated-query.data",
+        "tags": [
+          "MergedRules"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:mkrfejm2dvdfh2yf",
+              "provenance": [
+                {
+                  "producer": "integration:spatie-data",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/SpatieData/MergedRulesController.php",
+                    "line": 9,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SpatieData\\MergedRulesController::store"
+                  }
+                }
+              ]
+            },
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:spatie-data",
+                    "layer": "integration",
+                    "fields": [
+                      "example",
+                      "maxLength",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/SpatieData/MergedRulesController.php",
+                      "line": 9,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SpatieData\\MergedRulesController::store"
+                    }
+                  }
+                ]
+              },
+              "type": "string",
+              "maxLength": 255,
+              "example": "example"
+            }
+          }
+        ],
+        "responses": {
+          "422": {
+            "x-docuccino": {
+              "id": "res:v1:vfjj5skrruwtpfpe",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/SpatieData/MergedRulesController.php",
+                    "line": 9,
+                    "symbol": "implicit:validated-request"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "UnprocessableEntity"
+              }
+            },
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/api/validated-query/declared": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:t3oeks7q5ysfeubn",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
+                "line": 50,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ValidatedQueryController::declared"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.validated-query.declared",
+        "summary": "The same query key, declared and never validated.",
+        "tags": [
+          "ValidatedQuery"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:weii7p7wcgr4b7rh",
+              "provenance": [
+                {
+                  "producer": "attribute",
+                  "layer": "attribute",
+                  "fields": [
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
+                    "line": 50,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\ValidatedQueryController::declared"
+                  }
+                }
+              ]
+            },
+            "name": "status",
+            "in": "query",
+            "description": "Only widgets in this status.",
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "attribute",
+                    "layer": "attribute",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
+                      "line": 50,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\ValidatedQueryController::declared"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:2ub2wkvlsztsr7n2",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/validated-query/form-request": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:cijfe3ttzogbsixp",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
+                "line": 23,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ValidatedQueryController::formRequest"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.validated-query.form-request",
+        "summary": "A FormRequest validates the query.",
+        "tags": [
+          "ValidatedQuery"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:ptrrj3syqvwrzwdn",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
+                    "line": 23,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\ValidatedQueryController::formRequest"
+                  }
+                }
+              ]
+            },
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "$ref"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
+                      "line": 23,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\ValidatedQueryController::formRequest"
+                    }
+                  }
+                ]
+              },
+              "$ref": "#/components/schemas/WidgetStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:urcpjfib3f3f3hwi",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "x-docuccino": {
+              "id": "res:v1:eqjlv65stchqh7ig",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
+                    "line": 23,
+                    "symbol": "implicit:validated-request"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "UnprocessableEntity"
+              }
+            },
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      },
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:ptruo4vtpkrln5zy",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
+                "line": 23,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ValidatedQueryController::formRequest"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:form-request",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
+                "line": 23,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ValidatedQueryController::formRequest"
+              }
+            }
+          ]
+        },
+        "operationId": "post.api.validated-query.form-request",
+        "summary": "A FormRequest validates the query.",
+        "tags": [
+          "ValidatedQuery"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListWidgetsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:fn2w6i52cjjmwneh",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "x-docuccino": {
+              "id": "res:v1:7xdf3sxhj6s2cpco",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
+                    "line": 23,
+                    "symbol": "implicit:validated-request"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "UnprocessableEntity"
+              }
+            },
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/api/validated-query/inline": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:kvxxisqu3d6xu66k",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
+                "line": 29,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ValidatedQueryController::inline"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.validated-query.inline",
+        "summary": "An inline validate() on the request validates the query.",
+        "tags": [
+          "ValidatedQuery"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:y6po2shgwvytopzj",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
+                    "line": 29,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\ValidatedQueryController::inline"
+                  }
+                }
+              ]
+            },
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "$ref"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
+                      "line": 29,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\ValidatedQueryController::inline"
+                    }
+                  }
+                ]
+              },
+              "$ref": "#/components/schemas/WidgetStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:pamig3dteixmy4y6",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "x-docuccino": {
+              "id": "res:v1:qwp54gom3kixhudu",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
+                    "line": 29,
+                    "symbol": "implicit:validated-request"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "UnprocessableEntity"
+              }
+            },
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/api/validated-query/validator": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:66xfgyk5pgkftn3a",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
+                "line": 39,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ValidatedQueryController::validator"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.validated-query.validator",
+        "summary": "A validator built from the query and asked to validate it.",
+        "tags": [
+          "ValidatedQuery"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:onbgm4kwi7yqgawd",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
+                    "line": 39,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\ValidatedQueryController::validator"
+                  }
+                }
+              ]
+            },
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "$ref"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
+                      "line": 39,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\ValidatedQueryController::validator"
+                    }
+                  }
+                ]
+              },
+              "$ref": "#/components/schemas/WidgetStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:wfrgworaosi4txdn",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "x-docuccino": {
+              "id": "res:v1:y25iumqz265glo7k",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
+                    "line": 39,
+                    "symbol": "implicit:validated-request"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "UnprocessableEntity"
+              }
+            },
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ListWidgetsRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:hv7j3jpykvsyoe5z"
+        },
+        "type": "object",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/WidgetStatus"
+          }
+        }
+      },
+      "UnprocessableEntity": {
+        "x-docuccino": {
+          "id": "sch:v1:f3tcwvg2vhs255gy"
+        },
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "errors"
+        ]
+      },
+      "WidgetStatus": {
+        "x-docuccino": {
+          "id": "sch:v1:xxkbfhrj65orbrgo"
+        },
+        "description": "Where a widget stands in its publication lifecycle.",
+        "type": "string",
+        "enum": [
+          "draft",
+          "published",
+          "archived"
+        ],
+        "x-enum-descriptions": [
+          "Not yet visible to applicants.",
+          "Live and accepting traffic.",
+          ""
+        ],
+        "x-enum-varnames": [
+          "Draft",
+          "Published",
+          "Archived"
+        ],
+        "x-enumNames": [
+          "Draft",
+          "Published",
+          "Archived"
+        ]
+      }
+    },
+    "responses": {
+      "UnprocessableEntity": {
+        "description": "Unprocessable Entity",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/UnprocessableEntity"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "4231e50b129cda2ac096abab1a67194cd4f355a57d1c67e999aebecd48521680"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.20.2",
+      "specVersion": "2.0.0",
+      "schema": "https://spec.docuccino.app/uir/2.0/schema.json"
+    }
+  }
+}

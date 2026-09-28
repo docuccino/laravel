@@ -14,7 +14,10 @@ use Docuccino\Core\Inference\ActionAnalysis;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\DType\DType;
+use Docuccino\Core\Inference\DType\LiteralT;
+use Docuccino\Core\Inference\DType\PayloadStatusT;
 use Docuccino\Core\Inference\DType\UnionT;
+use Docuccino\Core\Inference\DType\UnknownT;
 use Docuccino\Core\Inference\ReturnSite;
 use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
@@ -108,3 +111,19 @@ it('leaves a bare Data return at 200 when no override folds', function (): void 
 
     expect($statuses)->toBe(['200']);
 });
+
+it('places a payload rendered through its own toResponse() exactly as it places the bare payload', function (DType $returned, array $expected): void {
+    // `$data->toResponse($request)` runs the same `calculateResponseStatus()` the router runs for a bare
+    // return, so the status is still the payload's — the engine says so with a PayloadStatusT status.
+    // A status the code stated (`->setStatusCode(200)`) is that status. One it could not read is not the
+    // payload's either, and not 200: it is published under `default`, because the code replaced the status
+    // with something nothing could read, and any code named for it would be a guess.
+    $statuses = inferredStatuses([$returned], ['App\\Data\\CreatedThing' => [201]]);
+
+    expect($statuses)->toBe($expected);
+})->with([
+    'rendered, status left to the payload' => [new ClassT('Illuminate\\Http\\JsonResponse', [new ClassT('App\\Data\\CreatedThing'), new PayloadStatusT]), ['201']],
+    'rendered, status left to the payload, relabelled' => [new ClassT('Illuminate\\Http\\JsonResponse', [new ClassT('App\\Data\\CreatedThing'), new PayloadStatusT, new LiteralT('application/vnd.api+json')]), ['201']],
+    'rendered, status stated' => [new ClassT('Illuminate\\Http\\JsonResponse', [new ClassT('App\\Data\\CreatedThing'), new LiteralT(200)]), ['200']],
+    'rendered, status unreadable' => [new ClassT('Illuminate\\Http\\JsonResponse', [new ClassT('App\\Data\\CreatedThing'), new UnknownT('status not folded')]), ['default']],
+]);

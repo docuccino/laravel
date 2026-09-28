@@ -32,7 +32,7 @@ beforeEach(function (): void {
 it('publishes the current shape when nothing is pinned', function (): void {
     expect($this->getJson('api/versioned-forms')->assertOk()->json())->toBe([
         ['id' => 1, 'title' => 'Onboarding', 'publishedAt' => '2026-08-01T09:00:00Z'],
-        ['id' => 2, 'title' => 'Offboarding', 'publishedAt' => null],
+        ['id' => 2, 'title' => 'Offboarding'],
     ]);
 });
 
@@ -44,7 +44,7 @@ it('walks every element of the list back to the former field name for a pin befo
 
     expect($body)->toBe([
         ['id' => 1, 'name' => 'Onboarding', 'publishedAt' => '2026-08-01T09:00:00Z'],
-        ['id' => 2, 'name' => 'Offboarding', 'publishedAt' => null],
+        ['id' => 2, 'name' => 'Offboarding'],
     ]);
 });
 

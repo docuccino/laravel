@@ -81,7 +81,14 @@ final class ErrorResponsesExtension implements OperationExtension
 
             $this->applier->apply($operation, $mapped->draft, $mapped->producer(), $this->throwSource($context, $throw));
 
-            $declaration = DeclaredErrorComponent::on($throw->exceptionFqcn);
+            // The class that names the body is the one RENDERED: where the throw was translated, a name the
+            // thrown class declares describes a body this server never sends.
+            $rendered = $mapped->translated->exceptionFqcn ?? $throw->exceptionFqcn;
+            if ($rendered !== $throw->exceptionFqcn) {
+                $context->recordDependencyFiles(DeclarationFiles::of($rendered));
+            }
+
+            $declaration = DeclaredErrorComponent::on($rendered);
             if ($declaration === null) {
                 continue;
             }

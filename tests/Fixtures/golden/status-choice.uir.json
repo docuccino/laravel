@@ -1,0 +1,909 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-status/branches": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:q3zxkg76eii4euky",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/StatusChoice/StatusChoiceController.php",
+                "line": 27,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\StatusChoice\\StatusChoiceController::branches"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-status.branches",
+        "tags": [
+          "StatusChoice"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:7rycabcj6sj3xvdo",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "x-docuccino": {
+              "id": "res:v1:7auvz6fxqsarmiui",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": false
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-status/chained": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:ze4retlp57itauwe",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/StatusChoice/StatusChoiceController.php",
+                "line": 20,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\StatusChoice\\StatusChoiceController::chained"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-status.chained",
+        "tags": [
+          "StatusChoice"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:adqcci5qq2uxmbo3",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "x-docuccino": {
+              "id": "res:v1:xspry7qvp3dmp6d6",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-status/emptied": {
+      "delete": {
+        "x-docuccino": {
+          "id": "op:v1:jz77qrvzunnntvab",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/StatusChoice/StatusChoiceController.php",
+                "line": 53,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\StatusChoice\\StatusChoiceController::emptied"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "delete.api.zz-status.emptied",
+        "tags": [
+          "StatusChoice"
+        ],
+        "responses": {
+          "204": {
+            "x-docuccino": {
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "No Content"
+          },
+          "205": {
+            "x-docuccino": {
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Reset Content"
+          }
+        }
+      }
+    },
+    "/api/zz-status/named": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:y7en24oecpvbeeim",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/StatusChoice/StatusChoiceController.php",
+                "line": 48,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\StatusChoice\\StatusChoiceController::named"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-status.named",
+        "tags": [
+          "StatusChoice"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:hwnoeircrh3e7xj5",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ],
+                  "overrode": [
+                    {
+                      "field": "description",
+                      "value": "Any status",
+                      "producer": "fallback"
+                    }
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "x-docuccino": {
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/zz-status/namedEmpty": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:3ehclzba3umokcmt",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/StatusChoice/StatusChoiceController.php",
+                "line": 71,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\StatusChoice\\StatusChoiceController::namedEmpty"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-status.namedEmpty",
+        "tags": [
+          "StatusChoice"
+        ],
+        "responses": {
+          "204": {
+            "x-docuccino": {
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ],
+                  "overrode": [
+                    {
+                      "field": "description",
+                      "value": "Any status",
+                      "producer": "fallback"
+                    }
+                  ]
+                }
+              ]
+            },
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/zz-status/namedError": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:bkajz3q4xbwgy4bv",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/StatusChoice/StatusChoiceController.php",
+                "line": 65,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\StatusChoice\\StatusChoiceController::namedError"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-status.namedError",
+        "tags": [
+          "StatusChoice"
+        ],
+        "responses": {
+          "503": {
+            "x-docuccino": {
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Service Unavailable"
+          },
+          "default": {
+            "x-docuccino": {
+              "id": "res:v1:2twuxfkxlfryctfg",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ],
+              "facts": {
+                "statusUnplaced": true
+              }
+            },
+            "description": "Any status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-status/namedHeader": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:owbupwpvkwhty6al",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/StatusChoice/StatusChoiceController.php",
+                "line": 59,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\StatusChoice\\StatusChoiceController::namedHeader"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-status.namedHeader",
+        "tags": [
+          "StatusChoice"
+        ],
+        "responses": {
+          "202": {
+            "x-docuccino": {
+              "id": "res:v1:voqygttcmcaod5zn",
+              "provenance": [
+                {
+                  "producer": "attribute",
+                  "layer": "attribute",
+                  "fields": [
+                    "headers"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/StatusChoice/StatusChoiceController.php",
+                    "line": 59,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\StatusChoice\\StatusChoiceController::namedHeader"
+                  }
+                },
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ],
+                  "overrode": [
+                    {
+                      "field": "description",
+                      "value": "Any status",
+                      "producer": "fallback"
+                    }
+                  ]
+                }
+              ]
+            },
+            "description": "Accepted",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-status/requested": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:j5or3blma5gydr7o",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/StatusChoice/StatusChoiceController.php",
+                "line": 41,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\StatusChoice\\StatusChoiceController::requested"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-status.requested",
+        "tags": [
+          "StatusChoice"
+        ],
+        "responses": {
+          "default": {
+            "x-docuccino": {
+              "id": "res:v1:g6j5qtzvcrmcqt62",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ],
+              "facts": {
+                "statusUnplaced": true
+              }
+            },
+            "description": "Any status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-status/upsert": {
+      "put": {
+        "x-docuccino": {
+          "id": "op:v1:bry7k4pdxiz5e4wx",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/StatusChoice/StatusChoiceController.php",
+                "line": 36,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\StatusChoice\\StatusChoiceController::upsert"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "put.api.zz-status.upsert",
+        "tags": [
+          "StatusChoice"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:co47peovb57m7ue6",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/StatusChoiceResource"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "201": {
+            "x-docuccino": {
+              "id": "res:v1:udgxqh6uakdyim4o",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/StatusChoiceResource"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StatusChoiceResource": {
+        "x-docuccino": {
+          "id": "sch:v1:pw7ifyrolgjmx73m"
+        },
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "b44cf01299b392e62934d619665724a8e13ab2a9d31ef98d1763685c13f69038"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.20.2",
+      "specVersion": "2.0.0",
+      "schema": "https://spec.docuccino.app/uir/2.0/schema.json"
+    }
+  }
+}

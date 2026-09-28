@@ -96,6 +96,33 @@ final class MiddlewareResolution
     }
 
     /**
+     * Whether an entry runs `$class` or a subclass of it: the entry's name resolved through the alias map
+     * the way {@see subtract()} resolves it, so a custom alias and an application's own subclass both
+     * answer, and an alias the application re-pointed elsewhere does not.
+     *
+     * @param  class-string  $class
+     * @param  array<string, string>  $aliases
+     */
+    public static function runs(string $entry, string $class, array $aliases): bool
+    {
+        $resolved = self::className($entry, $aliases);
+        $class = MiddlewareName::normalize($class);
+
+        return $resolved === $class || (class_exists($resolved) && is_subclass_of($resolved, $class));
+    }
+
+    /**
+     * The class an entry's name resolves to through the alias map, arguments dropped — the entry's own
+     * name where no alias answers.
+     *
+     * @param  array<string, string>  $aliases
+     */
+    public static function className(string $entry, array $aliases): string
+    {
+        return MiddlewareName::name(self::resolve($entry, $aliases));
+    }
+
+    /**
      * `MiddlewareNameResolver::resolve()` for an entry whose groups are already expanded: the alias's
      * class with the arguments reattached, or the entry itself where no alias answers.
      *

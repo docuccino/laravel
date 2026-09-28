@@ -564,7 +564,8 @@
         },
         "required": [
           "kind",
-          "href"
+          "href",
+          "title"
         ]
       }
     }
@@ -573,7 +574,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "8243fed1832405e675753ccf2f6887c9c791a5a479d5bbda4a78d9f91f9ec4bd"
+      "contentHash": "dcf6830d2e7a5216f4a8b8c750ef2ef744bba2aae2f9d7f73f3f6dfae51cad2c"
     },
     "generator": {
       "name": "docuccino/laravel",

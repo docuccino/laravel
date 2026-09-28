@@ -1,0 +1,324 @@
+{
+  "openapi": "3.1.1",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.1/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-morph/bookmark": {
+      "get": {
+        "operationId": "get.api.zz-morph.bookmark",
+        "tags": [
+          "MorphType"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Bookmark"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-morph/comment": {
+      "get": {
+        "operationId": "get.api.zz-morph.comment",
+        "tags": [
+          "MorphType"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Comment"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-morph/flag": {
+      "get": {
+        "operationId": "get.api.zz-morph.flag",
+        "tags": [
+          "MorphType"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Flag"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-morph/like": {
+      "get": {
+        "operationId": "get.api.zz-morph.like",
+        "tags": [
+          "MorphType"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Like"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-morph/reaction": {
+      "get": {
+        "operationId": "get.api.zz-morph.reaction",
+        "tags": [
+          "MorphType"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reaction"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Bookmark": {
+        "type": "object",
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "target_kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "post",
+                  "user"
+                ],
+                "x-enum-varnames": [
+                  "Post",
+                  "User"
+                ],
+                "x-enumNames": [
+                  "Post",
+                  "User"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target_ref": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "target_ref",
+          "target_kind",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "Comment": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "commentable_id": {
+            "type": "integer"
+          },
+          "commentable_type": {
+            "type": "string",
+            "enum": [
+              "post",
+              "video"
+            ],
+            "x-enum-varnames": [
+              "Post",
+              "Video"
+            ],
+            "x-enumNames": [
+              "Post",
+              "Video"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "body",
+          "commentable_id",
+          "commentable_type",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "Flag": {
+        "type": "object",
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "flaggable_id": {
+            "type": "integer"
+          },
+          "flaggable_type": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "flaggable_id",
+          "flaggable_type",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "Like": {
+        "type": "object",
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "likeable_id": {
+            "type": "integer"
+          },
+          "likeable_type": {
+            "type": "string",
+            "enum": [
+              "photo"
+            ],
+            "x-enum-varnames": [
+              "Photo"
+            ],
+            "x-enumNames": [
+              "Photo"
+            ]
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "likeable_id",
+          "likeable_type",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "Reaction": {
+        "type": "object",
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "reactable_id": {
+            "type": "integer"
+          },
+          "reactable_type": {
+            "type": "string",
+            "enum": [
+              "photo",
+              "post",
+              "user",
+              "video"
+            ],
+            "x-enum-varnames": [
+              "Photo",
+              "Post",
+              "User",
+              "Video"
+            ],
+            "x-enumNames": [
+              "Photo",
+              "Post",
+              "User",
+              "Video"
+            ]
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "reactable_id",
+          "reactable_type",
+          "created_at",
+          "updated_at"
+        ]
+      }
+    }
+  }
+}

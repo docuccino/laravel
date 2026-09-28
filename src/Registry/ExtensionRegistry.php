@@ -9,6 +9,7 @@ use Docuccino\Core\Extensions\Contracts\DocumentTransformer;
 use Docuccino\Core\Extensions\Contracts\EnvironmentDigestContributor;
 use Docuccino\Core\Extensions\Contracts\ErrorResponseFinalizer;
 use Docuccino\Core\Extensions\Contracts\ExceptionToResponse;
+use Docuccino\Core\Extensions\Contracts\ExceptionTranslator;
 use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\PayloadMediaTypeResolver;
 use Docuccino\Core\Extensions\Contracts\ResponseAnalysisTarget;
@@ -75,6 +76,7 @@ final class ExtensionRegistry
             environmentDigestContributors: $sorter->sort($this->partition($instances, EnvironmentDigestContributor::class)),
             routeNoteCollectors: $sorter->sort($this->partition($instances, RouteNoteCollector::class)),
             errorResponseFinalizers: $sorter->sort($this->partition($instances, ErrorResponseFinalizer::class)),
+            exceptionTranslators: $sorter->sort($this->partition($instances, ExceptionTranslator::class)),
         );
     }
 

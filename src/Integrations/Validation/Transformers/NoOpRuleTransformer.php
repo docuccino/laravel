@@ -8,13 +8,13 @@ use Docuccino\Core\Extensions\Contracts\RuleTransformer;
 use Docuccino\Core\Extensions\Contracts\SchemaContext;
 use Docuccino\Core\Extensions\Validation\ValidationField;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
+use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
 
 /**
- * Legitimate Laravel rules that say nothing about the request shape. Consuming them here keeps each from
- * raising a spurious `validation.rule-unhandled` diagnostic. `bail` is about failure handling; the
- * `exclude` family drops the field from validated output, not from the accepted input;
- * `current_password` is a runtime credential check. The prohibition family is NOT here — a field that
- * must not be sent is a real fact about the request, handled by {@see ProhibitedRuleTransformer}.
+ * Valid Laravel rules with nothing left to say about the request shape by the time the chain runs, consumed
+ * so none raises `validation.rule-unhandled`. The exclude family's effect is on rule ORDER, which only
+ * {@see RuleSetNormalizer} sees, and it has already applied it; prohibitions are a real fact about the
+ * request, handled by {@see ProhibitedRuleTransformer}.
  */
 final class NoOpRuleTransformer implements RuleTransformer
 {

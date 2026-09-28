@@ -25,6 +25,7 @@ use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Laravel\Exceptions\DefaultExceptionToResponse;
 use Docuccino\Laravel\Integrations\FrameworkErrors\FrameworkErrorsExceptionToResponse;
+use Docuccino\Laravel\Integrations\InferredHandler\ExceptionMapTranslator;
 use Docuccino\Laravel\Integrations\InferredHandler\HandlerResponseBuilder;
 use Docuccino\Laravel\Integrations\InferredHandler\InferredHandlerExceptionToResponse;
 use Docuccino\Laravel\Integrations\InferredHandler\RespondCallbackFinalizer;
@@ -171,8 +172,10 @@ it('divides every producer of a framework-shaped error body between writing the 
         // A producer publishing a body of the APPLICATION's own is not the framework speaking and owes no
         // gate — but it owes a row here saying so, rather than being silently uncovered. The builder reads
         // the shared table for a status key and a reason phrase and never for a body, and so does the
-        // `respond()` finalizer, which runs once the chain has answered: no tier is left to hear a note.
-        ->and($neither)->toBe([HandlerResponseBuilder::class, RespondCallbackFinalizer::class]);
+        // `respond()` finalizer, which runs once the chain has answered: no tier is left to hear a note. The
+        // exception-map translator asks the table only whether a class it translates to has a status the
+        // table places, and publishes nothing itself — the chain after it renders what it hands on.
+        ->and($neither)->toBe([ExceptionMapTranslator::class, HandlerResponseBuilder::class, RespondCallbackFinalizer::class]);
 });
 
 it('places a producer that names the note and the table through an alias', function (): void {

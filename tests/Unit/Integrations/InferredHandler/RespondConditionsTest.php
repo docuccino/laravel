@@ -10,6 +10,7 @@ use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Inference\CallCondition;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
+use Docuccino\Laravel\Integrations\InferredHandler\LocatedCallable;
 use Docuccino\Laravel\Integrations\InferredHandler\RespondCallback;
 use Docuccino\Laravel\Integrations\InferredHandler\RespondConditions;
 use Illuminate\Http\Request;
@@ -34,7 +35,7 @@ function respondConditionsFor(string $uri, ?string $name = null): RouteContext
 
 function respondConditionsCallback(): RespondCallback
 {
-    return new RespondCallback('bootstrap/app.php', 1, 'response', 'e', 'request');
+    return new RespondCallback(new LocatedCallable('bootstrap/app.php', 1), 'response', 'e', 'request');
 }
 
 it('reads Request::is() against the route path the way Laravel does', function (string $uri, array $patterns, array $concrete, ?bool $answer): void {

@@ -18,6 +18,7 @@ use Docuccino\Core\Inference\DType\LiteralT;
 use Docuccino\Core\Inference\DType\MapT;
 use Docuccino\Core\Inference\DType\NeverT;
 use Docuccino\Core\Inference\DType\NullT;
+use Docuccino\Core\Inference\DType\PayloadStatusT;
 use Docuccino\Core\Inference\DType\ScalarT;
 use Docuccino\Core\Inference\DType\StatusMarkerT;
 use Docuccino\Core\Inference\DType\UnionT;
@@ -55,6 +56,7 @@ $sites = [
     'ScalarT' => [ScalarT::string(), false, true, false],
     'NullT' => [new NullT, false, true, false],
     'StatusMarkerT' => [new StatusMarkerT, false, true, false],
+    'PayloadStatusT' => [new PayloadStatusT, false, true, false],
     'UnknownT' => [new UnknownT('unreadable'), false, true, false],
     'NeverT — a site that throws returns nothing' => [new NeverT, true, false, false],
     'VoidT' => [new VoidT, true, false, false],

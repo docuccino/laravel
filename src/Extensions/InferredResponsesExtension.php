@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Extensions;
 
 use Docuccino\Attributes\Response;
+use Docuccino\Attributes\ResponseHeader;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Draft\OperationDraft;
@@ -19,13 +20,15 @@ use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Inference\ActionAnalysis;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\DType\DType;
-use Docuccino\Core\Inference\DType\LiteralT;
 use Docuccino\Core\Inference\DType\NeverT;
+use Docuccino\Core\Inference\DType\PayloadStatusT;
 use Docuccino\Core\Inference\DType\UnionT;
 use Docuccino\Core\Inference\DType\UnknownT;
 use Docuccino\Core\Inference\DType\VoidT;
 use Docuccino\Core\Inference\SourceLocation;
+use Docuccino\Core\Inference\StatusCodes;
 use Docuccino\Core\Patch\Contribution;
+use Docuccino\Core\Support\ReasonPhrase;
 use Docuccino\Laravel\Support\BinaryRepresentation;
 use Docuccino\Laravel\Support\FrameworkClasses;
 use Docuccino\Laravel\Support\IgnoredResponses;
@@ -34,8 +37,9 @@ use Docuccino\Laravel\Support\IgnoredResponses;
  * Infers the success response(s) from the action's return paths (design §5): each return type is
  * unwrapped to a `(status, payload)` pair and grouped by status, so return paths with different
  * statuses become different responses. A `JsonResponse<TPayload, TStatus>` contributes its payload
- * shape (never a generic `{type: object}`) under the folded status — an `int` literal second type
- * arg, else the default 200; `noContent()` arrives as `JsonResponse<void, 204>`; bare `void`/`never`
+ * shape (never a generic `{type: object}`) under every status it folds to — an `int` literal, each
+ * member of a union of them, the framework's 200 where no status was passed, and `default` for a status
+ * stated but unreadable ({@see statusesOf()}); `noContent()` arrives as `JsonResponse<void, 204>`; bare `void`/`never`
  * contributes nothing; and an unparameterised framework response gets only what the class itself
  * proves, plus — for a file or streamed body — what the call that built it proves
  * ({@see frameworkResponse()}).
@@ -76,22 +80,14 @@ final class InferredResponsesExtension implements OperationExtension
     ];
 
     /**
-     * RFC reason phrases for the statuses this extension emits; unlisted falls back to `OK`. 422 is here
-     * because a `calculateResponseStatus()` override can re-home a body outside 2xx, and the `3XX` range
-     * key gets a plain word since no RFC names one.
+     * What the two keys no RFC names are described as; a code is described by its own reason phrase
+     * ({@see ReasonPhrase}).
      *
-     * @var array<int|string, string>
+     * @var array<string, string>
      */
-    private const REASONS = [
-        '200' => 'OK',
-        '201' => 'Created',
-        '202' => 'Accepted',
-        '203' => 'Non-Authoritative Information',
-        '204' => 'No Content',
-        '205' => 'Reset Content',
-        '206' => 'Partial Content',
-        '3XX' => 'Redirect',
-        '422' => 'Unprocessable Entity',
+    private const KEY_DESCRIPTIONS = [
+        self::REDIRECT_STATUS => 'Redirect',
+        OperationDraft::UNREAD_STATUS => 'Any status',
     ];
 
     public function phase(): OperationPhase
@@ -111,15 +107,20 @@ final class InferredResponsesExtension implements OperationExtension
         /** @var array<string, list<string>> $unrecovered */
         $unrecovered = [];
 
+        $unread = false;
+
         foreach ($analysis->returns as $return) {
-            [$status, $payload, $empty, $headers, $bodies] = $this->unwrap($return->type, $fileCalls);
+            [$statuses, $payload, $empty, $headers, $bodies] = $this->unwrap($return->type, $fileCalls);
+            $unread = $unread || $statuses === [OperationDraft::UNREAD_STATUS];
 
             // Every status the class landed on, not just the first: two return paths of one bare
             // JsonResponse are two responses the document cannot describe, and a declaration at one of
             // them settles that one.
             $bare = $this->unrecoveredResponse($return->type, $bodies);
-            if ($bare !== null && ! in_array($status, $unrecovered[$bare] ?? [], true)) {
-                $unrecovered[$bare][] = $status;
+            foreach ($bare === null ? [] : $statuses as $status) {
+                if (! in_array($status, $unrecovered[$bare] ?? [], true)) {
+                    $unrecovered[$bare][] = $status;
+                }
             }
 
             // A bare void/never return (no JsonResponse wrapper) documents nothing.
@@ -127,20 +128,27 @@ final class InferredResponsesExtension implements OperationExtension
                 continue;
             }
 
-            foreach ($this->placeReturn($status, $payload, $return->type, $context) as [$placedStatus, $placedPayload]) {
-                $bucket = $byStatus[$placedStatus] ??= ['payloads' => [], 'location' => null, 'empty' => false, 'headers' => null, 'bodies' => []];
-                $bucket['location'] ??= $return->location;
-                if ($placedPayload !== null) {
-                    $bucket['payloads'][] = $placedPayload;
+            // One status per code the return can be sent with: `$ok ? 200 : 503` is two responses carrying
+            // the same body, exactly as the same endpoint written as two returns is.
+            foreach ($statuses as $status) {
+                foreach ($this->placeReturn($status, $payload, $return->type, $context) as [$placedStatus, $placedPayload]) {
+                    $bucket = $byStatus[$placedStatus] ??= ['payloads' => [], 'location' => null, 'empty' => false, 'headers' => null, 'bodies' => []];
+                    $bucket['location'] ??= $return->location;
+                    if ($placedPayload !== null) {
+                        $bucket['payloads'][] = $placedPayload;
+                    }
+                    $bucket['empty'] = $bucket['empty'] || ($placedPayload === null && $empty);
+                    $bucket['headers'] ??= $headers;
+                    $bucket['bodies'] = [...$bucket['bodies'], ...$bodies];
+                    $byStatus[$placedStatus] = $bucket;
                 }
-                $bucket['empty'] = $bucket['empty'] || ($placedPayload === null && $empty);
-                $bucket['headers'] ??= $headers;
-                $bucket['bodies'] = [...$bucket['bodies'], ...$bodies];
-                $byStatus[$placedStatus] = $bucket;
             }
         }
 
         $this->reportUnrecovered($context, $unrecovered);
+        if ($unread) {
+            $this->reportUnreadStatus($context);
+        }
 
         if ($byStatus === []) {
             return;
@@ -208,6 +216,32 @@ final class InferredResponsesExtension implements OperationExtension
     }
 
     /**
+     * A status the code states and nothing could read. Its body is published under `default`, which is
+     * true and says nothing a client can branch on, so the author is told — exactly while the stand-in
+     * survives: a declaration that retires it ({@see OperationDraft::retiresUnreadStatus()}), a
+     * `#[Response]` or a `#[ResponseHeader]` alike, has already said what the notice would ask for.
+     */
+    private function reportUnreadStatus(RouteContext $context): void
+    {
+        foreach ([...$context->attributes->all(Response::class), ...$context->attributes->all(ResponseHeader::class)] as $declared) {
+            if (OperationDraft::retiresUnreadStatus((string) $declared->status)) {
+                return;
+            }
+        }
+
+        $context->components->addDiagnostic(new Diagnostic(
+            severity: Severity::Info,
+            code: 'inferred-response.status-unread',
+            message: sprintf(
+                '%s sets a response status the analyzer could not read, so its body is documented under `default` (any status) rather than under a code it may never send.',
+                $context->actionLabel(),
+            ),
+            routeSignature: $context->route->signature(),
+            help: 'Name each status it can send with #[Response(status: …)] — the inferred body moves onto every status you name below 400 — or pass the status as a literal, a constant, or a choice between them ($ok ? 200 : 503).',
+        ));
+    }
+
+    /**
      * Whether the author has already said what these statuses carry — ALL of them. A declaration settles
      * the status it names and no other, so a class that reached two statuses is only silenced by two.
      *
@@ -242,7 +276,12 @@ final class InferredResponsesExtension implements OperationExtension
         }
 
         foreach ($context->attributes->all(Response::class) as $declared) {
-            if ($declared->type === null || (string) $declared->status !== $status) {
+            // The unread-status stand-in is settled by any success-class status it hands its body to
+            // ({@see OperationDraft::supersedeStatusRange()}), since none of them is named `default`.
+            $settles = $status === OperationDraft::UNREAD_STATUS
+                ? OperationDraft::retiresUnreadStatus((string) $declared->status)
+                : (string) $declared->status === $status;
+            if ($declared->type === null || ! $settles) {
                 continue;
             }
 
@@ -276,8 +315,8 @@ final class InferredResponsesExtension implements OperationExtension
     }
 
     /**
-     * Place a return into `(status, payload)` bucket(s) — normally just the unwrapped pair. A bare
-     * Data return can override `calculateResponseStatus()` and re-home its body off 200, possibly to
+     * Place a return into `(status, payload)` bucket(s) — normally just the unwrapped pair. A Data return
+     * rendering itself can override `calculateResponseStatus()` and re-home its body off 200, possibly to
      * several statuses (a conditional whose arms all fold). For a union of Data classes each member
      * re-homes independently; members with no override, and non-class members, stay at 200.
      *
@@ -285,9 +324,10 @@ final class InferredResponsesExtension implements OperationExtension
      */
     private function placeReturn(string $status, ?DType $payload, DType $returnType, RouteContext $context): array
     {
-        // Only a bare Data return re-homes: default status, and the payload IS the whole return type
-        // (a JsonResponse-wrapped payload already has its own folded status).
-        if ($status !== self::DEFAULT_STATUS || $payload === null || $returnType !== $payload) {
+        // Only a payload rendering itself re-homes: the bare object, or the framework's `toResponse()` of it,
+        // which carries no status of its own ({@see FrameworkClasses::selfRendered()}). A status the code
+        // stated is already the answer.
+        if ($status !== self::DEFAULT_STATUS || $payload === null || FrameworkClasses::selfRendered($returnType) !== $payload) {
             return [[$status, $payload]];
         }
 
@@ -346,36 +386,38 @@ final class InferredResponsesExtension implements OperationExtension
     }
 
     /**
-     * Unwrap a return type to `(status, payloadType, isEmptyBody, headers, bodies)`. A
-     * `JsonResponse<payload, status>` yields the payload under its folded status (void payload =
+     * Unwrap a return type to `(statuses, payloadType, isEmptyBody, headers, bodies)`. A
+     * `JsonResponse<payload, status>` yields the payload under each status it folds to (void payload =
      * empty body); an unparameterised framework response goes to {@see frameworkResponse()};
      * anything else yields itself under 200. `bodies` are media-type-keyed schemas the response class
      * proves directly, rather than payload types the converter has to map.
      *
-     * @return array{0: string, 1: ?DType, 2: bool, 3: ?array<string, mixed>, 4: array<string, array<string, mixed>>}
+     * @return array{0: non-empty-list<string>, 1: ?DType, 2: bool, 3: ?array<string, mixed>, 4: array<string, array<string, mixed>>}
      */
     private function unwrap(DType $type, ?FileResponseVisitor $fileCalls): array
     {
         if ($type instanceof VoidT || $type instanceof NeverT) {
-            return [self::DEFAULT_STATUS, null, false, null, []];
+            return [[self::DEFAULT_STATUS], null, false, null, []];
         }
 
         if ($type instanceof ClassT && $type->fqcn === FrameworkClasses::JSON_RESPONSE && $type->typeArgs !== []) {
-            $status = $this->foldStatus($type->typeArgs[1] ?? null);
+            $statuses = self::statusesOf($type->typeArgs);
             $payload = $type->typeArgs[0];
 
             if ($payload instanceof VoidT || $payload instanceof NeverT) {
-                return [$status, null, true, null, []];
+                return [$statuses, null, true, null, []];
             }
 
-            return [$status, $payload, false, null, []];
+            return [$statuses, $payload, false, null, []];
         }
 
         if ($type instanceof ClassT && FrameworkClasses::isResponse($type->fqcn)) {
-            return $this->frameworkResponse($type, $fileCalls);
+            [$status, $payload, $empty, $headers, $bodies] = $this->frameworkResponse($type, $fileCalls);
+
+            return [[$status], $payload, $empty, $headers, $bodies];
         }
 
-        return [self::DEFAULT_STATUS, $type, false, null, []];
+        return [[self::DEFAULT_STATUS], $type, false, null, []];
     }
 
     /**
@@ -527,14 +569,26 @@ final class InferredResponsesExtension implements OperationExtension
         return null;
     }
 
-    /** A constant `int` literal status arg folds; anything dynamic falls back to 200. */
-    private function foldStatus(?DType $statusArg): string
+    /**
+     * Every status a `JsonResponse<payload, status>` can be sent with. No status argument at all is the
+     * framework's 200, or a payload rendering itself, which {@see placeReturn()} re-homes; an int literal is
+     * that code; a union of int literals is each of them (`$ok ? 200 : 503`), one response per code. Any
+     * other status is one the code states and nothing could read, so it is `default` — never a code
+     * the endpoint may not send.
+     *
+     * @param  list<DType>  $typeArgs
+     * @return non-empty-list<string>
+     */
+    private static function statusesOf(array $typeArgs): array
     {
-        if ($statusArg instanceof LiteralT && is_int($statusArg->value)) {
-            return (string) $statusArg->value;
+        $status = $typeArgs[1] ?? null;
+        if ($status === null || $status instanceof PayloadStatusT) {
+            return [self::DEFAULT_STATUS];
         }
 
-        return self::DEFAULT_STATUS;
+        $codes = StatusCodes::of($status);
+
+        return $codes === null ? [OperationDraft::UNREAD_STATUS] : array_map(strval(...), $codes);
     }
 
     /**
@@ -559,7 +613,13 @@ final class InferredResponsesExtension implements OperationExtension
         array $bodies = [],
     ): void {
         $response = $operation->response($status);
-        $response->setDescription(self::REASONS[$status] ?? 'OK', Contribution::fallback());
+        $response->setDescription(self::KEY_DESCRIPTIONS[$status] ?? ReasonPhrase::of($status), Contribution::fallback());
+
+        // The unread status is a stand-in, and the draft is told so: that is what lets a declaration retire
+        // it and nothing else named `default` ({@see OperationDraft::supersedeUnreadStatus()}).
+        if ($status === OperationDraft::UNREAD_STATUS) {
+            $response->recordStatusPlacement(true);
+        }
 
         if ($headers !== null) {
             $response->set('headers', $headers, Contribution::inference($context->actionSource()));

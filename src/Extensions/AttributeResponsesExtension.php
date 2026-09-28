@@ -17,6 +17,7 @@ use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Extensions\Schema\ComponentNames;
 use Docuccino\Core\Patch\Contribution;
+use Docuccino\Core\Support\ReasonPhrase;
 use Docuccino\Core\TypeGrammar\ImportContext;
 use Docuccino\Core\TypeGrammar\TypeStringParser;
 use Docuccino\Laravel\Support\IgnoredResponses;
@@ -73,11 +74,15 @@ final class AttributeResponsesExtension implements OperationExtension
 
             $response = $operation->response($status);
 
+            // Described by its own reason phrase BEFORE anything is absorbed into it: a stand-in's words
+            // name the stand-in, not the status declared here.
+            $response->setDescription(ReasonPhrase::of($status), Contribution::fallback());
+
             // Naming a code is also a statement about the range inference put it in
             // ({@see OperationDraft::supersedeStatusRange()}).
             $operation->supersedeStatusRange($status, Contribution::attribute($context->actionSource()));
+            $operation->supersedeUnreadStatus($status, Contribution::attribute($context->actionSource()));
 
-            $response->setDescription('OK', Contribution::fallback());
             $response->setDescription($attribute->description, Contribution::attribute($context->actionSource()));
             $this->claimDeclaredComponent($response, $attribute, $context);
 
@@ -229,8 +234,11 @@ final class AttributeResponsesExtension implements OperationExtension
 
         foreach ($byStatus as $status => $headers) {
             // Naming a header AT a status is a statement that the status exists, so it retires the range
-            // the same way #[Response] does ({@see OperationDraft::supersedeStatusRange()}).
+            // the same way #[Response] does ({@see OperationDraft::supersedeStatusRange()}) — described as
+            // itself first, for the same reason.
+            $operation->response((string) $status)->setDescription(ReasonPhrase::of($status), Contribution::fallback());
             $operation->supersedeStatusRange((string) $status, Contribution::attribute($context->actionSource()));
+            $operation->supersedeUnreadStatus((string) $status, Contribution::attribute($context->actionSource()));
 
             $response = $operation->response((string) $status);
             $inherited = $response->resolvedField('headers');

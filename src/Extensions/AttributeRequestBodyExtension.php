@@ -63,7 +63,7 @@ final class AttributeRequestBodyExtension implements OperationExtension
         [$schema, $declaredRequired, $diagnostics] = $this->fields->apply(
             $schema,
             $bodyParameters,
-            $context->converter(),
+            $context->requestConverter(),
             null,
             $context->actionSource(),
             $context->route->signature(),

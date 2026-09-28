@@ -81,6 +81,7 @@ use Docuccino\Laravel\Runtime\DocumentCache;
 use Docuccino\Laravel\Support\GateDenial;
 use Docuccino\Laravel\Support\GatePoliciesDigestContributor;
 use Docuccino\Laravel\Support\LeakageDigestContributor;
+use Docuccino\Laravel\Support\MiddlewareClasses;
 use Docuccino\Laravel\Versioning\Scaffold\ChangeStub;
 use Docuccino\Laravel\Versioning\VersionChangeCollector;
 use Docuccino\Laravel\Watch\ArtisanBuildRunner;
@@ -154,6 +155,10 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
         // The resolver reflects each route while filtering and stashes it here for the context builder
         // to read back O(1). Scoped, so both share one index per build and it resets between builds.
         $this->app->scoped(ResolvedRouteIndex::class);
+
+        // The alias map the middleware readers resolve an entry's class through, read once per build
+        // after the resolver has filled the router.
+        $this->app->scoped(MiddlewareClasses::class);
 
         // Same deal: the inferred-handler tier writes response-fold deferrals, the summary transformer
         // drains them once per build.

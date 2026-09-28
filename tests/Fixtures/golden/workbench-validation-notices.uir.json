@@ -168,7 +168,33 @@
               ]
             }
           }
-        ]
+        ],
+        "responses": {
+          "422": {
+            "x-docuccino": {
+              "id": "res:v1:7s6y7x2nw4atr2lp",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/NoticeFieldsController.php",
+                    "line": 25,
+                    "symbol": "implicit:validated-request"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "UnprocessableEntity"
+              }
+            },
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
       },
       "post": {
         "x-docuccino": {
@@ -432,7 +458,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "d2a55395f98c4fa292a5f6846f2b7f9a9de0ede6454dc922aa9a86d8809d32d9"
+      "contentHash": "3f06ec54b055e260178dd52f8ebe52d4fbf793c424d2e4cc4c47501f1fb03e36"
     },
     "generator": {
       "name": "docuccino/laravel",

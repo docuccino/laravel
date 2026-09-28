@@ -1,0 +1,2437 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "Signed Links",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/signed-links/by-alias-relative/{token}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:spomo3kptjcwczzk",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                "line": 22,
+                "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.signed-links.by-alias-relative.@token",
+        "summary": "Confirm a subscription.",
+        "tags": [
+          "Links"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:2dlm4fussjbl4bym",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:slkxu5klco5lsprk",
+              "provenance": [
+                {
+                  "producer": "integration:signed-url",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 22,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                  }
+                }
+              ]
+            },
+            "name": "expires",
+            "in": "query",
+            "description": "Unix timestamp after which the signed link is no longer accepted. Carried only by links that expire.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:signed-url",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 22,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:j2ojnaynl4yz333h",
+              "provenance": [
+                {
+                  "producer": "integration:signed-url",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 22,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                  }
+                }
+              ]
+            },
+            "name": "signature",
+            "in": "query",
+            "description": "Signature of the signed link this request is made from. Send it, and the link's other query parameters, as the link carries them.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:signed-url",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 22,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:bntse4mfd4ta35rn",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "confirmed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "confirmed"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "x-docuccino": {
+              "id": "res:v1:dh6ntoo5ibbrlcel",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 22,
+                    "symbol": "implicit:signed-middleware"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "Forbidden"
+              }
+            },
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/signed-links/by-alias/{token}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:ietivh7lmt2hxcjd",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                "line": 22,
+                "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.signed-links.by-alias.@token",
+        "summary": "Confirm a subscription.",
+        "tags": [
+          "Links"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:kbmbgczmzsgqp6vn",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:kqicp4kl3rdupxa6",
+              "provenance": [
+                {
+                  "producer": "integration:signed-url",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 22,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                  }
+                }
+              ]
+            },
+            "name": "expires",
+            "in": "query",
+            "description": "Unix timestamp after which the signed link is no longer accepted. Carried only by links that expire.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:signed-url",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 22,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:tglhlcwth7gahgbi",
+              "provenance": [
+                {
+                  "producer": "integration:signed-url",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 22,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                  }
+                }
+              ]
+            },
+            "name": "signature",
+            "in": "query",
+            "description": "Signature of the signed link this request is made from. Send it, and the link's other query parameters, as the link carries them.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:signed-url",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 22,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:a7a3gwp65emo232d",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "confirmed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "confirmed"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "x-docuccino": {
+              "id": "res:v1:xoafjgd54kc7wsg4",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 22,
+                    "symbol": "implicit:signed-middleware"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "Forbidden"
+              }
+            },
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/signed-links/by-class-absolute/{token}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:pxl4f3cwtld4erx6",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                "line": 22,
+                "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.signed-links.by-class-absolute.@token",
+        "summary": "Confirm a subscription.",
+        "tags": [
+          "Links"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:7wm3toid777i4w2z",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:xmnwp2hft4ckzjzz",
+              "provenance": [
+                {
+                  "producer": "integration:signed-url",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 22,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                  }
+                }
+              ]
+            },
+            "name": "expires",
+            "in": "query",
+            "description": "Unix timestamp after which the signed link is no longer accepted. Carried only by links that expire.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:signed-url",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 22,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:e2fqxkwp5kr3chlz",
+              "provenance": [
+                {
+                  "producer": "integration:signed-url",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 22,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                  }
+                }
+              ]
+            },
+            "name": "signature",
+            "in": "query",
+            "description": "Signature of the signed link this request is made from. Send it, and the link's other query parameters, as the link carries them.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:signed-url",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 22,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:mucmgw64q242zpby",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "confirmed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "confirmed"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "x-docuccino": {
+              "id": "res:v1:2e4pl25acgh3x6fy",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 22,
+                    "symbol": "implicit:signed-middleware"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "Forbidden"
+              }
+            },
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/signed-links/by-class-relative/{token}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:r4gvbdury3s4w37v",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                "line": 22,
+                "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.signed-links.by-class-relative.@token",
+        "summary": "Confirm a subscription.",
+        "tags": [
+          "Links"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:qndgwwgvcthbieqs",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:jsww2vn73huefly5",
+              "provenance": [
+                {
+                  "producer": "integration:signed-url",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 22,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                  }
+                }
+              ]
+            },
+            "name": "expires",
+            "in": "query",
+            "description": "Unix timestamp after which the signed link is no longer accepted. Carried only by links that expire.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:signed-url",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 22,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:4uw5tvpzzis3voxx",
+              "provenance": [
+                {
+                  "producer": "integration:signed-url",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 22,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                  }
+                }
+              ]
+            },
+            "name": "signature",
+            "in": "query",
+            "description": "Signature of the signed link this request is made from. Send it, and the link's other query parameters, as the link carries them.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:signed-url",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 22,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:atqvtxofakhm4fue",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "confirmed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "confirmed"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "x-docuccino": {
+              "id": "res:v1:gvt43ah5qmffwpo3",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 22,
+                    "symbol": "implicit:signed-middleware"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "Forbidden"
+              }
+            },
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/signed-links/by-custom-alias-to-subclass/{token}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:ggswc26vetrwkbyi",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                "line": 22,
+                "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.signed-links.by-custom-alias-to-subclass.@token",
+        "summary": "Confirm a subscription.",
+        "tags": [
+          "Links"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:l5yhpk4rwaol6hog",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:temcvdz2meekvklx",
+              "provenance": [
+                {
+                  "producer": "integration:signed-url",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 22,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                  }
+                }
+              ]
+            },
+            "name": "expires",
+            "in": "query",
+            "description": "Unix timestamp after which the signed link is no longer accepted. Carried only by links that expire.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:signed-url",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 22,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:3qytzsibjkzzadu6",
+              "provenance": [
+                {
+                  "producer": "integration:signed-url",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 22,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                  }
+                }
+              ]
+            },
+            "name": "signature",
+            "in": "query",
+            "description": "Signature of the signed link this request is made from. Send it, and the link's other query parameters, as the link carries them.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:signed-url",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 22,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:xkxb74t6ovycxnsj",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "confirmed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "confirmed"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "x-docuccino": {
+              "id": "res:v1:q3ruz35s4ctvjgb3",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 22,
+                    "symbol": "implicit:signed-middleware"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "Forbidden"
+              }
+            },
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/signed-links/by-custom-alias/{token}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:peukgwsbx4l3q6n3",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                "line": 22,
+                "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.signed-links.by-custom-alias.@token",
+        "summary": "Confirm a subscription.",
+        "tags": [
+          "Links"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:qcclitap34m5n4t3",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:4w7n77x3upmk4sdl",
+              "provenance": [
+                {
+                  "producer": "integration:signed-url",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 22,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                  }
+                }
+              ]
+            },
+            "name": "expires",
+            "in": "query",
+            "description": "Unix timestamp after which the signed link is no longer accepted. Carried only by links that expire.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:signed-url",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 22,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:jlk55xtputyrthn6",
+              "provenance": [
+                {
+                  "producer": "integration:signed-url",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 22,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                  }
+                }
+              ]
+            },
+            "name": "signature",
+            "in": "query",
+            "description": "Signature of the signed link this request is made from. Send it, and the link's other query parameters, as the link carries them.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:signed-url",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 22,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:nkyhs6vwbopinbjs",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "confirmed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "confirmed"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "x-docuccino": {
+              "id": "res:v1:u3smpadbwrqbxvoh",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 22,
+                    "symbol": "implicit:signed-middleware"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "Forbidden"
+              }
+            },
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/signed-links/by-subclass/{token}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:cjbxmjwws35lgipi",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                "line": 22,
+                "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.signed-links.by-subclass.@token",
+        "summary": "Confirm a subscription.",
+        "tags": [
+          "Links"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:dnnpbc3addm4qjca",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:fnkmfxuza3czf5h2",
+              "provenance": [
+                {
+                  "producer": "integration:signed-url",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 22,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                  }
+                }
+              ]
+            },
+            "name": "expires",
+            "in": "query",
+            "description": "Unix timestamp after which the signed link is no longer accepted. Carried only by links that expire.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:signed-url",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 22,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:hn7yz6usa7eixeeh",
+              "provenance": [
+                {
+                  "producer": "integration:signed-url",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 22,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                  }
+                }
+              ]
+            },
+            "name": "signature",
+            "in": "query",
+            "description": "Signature of the signed link this request is made from. Send it, and the link's other query parameters, as the link carries them.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:signed-url",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 22,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:bp557yi3g4p27jot",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "confirmed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "confirmed"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "x-docuccino": {
+              "id": "res:v1:rgzmmhyi47fw7fs2",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 22,
+                    "symbol": "implicit:signed-middleware"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "Forbidden"
+              }
+            },
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/signed-links/expiring/{token}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:t23lzsro6ndwwrb7",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                "line": 32,
+                "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirmExpiring"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.signed-links.expiring.@token",
+        "summary": "Confirm a subscription from a link that always expires.",
+        "tags": [
+          "Links"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:nnb7h5hzesfztogt",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:ctuupc347hqafdrk",
+              "provenance": [
+                {
+                  "producer": "attribute",
+                  "layer": "attribute",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 32,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirmExpiring"
+                  },
+                  "overrode": [
+                    {
+                      "field": "required",
+                      "value": false,
+                      "producer": "integration:signed-url"
+                    }
+                  ]
+                },
+                {
+                  "producer": "integration:signed-url",
+                  "layer": "integration",
+                  "fields": [
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 32,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirmExpiring"
+                  }
+                }
+              ]
+            },
+            "name": "expires",
+            "in": "query",
+            "description": "Unix timestamp after which the signed link is no longer accepted. Carried only by links that expire.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:signed-url",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 32,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirmExpiring"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:tgk3yfa3bycnljcg",
+              "provenance": [
+                {
+                  "producer": "integration:signed-url",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 32,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirmExpiring"
+                  }
+                }
+              ]
+            },
+            "name": "signature",
+            "in": "query",
+            "description": "Signature of the signed link this request is made from. Send it, and the link's other query parameters, as the link carries them.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:signed-url",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 32,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirmExpiring"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:sswsn4op3uegvbxu",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "confirmed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "confirmed"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "x-docuccino": {
+              "id": "res:v1:thwsez5g73bvq7xz",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 32,
+                    "symbol": "implicit:signed-middleware"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "Forbidden"
+              }
+            },
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/signed-links/from-group/{token}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:yiytkpx6pndnxyrp",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                "line": 22,
+                "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.signed-links.from-group.@token",
+        "summary": "Confirm a subscription.",
+        "tags": [
+          "Links"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:iwdci3zy5wue3wzu",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:x62aqcvqeo3ab2ho",
+              "provenance": [
+                {
+                  "producer": "integration:signed-url",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 22,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                  }
+                }
+              ]
+            },
+            "name": "expires",
+            "in": "query",
+            "description": "Unix timestamp after which the signed link is no longer accepted. Carried only by links that expire.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:signed-url",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 22,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:2dj6xcdzwj5em7vk",
+              "provenance": [
+                {
+                  "producer": "integration:signed-url",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 22,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                  }
+                }
+              ]
+            },
+            "name": "signature",
+            "in": "query",
+            "description": "Signature of the signed link this request is made from. Send it, and the link's other query parameters, as the link carries them.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:signed-url",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 22,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:f2f6nnwc5hzxvw3n",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "confirmed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "confirmed"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "x-docuccino": {
+              "id": "res:v1:z4wq7o7cf6fq3uas",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 22,
+                    "symbol": "implicit:signed-middleware"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "Forbidden"
+              }
+            },
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/signed-links/unsigned/{token}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:wel5eofiizl5ci3f",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                "line": 22,
+                "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirm"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.signed-links.unsigned.@token",
+        "summary": "Confirm a subscription.",
+        "tags": [
+          "Links"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:ougbctwknjdgimhz",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:6thbvdsod7p2xzt6",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "confirmed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "confirmed"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/signed-links/without-expiry/{token}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:qcdn3kmky3uk6wxx",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                "line": 42,
+                "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirmWithoutExpiry"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.signed-links.without-expiry.@token",
+        "summary": "Confirm a subscription, without documenting the link's expiry.",
+        "tags": [
+          "Links"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:ha22k4vpehu5m63h",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:pbq3tgj6lcfr7sfg",
+              "provenance": [
+                {
+                  "producer": "integration:signed-url",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 42,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirmWithoutExpiry"
+                  }
+                }
+              ]
+            },
+            "name": "signature",
+            "in": "query",
+            "description": "Signature of the signed link this request is made from. Send it, and the link's other query parameters, as the link carries them.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:signed-url",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 42,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\SignedLinkController::confirmWithoutExpiry"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:4wkqdkveri24fkow",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "confirmed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "confirmed"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "x-docuccino": {
+              "id": "res:v1:qegls6276bntgbkz",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                    "line": 42,
+                    "symbol": "implicit:signed-middleware"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "Forbidden"
+              }
+            },
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Forbidden": {
+        "x-docuccino": {
+          "id": "sch:v1:n5qazsrgxr4czglj"
+        },
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      }
+    },
+    "responses": {
+      "Forbidden": {
+        "description": "Forbidden",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Forbidden"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:signed",
+      "configHash": "0bf7778c7517ee69f127464e0d1e2cd803ad6b6180720b3f67557497ae839e7b",
+      "contentHash": "4fa4aa615683b4f9fa35307588cf74c588ccb81b2f2965b58f87fbfa51bd4272"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.20.2",
+      "specVersion": "2.0.0",
+      "schema": "https://spec.docuccino.app/uir/2.0/schema.json"
+    }
+  }
+}

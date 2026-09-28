@@ -37,7 +37,8 @@ it('shows what a higher rung shadowed, which only the full trail records', funct
     Artisan::call('docuccino:explain', ['route' => 'POST /api/tickets', 'document' => 'default']);
     $output = Artisan::output();
 
-    expect($output)->toContain('✗ fallback    "OK"')
+    // The shadowed fallback is the declared 201's own reason phrase, never another status's.
+    expect($output)->toContain('✗ fallback    "Created"')
         ->and($output)->toContain('1 shadowed');
 });
 

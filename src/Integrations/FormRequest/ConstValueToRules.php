@@ -11,6 +11,7 @@ use Docuccino\Core\Inference\ConstValue;
 use Docuccino\Laravel\Integrations\Support\DependencyFileSet;
 use Docuccino\Laravel\Integrations\Support\RuleParsing;
 use Docuccino\Laravel\Integrations\Validation\CustomRuleReader;
+use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
 
 /**
  * Folds one field's statically-recovered rules — from an inline `validate([...])` or
@@ -24,6 +25,12 @@ use Docuccino\Laravel\Integrations\Validation\CustomRuleReader;
  */
 final class ConstValueToRules
 {
+    /** Framework rule objects that exclude the field, by the rule name each stands for. */
+    private const EXCLUDE_OBJECTS = [
+        'Illuminate\\Validation\\Rules\\ExcludeIf' => 'exclude_if',
+        'Illuminate\\Validation\\Rules\\ExcludeUnless' => 'exclude_unless',
+    ];
+
     private readonly DependencyFileSet $dependencyFiles;
 
     private bool $widened = false;
@@ -109,7 +116,14 @@ final class ConstValueToRules
      */
     private function instance(ConstValue $value): array
     {
-        $facts = $this->customRules->read(ltrim((string) $value->class, '\\'));
+        $class = ltrim((string) $value->class, '\\');
+        if (isset(self::EXCLUDE_OBJECTS[$class])) {
+            $rule = self::exclude(self::EXCLUDE_OBJECTS[$class], $value->args[0] ?? null);
+
+            return $rule === null ? [] : [$rule];
+        }
+
+        $facts = $this->customRules->read($class);
 
         $this->dependencyFiles->add($facts->file);
 
@@ -131,8 +145,25 @@ final class ConstValueToRules
             $method === 'in' => $choices === null || $choices === [] ? null : ValidationRule::of('in', $choices),
             $method === 'exists' => ValidationRule::of('exists'),
             $method === 'unique' => ValidationRule::of('unique'),
+            $method === 'excludeif' => self::exclude('exclude_if', $descriptor->args[0] ?? null),
+            $method === 'excludeunless' => self::exclude('exclude_unless', $descriptor->args[0] ?? null),
             default => null,
         };
+    }
+
+    /**
+     * `Rule::excludeIf(…)`/`Rule::excludeUnless(…)` and their `new` forms, which stop Laravel running the
+     * field's later rules when their condition says so ({@see RuleSetNormalizer}). A literal bool settles
+     * it now: bare `exclude`, or no rule at all. Any other condition is a callback nothing here can run,
+     * so the rule is kept with no parameters — an exclude rule whose condition is unknown.
+     */
+    private static function exclude(string $name, ?ConstValue $condition): ?ValidationRule
+    {
+        if ($condition === null || ! $condition->isScalar() || ! is_bool($condition->scalar)) {
+            return ValidationRule::of($name);
+        }
+
+        return $condition->scalar === ($name === 'exclude_if') ? ValidationRule::of('exclude') : null;
     }
 
     private function enum(ConstValue $descriptor): ?ValidationRule

@@ -11,19 +11,15 @@ use Docuccino\Core\Inference\CallableRef;
  * it is written, and the names of the three parameters Laravel passes it by POSITION — the rendered
  * response, the exception and the request — each null where the callback declares fewer.
  *
- * Located like a {@see RenderCallback}: a method-backed closure by its class and method, a genuine closure
- * by file and line.
+ * Located as every handler callable is ({@see LocatedCallable}).
  */
 final readonly class RespondCallback
 {
     public function __construct(
-        public string $file,
-        public int $line,
+        public LocatedCallable $at,
         public ?string $responseParameter,
         public ?string $exceptionParameter,
         public ?string $requestParameter,
-        public ?string $class = null,
-        public ?string $method = null,
     ) {}
 
     /**
@@ -35,8 +31,6 @@ final readonly class RespondCallback
     {
         $narrowType = $this->exceptionParameter === null ? null : ReceivedException::byRespondCallback($thrownFqcn);
 
-        return $this->method !== null
-            ? new CallableRef($this->file, $this->class, $this->method, 0, $this->exceptionParameter, $narrowType, narrowToEvery: true)
-            : new CallableRef($this->file, null, null, $this->line, $this->exceptionParameter, $narrowType, narrowToEvery: true);
+        return $this->at->ref($this->exceptionParameter, $narrowType, narrowToEvery: true);
     }
 }

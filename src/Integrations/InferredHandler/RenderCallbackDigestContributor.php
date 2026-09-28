@@ -9,10 +9,10 @@ use Illuminate\Contracts\Debug\ExceptionHandler;
 use Throwable;
 
 /**
- * Feeds the registered render-callback set (exception FQCN + source location, registration order) and the
- * `respond()` callback's location into the environment digest (design §10). Adding, removing or replacing
- * either has to re-document the inferred-handler tier, and per-file dependency hashes alone miss the
- * added-a-handler case. An unresolvable handler contributes the empty string.
+ * Feeds the registered render-callback set (exception FQCN + source location, registration order), the
+ * `respond()` callback's location and the exception map into the environment digest (design §10). Adding,
+ * removing or replacing any of them has to re-document the inferred-handler tier, and per-file dependency
+ * hashes alone miss the added-a-handler case. An unresolvable handler contributes the empty string.
  */
 final class RenderCallbackDigestContributor implements EnvironmentDigestContributor
 {
@@ -29,9 +29,9 @@ final class RenderCallbackDigestContributor implements EnvironmentDigestContribu
                 // line, so editing the renderer re-documents the tier; the method name catches a re-bind to
                 // a different method in the same file.
                 $parts[] = $callback->exceptionType;
-                $parts[] = $callback->file;
-                $parts[] = (string) $callback->line;
-                $parts[] = $callback->method ?? '';
+                $parts[] = $callback->at->file;
+                $parts[] = (string) $callback->at->line;
+                $parts[] = $callback->at->method ?? '';
             }
 
             // An unanalysable callback still changes the tier's shape (it now reports a skip), so its label
@@ -40,9 +40,16 @@ final class RenderCallbackDigestContributor implements EnvironmentDigestContribu
 
             $respond = $reflector->respondCallback();
             if ($respond !== null) {
-                $parts = [...$parts, 'respond', $respond->file, (string) $respond->line, $respond->method ?? ''];
+                $parts = [...$parts, 'respond', $respond->at->file, (string) $respond->at->line, $respond->at->method ?? ''];
             } elseif ($reflector->respondUnlocated() !== null) {
                 $parts = [...$parts, 'respond', (string) $reflector->respondUnlocated()];
+            }
+
+            // The exception map decides which exception every other hook is asked about, so adding, removing,
+            // re-ordering or re-pointing an entry re-documents every route throwing through it. A class-string
+            // target has no file for a dependency hash to watch, so the class itself goes in.
+            foreach ($reflector->exceptionMappings() as $mapping) {
+                $parts = [...$parts, 'map', $mapping->from, $mapping->target ?? '', $mapping->at->file ?? $mapping->label, (string) ($mapping->at->line ?? 0), $mapping->at->method ?? ''];
             }
 
             return implode("\0", $parts);

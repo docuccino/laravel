@@ -98,7 +98,7 @@ it('accepts and documents a request written the way the older version accepted i
 
     // And then what the application actually did with the older spelling.
     expect($response->status())->toBe(201)
-        ->and($response->json())->toBe(['id' => 3, 'title' => 'Onboarding', 'publishedAt' => null]);
+        ->and($response->json())->toBe(['id' => 3, 'title' => 'Onboarding']);
 });
 
 it('accepts and documents a request written the way the code accepts it, at the head version', function (): void {

@@ -1,0 +1,540 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "Request Headers API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/orders": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:eep3nqvhn5jugmea",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/RequestHeadersController.php",
+                "line": 21,
+                "symbol": "Workbench\\App\\Http\\Controllers\\RequestHeadersController::store"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.orders",
+        "summary": "The header is read inside the FormRequest, in a method this action calls.",
+        "tags": [
+          "RequestHeaders"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:x332xrnsgcri5vfc",
+              "provenance": [
+                {
+                  "producer": "integration:request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Requests/PlaceOrderRequest.php",
+                    "line": 36
+                  }
+                }
+              ]
+            },
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:request",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Requests/PlaceOrderRequest.php",
+                      "line": 36
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:vi7pkxcn7hbfansx",
+              "provenance": [
+                {
+                  "producer": "integration:request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Requests/PlaceOrderRequest.php",
+                    "line": 41
+                  }
+                }
+              ]
+            },
+            "name": "X-Client-Version",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:request",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Requests/PlaceOrderRequest.php",
+                      "line": 41
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:eh74jgkox3jwvwh5",
+              "provenance": [
+                {
+                  "producer": "integration:request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Requests/PlaceOrderRequest.php",
+                    "line": 23
+                  }
+                }
+              ]
+            },
+            "name": "X-Locale",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:request",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Requests/PlaceOrderRequest.php",
+                      "line": 23
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/pinned": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:b222bygjkcpvatqg",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/RequestHeadersController.php",
+                "line": 41,
+                "symbol": "Workbench\\App\\Http\\Controllers\\RequestHeadersController::pinned"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.pinned",
+        "summary": "The same header the attribute declares, read under another case: the declaration is what stands.",
+        "tags": [
+          "RequestHeaders"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:fregu7xpfpidoa44",
+              "provenance": [
+                {
+                  "producer": "attribute",
+                  "layer": "attribute",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/RequestHeadersController.php",
+                    "line": 41,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\RequestHeadersController::pinned"
+                  }
+                }
+              ]
+            },
+            "name": "idempotency-key",
+            "in": "header",
+            "description": "Makes a retried request safe to repeat.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "attribute",
+                    "layer": "attribute",
+                    "fields": [
+                      "format",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/RequestHeadersController.php",
+                      "line": 41,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\RequestHeadersController::pinned"
+                    }
+                  }
+                ]
+              },
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/quiet": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:who2mtux3rt6bv6r",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/RequestHeadersController.php",
+                "line": 48,
+                "symbol": "Workbench\\App\\Http\\Controllers\\RequestHeadersController::quiet"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.quiet",
+        "summary": "A header read here that the author keeps out of the document.",
+        "tags": [
+          "RequestHeaders"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:6w7cvuruhuinum65",
+              "provenance": [
+                {
+                  "producer": "integration:request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/RequestHeadersController.php",
+                    "line": 50
+                  }
+                }
+              ]
+            },
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:request",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/RequestHeadersController.php",
+                      "line": 50
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/traced/{dynamic}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:5kkn3peukar44s3f",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/RequestHeadersController.php",
+                "line": 27,
+                "symbol": "Workbench\\App\\Http\\Controllers\\RequestHeadersController::trace"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.traced.@dynamic",
+        "summary": "Read inline, twice under two spellings, beside reads that name nothing a client can send.",
+        "tags": [
+          "RequestHeaders"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:tnen65nukcgexfeu",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "dynamic",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:4k46zeifsbxcp6l4",
+              "provenance": [
+                {
+                  "producer": "integration:request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/RequestHeadersController.php",
+                    "line": 30
+                  }
+                }
+              ]
+            },
+            "name": "If-None-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:request",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/RequestHeadersController.php",
+                      "line": 30
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:3ragkcf2g7yoixso",
+              "provenance": [
+                {
+                  "producer": "integration:request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/RequestHeadersController.php",
+                    "line": 33
+                  }
+                }
+              ]
+            },
+            "name": "X-Api-Version",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:request",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/RequestHeadersController.php",
+                      "line": 33
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:3nqaiodhtmobmj2z",
+              "provenance": [
+                {
+                  "producer": "integration:request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/RequestHeadersController.php",
+                    "line": 29
+                  }
+                }
+              ]
+            },
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:request",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/RequestHeadersController.php",
+                      "line": 29
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:request-headers",
+      "configHash": "458e8d27e943e983b6ab0a6fb0fc4ce1cb9447d4adc3cde1df37bbb2a0795a14",
+      "contentHash": "bad4e478e7bbb20454b7b2683fb65205a4e13196a5faafe4059c82e53abb3369"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.20.2",
+      "specVersion": "2.0.0",
+      "schema": "https://spec.docuccino.app/uir/2.0/schema.json"
+    }
+  }
+}

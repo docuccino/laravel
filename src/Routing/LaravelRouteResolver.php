@@ -12,6 +12,7 @@ use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Extensions\Contracts\RouteResolver;
 use Docuccino\Core\Support\Glob;
 use Docuccino\Laravel\Support\MiddlewareAliases;
+use Docuccino\Laravel\Support\MiddlewareClasses;
 use Docuccino\Laravel\Support\MiddlewareName;
 use Docuccino\Laravel\Support\MiddlewareRegistrations;
 use Docuccino\Laravel\Support\MiddlewareResolution;
@@ -113,12 +114,14 @@ final class LaravelRouteResolver implements RouteResolver
         $gathered = $this->expandAll(self::strings($route->gatherMiddleware()), $groups);
         $excluded = $this->expandAll(self::strings($route->excludedMiddleware()), $groups);
 
+        $middleware = self::middleware($gathered, $excluded, $aliases);
+
         $descriptor = new RouteDescriptor(
             methods: self::strings($route->methods()),
             uri: '/'.ltrim($route->uri(), '/'),
             name: $route->getName(),
             action: $route->getActionName(),
-            middleware: self::middleware($gathered, $excluded, $aliases),
+            middleware: $middleware,
             // `->withTrashed()` puts a note and a fact on every bound parameter but touches nothing
             // else the signature already carries, so it has to fold itself in or a warm build keeps
             // answering with the note the route dropped. Binding fields are the same shape of input for
@@ -130,6 +133,7 @@ final class LaravelRouteResolver implements RouteResolver
                 ...($route->allowsTrashedBindings() ? ['trashed'] : []),
                 ...RouteBindingFields::cacheInputs($route),
                 ...RouteBindingResolution::cacheInputs($this->router, $route),
+                ...self::aliasInputs($middleware, $aliases),
             ],
             domain: RouteHost::of($route),
             fallback: $route->isFallback,
@@ -171,6 +175,28 @@ final class LaravelRouteResolver implements RouteResolver
         );
 
         return array_values(array_unique($kept));
+    }
+
+    /**
+     * The class each aliased entry resolves to, for the cache key: a reader that asks which class a route
+     * runs ({@see MiddlewareClasses}) answers from the alias map, and re-pointing an alias changes no
+     * string the route itself carries.
+     *
+     * @param  list<string>  $middleware
+     * @param  array<string, string>  $aliases
+     * @return list<string>
+     */
+    private static function aliasInputs(array $middleware, array $aliases): array
+    {
+        $inputs = [];
+        foreach ($middleware as $entry) {
+            $name = MiddlewareName::name($entry);
+            if (isset($aliases[$name])) {
+                $inputs[] = 'middleware:'.$name.'='.$aliases[$name];
+            }
+        }
+
+        return array_values(array_unique($inputs));
     }
 
     /**

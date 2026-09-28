@@ -7,6 +7,8 @@ use Docuccino\Laravel\Tests\Fixtures\Middleware\ApplicationAuthenticate;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Routing\Middleware\ThrottleRequests;
+use Illuminate\Routing\Middleware\ValidateSignature;
+use Workbench\App\Http\Middleware\ValidateLinkSignature;
 
 /**
  * The framework's own middleware resolution, read as a function of the ALIAS MAP — which is the input
@@ -48,4 +50,28 @@ it('keeps what the framework keeps and drops what it drops', function (array $ga
     // that drops a 401 the server enforces.
     'the skeleton alias, excluded by the class it points at' => [['auth:web'], [ApplicationAuthenticate::class.':web'], $skeleton, []],
     'the skeleton alias, excluded by the framework class it does not point at' => [['auth:web'], [Authenticate::class.':web'], $skeleton, ['auth:web']],
+]);
+
+/**
+ * Which class an entry RUNS, stated from `MiddlewareNameResolver::resolve()`: the name is looked up in
+ * the alias map first and taken as a class name otherwise, and the arguments are never part of the
+ * class. A subclass runs its parent's behaviour, which is what a reader asking by class wants to hear.
+ */
+it('answers which middleware class an entry runs', function (string $entry, array $aliases, bool $runs): void {
+    expect(MiddlewareResolution::runs($entry, ValidateSignature::class, $aliases))->toBe($runs);
+})->with([
+    'the framework alias' => ['signed', ['signed' => ValidateSignature::class], true],
+    'the framework alias with arguments' => ['signed:relative,utm_source', ['signed' => ValidateSignature::class], true],
+    'the class, from its own constructor' => [ValidateSignature::relative(), [], true],
+    'the class, absolute with ignored parameters' => [ValidateSignature::absolute(['utm_source']), [], true],
+    'the class with a leading separator' => ['\\'.ValidateSignature::class, [], true],
+    "an application's subclass, from the inherited constructor" => [ValidateLinkSignature::relative(), [], true],
+    "an application's own alias" => ['signed.link', ['signed.link' => ValidateSignature::class], true],
+    "an application's own alias for its subclass" => ['signed.app:relative', ['signed.app' => ValidateLinkSignature::class], true],
+    // The map is the application's to change, in both directions.
+    'the framework alias re-pointed elsewhere' => ['signed', ['signed' => ThrottleRequests::class], false],
+    'an alias the map does not hold' => ['signed', [], false],
+    'an unrelated middleware' => ['throttle:60,1', ['throttle' => ThrottleRequests::class], false],
+    'a class that does not exist' => ['App\\Http\\Middleware\\ValidateSignature', [], false],
+    'a name the alias is only a prefix of' => ['signedIn', ['signed' => ValidateSignature::class], false],
 ]);

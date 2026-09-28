@@ -35,6 +35,7 @@ use Docuccino\Laravel\Tests\Fixtures\FormRequest\PlainRequest;
 use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 use Illuminate\Routing\Middleware\ValidateSignature;
+use Workbench\App\Http\Middleware\ValidateLinkSignature;
 
 /**
  * The implicit-response matrix: 401/422/404/403 synthesized from statically visible middleware, binding
@@ -145,6 +146,34 @@ it('adds no 422 when no request body was recovered', function (): void {
     expect(implicitStatuses(runImplicit($context)))->not->toContain('422');
 });
 
+it('adds no 422 for a query parameter an integration writes without validating it', function (string $producer, string $name): void {
+    // A paginator's page key and an allow-listed filter are written at the integration layer exactly as
+    // recovered rules are, and a value outside them is not a validation failure: an out-of-range page
+    // is an empty page, an unknown filter the Query Builder's own 400. What earns the 422 is that rules
+    // were applied ({@see ValidatedQueryResponseTest}), never the layer a query parameter sits at.
+    $context = implicitContext(new RouteDescriptor(['GET'], 'api/things'));
+    $operation = new OperationDraft;
+    $operation->parameter('query', $name)->schema()->set('type', 'string', Contribution::integration($producer));
+
+    expect(implicitStatuses(runImplicit($context, $operation)))->not->toContain('422');
+})->with([
+    'a paginator page key' => ['api-resources', 'page'],
+    'a JSON:API page member' => ['json-api-paginate', 'page[number]'],
+    'a Query Builder filter' => ['query-builder', 'filter[status]'],
+]);
+
+it('synthesizes a 422 for any operation declared to validate its input, whatever wrote its parameters', function (string $verb): void {
+    // A third-party validator that documents its query its own way, never through the shared recovery,
+    // declares the fact on the draft and earns the same 422 — the parameter it writes proves nothing
+    // (see the row above); the declaration is what does.
+    $context = implicitContext(new RouteDescriptor([$verb], 'api/things'));
+    $operation = new OperationDraft;
+    $operation->parameter('query', 'status')->schema()->set('type', 'string', Contribution::integration('acme-query-validation'));
+    $operation->declareValidatesInput();
+
+    expect(implicitStatuses(runImplicit($context, $operation)))->toContain('422');
+})->with(['GET', 'HEAD', 'DELETE']);
+
 it('synthesizes exactly one 404 for a route with model-bound path parameters', function (): void {
     $context = implicitContext(
         new RouteDescriptor(['GET'], 'api/posts/{post}/comments/{comment}'),
@@ -178,6 +207,8 @@ it('synthesizes a 403 for authorization middleware', function (string $middlewar
     'Authorize::using()' => [Authorize::using('update', 'post')],
     'ValidateSignature::relative()' => [ValidateSignature::relative()],
     'ValidateSignature::absolute()' => [ValidateSignature::absolute()],
+    // What the older skeleton's own subclass renders from the same constructor.
+    "an application's ValidateSignature subclass" => [ValidateLinkSignature::relative()],
     'EnsureEmailIsVerified::redirectTo()' => [EnsureEmailIsVerified::redirectTo('verification.notice')],
 ]);
 

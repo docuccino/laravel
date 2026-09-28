@@ -985,6 +985,26 @@
         "tags": [
           "Forms"
         ],
+        "parameters": [
+          {
+            "name": "expires",
+            "in": "query",
+            "description": "Unix timestamp after which the signed link is no longer accepted. Carried only by links that expire.",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "signature",
+            "in": "query",
+            "description": "Signature of the signed link this request is made from. Send it, and the link's other query parameters, as the link carries them.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",

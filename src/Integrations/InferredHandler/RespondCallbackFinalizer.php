@@ -125,7 +125,7 @@ final class RespondCallbackFinalizer implements ErrorResponseFinalizer
         // A rewrite that does not state its own status sends the one it was handed. A stand-in status is
         // not a reading, so it is not handed on as one: the rewrite files where the rendered response did.
         $hint = RespondConditions::renderedStatus($rendered);
-        $hinted = new ThrownException($exception->exceptionFqcn, $hint, $exception->callChain, $exception->confidence, $exception->disposition);
+        $hinted = $exception->as($exception->exceptionFqcn, $hint);
 
         $plan = ['rewrites' => [], 'unread' => false, 'analysis' => $analysis, 'exception' => $hinted, 'target' => $ref->target()];
 

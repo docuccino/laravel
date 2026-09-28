@@ -31,6 +31,11 @@ function publicExtensionSurface(): array
         // fact inheritance decided (a static `$wrap`, a `render()` on a parent, an action trait). Every
         // integration inlining its own hierarchy walk is precisely what this list exists to prevent.
         'Docuccino\Core\Extensions\Schema\DeclarationFiles',
+        // Same shape of exemption as DocSummary: the front for core's one docblock reader and one type
+        // grammar, for a type a method's `@return` DECLARES rather than one the engine infers from its
+        // body — a relation's generic, which its body (`$this->morphTo()`) never carries. An integration
+        // parsing the tag itself would be a second reading of the grammar TypeStringParser already is.
+        'Docuccino\Core\Extensions\Schema\DeclaredReturnType',
         // The summary front for core's one docblock reader, and the one enum-decoration rulebook: the
         // QB integration describing include/sort values must read prose and emit hint keys EXACTLY as
         // core's enum mapper does, or the document carries two decoration standards.

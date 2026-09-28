@@ -1,0 +1,1216 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-rendered/collection": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:3wdj3poohttiyzwo",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ApiResources/RenderedResourceController.php",
+                "line": 49,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ApiResources\\RenderedResourceController::collection"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-rendered.collection",
+        "tags": [
+          "RenderedResource"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:n7ek7rydtfs7cogw",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ReleaseResource"
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-rendered/created": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:coffpkzbeacxtk4u",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ApiResources/RenderedResourceController.php",
+                "line": 34,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ApiResources\\RenderedResourceController::created"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.zz-rendered.created",
+        "tags": [
+          "RenderedResource"
+        ],
+        "responses": {
+          "201": {
+            "x-docuccino": {
+              "id": "res:v1:77zcovsmfbiqov77",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.4
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ReleaseResource"
+                    },
+                    "meta": {
+                      "type": "object"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta",
+                    "version"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-rendered/guarded": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:luub5pkf6oz4irfj",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ApiResources/RenderedResourceController.php",
+                "line": 69,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ApiResources\\RenderedResourceController::guarded"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-rendered.guarded",
+        "tags": [
+          "RenderedResource"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:3g5h5g5hklt4dywr",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.4
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ReleaseResource"
+                    },
+                    "meta": {
+                      "type": "object"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta",
+                    "version"
+                  ]
+                }
+              }
+            }
+          },
+          "410": {
+            "x-docuccino": {
+              "id": "res:v1:qdcabhfywxi24f6p",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Gone",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-rendered/named": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:cli7c3lexvyihyqj",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ApiResources/RenderedResourceController.php",
+                "line": 59,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ApiResources\\RenderedResourceController::named"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-rendered.named",
+        "tags": [
+          "RenderedResource"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:72zu4knivazr5e4h",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ReleaseCollection"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "key"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-rendered/paginated": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:2bvxipauum6i3zxi",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ApiResources/RenderedResourceController.php",
+                "line": 54,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ApiResources\\RenderedResourceController::paginated"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-rendered.paginated",
+        "tags": [
+          "RenderedResource"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:tgjteycstatakfsi",
+              "provenance": [
+                {
+                  "producer": "integration:api-resources",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/ApiResources/RenderedResourceController.php",
+                    "line": 54,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ApiResources\\RenderedResourceController::paginated"
+                  }
+                }
+              ]
+            },
+            "name": "page",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:api-resources",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ApiResources/RenderedResourceController.php",
+                      "line": 54,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ApiResources\\RenderedResourceController::paginated"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:2vaos4rwlv3hbhnz",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:api-resources",
+                        "layer": "integration",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "source": {
+                          "file": "tests/Fixtures/ApiResources/RenderedResourceController.php",
+                          "line": 54,
+                          "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ApiResources\\RenderedResourceController::paginated"
+                        },
+                        "overrode": [
+                          {
+                            "field": "type",
+                            "value": "object",
+                            "producer": "inference"
+                          },
+                          {
+                            "field": "properties",
+                            "value": {
+                              "data": {
+                                "items": {
+                                  "$ref": "#/components/schemas/ReleaseResource"
+                                },
+                                "type": "array"
+                              }
+                            },
+                            "producer": "inference"
+                          },
+                          {
+                            "field": "required",
+                            "value": [
+                              "data"
+                            ],
+                            "producer": "inference"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/ReleaseResourcePage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-rendered/plain": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:4ylhbvzj5mutsepo",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ApiResources/RenderedResourceController.php",
+                "line": 19,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ApiResources\\RenderedResourceController::plain"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-rendered.plain",
+        "tags": [
+          "RenderedResource"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:typsxf75w3wr3y53",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.4
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ReleaseResource"
+                    },
+                    "meta": {
+                      "type": "object"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta",
+                    "version"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-rendered/relabelled": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:ab2arplpbw65oygb",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ApiResources/RenderedResourceController.php",
+                "line": 64,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ApiResources\\RenderedResourceController::relabelled"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.zz-rendered.relabelled",
+        "tags": [
+          "RenderedResource"
+        ],
+        "responses": {
+          "201": {
+            "x-docuccino": {
+              "id": "res:v1:vja34mb5averf3ni",
+              "provenance": [
+                {
+                  "producer": "integration:api-resources",
+                  "layer": "integration",
+                  "fields": [
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/ApiResources/RenderedResourceController.php",
+                    "line": 64,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ApiResources\\RenderedResourceController::relabelled"
+                  }
+                }
+              ]
+            },
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:api-resources",
+                        "layer": "integration",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "tests/Fixtures/ApiResources/RenderedResourceController.php",
+                          "line": 64,
+                          "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ApiResources\\RenderedResourceController::relabelled"
+                        }
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ReleaseResource"
+                    },
+                    "meta": {
+                      "type": "object"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta",
+                    "version"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-rendered/response": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:ahmsjs6z5lgdim27",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ApiResources/RenderedResourceController.php",
+                "line": 24,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ApiResources\\RenderedResourceController::response"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-rendered.response",
+        "tags": [
+          "RenderedResource"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:rushmvdo472cardr",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.4
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ReleaseResource"
+                    },
+                    "meta": {
+                      "type": "object"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta",
+                    "version"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-rendered/restated": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:3ecs4btzmh4pgsf5",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ApiResources/RenderedResourceController.php",
+                "line": 44,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ApiResources\\RenderedResourceController::restated"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.zz-rendered.restated",
+        "tags": [
+          "RenderedResource"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:xurcvi7dat5ufplx",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.4
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ReleaseResource"
+                    },
+                    "meta": {
+                      "type": "object"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta",
+                    "version"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-rendered/store": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:prrgfgyqnyw3uc3g",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ApiResources/RenderedResourceController.php",
+                "line": 39,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ApiResources\\RenderedResourceController::store"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.zz-rendered.store",
+        "tags": [
+          "RenderedResource"
+        ],
+        "responses": {
+          "201": {
+            "x-docuccino": {
+              "id": "res:v1:rtxpfbgjuqal2skk",
+              "provenance": [
+                {
+                  "producer": "integration:api-resources",
+                  "layer": "integration",
+                  "fields": [
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/ApiResources/RenderedResourceController.php",
+                    "line": 39,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ApiResources\\RenderedResourceController::store"
+                  }
+                }
+              ]
+            },
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:api-resources",
+                        "layer": "integration",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "tests/Fixtures/ApiResources/RenderedResourceController.php",
+                          "line": 39,
+                          "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ApiResources\\RenderedResourceController::store"
+                        }
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ReleaseResource"
+                    },
+                    "meta": {
+                      "type": "object"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta",
+                    "version"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-rendered/toResponse": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:ngrngktd465gv2gz",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ApiResources/RenderedResourceController.php",
+                "line": 29,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ApiResources\\RenderedResourceController::toResponse"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-rendered.toResponse",
+        "tags": [
+          "RenderedResource"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:5j6owhz6y354doip",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.4
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ReleaseResource"
+                    },
+                    "meta": {
+                      "type": "object"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta",
+                    "version"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PaginationLinks": {
+        "x-docuccino": {
+          "id": "sch:v1:ziy4rsrw65knnpeh"
+        },
+        "description": "URLs for the first, last, previous and next pages of this result set; null where there is no such page.",
+        "type": "object",
+        "properties": {
+          "first": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "prev": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "PaginationMeta": {
+        "x-docuccino": {
+          "id": "sch:v1:t4gugvq46cfzr4or"
+        },
+        "description": "Where this page sits in the result set: the page number and size, the number of the last page, the record total, the index of the first and last record on this page, and the base URL its page links are built from.",
+        "type": "object",
+        "properties": {
+          "current_page": {
+            "type": "integer"
+          },
+          "from": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "last_page": {
+            "type": "integer"
+          },
+          "path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "per_page": {
+            "type": "integer"
+          },
+          "to": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      },
+      "ReleaseCollection": {
+        "x-docuccino": {
+          "id": "sch:v1:jr3l2uqeer7lvgdu"
+        },
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ReleaseResource"
+        }
+      },
+      "ReleaseResource": {
+        "x-docuccino": {
+          "id": "sch:v1:kcoaafh7sqni2m2k"
+        },
+        "type": "object",
+        "properties": {
+          "tag": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tag"
+        ]
+      },
+      "ReleaseResourcePage": {
+        "x-docuccino": {
+          "id": "sch:v1:odqeoqznkrr52o75"
+        },
+        "description": "One page of results, with links to the pages around it and totals for the whole result set.",
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReleaseResource"
+            }
+          },
+          "links": {
+            "$ref": "#/components/schemas/PaginationLinks"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        },
+        "required": [
+          "data",
+          "links",
+          "meta"
+        ]
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "d048646f92e735ae8431aad0ea7848051c65dc7c721d521484157108198e3f08"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.20.2",
+      "specVersion": "2.0.0",
+      "schema": "https://spec.docuccino.app/uir/2.0/schema.json"
+    }
+  }
+}

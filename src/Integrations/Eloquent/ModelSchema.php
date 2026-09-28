@@ -11,7 +11,9 @@ use Docuccino\Core\Extensions\Contracts\TypeToSchema;
 use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Extensions\Schema\ComponentHoist;
+use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Docuccino\Core\Extensions\Schema\DocumentedExamples;
+use Docuccino\Core\Extensions\Schema\EnumDecoration;
 use Docuccino\Core\Extensions\Schema\EnumReflection;
 use Docuccino\Core\Extensions\Schema\MockHints;
 use Docuccino\Core\Extensions\Schema\PropertyAnnotations;
@@ -28,6 +30,7 @@ use Docuccino\Core\Inference\DType\NeverT;
 use Docuccino\Core\Inference\DType\UnionT;
 use Docuccino\Core\Inference\DType\UnknownT;
 use Docuccino\Core\Inference\DType\VoidT;
+use Docuccino\Laravel\Support\ListValueNames;
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
@@ -61,6 +64,8 @@ use Throwable;
  *   component-hoist cycle break — a relation back to a model mid-expansion becomes a `$ref`.
  * - a date attribute publishes whatever {@see DateColumnSchema} says, weakened `format` and
  *   diagnostic flag together.
+ * - a `morphTo`'s type column is the enum of what `getMorphClass()` can write there
+ *   ({@see MorphTypeValues}), where that set is closed; otherwise it keeps its declared type.
  *
  * Both of this mapper's notices claim something about the DOCUMENT, so both are decided by what was
  * published rather than by what the model owns: the bare-object notice is raised after appends and
@@ -77,6 +82,7 @@ final class ModelSchema implements TypeToSchema
         private readonly EloquentModelReflector $reflector = new EloquentModelReflector,
         private readonly AccessorReader $accessors = new AccessorReader,
         private readonly ComponentHoist $hoist = new ComponentHoist,
+        private readonly MorphToReader $morphTo = new MorphToReader,
     ) {}
 
     public function supports(DType $type): bool
@@ -111,12 +117,13 @@ final class ModelSchema implements TypeToSchema
             // the docblock columns, and every model inherits all of them; none is an attribute, so none
             // is ever in a response ({@see EloquentModelReflector::frameworkProperties()}).
             $bookkeeping = EloquentModelReflector::frameworkProperties();
+            $morphTypes = $this->morphTypes($fqcn, $context);
             foreach ($metadata->properties as $property) {
                 if (in_array($property->name, $bookkeeping, true) || ! self::serialises($property->name, $facts)) {
                     continue;
                 }
 
-                $schema = $this->columnSchema($property->name, $property->type, $facts, $context, $weakenedDates);
+                $schema = $this->columnSchema($property->name, $property->type, $facts, $context, $weakenedDates, $morphTypes);
                 if ($property->summary !== null) {
                     $schema['description'] = $property->summary;
                 }
@@ -392,17 +399,19 @@ final class ModelSchema implements TypeToSchema
     }
 
     /**
-     * The schema for a column: its cast shape when the model casts it, the date policy's when the model
-     * treats it as a date attribute ({@see DateColumnSchema}), else its inferred type. The date branch
-     * sits here rather than after the loops below, which skip a name this one already took.
+     * The schema for a column: its cast shape when the model casts it, the closed set of a `morphTo`'s
+     * type column, the date policy's when the model treats it as a date attribute
+     * ({@see DateColumnSchema}), else its inferred type. The date branch sits here rather than after the
+     * loops below, which skip a name this one already took.
      *
      * @param  ModelFacts  $facts
      * @param  list<string>  $weakenedDates
+     * @param  array<string, array<string, mixed>>  $morphTypes
      * @return array<string, mixed>
      */
-    private function columnSchema(string $column, DType $type, array $facts, SchemaContext $context, array &$weakenedDates): array
+    private function columnSchema(string $column, DType $type, array $facts, SchemaContext $context, array &$weakenedDates, array $morphTypes): array
     {
-        $pinned = $this->castSchema($column, $facts, $context);
+        $pinned = $this->castSchema($column, $facts, $context) ?? $morphTypes[$column] ?? null;
         if ($pinned === null && DateColumnSchema::isAttribute($column, $facts)) {
             $pinned = self::datedSchema($column, $facts, $weakenedDates);
         }
@@ -417,6 +426,50 @@ final class ModelSchema implements TypeToSchema
         return $type instanceof UnionT && $type->containsNull()
             ? SchemaUnion::nullable($pinned, $context->representation()->nullable)
             : $pinned;
+    }
+
+    /**
+     * The enum schema of each `morphTo` type column whose values are a closed set, keyed by column.
+     * Nothing where a call's column can't be read, since it might be any of them; nothing for a column
+     * an accessor serialises in its place, since the accessor decides the value.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private function morphTypes(string $fqcn, SchemaContext $context): array
+    {
+        $relations = $this->morphTo->relations($fqcn);
+        if ($relations['readable'] === [] || in_array(null, $relations['refused'], true)) {
+            return [];
+        }
+
+        $context->dependsOn(...DeclarationFiles::of($fqcn));
+        $accessed = array_column($this->accessors->read($fqcn), 'attribute');
+
+        $schemas = [];
+        foreach ($relations['readable'] as $column => $targets) {
+            if (in_array($column, $relations['refused'], true) || in_array($column, $accessed, true)) {
+                continue;
+            }
+
+            // Every class the answer read keys the fragment, an open answer included: a target turning
+            // final, or a mapped model becoming a target's subclass, changes it.
+            ['values' => $values, 'classes' => $classes] = MorphTypeValues::of($targets);
+            foreach ($classes as $class) {
+                $context->dependsOn(...DeclarationFiles::of($class));
+            }
+            if ($values === null) {
+                continue;
+            }
+
+            $schemas[$column] = EnumDecoration::apply(
+                ['type' => 'string', 'enum' => $values],
+                $context->representation()->enumNaming,
+                ListValueNames::names($values),
+                [],
+            );
+        }
+
+        return $schemas;
     }
 
     /**

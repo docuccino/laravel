@@ -10,6 +10,7 @@ use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Inference\CallCondition;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
+use Docuccino\Laravel\Integrations\InferredHandler\LocatedCallable;
 use Docuccino\Laravel\Integrations\InferredHandler\RespondCallback;
 use Docuccino\Laravel\Integrations\InferredHandler\RespondConditions;
 use Docuccino\Laravel\Integrations\Support\RoutePredicates;
@@ -37,7 +38,7 @@ it('answers routeIs() for a route as the framework does, through every reader th
     );
     $respond = RespondConditions::reachable(
         [new CallCondition('request', 'routeIs', $patterns, true)],
-        new RespondCallback('bootstrap/app.php', 1, 'response', 'e', 'request'),
+        new RespondCallback(new LocatedCallable('bootstrap/app.php', 1), 'response', 'e', 'request'),
         $context,
         new ResponseDraft('404'),
     );

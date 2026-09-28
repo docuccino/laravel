@@ -218,15 +218,22 @@ it('inlines nullable enum composition when components are opted out (both polici
 
     expect($schema)->toBe($expected)->and($components)->toBe([]);
 })->with([
-    'type-array folds null into the type array' => [
+    // `enum` constrains the value beside `type`, so a null folded into `type: [string, null]` is still
+    // refused by the enum that omits it: the value list takes the branch under this policy too.
+    'type-array takes a branch, since the enum would refuse a folded null' => [
         'type-array',
         [
-            'type' => ['string', 'null'],
-            'enum' => ['draft', 'published', 'archived'],
-            'x-enum-descriptions' => ['Not yet visible to applicants.', 'Live and accepting traffic.', ''],
-            'x-enum-varnames' => ['Draft', 'Published', 'Archived'],
-            'x-enumNames' => ['Draft', 'Published', 'Archived'],
-            'description' => 'Where a widget stands in its publication lifecycle.',
+            'anyOf' => [
+                [
+                    'type' => 'string',
+                    'enum' => ['draft', 'published', 'archived'],
+                    'x-enum-descriptions' => ['Not yet visible to applicants.', 'Live and accepting traffic.', ''],
+                    'x-enum-varnames' => ['Draft', 'Published', 'Archived'],
+                    'x-enumNames' => ['Draft', 'Published', 'Archived'],
+                    'description' => 'Where a widget stands in its publication lifecycle.',
+                ],
+                ['type' => 'null'],
+            ],
         ],
     ],
     'anyof expresses null as a branch' => [

@@ -262,25 +262,31 @@ it('invalidates a fragment when a resource toArray file is edited (analysis depe
     @unlink($resourceFile);
 });
 
-it('publishes the same bytes whatever the morph map says, so the digest owes it no key', function (): void {
-    // A model's own body carries no morph alias — the alias lives in the parent's `*_type` column — so
-    // nothing published reads the map. Two COLD builds under different maps prove it; leaving the map out
-    // of the environment digest is then a saving, not an under-keyed cache.
+it('invalidates fragments when the morph map changes (booted-app cache input)', function (): void {
+    // A morphTo's type column publishes the values the map resolves, and no file records the map, so it
+    // keys the environment digest: a warm build under another map must re-derive rather than replay.
     $widget = 'Docuccino\\Laravel\\Tests\\Fixtures\\Eloquent\\Widget';
     $gadget = 'Docuccino\\Laravel\\Tests\\Fixtures\\Eloquent\\Gadget';
-    $build = static function (array $morphMap): string {
-        fragmentCacheDir('fragments');
-        Relation::morphMap($morphMap, false);
-        app()->instance(TypeEngine::class, WorkbenchEngine::make());
-
-        return (new UirEmitter)->emit(generateDocument()->document);
-    };
+    fragmentCacheDir('fragments');
+    $engine = new CountingTypeEngine(WorkbenchEngine::make());
+    app()->instance(TypeEngine::class, $engine);
 
     try {
-        expect($build(['legacy_widget' => $widget, 'sprocket' => $gadget]))
-            ->toBe($build(['widget' => $widget, 'gadget' => $gadget]));
+        generateDocument()->document;
+        $engine->analyzeCount = 0;
+
+        Relation::morphMap(['legacy_widget' => $widget, 'gadget' => $gadget], false);
+        generateDocument()->document;
+        expect($engine->analyzeCount)->toBeGreaterThan(0);
+
+        // Enforcement alone changes what an unmapped model can write, so it keys the digest too.
+        $engine->analyzeCount = 0;
+        Relation::requireMorphMap();
+        generateDocument()->document;
+        expect($engine->analyzeCount)->toBeGreaterThan(0);
     } finally {
         // Restore the morph map so this test never leaks into another (see TestCase setUp).
+        Relation::requireMorphMap(false);
         Relation::morphMap(['widget' => $widget, 'gadget' => $gadget], false);
     }
 });

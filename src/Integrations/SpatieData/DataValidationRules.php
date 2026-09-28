@@ -64,6 +64,12 @@ use Docuccino\Laravel\Integrations\Validation\Transformers\DateWireRuleTransform
  */
 final class DataValidationRules
 {
+    /**
+     * The rules of spatie's `RequiringRule` attributes. Any one of them replaces the `required` a
+     * property's type implies, so a property stating a conditional one is not required outright.
+     */
+    private const REQUIRING_RULES = ['required', 'required_if', 'required_unless', 'required_with', 'required_with_all', 'required_without', 'required_without_all'];
+
     /** Rule names that already fix a type, so no type rule is synthesised alongside them. */
     private const TYPE_RULES = ['string', 'integer', 'int', 'numeric', 'boolean', 'bool', 'array', 'additional_properties'];
 
@@ -705,8 +711,9 @@ final class DataValidationRules
 
     /**
      * Presence/nullability/type rules synthesised from the property type, prepended ahead of the spatie
-     * attribute rules and only when one doesn't already state them. Mirrors Laravel's own inference:
-     * `required` is skipped for a nullable, Optional/Lazy or defaulted property.
+     * attribute rules and only when one doesn't already state them. Mirrors spatie's own inference:
+     * `required` is skipped for a nullable, Optional/Lazy or defaulted property, and for one stating any
+     * requiring rule ({@see REQUIRING_RULES}).
      *
      * @param  list<ValidationRule>  $attributeRules
      * @return list<ValidationRule>
@@ -723,7 +730,7 @@ final class DataValidationRules
         if (($optional || $defaulted) && ! in_array('sometimes', $named, true)) {
             $out[] = ValidationRule::of('sometimes');
         } elseif (! $optional && ! $defaulted && ! $nullable
-            && ! in_array('required', $named, true) && ! in_array('present', $named, true)) {
+            && array_intersect(self::REQUIRING_RULES, $named) === [] && ! in_array('present', $named, true)) {
             $out[] = ValidationRule::of('required');
         }
 

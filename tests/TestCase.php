@@ -59,8 +59,8 @@ abstract class TestCase extends Orchestra
         // instead of on a trimmed copy of it, and a `config.stale-php-keys` warning firing anywhere is
         // a defect in the shipped file rather than an artefact of this harness.
 
-        // A morph map for the /api/attachments models, registered as an application would. Nothing
-        // published reads it (FragmentCacheTest builds under two maps and compares the bytes).
+        // A morph map for the /api/attachments models, registered as an application would. No workbench
+        // model declares a morphTo, so no type column publishes it; MorphTypeColumnTest sets its own.
         Relation::morphMap(['widget' => Widget::class, 'gadget' => Gadget::class], false);
     }
 

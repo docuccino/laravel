@@ -4,19 +4,13 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\Eloquent;
 
-use Docuccino\Laravel\Integrations\Support\ParsedClassFile;
 use Illuminate\Support\Str;
 use PhpParser\Node;
 use PhpParser\Node\Expr\MethodCall;
-use PhpParser\Node\Stmt\ClassMethod;
-use PhpParser\NodeFinder;
-use ReflectionClass;
-use ReflectionMethod;
-use Throwable;
 
 /**
- * Reads a model's `belongsTo` relations statically: reflection finds the candidate methods, the
- * declaring file's AST supplies the call's LITERAL arguments. The model is never instantiated. A call
+ * Reads a model's `belongsTo` relations statically: {@see RelationCalls} finds the calls, and the
+ * call's LITERAL arguments are read off its AST. The model is never instantiated. A call
  * that can't be read whole surfaces as a REFUSAL rather than vanishing — the consumer must know a
  * partially-readable relation exists, both to key caches on what was read and to refuse columns the
  * unreadable part could own. Only a related class that doesn't load stays invisible: there is no file
@@ -58,74 +52,28 @@ final class BelongsToReader
     private function read(string $model): array
     {
         $relations = ['readable' => [], 'refused' => []];
-        if (! class_exists($model)) {
-            return $relations;
-        }
-
-        try {
-            $methods = (new ReflectionClass($model))->getMethods(ReflectionMethod::IS_PUBLIC);
-        } catch (Throwable) {
-            return $relations;
-        }
-
-        // Candidates grouped by declaring file so each file parses once; a relation method is public,
-        // non-static and callable with no arguments, and framework methods have nothing to declare.
-        $byFile = [];
-        foreach ($methods as $method) {
-            if ($method->isStatic()
-                || $method->getNumberOfRequiredParameters() !== 0
-                || str_starts_with($method->getDeclaringClass()->getName(), 'Illuminate\\')
-            ) {
-                continue;
+        foreach (RelationCalls::of($model, 'belongsTo') as ['method' => $method, 'calls' => $calls]) {
+            $result = $this->fromCalls($method->getName(), $calls);
+            if ($result['readable'] !== null) {
+                $relations['readable'][] = $result['readable'];
             }
-
-            $file = $method->getFileName();
-            if ($file !== false) {
-                $byFile[$file][] = $method->getName();
-            }
-        }
-
-        foreach ($byFile as $file => $names) {
-            $nodes = ParsedClassFile::methods($file);
-            foreach ($names as $name) {
-                $node = $nodes[$name] ?? null;
-                if ($node === null) {
-                    continue;
-                }
-
-                $result = $this->fromMethod($name, $node);
-                if ($result['readable'] !== null) {
-                    $relations['readable'][] = $result['readable'];
-                }
-                $relations['refused'] = [...$relations['refused'], ...$result['refused']];
-            }
+            $relations['refused'] = [...$relations['refused'], ...$result['refused']];
         }
 
         return $relations;
     }
 
     /**
-     * What one method body declares. A single fully-literal `$this->belongsTo(...)` call (a chained
-     * `->withDefault()` still contains exactly one) is readable; several calls in one body (a
-     * conditional relation) are each a refusal — which one runs is a runtime fact — as is a call with
-     * a non-literal argument or a target that isn't a loadable model.
+     * What one method body's `$this->belongsTo(...)` calls declare. A single fully-literal call (a
+     * chained `->withDefault()` still contains exactly one) is readable; several calls in one body (a
+     * conditional relation) are each a refusal — which one runs is a runtime fact — as is a call with a
+     * non-literal argument or a target that isn't a loadable model.
      *
+     * @param  non-empty-list<MethodCall>  $calls
      * @return array{readable: BelongsToRelation|null, refused: list<BelongsToRefusal>}
      */
-    private function fromMethod(string $method, ClassMethod $node): array
+    private function fromCalls(string $method, array $calls): array
     {
-        $calls = array_values(array_filter(
-            (new NodeFinder)->findInstanceOf($node->stmts ?? [], MethodCall::class),
-            static fn (MethodCall $call): bool => $call->var instanceof Node\Expr\Variable
-                && $call->var->name === 'this'
-                && $call->name instanceof Node\Identifier
-                && $call->name->toString() === 'belongsTo'
-                && ! $call->isFirstClassCallable(),
-        ));
-        if ($calls === []) {
-            return ['readable' => null, 'refused' => []];
-        }
-
         if (count($calls) !== 1) {
             return ['readable' => null, 'refused' => array_map(self::refusal(...), $calls)];
         }
@@ -181,26 +129,22 @@ final class BelongsToReader
     }
 
     /**
-     * The call's arguments mapped onto {@see self::PARAMETERS} (positional and named both), each value a
-     * literal: a `X::class`/string class name for `related`, a string or an explicit `null` for the
-     * rest. Anything else — an unpack, an unknown name, a computed value — refuses the whole call.
+     * The call's arguments ({@see RelationCalls::arguments()}), each value a literal: a `X::class`/string
+     * class name for `related`, a string or an explicit `null` for the rest. Anything else — an unpack,
+     * an unknown name, a computed value — refuses the whole call.
      *
      * @return array<string, string|null>|null
      */
     private static function arguments(MethodCall $call): ?array
     {
+        $expressions = RelationCalls::arguments($call, self::PARAMETERS);
+        if ($expressions === null) {
+            return null;
+        }
+
         $arguments = [];
-        foreach ($call->getArgs() as $index => $arg) {
-            if ($arg->unpack) {
-                return null;
-            }
-
-            $name = $arg->name?->toString() ?? (self::PARAMETERS[$index] ?? null);
-            if ($name === null || ! in_array($name, self::PARAMETERS, true) || array_key_exists($name, $arguments)) {
-                return null;
-            }
-
-            $value = $name === 'related' ? self::className($arg->value) : self::literal($arg->value);
+        foreach ($expressions as $name => $expression) {
+            $value = $name === 'related' ? self::className($expression) : self::literal($expression);
             if ($value === false) {
                 return null;
             }

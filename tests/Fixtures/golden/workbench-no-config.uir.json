@@ -3202,6 +3202,94 @@
         "tags": [
           "Forms"
         ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:e3okd4kxdp33nusf",
+              "provenance": [
+                {
+                  "producer": "integration:signed-url",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/FormController.php",
+                    "line": 25,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
+                  }
+                }
+              ]
+            },
+            "name": "expires",
+            "in": "query",
+            "description": "Unix timestamp after which the signed link is no longer accepted. Carried only by links that expire.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:signed-url",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FormController.php",
+                      "line": 25,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:gd3pox2smdva2mza",
+              "provenance": [
+                {
+                  "producer": "integration:signed-url",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/FormController.php",
+                    "line": 25,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
+                  }
+                }
+              ]
+            },
+            "name": "signature",
+            "in": "query",
+            "description": "Signature of the signed link this request is made from. Send it, and the link's other query parameters, as the link carries them.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:signed-url",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FormController.php",
+                      "line": 25,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "x-docuccino": {
@@ -3448,7 +3536,7 @@
                   "overrode": [
                     {
                       "field": "description",
-                      "value": "OK",
+                      "value": "Created",
                       "producer": "fallback"
                     }
                   ]
@@ -4103,7 +4191,7 @@
                   "overrode": [
                     {
                       "field": "description",
-                      "value": "OK",
+                      "value": "Created",
                       "producer": "fallback"
                     }
                   ]
@@ -4886,7 +4974,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "48ddc5d56508900ed302561994befac297bb8402be944adaef6f2752f3f24c42",
-      "contentHash": "2afc581acc403ed1654372acccc33309b10340f0a102f0ba6361ca5aca11517e"
+      "contentHash": "d3bb5575ca615b695f98a08317f4fae561a73b6557b800a9cd51b51dbdf9ad76"
     },
     "generator": {
       "name": "docuccino/laravel",

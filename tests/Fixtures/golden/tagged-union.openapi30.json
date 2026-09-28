@@ -300,7 +300,8 @@
         },
         "required": [
           "kind",
-          "href"
+          "href",
+          "title"
         ]
       }
     }

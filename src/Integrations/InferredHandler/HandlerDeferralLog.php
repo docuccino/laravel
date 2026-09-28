@@ -19,12 +19,13 @@ use Docuccino\Core\Extensions\Contracts\RouteNoteCollector;
  * and the transformer share an instance, and the pipeline empties it per document.
  *
  * Framework delegation (a `return null`/void arm) is not recorded: it's expected, not a fold failure, and
- * the next tier handles those exception types.
+ * the next tier handles those exception types. An exception-map entry that could not be read is the same
+ * kind of note, kept apart by its key ({@see recordMapping()}) because the summary it earns says other things.
  */
 final class HandlerDeferralLog implements RouteNoteCollector
 {
     /** The {@see RouteNotes} channel the tier writes its deferrals to. */
-    public const CHANNEL = 'inferred-handler.deferral';
+    public const string CHANNEL = 'inferred-handler.deferral';
 
     /**
      * Note that a callback's JSON body could not be read for one exception type. Written wherever the
@@ -36,6 +37,15 @@ final class HandlerDeferralLog implements RouteNoteCollector
     {
         $context->notes()->record(self::CHANNEL, $renderer, $exceptionFqcn);
     }
+
+    /** Note that an exception-map entry could not be read for one thrown type ({@see ExceptionMapTranslator}). */
+    public static function recordMapping(RouteContext $context, string $entry, string $exceptionFqcn): void
+    {
+        $context->notes()->record(self::CHANNEL, self::MAPPING.$entry, $exceptionFqcn);
+    }
+
+    /** What sets a map entry's key apart from a renderer's; no callable label starts with a NUL. */
+    private const string MAPPING = "\0map\0";
 
     /** @var array<string, list<string>> callback target ⇒ deduped exception FQCNs it could not fold */
     private array $entries = [];
@@ -73,7 +83,9 @@ final class HandlerDeferralLog implements RouteNoteCollector
      * what the summary says is a function of which types could not be folded and never of the order the
      * routes that threw them were met.
      *
-     * @return list<array{callback: string, exceptions: list<string>}>
+     * `mapping` says the entry is an exception-map entry rather than a renderer.
+     *
+     * @return list<array{callback: string, exceptions: list<string>, mapping: bool}>
      */
     public function summaries(): array
     {
@@ -84,8 +96,13 @@ final class HandlerDeferralLog implements RouteNoteCollector
             function (string $callback): array {
                 $exceptions = $this->entries[$callback];
                 sort($exceptions);
+                $mapping = str_starts_with($callback, self::MAPPING);
 
-                return ['callback' => $callback, 'exceptions' => $exceptions];
+                return [
+                    'callback' => $mapping ? substr($callback, strlen(self::MAPPING)) : $callback,
+                    'exceptions' => $exceptions,
+                    'mapping' => $mapping,
+                ];
             },
             $callbacks,
         );

@@ -227,7 +227,7 @@ final class ProvenanceReport
             return null;
         }
 
-        return '  <fg=yellow>! this status is a stand-in: nothing read one for the error filed here</>';
+        return '  <fg=yellow>! this status is a stand-in: nothing read one for the response filed here</>';
     }
 
     private function nodeLine(ExplainedNode $node): string

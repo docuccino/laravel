@@ -17,7 +17,8 @@ use Docuccino\Laravel\Integrations\Validation\Transformers\SizeRuleTransformer;
 
 /**
  * Makes a recovered field map coherent before the rule chain runs — the facts only visible ACROSS
- * fields, which a per-field {@see RuleTransformer} cannot see. A bare `prohibited` field and everything
+ * fields, or in the ORDER a field's rules were written ({@see gated()}), which a per-field
+ * {@see RuleTransformer} cannot see. A bare `prohibited` field and everything
  * under it is dropped, since the API refuses it outright (the conditional forms and `prohibits` stay —
  * those fields are sendable). The rest is one question asked of every field: `array` is the one word
  * Laravel's vocabulary has for both containers, so what the field's CHILD keys say decides which it is.
@@ -49,9 +50,25 @@ final class RuleSetNormalizer
      */
     private const DECIDING_RULES = ['list', 'object', 'additional_properties'];
 
+    /**
+     * The conditional exclude rules — with bare `exclude`, the rules that stop Laravel running anything
+     * written after them once one fires. Per rule and presence rule: the Laravel rule true EXACTLY while
+     * the field is kept, or null where none is, and the fewest parameters needed to read the condition.
+     * `exclude_with` tests the other key's presence where `required_without` tests its value, and
+     * `present` admits the empty value no `required_*` rule does, so neither has a form.
+     *
+     * @var array<string, array{required: ?string, prohibited: ?string, min: int}>
+     */
+    private const KEPT_WHEN = [
+        'exclude_if' => ['required' => 'required_unless', 'prohibited' => 'prohibited_unless', 'min' => 2],
+        'exclude_unless' => ['required' => 'required_if', 'prohibited' => 'prohibited_if', 'min' => 2],
+        'exclude_with' => ['required' => null, 'prohibited' => null, 'min' => 1],
+        'exclude_without' => ['required' => 'required_with_all', 'prohibited' => null, 'min' => 1],
+    ];
+
     public function normalize(RuleSet $rules): RuleSet
     {
-        $fields = $this->withoutProhibited($rules->fields);
+        $fields = $this->withoutProhibited(array_map(self::gated(...), $rules->fields));
 
         $keys = array_keys($fields);
 
@@ -151,6 +168,95 @@ final class RuleSetNormalizer
         }
 
         return $fields;
+    }
+
+    /**
+     * One field's rules as Laravel's control flow reads them: in the order written, stopping at the first
+     * exclude rule that fires. Rules ahead of the first exclude rule run on every request, so they stand.
+     * A bare `exclude` always fires, so nothing after it ever runs. After a conditional one, a
+     * `required`/`present`/`prohibited` holds only while the field is kept: it becomes the one rule
+     * saying exactly when ({@see KEPT_WHEN}), or drops out — optional and sendable, the true floor.
+     * Everything else stays, describing the value on the requests that keep it.
+     *
+     * @param  list<ValidationRule>  $rules
+     * @return list<ValidationRule>
+     */
+    private static function gated(array $rules): array
+    {
+        $out = [];
+        $gates = [];
+
+        foreach ($rules as $rule) {
+            if ($rule->name === 'exclude') {
+                $out[] = $rule;
+
+                break;
+            }
+
+            if (isset(self::KEPT_WHEN[$rule->name])) {
+                $out[] = $rule;
+                $gates[] = $rule;
+
+                continue;
+            }
+
+            $presence = in_array($rule->name, ['required', 'present', 'prohibited'], true) ? $rule->name : null;
+
+            if ($gates === [] || $presence === null) {
+                $out[] = $rule;
+
+                continue;
+            }
+
+            $kept = self::whenKept($gates, $presence);
+            if ($kept !== null) {
+                $out[] = $kept;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * The conditional `$presence` rule true exactly while the field is kept, or null when no single rule
+     * says it.
+     *
+     * @param  non-empty-list<ValidationRule>  $gates
+     * @param  'required'|'present'|'prohibited'  $presence
+     */
+    private static function whenKept(array $gates, string $presence): ?ValidationRule
+    {
+        if (count($gates) !== 1) {
+            return null;
+        }
+
+        $gate = $gates[0];
+        $form = self::KEPT_WHEN[$gate->name] ?? null;
+        $name = $form[$presence] ?? null;
+        if ($form === null || $name === null || count($gate->parameters) < $form['min'] || self::matchesAbsence($gate)) {
+            return null;
+        }
+
+        return ValidationRule::of($name, $gate->parameters);
+    }
+
+    /**
+     * Whether a value-comparing exclude rule lists `null`. Laravel compares an ABSENT field as null in
+     * some of these rules and short-circuits it in others, so on that one value the pairs disagree.
+     */
+    private static function matchesAbsence(ValidationRule $gate): bool
+    {
+        if ($gate->name !== 'exclude_if' && $gate->name !== 'exclude_unless') {
+            return false;
+        }
+
+        foreach (array_slice($gate->parameters, 1) as $value) {
+            if (strtolower($value) === 'null') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

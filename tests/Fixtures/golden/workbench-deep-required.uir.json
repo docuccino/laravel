@@ -272,6 +272,30 @@
               }
             },
             "$ref": "#/components/responses/BadRequest"
+          },
+          "422": {
+            "x-docuccino": {
+              "id": "res:v1:swsajczucqdqirq4",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                    "line": 33,
+                    "symbol": "implicit:validated-request"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "UnprocessableEntity"
+              }
+            },
+            "$ref": "#/components/responses/UnprocessableEntity"
           }
         }
       }
@@ -575,6 +599,30 @@
               }
             },
             "$ref": "#/components/responses/BadRequest"
+          },
+          "422": {
+            "x-docuccino": {
+              "id": "res:v1:qm3rzzcm2b7uwe3p",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                    "line": 43,
+                    "symbol": "implicit:validated-request"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "UnprocessableEntity"
+              }
+            },
+            "$ref": "#/components/responses/UnprocessableEntity"
           }
         }
       }
@@ -851,6 +899,30 @@
               }
             },
             "$ref": "#/components/responses/BadRequest"
+          },
+          "422": {
+            "x-docuccino": {
+              "id": "res:v1:yjyqbtmgrkd5k5m6",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                    "line": 55,
+                    "symbol": "implicit:validated-request"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "UnprocessableEntity"
+              }
+            },
+            "$ref": "#/components/responses/UnprocessableEntity"
           }
         }
       }
@@ -868,6 +940,30 @@
             "type": "string"
           }
         }
+      },
+      "UnprocessableEntity": {
+        "x-docuccino": {
+          "id": "sch:v1:f3tcwvg2vhs255gy"
+        },
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "errors"
+        ]
       },
       "WidgetStatus": {
         "x-docuccino": {
@@ -907,6 +1003,16 @@
             }
           }
         }
+      },
+      "UnprocessableEntity": {
+        "description": "Unprocessable Entity",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/UnprocessableEntity"
+            }
+          }
+        }
       }
     }
   },
@@ -914,7 +1020,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "1f83564a5bc7b01f951172a9dde37d44bfa50dd0535b39dab4cbe32db6e172d9",
-      "contentHash": "b7055bd73ffe938165ba03e8ff9b4d26eddefbee2f1377d35f5451a091f328d2"
+      "contentHash": "95de86faf17c87fa3a90262b3ead47e8eda0473597e771679650d025ae58bdf1"
     },
     "generator": {
       "name": "docuccino/laravel",

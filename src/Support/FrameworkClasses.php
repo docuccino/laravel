@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Support;
 
 use Docuccino\Core\Inference\DType\ClassT;
+use Docuccino\Core\Inference\DType\DType;
+use Docuccino\Core\Inference\DType\PayloadStatusT;
 use Docuccino\Core\Inference\TypeScope;
 use PhpParser\Node;
 
@@ -126,6 +128,24 @@ final class FrameworkClasses
     public static function isStreamedJson(string $fqcn): bool
     {
         return $fqcn === self::STREAMED_JSON_RESPONSE || is_subclass_of($fqcn, self::STREAMED_JSON_RESPONSE, true);
+    }
+
+    /**
+     * The object a return renders by its OWN rules: the returned value itself, or the payload of a
+     * `JsonResponse<payload, PayloadStatusT, …>` — the framework rendering a resource or a Data object
+     * through its `toResponse()`, which sends exactly what returning the object bare sends, status included,
+     * whatever media type a header later stamps on it. Null for a response whose status the code stated,
+     * and for any other response. The one reader of that marker in the adapter.
+     */
+    public static function selfRendered(DType $type): ?DType
+    {
+        if (! $type instanceof ClassT || ! self::isResponse($type->fqcn)) {
+            return $type;
+        }
+
+        return $type->fqcn === self::JSON_RESPONSE && ($type->typeArgs[1] ?? null) instanceof PayloadStatusT
+            ? $type->typeArgs[0]
+            : null;
     }
 
     /** Whether an FQCN names a redirect: a 3xx carrying a `Location` header and no body. */

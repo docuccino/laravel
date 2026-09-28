@@ -6,6 +6,7 @@ use Docuccino\Core\Inference\ConstValue;
 use Docuccino\Laravel\Integrations\FormRequest\ConstValueToRules;
 use Docuccino\Laravel\Tests\Fixtures\Rules\BankReference;
 use Docuccino\Laravel\Tests\Fixtures\Rules\OpaqueCheck;
+use Illuminate\Validation\Rule;
 use Workbench\App\Enums\WidgetStatus;
 
 /**
@@ -302,3 +303,54 @@ it('publishes an argument list that states nothing as no constraint, and widens 
     'no arguments at all' => [[]],
     'one empty array argument' => [[ConstValue::array([])]],
 ]);
+
+it('folds every exclude descriptor and rule object to the exclude rule it stands for', function (ConstValue $value, array $expected): void {
+    // Laravel stops running a field's rules at the first exclude rule that fires, so dropping one of these
+    // would leave a `required` written after it reading as unconditional. A literal bool is decided now,
+    // exactly as `__toString()` decides it; a callback is not, so the rule stays with its condition unknown.
+    $rules = (new ConstValueToRules)->fold($value);
+
+    expect(array_map(static fn ($r): array => [$r->name, $r->parameters], $rules))->toBe($expected);
+})->with([
+    'Rule::excludeIf(callback)' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::excludeIf', [ConstValue::unknown('closure')]), [['exclude_if', []]]],
+    'Rule::excludeUnless(callback)' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::excludeUnless', [ConstValue::unknown('closure')]), [['exclude_unless', []]]],
+    'Rule::excludeIf(true)' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::excludeIf', [ConstValue::scalar(true)]), [['exclude', []]]],
+    'Rule::excludeIf(false)' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::excludeIf', [ConstValue::scalar(false)]), []],
+    'Rule::excludeUnless(false)' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::excludeUnless', [ConstValue::scalar(false)]), [['exclude', []]]],
+    'Rule::excludeUnless(true)' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::excludeUnless', [ConstValue::scalar(true)]), []],
+    'Rule::excludeIf with its condition spread in' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::excludeIf', [ConstValue::spread('unplaceable factory arg')]), [['exclude_if', []]]],
+    'Rule::excludeIf with no argument' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::excludeIf', []), [['exclude_if', []]]],
+    'new ExcludeIf(callback)' => [ConstValue::instance('Illuminate\\Validation\\Rules\\ExcludeIf', [ConstValue::unknown('closure')]), [['exclude_if', []]]],
+    'new ExcludeUnless(callback)' => [ConstValue::instance('\\Illuminate\\Validation\\Rules\\ExcludeUnless', [ConstValue::unknown('closure')]), [['exclude_unless', []]]],
+    'new ExcludeIf(true)' => [ConstValue::instance('Illuminate\\Validation\\Rules\\ExcludeIf', [ConstValue::scalar(true)]), [['exclude', []]]],
+    'new ExcludeUnless(true)' => [ConstValue::instance('Illuminate\\Validation\\Rules\\ExcludeUnless', [ConstValue::scalar(true)]), []],
+    'beside the rules written after it' => [ConstValue::array([
+        ConstValue::descriptor('Illuminate\\Validation\\Rule::excludeIf', [ConstValue::unknown('closure')]),
+        ConstValue::scalar('required'),
+        ConstValue::scalar('string'),
+    ]), [['exclude_if', []], ['required', []], ['string', []]]],
+]);
+
+it('folds every framework factory and rule object that excludes a field', function (): void {
+    // The rows above list them by hand; this reads the framework's own. An exclude factory or rule class
+    // Laravel adds would otherwise fold to nothing, as any unrecognised descriptor or unannotated object does.
+    $factories = array_values(array_filter(
+        array_map(static fn (ReflectionMethod $method): string => $method->getName(), (new ReflectionClass(Rule::class))->getMethods(ReflectionMethod::IS_STATIC)),
+        static fn (string $name): bool => str_starts_with($name, 'exclude'),
+    ));
+
+    expect($factories)->not->toBeEmpty();
+    foreach ($factories as $factory) {
+        expect((new ConstValueToRules)->fold(ConstValue::descriptor('Illuminate\\Validation\\Rule::'.$factory, [ConstValue::unknown('closure')])))->toHaveCount(1, $factory);
+    }
+
+    $classes = array_values(array_filter(
+        array_map(static fn (string $file): string => 'Illuminate\\Validation\\Rules\\'.basename($file, '.php'), glob(dirname((string) (new ReflectionClass(Rule::class))->getFileName()).'/Rules/*.php') ?: []),
+        static fn (string $class): bool => str_starts_with(substr($class, (int) strrpos($class, '\\') + 1), 'Exclude'),
+    ));
+
+    expect($classes)->not->toBeEmpty();
+    foreach ($classes as $class) {
+        expect((new ConstValueToRules)->fold(ConstValue::instance($class, [ConstValue::unknown('closure')])))->toHaveCount(1, $class);
+    }
+});

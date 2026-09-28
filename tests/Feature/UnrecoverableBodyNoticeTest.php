@@ -15,6 +15,7 @@ use Docuccino\Core\Inference\ActionAnalysis;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\DType\DType;
+use Docuccino\Core\Inference\DType\UnknownT;
 use Docuccino\Core\Inference\ReturnSite;
 use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
@@ -124,4 +125,24 @@ it('needs a streamed body given a media type as well as a shape', function (?str
 })->with([
     'left to the default' => [null, false],
     'named at the attribute' => ['text/csv', true],
+]);
+
+it('reports an unread status to the author until a success status they name settles it', function (array $attributes, array $expected): void {
+    // `->setStatusCode($upstream->status())` over a body nothing was read from: the body goes under
+    // `default`, and both halves are owed a notice. A status below 400 the author names takes the stand-in
+    // over, so it settles both; an error code speaks for a failure path and settles neither; and naming a
+    // status without a `type:` settles where it goes but not what it carries.
+    $unread = new ClassT(FrameworkClasses::JSON_RESPONSE, [new UnknownT('payload not folded'), new UnknownT('status not folded')]);
+    $codes = array_values(array_intersect(
+        unrecoverableCodes($unread, $attributes),
+        ['inferred-response.payload-unrecoverable', 'inferred-response.status-unread'],
+    ));
+    sort($codes);
+
+    expect($codes)->toBe($expected);
+})->with([
+    'nothing named' => [[], ['inferred-response.payload-unrecoverable', 'inferred-response.status-unread']],
+    'a success status with its body' => [[new Response(status: 200, type: 'string')], []],
+    'a success status alone' => [[new Response(status: 202)], ['inferred-response.payload-unrecoverable']],
+    'an error status with a body' => [[new Response(status: 503, type: 'string')], ['inferred-response.payload-unrecoverable', 'inferred-response.status-unread']],
 ]);

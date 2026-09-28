@@ -11,6 +11,7 @@ use Docuccino\Core\Patch\Contribution;
 use Docuccino\Laravel\Integrations\ApiResources\PaginatedResourceResponsesExtension;
 use Docuccino\Laravel\Integrations\ApiResources\ResourceReflector;
 use Docuccino\Laravel\Integrations\TimacdonaldJsonApi\TimacdonaldResourceReflector;
+use Docuccino\Laravel\Support\FrameworkClasses;
 use Docuccino\Laravel\Support\IgnoredResponses;
 
 /**
@@ -32,13 +33,14 @@ use Docuccino\Laravel\Support\IgnoredResponses;
 final class PaginatedResponseBody
 {
     /**
-     * The action's first plain `AnonymousResourceCollection<T>` return type. JSON:API collections have
-     * their own envelope, so they're skipped.
+     * The action's first plain `AnonymousResourceCollection<T>` return type, bare or rendered through the
+     * framework's `->response()` ({@see FrameworkClasses::selfRendered()}) — the same 200 body either way.
+     * JSON:API collections have their own envelope, so they're skipped.
      */
     public static function resourceCollectionReturn(RouteContext $context): ?ClassT
     {
         foreach ($context->analysis()->returns as $return) {
-            $type = $return->type;
+            $type = FrameworkClasses::selfRendered($return->type);
             if (! ($type instanceof ClassT && ResourceReflector::isAnonymousCollection($type->fqcn))) {
                 continue;
             }

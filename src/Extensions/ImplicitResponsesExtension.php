@@ -24,7 +24,7 @@ use Docuccino\Laravel\Support\CanGate;
 use Docuccino\Laravel\Support\GateBody;
 use Docuccino\Laravel\Support\GateDenial;
 use Docuccino\Laravel\Support\IgnoredResponses;
-use Docuccino\Laravel\Support\MiddlewareName;
+use Docuccino\Laravel\Support\MiddlewareClasses;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 use Illuminate\Routing\Middleware\ValidateSignature;
 use ReflectionClass;
@@ -38,7 +38,7 @@ use ReflectionClass;
  *  | Status | Signal |
  *  |--------|--------|
  *  | 401    | auth middleware detected AND the route is not `#[Unauthenticated]` |
- *  | 422    | a validated request body was recovered (Data / FormRequest / action rules()) |
+ *  | 422    | validation rules were recovered (Data / FormRequest / inline / action rules()), body or query |
  *  | 404    | the route has ≥1 model-bound path parameter (one 404 per operation, not per param) |
  *  | 403    | `can:` / `signed` / `verified` middleware, or a FormRequest `authorize()` not `return true` |
  *
@@ -70,6 +70,7 @@ final class ImplicitResponsesExtension implements OperationExtension
 
     public function __construct(
         private readonly GateDenial $gates,
+        private readonly MiddlewareClasses $middleware,
         private readonly ResponseDraftApplier $applier = new ResponseDraftApplier,
     ) {}
 
@@ -89,7 +90,7 @@ final class ImplicitResponsesExtension implements OperationExtension
             $this->synthesize($operation, $context, 401, self::AUTHENTICATION, 'auth-middleware');
         }
 
-        // 422 — a validated request body was recovered for a write verb.
+        // 422 — the route validates its input, in the body or in the query.
         if ($this->hasValidatedRequest($operation)) {
             $this->synthesize($operation, $context, 422, self::VALIDATION, 'validated-request');
         }
@@ -134,7 +135,7 @@ final class ImplicitResponsesExtension implements OperationExtension
                 // ability, which {@see CanGate::matches()} answers to and which denies every request
                 // that meets it because no policy stands behind it. Returning on the second is also
                 // what leaves the report below at least one finding to name.
-                if (self::middlewareSignal($middleware) !== null) {
+                if ($this->middlewareSignal($context, $middleware) !== null) {
                     return;
                 }
 
@@ -181,18 +182,24 @@ final class ImplicitResponsesExtension implements OperationExtension
     }
 
     /**
-     * True when a request extension recovered a validated body. Tested by layer, not by a closed
-     * producer list: an `integration:*` producer on `requestBody` means some request recoverer built
-     * the body, so third-party recoverers earn the 422 too — while a body that is only ever
-     * `#[BodyParameter]` rightly doesn't.
+     * True when the route validates its input: something declared so on the draft
+     * ({@see OperationDraft::declareValidatesInput()}), as every recovered rule set does whether it became
+     * a body or — on a read verb — query parameters. A parameter or body that is only ever declared by
+     * attribute rightly earns nothing.
      *
-     * The whole trail is read, not just the winner. `requestBody` is one field written whole, so a
+     * A body is also tested by layer, not by a closed producer list: an `integration:*` producer on
+     * `requestBody` means some request recoverer built the body, so a third-party recoverer earns the 422
+     * too. The whole trail is read, not just the winner: `requestBody` is one field written whole, so a
      * `#[BodyParameter]` patching one property of a recovered body takes the field at the attribute
-     * layer — and the route still validates. Asking the winner alone made the 422 depend on whether an
-     * unrelated attribute happened to be present.
+     * layer — and the route still validates. Query parameters get no layer test, because pagination and
+     * Query Builder write them at the integration layer without validating anything.
      */
     private function hasValidatedRequest(OperationDraft $operation): bool
     {
+        if ($operation->validatesInput()) {
+            return true;
+        }
+
         foreach ($operation->producersFor('requestBody') as $producer) {
             if (str_starts_with($producer, 'integration:')) {
                 return true;
@@ -209,7 +216,7 @@ final class ImplicitResponsesExtension implements OperationExtension
     private function authorizationSignal(RouteContext $context): ?string
     {
         foreach ($context->route->middleware as $middleware) {
-            $signal = self::middlewareSignal($middleware);
+            $signal = $this->middlewareSignal($context, $middleware);
             if ($signal !== null) {
                 return $signal;
             }
@@ -223,20 +230,17 @@ final class ImplicitResponsesExtension implements OperationExtension
      * above takes the first answer in route order, while the reachability check needs to know whether
      * anything OTHER than a `can:` gate is also holding the 403 up.
      */
-    private static function middlewareSignal(string $middleware): ?string
+    private function middlewareSignal(RouteContext $context, string $middleware): ?string
     {
         if (CanGate::matches($middleware)) {
             return 'can-middleware';
         }
-        // Each of these has the same two spellings the authorization middleware does, and the
-        // class-name one is what the framework's own static constructors write —
-        // `ValidateSignature::relative()` and `EnsureEmailIsVerified::redirectTo($route)`. Reading only
-        // the alias missed a middleware that really does produce the 403, which is worse than a missed
-        // signal: the reachability check then reports a route whose 403 the signature genuinely denies.
-        if (MiddlewareName::matches($middleware, 'signed', ValidateSignature::class)) {
+        // Asked by class, through the build's alias map: an application's own alias or subclass of either
+        // middleware produces the 403 too, and an alias re-pointed elsewhere does not.
+        if ($this->middleware->runs($context, $middleware, ValidateSignature::class)) {
             return 'signed-middleware';
         }
-        if (MiddlewareName::matches($middleware, 'verified', EnsureEmailIsVerified::class)) {
+        if ($this->middleware->runs($context, $middleware, EnsureEmailIsVerified::class)) {
             return 'verified-middleware';
         }
 

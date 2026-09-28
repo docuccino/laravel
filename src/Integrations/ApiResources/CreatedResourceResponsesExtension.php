@@ -12,6 +12,7 @@ use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Patch\Contribution;
+use Docuccino\Laravel\Support\FrameworkClasses;
 use Docuccino\Laravel\Support\IgnoredResponses;
 
 /**
@@ -70,11 +71,15 @@ final class CreatedResourceResponsesExtension implements OperationExtension
         $operation->removeResponse('200');
     }
 
-    /** The action's single-resource (non-collection) return type, or null when it returns none. */
+    /**
+     * The action's single-resource (non-collection) return type, or null when it returns none. A resource
+     * the framework renders through `->response()` is the same return: its status is still the resource's
+     * to decide, until a chain like `->setStatusCode()` states one.
+     */
     private function singleResourceReturn(RouteContext $context): ?ClassT
     {
         foreach ($context->analysis()->returns as $return) {
-            $type = $return->type;
+            $type = FrameworkClasses::selfRendered($return->type);
             if ($type instanceof ClassT
                 && ResourceReflector::isResource($type->fqcn)
                 && ! ResourceReflector::isAnonymousCollection($type->fqcn)

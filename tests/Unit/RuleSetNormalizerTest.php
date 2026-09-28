@@ -6,7 +6,10 @@ use Docuccino\Attributes\BodyParameter;
 use Docuccino\Attributes\QueryParameter;
 use Docuccino\Core\Extensions\Validation\RuleSet;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
+use Docuccino\Laravel\Integrations\Support\RuleParsing;
 use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Validator;
 
 /**
  * The cross-field facts a per-field rule transformer cannot see: a field the API prohibits outright, and
@@ -341,4 +344,127 @@ it('says nothing about a field a declaration above it replaces', function (): vo
         ['meta.tags' => ['array'], 'meta.name' => ['string']],
         [new BodyParameter(name: 'meta', type: 'object')],
     ))->toBe([]);
+});
+
+/*
+ * Exclude rules. Laravel runs a field's rules in the order written and, the moment an exclude rule fires,
+ * runs none of the rest (`Validator::passes()` breaks on `shouldBeExcluded()` after every rule). So a
+ * presence rule written AFTER one holds only on the requests that keep the field, and one written before
+ * it holds on every request. Rule ORDER is the fact here, which is why it is settled on the rule set: the
+ * chain sees each field's rules sorted by effect.
+ */
+$gatedRules = static function (string $pipe): string {
+    $normalized = (new RuleSetNormalizer)->normalize(new RuleSet(['f' => RuleParsing::tokens($pipe)]))->fields;
+
+    return implode('|', array_map(
+        static fn (ValidationRule $rule): string => $rule->parameters === [] ? $rule->name : $rule->name.':'.implode(',', $rule->parameters),
+        $normalized['f'] ?? [],
+    ));
+};
+
+it('reads a presence rule written after an exclude rule as holding only while the field is kept', function (string $rules, string $expected) use ($gatedRules): void {
+    expect($gatedRules($rules))->toBe($expected);
+})->with([
+    'exclude_if, required' => ['exclude_if:kind,a,b|required|string', 'exclude_if:kind,a,b|required_unless:kind,a,b|string'],
+    'exclude_unless, required' => ['exclude_unless:kind,a|required|string', 'exclude_unless:kind,a|required_if:kind,a|string'],
+    'exclude_without, required' => ['exclude_without:first,last|required|string', 'exclude_without:first,last|required_with_all:first,last|string'],
+    'exclude_if, prohibited' => ['exclude_if:kind,a|prohibited', 'exclude_if:kind,a|prohibited_unless:kind,a'],
+    'exclude_unless, prohibited' => ['exclude_unless:kind,a|prohibited', 'exclude_unless:kind,a|prohibited_if:kind,a'],
+    // No Laravel rule states these conditions exactly (see the oracle test below), so the rule drops and
+    // the field is optional and sendable, with no note that would claim more than the server does.
+    'exclude_with, required' => ['exclude_with:other|required|string', 'exclude_with:other|string'],
+    'exclude_if, present' => ['exclude_if:kind,a|present', 'exclude_if:kind,a'],
+    'exclude_unless, present' => ['exclude_unless:kind,a|present', 'exclude_unless:kind,a'],
+    'exclude_with, present' => ['exclude_with:other|present', 'exclude_with:other'],
+    'exclude_without, present' => ['exclude_without:other|present', 'exclude_without:other'],
+    'exclude_with, prohibited' => ['exclude_with:other|prohibited', 'exclude_with:other'],
+    'exclude_without, prohibited' => ['exclude_without:other|prohibited', 'exclude_without:other'],
+    'exclude_unless on a listed null, required' => ['exclude_unless:kind,a,null|required', 'exclude_unless:kind,a,null'],
+    'exclude_if on a listed null, prohibited' => ['exclude_if:kind,NULL|prohibited', 'exclude_if:kind,NULL'],
+]);
+
+it('restates a gated presence rule only as the rule Laravel itself agrees with', function (string $gated, string $restated): void {
+    // Laravel is the oracle: over every state the other field can be in, the field left out must pass or
+    // fail the restated rule exactly as it does the rules as written. That is what makes the "Required
+    // when …" note true rather than near enough.
+    foreach ([[], ['kind' => 'a'], ['kind' => 'b'], ['kind' => null], ['kind' => ''], ['kind' => 'a', 'other' => null], ['other' => ''], ['other' => 'x'], ['first' => 'x'], ['first' => 'x', 'last' => 'y'], ['first' => 'x', 'last' => '']] as $data) {
+        foreach ([$data, $data + ['f' => 'sent']] as $body) {
+            expect(Illuminate\Support\Facades\Validator::make($body, ['f' => $restated])->passes())
+                ->toBe(Illuminate\Support\Facades\Validator::make($body, ['f' => $gated])->passes(), $gated.' on '.json_encode($body));
+        }
+    }
+})->with([
+    ['exclude_if:kind,a,b|required', 'required_unless:kind,a,b'],
+    ['exclude_unless:kind,a|required', 'required_if:kind,a'],
+    ['exclude_without:first,last|required', 'required_with_all:first,last'],
+    ['exclude_if:kind,a|prohibited', 'prohibited_unless:kind,a'],
+    ['exclude_unless:kind,a|prohibited', 'prohibited_if:kind,a'],
+]);
+
+it('has no exact restatement for the pairs it drops', function (string $gated, string $nearest): void {
+    // The negative half of the oracle: the nearest-looking rule disagrees with Laravel somewhere, which
+    // is why these drop rather than publish its note.
+    $disagrees = false;
+    foreach ([[], ['kind' => 'a'], ['kind' => null], ['other' => null], ['other' => ''], ['other' => 'x']] as $data) {
+        foreach ([$data, $data + ['f' => null], $data + ['f' => 'sent']] as $body) {
+            $disagrees = $disagrees || Illuminate\Support\Facades\Validator::make($body, ['f' => $nearest])->passes()
+                !== Illuminate\Support\Facades\Validator::make($body, ['f' => $gated])->passes();
+        }
+    }
+
+    expect($disagrees)->toBeTrue();
+})->with([
+    'exclude_with tests presence, required_without tests value' => ['exclude_with:other|required', 'required_without:other'],
+    'present admits null, required does not' => ['exclude_unless:kind,a|present', 'required_if:kind,a'],
+    'a listed null matches an absent field in one rule only' => ['exclude_unless:kind,a,null|required', 'required_if:kind,a,null'],
+]);
+
+it('leaves a presence rule written before the exclude rule as it is, since it runs on every request', function (string $rules) use ($gatedRules): void {
+    expect($gatedRules($rules))->toBe($rules);
+})->with([
+    'required, exclude_if' => ['required|exclude_if:kind,a|string'],
+    'present, exclude_unless' => ['present|exclude_unless:kind,a|string'],
+    'required, exclude_with' => ['required|exclude_with:other'],
+    'required, exclude_without' => ['required|exclude_without:other'],
+    'required, exclude' => ['required|exclude'],
+    // Not a presence rule: nothing about it depends on the field being kept.
+    'exclude_if, sometimes, nullable, filled, required_if' => ['exclude_if:kind,a|sometimes|nullable|filled|required_if:x,y'],
+]);
+
+it('drops every rule written after a bare exclude, which Laravel never runs', function () use ($gatedRules): void {
+    expect($gatedRules('string|exclude|required|integer|max:3'))->toBe('string|exclude');
+});
+
+it('drops a gated presence rule no single rule can restate, leaving the field optional', function (string $rules, string $expected) use ($gatedRules): void {
+    // Two exclude rules keep the field only when both do — one conjunction, which no Laravel rule
+    // spells; an exclude rule with no parameters is one whose condition could not be read.
+    expect($gatedRules($rules))->toBe($expected);
+})->with([
+    'two exclude rules' => ['exclude_if:kind,a|exclude_with:other|required|string', 'exclude_if:kind,a|exclude_with:other|string'],
+    'a condition that could not be read' => ['exclude_if|required|string', 'exclude_if|string'],
+    'a callback exclude_unless' => ['exclude_unless|required', 'exclude_unless'],
+    'too few parameters' => ['exclude_unless:kind|required', 'exclude_unless:kind'],
+]);
+
+it('keeps a field prohibited only while it is kept, which is sendable', function (): void {
+    expect(normalizedNames([
+        'legacy' => ['exclude_with', 'prohibited'],
+        'legacy.id' => ['string'],
+    ]))->toBe([
+        'legacy' => ['exclude_with'],
+        'legacy.id' => ['string'],
+    ]);
+});
+
+it('gates on every rule Laravel excludes a field by', function (): void {
+    // The datasets above list the family by hand; Laravel's own list is the source of truth. A rule it
+    // adds to that list and nothing here recognises would leave a `required` after it unconditional.
+    $excludeRules = (new ReflectionProperty(Validator::class, 'excludeRules'))->getDefaultValue();
+    expect($excludeRules)->toBeArray()->not->toBeEmpty();
+
+    $gated = array_keys((array) (new ReflectionClassConstant(RuleSetNormalizer::class, 'KEPT_WHEN'))->getValue());
+
+    /** @var list<string> $excludeRules */
+    expect(array_map(static fn (string $rule): string => Str::snake($rule), $excludeRules))
+        ->toEqualCanonicalizing(['exclude', ...$gated]);
 });

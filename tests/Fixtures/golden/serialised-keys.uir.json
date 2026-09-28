@@ -1,0 +1,478 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-widget-badges": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:22gcqkpyl3n3vwcl",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/SerialisedKeys/WidgetController.php",
+                "line": 13,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SerialisedKeys\\WidgetController::badges"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-widget-badges",
+        "tags": [
+          "Widget"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:gssbuqvrhsv2cw4w",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WidgetBadgeResource"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-widget-caption": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:v4gcmhzq2ga3hlox",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/SerialisedKeys/WidgetController.php",
+                "line": 29,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SerialisedKeys\\WidgetController::caption"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-widget-caption",
+        "tags": [
+          "Widget"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:km3povak5yrxpv47",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/WidgetCaption"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-widget-stock": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:i7wxsa3z47k2j6tq",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/SerialisedKeys/WidgetController.php",
+                "line": 18,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SerialisedKeys\\WidgetController::stock"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-widget-stock",
+        "tags": [
+          "Widget"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:f72a6jmlkmgg4p5g",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/WidgetStock"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:imz5terdbqc2paaw",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "requestBody",
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/SerialisedKeys/WidgetController.php",
+                "line": 24,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SerialisedKeys\\WidgetController::store"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.zz-widget-stock",
+        "tags": [
+          "Widget"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "stock": {
+                    "$ref": "#/components/schemas/WidgetStockRequest"
+                  }
+                },
+                "required": [
+                  "stock"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:e5r4uj4yvpilfz6z",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/WidgetStock"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "WidgetBadge": {
+        "x-docuccino": {
+          "id": "sch:v1:zm4mziol6r7fp4tu"
+        },
+        "type": "object",
+        "properties": {
+          "icon_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "pinned": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "pinned",
+          "icon_url"
+        ]
+      },
+      "WidgetBadgeResource": {
+        "x-docuccino": {
+          "id": "sch:v1:qzvpqnr2aibrv5ni"
+        },
+        "type": "object",
+        "properties": {
+          "badges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WidgetBadge"
+            }
+          }
+        },
+        "required": [
+          "badges"
+        ]
+      },
+      "WidgetCaption": {
+        "x-docuccino": {
+          "id": "sch:v1:emtc7hd7aifr36r4"
+        },
+        "type": "object",
+        "properties": {
+          "caption": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "WidgetStock": {
+        "x-docuccino": {
+          "id": "sch:v1:e5x37t5zlhqwtnlb"
+        },
+        "type": "object",
+        "properties": {
+          "colour": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer"
+          },
+          "legacy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "reorder_level": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "reorder_level",
+          "legacy",
+          "id",
+          "colour",
+          "quantity"
+        ]
+      },
+      "WidgetStockRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:isoyz7ju237ia6uy"
+        },
+        "type": "object",
+        "properties": {
+          "colour": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer"
+          },
+          "legacy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "reorder_level": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id"
+        ]
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "7a6f6e732d46b776ef2988086076e37840a93ad2be8fc3b9c4c4873931f3abdb"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.20.2",
+      "specVersion": "2.0.0",
+      "schema": "https://spec.docuccino.app/uir/2.0/schema.json"
+    }
+  }
+}

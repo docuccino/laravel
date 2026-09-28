@@ -32,8 +32,10 @@ use Docuccino\Laravel\Extensions\ImplicitResponsesExtension;
 use Docuccino\Laravel\Extensions\InferredResponsesExtension;
 use Docuccino\Laravel\Extensions\PathParametersExtension;
 use Docuccino\Laravel\Extensions\RecordedExamplesExtension;
+use Docuccino\Laravel\Extensions\RequestHeadersExtension;
 use Docuccino\Laravel\Extensions\RouteServersExtension;
 use Docuccino\Laravel\Extensions\SecurityExtension;
+use Docuccino\Laravel\Extensions\SignedRouteParametersExtension;
 use Docuccino\Laravel\Extensions\UnmatchedIgnoredResponsesExtension;
 use Docuccino\Laravel\Extensions\ViewMediaType;
 use Docuccino\Laravel\Extensions\ViewTypeToSchema;
@@ -76,7 +78,11 @@ final class DefaultExtensions
         return [
             LaravelRouteResolver::class,
             PathParametersExtension::class,
+            SignedRouteParametersExtension::class,
             AttributeParametersExtension::class,
+            // Runs last in the security phase, so every declared header and every scheme the operation
+            // requires are there for it to defer to.
+            RequestHeadersExtension::class,
             AttributeRequestBodyExtension::class,
             InferredResponsesExtension::class,
             AttributeResponsesExtension::class,

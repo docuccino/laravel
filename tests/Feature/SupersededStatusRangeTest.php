@@ -86,17 +86,20 @@ it('hands the retired range its Location header rather than dropping it', functi
     ]);
 });
 
-it('retires it for any code in the range, not just the redirect default', function (int $status): void {
+it('retires it for any code in the range, not just the redirect default', function (int $status, string $phrase): void {
     $operation = afterResponseAttributes([new Response(status: $status)]);
+    $frozen = $operation->freeze()->responses[(string) $status];
 
+    // Described as the code it now is: the range's "Redirect" named the stand-in, not this status.
     expect($operation->responseStatuses())->toBe([(string) $status])
-        ->and($operation->freeze()->responses[(string) $status]->headers)->toHaveKey('Location');
+        ->and($frozen->headers)->toHaveKey('Location')
+        ->and($frozen->description)->toBe($phrase);
 })->with([
-    'moved permanently' => [301],
-    'found' => [302],
-    'see other' => [303],
-    'temporary redirect' => [307],
-    'permanent redirect' => [308],
+    'moved permanently' => [301, 'Moved Permanently'],
+    'found' => [302, 'Found'],
+    'see other' => [303, 'See Other'],
+    'temporary redirect' => [307, 'Temporary Redirect'],
+    'permanent redirect' => [308, 'Permanent Redirect'],
 ]);
 
 it('retires it for a header declared at a concrete code, and carries both headers', function (): void {

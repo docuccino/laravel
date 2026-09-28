@@ -13,8 +13,8 @@ use Docuccino\Core\Provenance\MessagePaths;
 use Docuccino\Core\Provenance\RootRelativeSourcePathResolver;
 
 /**
- * One warning per callback that couldn't fold a JSON response, naming the callback, the count and the first
- * few exception types. Reads the {@see HandlerDeferralLog} the pipeline fills from each route's notes, runs
+ * One warning per callback that couldn't fold a JSON response — or exception-map entry that couldn't be
+ * read — naming it, the count and the first few exception types. Reads the {@see HandlerDeferralLog} the pipeline fills from each route's notes, runs
  * once per document, and never mutates the document.
  *
  * A WARNING because of what it predicts, not because of how wrong the document is: where this fires and
@@ -43,23 +43,38 @@ final class HandlerDeferralSummaryTransformer implements DocumentTransformer
             $preview = implode(', ', array_slice($exceptions, 0, self::PREVIEW));
             $more = $count > self::PREVIEW ? sprintf(' (and %d more)', $count - self::PREVIEW) : '';
 
-            $context->report(new Diagnostic(
-                severity: Severity::Warning,
-                code: 'inferred-handler.too-dynamic',
-                message: sprintf(
-                    // Not "defers to the next tier": where the media type folded and the body did not, the
-                    // tier answers with the media type alone, so what every entry here has in common is
-                    // the shape being missing rather than what the chain did about it.
-                    'The exception handler %s could not fold a JSON response for %d exception type(s): %s%s; those errors are documented without the shape it renders.',
-                    // Our words are composed around the scrubbed label, never through it: the exception
-                    // FQCNs beside it are namespaces, and the count is a number.
-                    $this->messagePaths->relative($summary['callback']),
-                    $count,
-                    $preview,
-                    $more,
-                ),
-                help: 'Two remedies. Make the arm readable: return a JsonResponse — `response()->json(…)`, not a plain `response()`, a view or a redirect — with the payload written at that call site, and a literal integer status (`404`, not `$e->getCode()` or a ternary). The payload is what settles this: where only the status or the `Content-Type` folded, the response publishes that much and no shape, and this warning stands. Or state the response yourself with #[Response(status: 404, type: ErrorPayload::class)] on the action, which publishes the shape — it corrects the document without silencing this warning, and the warning keeps naming the callback.',
-            ));
+            $label = $this->messagePaths->relative($summary['callback']);
+
+            $context->report($summary['mapping']
+                ? new Diagnostic(
+                    severity: Severity::Warning,
+                    code: 'inferred-handler.too-dynamic',
+                    message: sprintf(
+                        'The exception map entry %s could not be read for %d thrown exception type(s): %s%s; the server renders what that entry translates each one to, and the document states it only as far as this build could read it.',
+                        $label,
+                        $count,
+                        $preview,
+                        $more,
+                    ),
+                    help: 'Make the translation readable: return one `new` exception from each branch of the mapper, with a literal status where its constructor takes one (`new HttpException(402, …)`, not `$e->getCode()`), or map to a class that states its status itself. Or state the response yourself with #[Response(status: 402, type: ErrorPayload::class)] on the action — that corrects the document without silencing this warning.',
+                )
+                : new Diagnostic(
+                    severity: Severity::Warning,
+                    code: 'inferred-handler.too-dynamic',
+                    message: sprintf(
+                        // Not "defers to the next tier": where the media type folded and the body did not, the
+                        // tier answers with the media type alone, so what every entry here has in common is
+                        // the shape being missing rather than what the chain did about it.
+                        'The exception handler %s could not fold a JSON response for %d exception type(s): %s%s; those errors are documented without the shape it renders.',
+                        // Our words are composed around the scrubbed label, never through it: the exception
+                        // FQCNs beside it are namespaces, and the count is a number.
+                        $label,
+                        $count,
+                        $preview,
+                        $more,
+                    ),
+                    help: 'Two remedies. Make the arm readable: return a JsonResponse — `response()->json(…)`, not a plain `response()`, a view or a redirect — with the payload written at that call site, and a literal integer status (`404`, not `$e->getCode()` or a ternary). The payload is what settles this: where only the status or the `Content-Type` folded, the response publishes that much and no shape, and this warning stands. Or state the response yourself with #[Response(status: 404, type: ErrorPayload::class)] on the action, which publishes the shape — it corrects the document without silencing this warning, and the warning keeps naming the callback.',
+                ));
         }
     }
 }

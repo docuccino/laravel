@@ -1,0 +1,592 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-morph/bookmark": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:iqunq4vpij2ac47f",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/MorphType/MorphTypeController.php",
+                "line": 22,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\MorphType\\MorphTypeController::bookmark"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-morph.bookmark",
+        "tags": [
+          "MorphType"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:3narhda557freqgq",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/Bookmark"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-morph/comment": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:bvh3vx3gnogdxmsj",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/MorphType/MorphTypeController.php",
+                "line": 12,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\MorphType\\MorphTypeController::comment"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-morph.comment",
+        "tags": [
+          "MorphType"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:ivzrk7jejc5xxvd5",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/Comment"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-morph/flag": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:bbey3gjqzd7uimis",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/MorphType/MorphTypeController.php",
+                "line": 32,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\MorphType\\MorphTypeController::flag"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-morph.flag",
+        "tags": [
+          "MorphType"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:dtjzx4wvp6rlihds",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/Flag"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-morph/like": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:jvpaghibpxt7zbmv",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/MorphType/MorphTypeController.php",
+                "line": 27,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\MorphType\\MorphTypeController::like"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-morph.like",
+        "tags": [
+          "MorphType"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:37eu52g7j4edgagb",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/Like"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-morph/reaction": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:zphaqfux7uzblasz",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/MorphType/MorphTypeController.php",
+                "line": 17,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\MorphType\\MorphTypeController::reaction"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-morph.reaction",
+        "tags": [
+          "MorphType"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:armsbjyhqxdx4diy",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/Reaction"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Bookmark": {
+        "x-docuccino": {
+          "id": "sch:v1:w36nrlllco7xlbf5"
+        },
+        "type": "object",
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "target_kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "post",
+                  "user"
+                ],
+                "x-enum-varnames": [
+                  "Post",
+                  "User"
+                ],
+                "x-enumNames": [
+                  "Post",
+                  "User"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target_ref": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "target_ref",
+          "target_kind",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "Comment": {
+        "x-docuccino": {
+          "id": "sch:v1:u4o7sp3qsayciisz"
+        },
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "commentable_id": {
+            "type": "integer"
+          },
+          "commentable_type": {
+            "type": "string",
+            "enum": [
+              "post",
+              "video"
+            ],
+            "x-enum-varnames": [
+              "Post",
+              "Video"
+            ],
+            "x-enumNames": [
+              "Post",
+              "Video"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "body",
+          "commentable_id",
+          "commentable_type",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "Flag": {
+        "x-docuccino": {
+          "id": "sch:v1:yvfclhfuc6hpjcsh"
+        },
+        "type": "object",
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "flaggable_id": {
+            "type": "integer"
+          },
+          "flaggable_type": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "flaggable_id",
+          "flaggable_type",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "Like": {
+        "x-docuccino": {
+          "id": "sch:v1:tbkdelgmafwc7ida"
+        },
+        "type": "object",
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "likeable_id": {
+            "type": "integer"
+          },
+          "likeable_type": {
+            "type": "string",
+            "enum": [
+              "photo"
+            ],
+            "x-enum-varnames": [
+              "Photo"
+            ],
+            "x-enumNames": [
+              "Photo"
+            ]
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "likeable_id",
+          "likeable_type",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "Reaction": {
+        "x-docuccino": {
+          "id": "sch:v1:j6heszx5bnb7eftx"
+        },
+        "type": "object",
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "reactable_id": {
+            "type": "integer"
+          },
+          "reactable_type": {
+            "type": "string",
+            "enum": [
+              "photo",
+              "post",
+              "user",
+              "video"
+            ],
+            "x-enum-varnames": [
+              "Photo",
+              "Post",
+              "User",
+              "Video"
+            ],
+            "x-enumNames": [
+              "Photo",
+              "Post",
+              "User",
+              "Video"
+            ]
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "reactable_id",
+          "reactable_type",
+          "created_at",
+          "updated_at"
+        ]
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "5da9200085ab5e664a0ac489202ce3514b2b81ee5c5485fdfdfeec4f98db1482"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.20.2",
+      "specVersion": "2.0.0",
+      "schema": "https://spec.docuccino.app/uir/2.0/schema.json"
+    }
+  }
+}

@@ -57,7 +57,7 @@ it('serves a response the head version documents when the head version is pinned
 
     expect($response->json())->toBe([
         ['id' => 1, 'title' => 'Onboarding', 'publishedAt' => '2026-08-01T09:00:00Z'],
-        ['id' => 2, 'title' => 'Offboarding', 'publishedAt' => null],
+        ['id' => 2, 'title' => 'Offboarding'],
     ]);
 });
 
@@ -81,7 +81,7 @@ it('serves a response the older version documents when the older version is pinn
     // it back.
     expect($response->json())->toBe([
         ['id' => 1, 'name' => 'Onboarding', 'publishedAt' => '2026-08-01T09:00:00Z'],
-        ['id' => 2, 'name' => 'Offboarding', 'publishedAt' => null],
+        ['id' => 2, 'name' => 'Offboarding'],
     ]);
 });
 
