@@ -97,7 +97,126 @@ final class PaginatedResponseBody
         // Either form is the whole body, so it is declared as one shape: the keywords the inference-layer
         // `{data: […]}` — or a withoutWrapping bare array — left behind come off with the shape they
         // described, which is what leaves a bare `$ref` where the component publishes.
-        $content->declareShape($reference ?? $envelope, $by);
+        $content->declareShape(self::withMembers($reference ?? $envelope, $envelope, $kind, $result->schema), $by);
+    }
+
+    /**
+     * The page with the members the collection's `with()` adds beside it — the converted body's own members
+     * beside `data`, composed next to the page rather than into it, because the page component is shared by
+     * every collection of the item and `with()` belongs to one collection class.
+     *
+     * Laravel merges them into the pagination information with `array_merge_recursive`, so an object named
+     * `links` or `meta` extends that part, which `allOf` states of both at once. Anything else under those
+     * names is appended into the part as a positional member, which the open part already admits, so it is
+     * left out rather than claimed as the part's type. A key the part already sends is merged with it into
+     * an array, so where one collides the part is restated inline with that key widened, and the page is
+     * never referenced: the page component's type for the key is no longer what is sent.
+     *
+     * @param  array<string, mixed>  $page
+     * @param  array<string, mixed>  $envelope  the page inline, its parts as references
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>
+     */
+    private static function withMembers(array $page, array $envelope, string $kind, array $body): array
+    {
+        $properties = is_array($body['properties'] ?? null) ? $body['properties'] : [];
+        unset($properties['data']);
+        $parts = PaginationEnvelope::parts($kind);
+        $sent = PaginationEnvelope::sent($kind);
+        $restated = [];
+        foreach (['links', 'meta'] as $part) {
+            if (! array_key_exists($part, $properties)) {
+                continue;
+            }
+
+            $member = $properties[$part];
+            if (! is_array($member) || ($member['type'] ?? null) !== 'object') {
+                unset($properties[$part]);
+
+                continue;
+            }
+
+            $colliding = self::colliding($member, $sent[$part]);
+            if ($colliding === []) {
+                continue;
+            }
+
+            $restated[$part] = self::mergedPart($parts[$part]['schema'], $sent[$part], $member, $colliding);
+            unset($properties[$part]);
+        }
+
+        if ($restated !== []) {
+            $inline = is_array($envelope['properties'] ?? null) ? $envelope['properties'] : [];
+            $page = [...$envelope, 'properties' => [...$inline, ...$restated]];
+        }
+
+        if ($properties === []) {
+            return $page;
+        }
+
+        $members = ['type' => 'object', 'properties' => $properties];
+        $stated = is_array($body['required'] ?? null) ? $body['required'] : [];
+        $required = array_values(array_filter($stated, static fn (mixed $member): bool => is_string($member) && array_key_exists($member, $properties)));
+        if ($required !== []) {
+            $members['required'] = $required;
+        }
+
+        // Typed, so the declaration states the whole body and takes the inference layer's keywords with it.
+        return ['type' => 'object', 'allOf' => [$page, $members]];
+    }
+
+    /**
+     * The keys of a `with()` part that Laravel's own part also sends — every one of them where the part's
+     * keys are not all named, since any could be among them.
+     *
+     * @param  array<array-key, mixed>  $member
+     * @param  array<string, array<string, mixed>>  $sent
+     * @return list<string>
+     */
+    private static function colliding(array $member, array $sent): array
+    {
+        $open = array_key_exists('patternProperties', $member)
+            || (array_key_exists('additionalProperties', $member) && $member['additionalProperties'] !== false);
+        if ($open) {
+            return array_keys($sent);
+        }
+
+        $named = is_array($member['properties'] ?? null) ? array_keys($member['properties']) : [];
+
+        return array_values(array_intersect(array_keys($sent), $named));
+    }
+
+    /**
+     * A part as `array_merge_recursive` sends it: the page's members and the `with()` part's side by side,
+     * and a key both send as the array their two values are merged into — a list or an object, depending
+     * on the values, and never the type either states. Where `with()` may not return the key, the page's
+     * own value may be sent instead, so either is published.
+     *
+     * @param  array<string, mixed>  $part
+     * @param  array<string, array<string, mixed>>  $sent
+     * @param  array<array-key, mixed>  $member
+     * @param  list<string>  $colliding
+     * @return array<string, mixed>
+     */
+    private static function mergedPart(array $part, array $sent, array $member, array $colliding): array
+    {
+        $own = is_array($part['properties'] ?? null) ? $part['properties'] : [];
+        $named = is_array($member['properties'] ?? null) ? $member['properties'] : [];
+        $stated = array_values(array_filter(
+            is_array($member['required'] ?? null) ? $member['required'] : [],
+            static fn (mixed $key): bool => is_string($key) && array_key_exists($key, $named),
+        ));
+
+        $properties = [...$own, ...$named];
+        foreach ($colliding as $key) {
+            $merged = PaginationEnvelope::MERGED;
+            $properties[$key] = in_array($key, $stated, true) ? $merged : ['anyOf' => [$sent[$key], $merged]];
+        }
+
+        // The page sends every key it collides on, whatever `with()` returns.
+        $required = array_values(array_unique([...$stated, ...$colliding]));
+
+        return ['type' => 'object', 'properties' => $properties, 'required' => $required];
     }
 
     /**

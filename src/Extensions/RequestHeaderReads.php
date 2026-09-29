@@ -8,6 +8,7 @@ use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Inference\TraceVisitor;
 use Docuccino\Core\Inference\TypeScope;
 use Docuccino\Laravel\Support\FrameworkClasses;
+use Docuccino\Laravel\Support\HeaderNames;
 use Illuminate\Support\Facades\Facade;
 use PhpParser\Node;
 
@@ -31,9 +32,6 @@ final class RequestHeaderReads implements TraceVisitor
 
     private const REQUEST_FACADE = 'Illuminate\\Support\\Facades\\Request';
 
-    /** RFC 9110 `token`: a name outside it is no header a client could send. */
-    private const TOKEN = '/^[!#$%&\'*+.^_`|~0-9A-Za-z-]+$/D';
-
     /**
      * Wire spelling → where each read of it was written, grouped by the name's lookup key.
      *
@@ -46,7 +44,7 @@ final class RequestHeaderReads implements TraceVisitor
         if ($node instanceof Node\Expr\MethodCall || $node instanceof Node\Expr\StaticCall) {
             $name = $this->readName($node, $scope);
             if ($name !== null) {
-                $this->reads[self::lookupKey($name)][strtr($name, '_', '-')][] = $scope->location($node);
+                $this->reads[HeaderNames::lookupKey($name)][strtr($name, '_', '-')][] = $scope->location($node);
             }
 
             // Into app code, so a read inside a FormRequest method or a helper the action calls is reached;
@@ -82,12 +80,6 @@ final class RequestHeaderReads implements TraceVisitor
         return $headers;
     }
 
-    /** The key the framework's header bag looks a name up by: lowercased, with `_` read as `-`. */
-    public static function lookupKey(string $name): string
-    {
-        return strtolower(strtr($name, '_', '-'));
-    }
-
     /** The literal header name a call reads, when it is a read of the request's headers at all. */
     private function readName(Node\Expr\MethodCall|Node\Expr\StaticCall $call, TypeScope $scope): ?string
     {
@@ -118,7 +110,7 @@ final class RequestHeaderReads implements TraceVisitor
             return null;
         }
 
-        return preg_match(self::TOKEN, $value->scalar) === 1 ? $value->scalar : null;
+        return HeaderNames::isToken($value->scalar) ? $value->scalar : null;
     }
 
     /**

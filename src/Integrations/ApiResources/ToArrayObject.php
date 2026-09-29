@@ -258,13 +258,14 @@ final class ToArrayObject
     /**
      * A field value's schema. Nested non-list shapes recurse here rather than through the core array
      * mapper, so their conditionals are stripped too — and a filtered one whose keys can all be dropped
-     * is sent as `[]`; everything else goes through the chain.
+     * is sent as `[]`; everything else goes through the chain, an object's shape included, since Laravel
+     * filters arrays only.
      *
      * @return array<string, mixed>
      */
     private function convertValue(DType $type, SchemaContext $context, bool $filtered): array
     {
-        if (! ($type instanceof ArrayShapeT && ! $type->isList)) {
+        if (! ($type instanceof ArrayShapeT && ! $type->isList && ! $type->isObject)) {
             return $context->convert($type);
         }
 

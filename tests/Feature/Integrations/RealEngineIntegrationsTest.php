@@ -28,6 +28,7 @@ use Docuccino\Laravel\Integrations\JsonApiPaginate\JsonApiPaginateFacts;
 use Docuccino\Laravel\Integrations\JsonApiPaginate\JsonApiPaginateParameters;
 use Docuccino\Laravel\Integrations\SpatieData\DataValidationRules;
 use Docuccino\Laravel\Integrations\TimacdonaldJsonApi\TimacdonaldJsonApiResourceSchema;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\ListedCollection as ListedFixtureCollection;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\MultiShapeResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\PartlyDynamicMetaResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ReleaseResource as EnvelopedFixtureResource;
@@ -963,4 +964,84 @@ it('publishes no with() member required when a with() branch returns request inp
 
     expect(array_keys($schema['properties']))->toBe(['data', 'debug'])
         ->and($schema['required'])->toBe(['data']);
+})->group('fixture');
+
+it('publishes an (object) cast as the object it sends, keys and all', function (): void {
+    // PHPStan types `(object) [...]` as an object shape intersected with stdClass. json_encode writes the
+    // shape's keys as the object's members and stdClass adds none, so the members are the contract: an
+    // empty cast is `{}`, a keyed one carries its keys, a key set on one branch only may be absent, and a
+    // cast inside a cast or a list inside a cast keeps its own wire form.
+    $analysis = ActionAnalysis::fromArray(FixtureRunner::analyze(
+        'app/Http/Resources/CastEnvelopeResource.php',
+        'App\\Http\\Resources\\CastEnvelopeResource',
+        'with',
+    ));
+
+    $engine = new StubTypeEngine(analyses: [EnvelopedFixtureResource::class.'::with' => $analysis]);
+    $schema = (new SchemaConverter([new JsonResourceSchema, ...DefaultTypeMappers::all()], $engine, new ComponentRegistry))
+        ->toSchema(new ClassT(EnvelopedFixtureResource::class))->schema;
+
+    $object = ['type' => 'object'];
+    expect($schema['properties']['meta'])->toBe($object)
+        ->and($schema['properties']['links'])->toBe([
+            'type' => 'object',
+            'properties' => ['self' => ['type' => 'string']],
+            'required' => ['self'],
+        ])
+        ->and($schema['properties']['paging']['properties']['cursor'])->toBe($object)
+        ->and($schema['properties']['paging']['properties']['pages']['type'])->toBe('array')
+        ->and($schema['properties']['paging']['required'])->toBe(['cursor', 'pages'])
+        ->and(array_keys($schema['properties']['filters']['properties']))->toBe(['sort', 'q'])
+        ->and($schema['properties']['filters']['required'])->toBe(['sort'])
+        ->and(json_encode($schema))->not->toContain('allOf');
+})->group('fixture');
+
+it('publishes an empty (object) cast in a resource body as an object, never as the [] an emptied array is sent as', function (): void {
+    // A resource filters the arrays in its body and sends one left keyless as `[]`, but it never looks
+    // inside an object, so `(object) []` is `{}` on the wire and the schema must not admit an array.
+    $engine = new StubTypeEngine(analyses: [
+        EnvelopedFixtureResource::class.'::toArray' => ActionAnalysis::fromArray(FixtureRunner::analyze(
+            'app/Http/Resources/CastEnvelopeResource.php',
+            'App\\Http\\Resources\\CastEnvelopeResource',
+            'toArray',
+        )),
+    ]);
+    $components = new ComponentRegistry;
+    (new SchemaConverter([new JsonResourceSchema, ...DefaultTypeMappers::all()], $engine, $components))
+        ->toSchema(new ClassT(EnvelopedFixtureResource::class));
+
+    expect($components->schemas()['ReleaseResource']['properties']['settings'])->toBe(['type' => 'object']);
+})->group('fixture');
+
+it('publishes the with() members of the collection a newCollection() override builds, through the real engine', function (): void {
+    // The action names the framework's collection and the item mentions its collection nowhere; the
+    // engine answers the override's class, and its with() body is read as the root envelope's members.
+    // The fixture app's classes stand in by name for their mirrors here, which this process can load.
+    $action = ActionAnalysis::fromArray(FixtureRunner::analyze(
+        'app/Http/Controllers/ListedCollectionController.php',
+        'App\\Http\\Controllers\\ListedCollectionController',
+        'index',
+    ));
+    $mirror = static fn (string $fqcn): string => str_replace('App\\Http\\Resources\\', 'Docuccino\\Laravel\\Tests\\Fixtures\\ApiResources\\', $fqcn);
+    $type = $action->returns[0]->type ?? null;
+    expect($type)->toBeInstanceOf(ClassT::class);
+    assert($type instanceof ClassT);
+    $item = $type->typeArgs[0] ?? null;
+    expect($item)->toBeInstanceOf(ClassT::class);
+    assert($item instanceof ClassT);
+
+    $engine = new StubTypeEngine(analyses: [
+        ListedFixtureCollection::class.'::with' => ActionAnalysis::fromArray(FixtureRunner::analyze(
+            'app/Http/Resources/ListedCollection.php',
+            'App\\Http\\Resources\\ListedCollection',
+            'with',
+        )),
+    ]);
+    $schema = (new SchemaConverter([new JsonResourceSchema, ...DefaultTypeMappers::all()], $engine, new ComponentRegistry))
+        ->toSchema(new ClassT($mirror($type->fqcn), [new ClassT($mirror($item->fqcn))]))->schema;
+
+    expect($mirror($type->fqcn))->toBe(ListedFixtureCollection::class)
+        ->and(array_keys($schema['properties']))->toBe(['data', 'meta', 'api_version'])
+        ->and($schema['required'])->toBe(['data', 'meta', 'api_version'])
+        ->and(array_keys($schema['properties']['meta']['properties']))->toBe(['listed_at']);
 })->group('fixture');

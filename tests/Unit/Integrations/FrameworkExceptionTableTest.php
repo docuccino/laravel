@@ -156,79 +156,123 @@ it('covers every mapped exception in the classification rows above', function ()
         ->and($classified)->not->toBeEmpty();
 });
 
-it('uses the RFC reason phrase for every mapped status', function (string $status, string $reason): void {
-    expect(FrameworkExceptionTable::reason($status))->toBe($reason);
-})->with(FrameworkExceptionTable::reasonPhrases());
+it('describes an error by the reason phrase every other response under its status carries', function (int $code, string $phrase): void {
+    // An error's status is whatever the code threw, not only the ones Laravel ships an exception for, so
+    // its description comes off the one registry the document describes a success or a declared response
+    // by. Every registered code, so a status outside the framework's own exceptions (a `501`, a `502`) is
+    // held to it as firmly as a `404`.
+    expect(FrameworkExceptionTable::reason((string) $code))->toBe($phrase);
+})->with(function (): array {
+    $rows = [];
+    foreach (ReasonPhrase::registered() as $code => $phrase) {
+        $rows[$code.' '.$phrase] = [$code, $phrase];
+    }
 
-it('names every error status as every other response under that status is named', function (string $status, string $reason): void {
-    // The error tiers keep their own table because it also names components; the words in it must be the
-    // same words a success response or a declared one under that status is described with.
-    expect($reason)->toBe(ReasonPhrase::of($status));
-})->with(FrameworkExceptionTable::reasonPhrases());
+    return $rows;
+});
 
 it('takes each phrase from the RFC that defines the status, not from RFC 9110 alone', function (): void {
     // Three the table would get wrong by reaching for one document. 413 is where RFC 9110 §15.5.14
     // RENAMED what RFC 7231 called "Payload Too Large", and the name is a type in somebody's generated
     // client, so the current one is the one to publish. 423 and 428 RFC 9110 never registered at all;
-    // their own RFCs name them, and taking the phrase from there is what keeps them off the generic
-    // `Error` the alternative would leave them on (429 was already in that position).
+    // their own RFCs name them. 422 keeps its RFC 4918 name, the one every error response has carried.
     expect(FrameworkExceptionTable::reason('413'))->toBe('Content Too Large')
+        ->and(FrameworkExceptionTable::reason('422'))->toBe('Unprocessable Entity')
         ->and(FrameworkExceptionTable::reason('423'))->toBe('Locked')
         ->and(FrameworkExceptionTable::reason('428'))->toBe('Precondition Required')
         ->and(FrameworkExceptionTable::reason('429'))->toBe('Too Many Requests');
 });
 
-it('locks 401 to Unauthorized and degrades an unlisted status to Error', function (): void {
-    expect(FrameworkExceptionTable::reason('401'))->toBe('Unauthorized')
-        ->and(FrameworkExceptionTable::reason('500'))->toBe('Internal Server Error')
-        ->and(FrameworkExceptionTable::reason('418'))->toBe('Error')
-        ->and(FrameworkExceptionTable::reason('402'))->toBe('Error');
-});
+it('describes a status the registry leaves unnamed by its class, never as a bare Error', function (string $status, string $class): void {
+    // RFC 9110 §15: a client that does not recognise a code treats it as the x00 of its class, so the
+    // class is what is known about it. `Error` says less than that and is true of every 4xx and 5xx.
+    expect(FrameworkExceptionTable::reason($status))->toBe($class);
+})->with([
+    'IANA leaves 418 unused' => ['418', 'Client Error'],
+    'Laravel\'s CSRF 419 is unregistered' => ['419', 'Client Error'],
+    'an unregistered 4xx' => ['499', 'Client Error'],
+    'an unregistered 5xx' => ['599', 'Server Error'],
+]);
 
 /**
- * Every status the table names, and the component name it must publish under — written out rather than
- * derived from the phrase, since deriving it is the implementation and would agree with any mapping.
- * These are the type names a generated client is written against, so each one is pinned.
+ * Every error status the registry names, and the component name it must publish under — written out
+ * rather than derived from the phrase, since deriving it is the implementation and would agree with any
+ * mapping. These are the type names a generated client is written against, so each one is pinned.
  */
 const EXPECTED_COMPONENT_NAMES = [
     ['400', 'BadRequest'],
     ['401', 'Unauthorized'],
+    ['402', 'PaymentRequired'],
     ['403', 'Forbidden'],
     ['404', 'NotFound'],
     ['405', 'MethodNotAllowed'],
     ['406', 'NotAcceptable'],
+    ['407', 'ProxyAuthenticationRequired'],
+    ['408', 'RequestTimeout'],
     ['409', 'Conflict'],
     ['410', 'Gone'],
     ['411', 'LengthRequired'],
     ['412', 'PreconditionFailed'],
     ['413', 'ContentTooLarge'],
+    ['414', 'URITooLong'],
     ['415', 'UnsupportedMediaType'],
+    ['416', 'RangeNotSatisfiable'],
+    ['417', 'ExpectationFailed'],
+    ['421', 'MisdirectedRequest'],
     ['422', 'UnprocessableEntity'],
     ['423', 'Locked'],
+    ['424', 'FailedDependency'],
+    ['425', 'TooEarly'],
+    ['426', 'UpgradeRequired'],
     ['428', 'PreconditionRequired'],
     ['429', 'TooManyRequests'],
+    ['431', 'RequestHeaderFieldsTooLarge'],
+    ['451', 'UnavailableForLegalReasons'],
     ['500', 'InternalServerError'],
+    ['501', 'NotImplemented'],
+    ['502', 'BadGateway'],
     ['503', 'ServiceUnavailable'],
+    ['504', 'GatewayTimeout'],
+    ['505', 'HTTPVersionNotSupported'],
+    ['506', 'VariantAlsoNegotiates'],
+    ['507', 'InsufficientStorage'],
+    ['508', 'LoopDetected'],
+    ['510', 'NotExtended'],
+    ['511', 'NetworkAuthenticationRequired'],
 ];
 
-it('names every mapped status after its reason phrase, as a legal component key', function (string $status, string $name): void {
+it('names every registered error status after its reason phrase, as an identifier', function (string $status, string $name): void {
+    // An identifier and not merely a legal component key: the name becomes a type in a generated client,
+    // so it carries none of the `.` and `-` a key could.
     expect(FrameworkExceptionTable::componentName($status))->toBe($name)
-        ->and($name)->toMatch('/^[A-Za-z0-9._-]+$/');
+        ->and($name)->toMatch('/^[A-Z][A-Za-z0-9]*$/');
 })->with(EXPECTED_COMPONENT_NAMES);
 
-it('leaves no status in the table without a pinned name', function (): void {
-    // The row above is a literal list, so it can only cover every entry if this says it does: a status
-    // added to the table without a name here would otherwise go out named by nobody's decision.
-    expect(array_column(EXPECTED_COMPONENT_NAMES, 0))
-        ->toBe(array_column(FrameworkExceptionTable::reasonPhrases(), 0));
+it('leaves no registered error status without a pinned name', function (): void {
+    // The row above is a literal list, so it can only cover every error status the registry names if this
+    // says it does: a code added to the registry would otherwise go out named by nobody's decision.
+    $errors = array_values(array_filter(
+        array_map(strval(...), array_keys(ReasonPhrase::registered())),
+        static fn (string $status): bool => (int) $status >= 400,
+    ));
+
+    expect(array_column(EXPECTED_COMPONENT_NAMES, 0))->toBe($errors)
+        ->and(count($errors))->toBeGreaterThan(30);
 });
 
-it('declares no name for a status with no reason phrase of its own', function (): void {
-    // `Error` names nothing, and every unlisted status would claim it — so an unlisted one declares
-    // nothing and keeps `Error<status>`.
-    expect(FrameworkExceptionTable::componentName('418'))->toBeNull()
-        ->and(FrameworkExceptionTable::componentName('402'))->toBeNull();
+it('asks for a different name for every status, so no two errors contest one by their status alone', function (): void {
+    // A status default is a claim, and two DIFFERENT statuses claiming one name would retire it for both
+    // into content hashes. Registered phrases are distinct, and the names made of them must stay so.
+    $names = array_column(EXPECTED_COMPONENT_NAMES, 1);
+
+    expect(array_unique($names))->toBe($names);
 });
+
+it('declares no name for a status the registry does not name', function (string $status): void {
+    // Its class is not its own: every unregistered 4xx would ask for `ClientError`, so a 419 and a 499 on
+    // one document would contest it and lose it together. It declares nothing and keeps `Error<status>`.
+    expect(FrameworkExceptionTable::componentName($status))->toBeNull();
+})->with(['418', '419', '499', '599', '4XX', 'default']);
 
 it('publishes the RFC 9110 401 phrase in both places a consumer meets it', function (): void {
     // Two published facts come off one phrase: the sentence a reader sees on the response, and the name a

@@ -3,9 +3,13 @@
 declare(strict_types=1);
 
 use Docuccino\Core\Diagnostics\Severity;
+use Docuccino\Core\Diff\DocumentDiffer;
+use Docuccino\Core\Diff\Pairing;
+use Docuccino\Core\Document\UirDocument;
 use Docuccino\Core\Emit\EmitOptions;
 use Docuccino\Core\Emit\OpenApi32Emitter;
 use Docuccino\Core\Emit\UirEmitter;
+use Docuccino\Core\SpecValidation\OpenApiMetaSchema;
 use Docuccino\Laravel\Facades\Docuccino;
 use Docuccino\Laravel\Tests\Support\LateBoundMarker;
 
@@ -52,6 +56,64 @@ function exportedArtifact(array $options): string
 
     return $contents;
 }
+
+/*
+ * The default export keeps ids, and the workbench shares its error responses through
+ * `components.responses` — so this is the population where an operation's use of a shared response
+ * meets the id it carried inline. OpenAPI says a Reference Object "cannot be extended with additional
+ * properties" (3.1 and 3.2 allow `summary` and `description`, 3.0 nothing), and the 3.1 meta-schema
+ * refuses the whole document over one: the id goes to the nodes that are not references, and the diff
+ * still pairs, because it pairs responses by status under an operation it paired by id. A shared
+ * parameter is the other half of that population, and ApiVersionHeaderComponentTest holds it.
+ *
+ * One byte-locked golden, at 3.2. The 3.1 export of this workbench is that document with its two
+ * version members respelled — nothing it publishes needs 3.2 — so a second 2000-line golden would lock
+ * the same bytes twice. It is held to the 3.2 golden instead, which fails the day the two diverge.
+ */
+it('exports ids on every node but a reference, and still diffs by identity', function (string $format): void {
+    bindStubEngine();
+
+    $out = sys_get_temp_dir().'/docuccino-export-'.uniqid().'.json';
+    test()->artisan('docuccino:export', ['--format' => $format, '--out' => $out])->assertSuccessful();
+    $artifact = (string) file_get_contents($out);
+
+    try {
+        $golden = 'workbench.openapi32.ids.json';
+
+        if ($format === 'openapi-3.2') {
+            assertGolden($golden, $artifact);
+        } else {
+            // Byte for byte, bar the two members that name the version.
+            $expected = str_replace(
+                ['"openapi": "3.2.0"', '"jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base"'],
+                ['"openapi": "3.1.1"', '"jsonSchemaDialect": "https://spec.openapis.org/oas/3.1/dialect/base"'],
+                (string) file_get_contents(golden($golden)),
+                $respelled,
+            );
+
+            expect($respelled)->toBe(2)
+                ->and($artifact)->toBe($expected);
+        }
+
+        $graph = json_decode($artifact, flags: JSON_THROW_ON_ERROR);
+        $shared = substr_count($artifact, '"$ref": "#/components/responses/');
+
+        expect($shared)->toBeGreaterThan(0)
+            ->and(substr_count($artifact, '"x-docuccino-id": "op:'))->toBeGreaterThan(0)
+            ->and(OpenApiMetaSchema::referenceSiblingFindings($format, $graph))->toBe([])
+            ->and(OpenApiMetaSchema::findings($format, $graph))->toBe([]);
+
+        $changeset = (new DocumentDiffer)->diff(UirDocument::fromArray(loadDocument($out)), generateDocument()->document);
+
+        expect($changeset->pairing)->toBe(Pairing::Identity)
+            ->and($changeset->changes)->toBe([]);
+    } finally {
+        @unlink($out);
+    }
+})->with([
+    'OpenAPI 3.2' => ['openapi-3.2'],
+    'OpenAPI 3.1' => ['openapi-3.1'],
+]);
 
 it('picks up an extension registered AFTER the app has booted (late-binding trap)', function (): void {
     bindStubEngine();

@@ -84,6 +84,100 @@
         }
       }
     },
+    "/api/zz-cast": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:fdv2dbaqblvq4d3m",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ApiResources/EnvelopeController.php",
+                "line": 44,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ApiResources\\EnvelopeController::cast"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-cast",
+        "tags": [
+          "Envelope"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:fluv7xhpsmtbthzd",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CastMetaResource"
+                    },
+                    "links": {
+                      "type": "object",
+                      "properties": {
+                        "self": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "self"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta",
+                    "links"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/zz-configured": {
       "get": {
         "x-docuccino": {
@@ -501,6 +595,24 @@
           "release"
         ]
       },
+      "CastMetaResource": {
+        "x-docuccino": {
+          "id": "sch:v1:zcn4c3tv5i7hrhqm"
+        },
+        "type": "object",
+        "properties": {
+          "settings": {
+            "type": "object"
+          },
+          "tag": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tag",
+          "settings"
+        ]
+      },
       "LinkedReleaseCollection": {
         "x-docuccino": {
           "id": "sch:v1:fvtjqsfjcvpxq3ow"
@@ -592,7 +704,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "68eda5b849791ccf7d74ce9a6218b95fb0254a98853c6a9fd62f071f12462100"
+      "contentHash": "332cf87db507d1a05ee0df09485c11e7a73a1552af11bbf5c2b7640d4af4ee8f"
     },
     "generator": {
       "name": "docuccino/laravel",

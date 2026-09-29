@@ -7,7 +7,7 @@ namespace Docuccino\Laravel\Tests\Fixtures\ApiResources;
 /**
  * Returns a resource whose base adds top-level members, at the root and nested inside another, two
  * named collections — one keeping Laravel's `toArray`, one whose `toArray` returns its own `data` key —
- * a resource whose every key is conditional, and one setting Laravel's `$with` property.
+ * a resource whose every key is conditional, one setting Laravel's `$with` property, one of `(object)` casts.
  */
 final class EnvelopeController
 {
@@ -39,5 +39,10 @@ final class EnvelopeController
     public function configured(): WithPropertyResource
     {
         return new WithPropertyResource((object) ['tag' => 'v1']);
+    }
+
+    public function cast(): CastMetaResource
+    {
+        return new CastMetaResource((object) ['tag' => 'v1']);
     }
 }

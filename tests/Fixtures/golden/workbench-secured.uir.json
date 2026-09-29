@@ -978,7 +978,7 @@
                 }
               ]
             },
-            "description": "Error",
+            "description": "Payment Required",
             "content": {
               "application/json": {
                 "schema": {
@@ -4435,14 +4435,17 @@
       },
       "BadRequest": {
         "x-docuccino": {
-          "id": "sch:v1:s46jnknuwmxt4uep"
+          "id": "sch:v1:ezf5e6ailaljycet"
         },
         "type": "object",
         "properties": {
           "message": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "message"
+        ]
       },
       "Forbidden": {
         "x-docuccino": {
@@ -4912,7 +4915,7 @@
     "document": {
       "id": "doc:secured",
       "configHash": "d89a86d522eb398c0a3d894b165ad3d553ea98b9606eab23fb4d7a6a100fb07f",
-      "contentHash": "59fef96354d0e2d71ef2eaa4f19ddb16e0de6e8eb42b656e5c5519a0dd9cf641"
+      "contentHash": "74a9f99435f4f2feadc6b78f3fff2890b91bd87a10951a6bcb0e134557f0bbd4"
     },
     "generator": {
       "name": "docuccino/laravel",

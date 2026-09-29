@@ -5,7 +5,11 @@ declare(strict_types=1);
 use Docuccino\Core\Contract\ContractIndex;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diff\DocumentDiffer;
+use Docuccino\Core\Diff\Pairing;
+use Docuccino\Core\Document\NodeIdentity;
 use Docuccino\Core\Document\UirDocument;
+use Docuccino\Core\Emit\EmitOptions;
+use Docuccino\Core\Emit\Formats;
 use Docuccino\Core\Emit\OpenApi30DownlevelEmitter;
 use Docuccino\Core\Emit\OpenApi31DownlevelEmitter;
 use Docuccino\Core\Emit\OpenApi32Emitter;
@@ -13,6 +17,8 @@ use Docuccino\Core\Emit\UirEmitter;
 use Docuccino\Core\Extensions\Context\DocumentContext;
 use Docuccino\Core\Extensions\Document\UirDocumentDraft;
 use Docuccino\Core\Pipeline\GenerationResult;
+use Docuccino\Core\SpecValidation\OpenApiMetaSchema;
+use Docuccino\Core\Support\JsonValue;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
 use Docuccino\Laravel\Versioning\ApiVersionTransformer;
 use Docuccino\Laravel\Versioning\VersionChangeCollector;
@@ -414,4 +420,88 @@ it('reads a shared header as one parameter rather than as a change, in both dire
 
 it('validates through the command over every version', function (): void {
     $this->artisan('docuccino:validate')->assertExitCode(0);
+});
+
+/**
+ * An export of $uir at $format with ids kept, as the emitter writes it now or — $useSiteIds — as it did
+ * before a Reference Object was published as its pointer alone: each use site's id flat beside the `$ref`.
+ */
+function versionHeaderExport(UirDocument $uir, string $format, bool $useSiteIds = false): UirDocument
+{
+    $exported = JsonValue::decode(Formats::emit($format, $uir, (new EmitOptions)->withKeepIds())->output);
+    expect($exported)->toBeArray();
+
+    if ($useSiteIds) {
+        foreach ($uir->toArray()['paths'] as $path => $item) {
+            foreach ($item['get']['parameters'] ?? [] as $index => $parameter) {
+                if (isset($parameter['$ref'], $parameter['x-docuccino']['id'])) {
+                    $exported['paths'][$path]['get']['parameters'][$index][NodeIdentity::FLAT_KEY] = $parameter['x-docuccino']['id'];
+                }
+            }
+        }
+    }
+
+    return UirDocument::fromArray($exported);
+}
+
+/*
+ * A Reference Object takes no extension, so the id each operation's use of the header carries in the UIR
+ * cannot be published beside its `$ref`, and an export names the component's instead. OAS makes `in` +
+ * `name` unique within an operation, so a parameter the two sides spell alike under one operation is one
+ * parameter whatever id either side read for it — and a diff between the build and the artifact it wrote,
+ * or between two artifacts from either side of that change, owes no change at all.
+ */
+it('reads the shared header as one parameter across an export, whichever ids either side carries', function (string $format): void {
+    $uir = UirDocument::fromArray(generateDocument(twoOperationVersion(...), 'v2026-06-01')->document->toArray());
+    $export = versionHeaderExport($uir, $format);
+    $earlier = versionHeaderExport($uir, $format, useSiteIds: true);
+
+    // The premise: the two sides really do name the header's use by different ids.
+    $ids = static fn (UirDocument $document): array => array_values(array_unique(array_map(
+        static fn ($parameter): ?string => NodeIdentity::of($parameter->docuccino, $parameter->rest),
+        $document->paths['/api/versioned-forms']->operations['get']->parameters,
+    )));
+    expect($ids($uir))->toHaveCount(1)
+        ->and($ids($earlier))->toBe($ids($uir))
+        ->and($ids($export))->toBe([null]);
+
+    $differ = new DocumentDiffer;
+    $codes = static fn ($changeset): array => array_map(static fn ($change): string => $change->code.' '.$change->path, $changeset->changes);
+
+    foreach ([[$uir, $export], [$earlier, $export], [$uir, $earlier], [$export, $export]] as [$old, $new]) {
+        foreach ([$differ->diff($old, $new), $differ->diff($new, $old)] as $changeset) {
+            expect($changeset->pairing)->toBe(Pairing::Identity)
+                ->and($codes($changeset))->toBe([])
+                ->and($changeset->disjointIdentities)->toBe([]);
+        }
+    }
+
+    // And the header really is compared rather than waved through: a shared declaration made required
+    // reports against every operation that uses it.
+    $required = $export->toArray();
+    $required['components']['parameters']['XApiVersion']['required'] = true;
+
+    expect($codes($differ->diff($uir, UirDocument::fromArray($required))))->toBe([
+        'parameter.became-required GET /api/versioned-forms parameters header:X-Api-Version',
+        'parameter.became-required GET /api/versioned-forms/archived parameters header:X-Api-Version',
+    ]);
+})->with(['openapi-3.2', 'openapi-3.1', 'openapi-3.0']);
+
+/*
+ * The artifact `docuccino:export` writes for a document whose operations share a parameter: the population
+ * where a use site's id meets a Reference Object, which no workbench golden stands in otherwise.
+ */
+it('exports the shared header as a bare pointer from every operation', function (): void {
+    setDocuments(array_map(twoOperationVersion(...), versionedFormDocuments()));
+
+    $out = sys_get_temp_dir().'/docuccino-export-'.uniqid().'.json';
+    $this->artisan('docuccino:export', ['document' => 'v2026-06-01', '--format' => 'openapi-3.2', '--out' => $out])->assertSuccessful();
+    $artifact = (string) file_get_contents($out);
+    @unlink($out);
+
+    assertGolden('versioned-forms.openapi32.ids.json', $artifact);
+
+    $graph = json_decode($artifact, flags: JSON_THROW_ON_ERROR);
+    expect(substr_count($artifact, '"$ref": "#/components/parameters/XApiVersion"'))->toBe(2)
+        ->and(OpenApiMetaSchema::findings('openapi-3.2', $graph))->toBe([]);
 });

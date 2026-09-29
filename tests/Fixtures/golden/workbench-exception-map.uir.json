@@ -329,6 +329,7 @@
                   "producer": "integration:implicit-response",
                   "layer": "integration",
                   "fields": [
+                    "component",
                     "description"
                   ],
                   "source": {
@@ -338,15 +339,23 @@
                   },
                   "overrode": [
                     {
+                      "field": "component",
+                      "value": "PaymentRequired",
+                      "producer": "fallback"
+                    },
+                    {
                       "field": "description",
-                      "value": "Error",
+                      "value": "Payment Required",
                       "producer": "fallback"
                     }
                   ]
                 }
-              ]
+              ],
+              "facts": {
+                "component": "PaymentRequired"
+              }
             },
-            "description": "Error",
+            "description": "Payment Required",
             "content": {
               "application/json": {
                 "schema": {
@@ -357,6 +366,7 @@
                         "layer": "integration",
                         "fields": [
                           "properties",
+                          "required",
                           "type"
                         ],
                         "source": {
@@ -378,6 +388,13 @@
                               }
                             },
                             "producer": "fallback"
+                          },
+                          {
+                            "field": "required",
+                            "value": [
+                              "message"
+                            ],
+                            "producer": "fallback"
                           }
                         ]
                       }
@@ -388,7 +405,10 @@
                     "message": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "required": [
+                    "message"
+                  ]
                 }
               }
             }
@@ -429,7 +449,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "fbc0e9c8331855f3ef48597ddea619731676f3953af5ce3bab65ad7d1fdd922e"
+      "contentHash": "33f866d8de3a1a24d8f5da7a6fc6beb63639417ccf6c2a32aa896b8989c10998"
     },
     "generator": {
       "name": "docuccino/laravel",

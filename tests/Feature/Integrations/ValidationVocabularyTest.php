@@ -14,6 +14,7 @@ use Docuccino\Core\Inference\NullTypeEngine;
 use Docuccino\Laravel\Integrations\Support\RuleParsing;
 use Docuccino\Laravel\Integrations\Validation\RuleOrdering;
 use Docuccino\Laravel\Integrations\Validation\ValidationIntegration;
+use Illuminate\Support\Facades\Validator;
 use Workbench\App\Enums\WidgetStatus;
 
 /**
@@ -159,7 +160,8 @@ it('maps every schema-producing string rule to its fragment', function (array $r
     'date_format (no parameter)' => [[['date_format']], ['type' => 'string']],
 
     // RegexRuleTransformer — delimiters stripped to a bare ECMA-262 pattern.
-    'regex' => [[['regex', ['/^[a-z]+$/']]], ['pattern' => '^[a-z]+$', 'type' => 'string', 'example' => 'example']],
+    // PHP's `$` without `D` also matches before a final newline, which the server therefore accepts.
+    'regex' => [[['regex', ['/^[a-z]+$/']]], ['pattern' => '^[a-z]+\\n?$', 'type' => 'string', 'example' => 'example']],
 
     // ExistsRuleTransformer — a FK reference contributes a default string type only.
     'exists' => [[['exists', ['users', 'id']]], ['type' => 'string']],
@@ -167,16 +169,23 @@ it('maps every schema-producing string rule to its fragment', function (array $r
     // Already-typed guard: an existing integer type survives a FK-reference rule.
     'exists (preserves an existing type)' => [[['integer'], ['exists', ['users', 'id']]], ['type' => 'integer']],
     // RegexRuleTransformer already-typed guard: an explicit type is preserved alongside the pattern.
-    'regex (preserves an existing type)' => [[['integer'], ['regex', ['/^\\d+$/']]], ['pattern' => '^\\d+$', 'type' => 'integer']],
+    'regex (preserves an existing type)' => [[['integer'], ['regex', ['/^\\d+$/']]], ['pattern' => '^\\d+\\n?$', 'type' => 'integer']],
 
     // FileRuleTransformer — binary string schema (multipart switch asserted separately).
     'file' => [[['file']], ['format' => 'binary', 'type' => 'string']],
     'image' => [[['image']], ['description' => 'An image file.', 'format' => 'binary', 'type' => 'string']],
 
-    // AlphaRuleTransformer — canonical ECMA-262 character-class patterns.
-    'alpha' => [[['alpha']], ['pattern' => '^[a-zA-Z]+$', 'type' => 'string', 'example' => 'example']],
-    'alpha_num' => [[['alpha_num']], ['pattern' => '^[a-zA-Z0-9]+$', 'type' => 'string', 'example' => 'example']],
-    'alpha_dash' => [[['alpha_dash']], ['pattern' => '^[a-zA-Z0-9_-]+$', 'type' => 'string', 'example' => 'example']],
+    // AlphaRuleTransformer — `:ascii` is Laravel's ASCII class exactly. Without it the server takes any
+    // script's letters, so the pattern admits every non-ASCII character too: exact over ASCII, wider past
+    // it, and compiled alike with or without the `u` flag (`AlphaRulesGoldenTest` holds both claims).
+    'alpha' => [[['alpha']], ['pattern' => '^(?:[a-zA-Z]|[^\\x00-\\x7F])+$', 'type' => 'string', 'example' => 'example']],
+    'alpha_num' => [[['alpha_num']], ['pattern' => '^(?:[a-zA-Z0-9]|[^\\x00-\\x7F])+$', 'type' => 'string', 'example' => 'example']],
+    'alpha_dash' => [[['alpha_dash']], ['pattern' => '^(?:[a-zA-Z0-9_-]|[^\\x00-\\x7F])+$', 'type' => 'string', 'example' => 'example']],
+    'alpha:ascii' => [[['alpha', ['ascii']]], ['pattern' => '^[a-zA-Z]+$', 'type' => 'string', 'example' => 'example']],
+    'alpha_num:ascii' => [[['alpha_num', ['ascii']]], ['pattern' => '^[a-zA-Z0-9]+$', 'type' => 'string', 'example' => 'example']],
+    'alpha_dash:ascii' => [[['alpha_dash', ['ascii']]], ['pattern' => '^[a-zA-Z0-9_-]+$', 'type' => 'string', 'example' => 'example']],
+    // Laravel tests the first parameter for `ascii` and nothing else, so any other word is the any-script form.
+    'alpha_dash (a parameter other than ascii)' => [[['alpha_dash', ['strict']]], ['pattern' => '^(?:[a-zA-Z0-9_-]|[^\\x00-\\x7F])+$', 'type' => 'string', 'example' => 'example']],
 
     // AffixRuleTransformer — single value → anchored pattern (literal regex-escaped); multi → description.
     'starts_with (single → pattern)' => [[['starts_with', ['abc']]], ['pattern' => '^abc', 'type' => 'string', 'example' => 'abcexample']],
@@ -308,15 +317,105 @@ it('normalises regex delimiters to a bare ECMA-262 pattern across delimiter styl
     expect($property['pattern'])->toBe($expected)
         ->and($property['type'])->toBe('string');
 })->with([
-    'slash' => ['/^[a-z]+$/', '^[a-z]+$'],
-    'hash delimiter' => ['#^[a-z]+$#', '^[a-z]+$'],
-    'tilde + trailing flags' => ['~^\\d+$~i', '^\\d+$'],
-    'brace bracket-pair' => ['{^[0-9]+$}', '^[0-9]+$'],
+    // PHP's `$` also matches before a final newline unless the regex carries `D`, and ECMA-262's `$` never
+    // does, so the pattern takes that newline.
+    'slash' => ['/^[a-z]+$/', '^[a-z]+\\n?$'],
+    'hash delimiter' => ['#^[a-z]+$#', '^[a-z]+\\n?$'],
+    // An escaped delimiter is PCRE's escaped punctuation, which is the character itself.
+    'hash delimiter escaped inside' => ['#^a\#b$#', '^a#b\\n?$'],
+    'tilde + a trailing modifier' => ['~^[0-9]+$~u', '^[0-9]+\\n?$'],
+    'the end-only modifier' => ['/^[a-z]+$/D', '^[a-z]+$'],
+    // Without `/u` PHP's class escapes are ASCII, as ECMA-262's are.
+    'a class escape without /u' => ['/^INV-\\d+$/', '^INV-\\d+\\n?$'],
+    // `\A` and `\z` are the start and the very end, which `^` and `$` are to ECMA-262.
+    'string anchors' => ['/\\A[a-z]+\\z/', '^[a-z]+$'],
+    'brace bracket-pair' => ['{^[0-9]+$}', '^[0-9]+\\n?$'],
     'paren bracket-pair' => ['(hello)', 'hello'],
-    'angle bracket-pair' => ['<^x$>', '^x$'],
-    'too short → kept verbatim' => ['x', 'x'],
-    'no closing delimiter → kept verbatim' => ['/abc', '/abc'],
+    'angle bracket-pair' => ['<^x$>', '^x\\n?$'],
 ]);
+
+it('publishes a Unicode-wide class escape under /u no narrower than the server', function (string $rule, string $pattern, array $accepted): void {
+    $property = convertFieldRules([['regex', [substr($rule, 6)]]])->schema['properties']['f'];
+
+    // Under `/u` `\d` and `\w` are every script's, so ASCII alone would refuse what Laravel accepts; the
+    // pattern read as ECMA-262 reads it (UTF, no Unicode properties) takes every such value.
+    expect($property['pattern'])->toBe($pattern);
+    foreach ($accepted as $value) {
+        expect(Validator::make(['f' => $value], ['f' => [$rule]])->passes())->toBeTrue()
+            ->and(preg_match('/(*UTF)'.$pattern.'/D', $value))->toBe(1);
+    }
+})->with([
+    '\\d' => ['regex:/^\\d+$/u', '^(?:[0-9]|[^\\x00-\\x7F])+\\n?$', ['42', '٣', '𝟎', "42\n"]],
+    '\\w in a class' => ['regex:/^[\\w-]+$/uD', '^(?:[0-9A-Za-z_-]|[^\\x00-\\x7F])+$', ['a-b', 'é-名前']],
+]);
+
+it('publishes no pattern for a regex whose body a pattern reads differently, as the server reads it', function (string $rule, string $value, string $read): void {
+    // The server accepts the value — by Laravel itself — and the body, read the way an ECMA-262 validator
+    // reads it (`$read`, spelled in PHP's own dialect), would refuse it.
+    expect(Validator::make(['f' => $value], ['f' => [$rule]])->passes())->toBeTrue()
+        ->and(preg_match($read, $value))->toBe(0);
+
+    $context = vocabularyContext();
+    $ordered = (new RuleOrdering)->order(new RuleSet(['f' => [ValidationRule::of('regex', [substr($rule, 6)])]]));
+    $result = (new DefaultValidationRulesToSchema(ValidationIntegration::transformers()))->convert($ordered, $context);
+
+    expect($result->schema['properties']['f'])->toBe(['type' => 'string'])
+        ->and(array_map(static fn ($d): string => $d->code, $context->components()->diagnostics()))->toBe(['validation.regex-unportable']);
+})->with([
+    // Counted, `\\d` under `/u` is code points to PHP and UTF-16 units to ECMA-262 without its `u`.
+    'a count over \\d under /u' => ['regex:/^\\d{2}$/u', '𝟎𝟎', '/^[\\x{0}-\\x{FFFF}]{2}$/u'],
+    // Under `/u` PHP's `\\s` takes U+0085; ECMA-262's does not.
+    '\\s under /u' => ['regex:/^\\s$/u', "\u{85}", '/^[\\t\\n\\x0B\\f\\r \\x{A0}]$/u'],
+    // An inline flag is no ECMA-262 syntax at all, so the whole document would fail to compile.
+    'an inline flag' => ['regex:/^(?i)[a-z]+$/', 'ABC', '/^[a-z]+$/'],
+    // Without `/u` a negated class matches one byte: `é` is two of them, and one UTF-16 unit.
+    'a count over a negated class' => ['regex:/^[^\\/]{2}$/', 'é', '/^[^\\/]{2}$/u'],
+    // …and two negated classes can share one character's bytes between them.
+    'two negated classes without /u' => ['regex:/^[^a]+[^b]+$/', 'é', '/^[^a][^b]$/u'],
+    // PHP's `.` stops only at `\\n`; ECMA-262's at `\\r`, U+2028 and U+2029 too.
+    'a dot' => ['regex:/^a.b$/', "a\rb", '/^a[^\\n\\r]b$/'],
+]);
+
+it('publishes no pattern for a regex PHP itself cannot compile', function (string $raw): void {
+    $context = vocabularyContext();
+    $ordered = (new RuleOrdering)->order(new RuleSet(['f' => [ValidationRule::of('regex', [$raw])]]));
+    $result = (new DefaultValidationRulesToSchema(ValidationIntegration::transformers()))->convert($ordered, $context);
+
+    // Laravel's validator throws on it, so there is no value the server accepts to describe.
+    expect(@preg_match($raw, ''))->toBeFalse()
+        ->and($result->schema['properties']['f'])->toBe(['type' => 'string'])
+        ->and(array_map(static fn ($d): string => $d->code, $context->components()->diagnostics()))->toBe(['validation.regex-unportable']);
+})->with(['too short' => ['x'], 'no closing delimiter' => ['/abc'], 'an unbalanced group' => ['/^(ab$/'], 'a count PCRE refuses' => ['/a{70000}/']]);
+
+it('publishes no pattern for a regex whose modifier changes what matches, as the server reads it', function (string $rule, string $value): void {
+    // The server accepts the value — by Laravel itself — and the modifier-less body would refuse it.
+    expect(Validator::make(['f' => $value], ['f' => [$rule]])->passes())->toBeTrue()
+        ->and(preg_match('/'.substr($rule, 7, (int) strrpos($rule, '/') - 7).'/', $value))->toBe(0);
+
+    $context = vocabularyContext();
+    $ordered = (new RuleOrdering)->order(new RuleSet(['f' => [ValidationRule::of('regex', [substr($rule, 6)])]]));
+    $result = (new DefaultValidationRulesToSchema(ValidationIntegration::transformers()))->convert($ordered, $context);
+    $diagnostics = $context->components()->diagnostics();
+
+    // So the document states no pattern — a string, which is true — and says why to the author.
+    expect($result->schema['properties']['f'])->toBe(['type' => 'string'])
+        ->and(array_map(static fn ($d): string => $d->code, $diagnostics))->toBe(['validation.regex-modifier']);
+})->with([
+    'i — case-insensitive' => ['regex:/^[a-z]+$/i', 'ABC'],
+    'm — anchors per line' => ['regex:/^[a-z]+$/m', "abc\n123"],
+    's — a dot matches a newline' => ['regex:/^a.b$/s', "a\nb"],
+    'x — whitespace is not literal' => ['regex:/^a b$/x', 'ab'],
+    'with others beside it' => ['regex:/^[a-z]+$/ui', 'ABC'],
+]);
+
+it('keeps the pattern under a modifier that never narrows it', function (string $raw): void {
+    $context = vocabularyContext();
+    $ordered = (new RuleOrdering)->order(new RuleSet(['f' => [ValidationRule::of('regex', [$raw])]]));
+    $result = (new DefaultValidationRulesToSchema(ValidationIntegration::transformers()))->convert($ordered, $context);
+
+    expect($result->schema['properties']['f']['pattern'])->toBe(str_contains($raw, 'D') ? '^[a-z]+$' : '^[a-z]+\\n?$')
+        ->and($context->components()->diagnostics())->toBe([]);
+})->with(['/^[a-z]+$/u', '/^[a-z]+$/D', '/^[a-z]+$/U', '/^[a-z]+$/A', '/^[a-z]+$/']);
 
 it('applies every presence-rule entry to the required/nullable contract', function (): void {
     // required / present mark the field required.
@@ -411,6 +510,11 @@ it('describes conditional-required rules and leaves the field optional', functio
     'required_with_all' => [['required_with_all', ['first', 'last']], 'Required when first, last are all present.'],
     'required_without' => [['required_without', ['first', 'last']], 'Required when any of first, last is absent.'],
     'required_without_all' => [['required_without_all', ['first', 'last']], 'Required when first, last are all absent.'],
+    // One field is not a set, so "any of" and "all of" say nothing: each reads as the one sentence it is.
+    'required_with, one field' => [['required_with', ['address']], 'Required when address is present.'],
+    'required_with_all, one field' => [['required_with_all', ['address']], 'Required when address is present.'],
+    'required_without, one field' => [['required_without', ['address']], 'Required when address is absent.'],
+    'required_without_all, one field' => [['required_without_all', ['address']], 'Required when address is absent.'],
 ]);
 
 it('documents the confirmed partner and switches file rules to multipart', function (): void {
@@ -459,7 +563,7 @@ it('maps type + format + choice + regex + date_format rules', function (): void 
     expect($schema['properties']['email'])->toBe(['type' => 'string', 'format' => 'email', 'example' => 'user@example.com'])
         ->and($schema['properties']['id'])->toBe(['type' => 'string', 'format' => 'uuid', 'example' => '3fa85f64-5717-4562-b3fc-2c963f66afa6'])
         ->and($schema['properties']['status'])->toBe(['type' => 'string', 'enum' => ['draft', 'published'], 'x-enum-varnames' => ['Draft', 'Published'], 'x-enumNames' => ['Draft', 'Published'], 'example' => 'draft'])
-        ->and($schema['properties']['slug'])->toBe(['type' => 'string', 'pattern' => '^[a-z]+$', 'example' => 'example'])
+        ->and($schema['properties']['slug'])->toBe(['type' => 'string', 'pattern' => '^[a-z]+\\n?$', 'example' => 'example'])
         ->and($schema['properties']['when'])->toBe(['type' => 'string', 'format' => 'date', 'description' => 'Expected format: Y-m-d', 'example' => '2024-01-01'])
         ->and($schema['required'])->toBe(['email']);
 });

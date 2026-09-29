@@ -1,0 +1,126 @@
+{
+  "openapi": "3.0.4",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-slugs": {
+      "post": {
+        "operationId": "post.api.zz-slugs",
+        "tags": [
+          "Slug"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreSlugRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "errors": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StoreSlugRequest": {
+        "type": "object",
+        "properties": {
+          "alpha": {
+            "type": "string",
+            "pattern": "^(?:[a-zA-Z]|[^\\x00-\\x7F])+$",
+            "example": "example"
+          },
+          "alpha_ascii": {
+            "type": "string",
+            "pattern": "^[a-zA-Z]+$",
+            "example": "example"
+          },
+          "alpha_dash": {
+            "type": "string",
+            "pattern": "^(?:[a-zA-Z0-9_-]|[^\\x00-\\x7F])+$",
+            "example": "example"
+          },
+          "alpha_dash_ascii": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "example": "example"
+          },
+          "alpha_num": {
+            "type": "string",
+            "pattern": "^(?:[a-zA-Z0-9]|[^\\x00-\\x7F])+$",
+            "example": "example"
+          },
+          "alpha_num_ascii": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9]+$",
+            "example": "example"
+          },
+          "handle": {
+            "type": "string",
+            "maxLength": 32,
+            "pattern": "^(?:[a-zA-Z0-9_-]|[^\\x00-\\x7F])+$",
+            "example": "example",
+            "nullable": true
+          },
+          "handle_ascii": {
+            "type": "string",
+            "maxLength": 32,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "example": "example",
+            "nullable": true
+          }
+        },
+        "required": [
+          "alpha",
+          "alpha_ascii",
+          "alpha_num",
+          "alpha_num_ascii",
+          "alpha_dash",
+          "alpha_dash_ascii"
+        ]
+      }
+    }
+  }
+}

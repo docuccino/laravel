@@ -15,6 +15,7 @@ use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Laravel\Integrations\ApiResources\ResourceReflector;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ArticleResource;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\CastMetaResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\EnvelopeController;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\LinkedReleaseCollection;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ReleaseCollection;
@@ -29,8 +30,9 @@ use Illuminate\Routing\Router;
  * The members a root resource's `with()` adds, locked in emitted bytes. No other golden carries a
  * resource with a `with()` of its own or a body that can be sent as `[]`, so none could move when those
  * reads change. The routes return the resource at the root, nest it inside another resource's
- * `toArray`, return two named collections, a resource whose every key is conditional, and one setting
- * the `$with` property; they are their own document, so this golden moves only when these answers do.
+ * `toArray`, return two named collections, a resource whose every key is conditional, one setting
+ * the `$with` property, and one building its objects with `(object)` casts; they are their own
+ * document, so this golden moves only when these answers do.
  */
 afterEach(fn () => removeFragmentCacheDirs('resource-with'));
 
@@ -62,6 +64,16 @@ beforeEach(function (): void {
         ]),
         EnvelopeController::class.'::configured' => new ActionAnalysis(returns: [new ReturnSite(new ClassT(WithPropertyResource::class), $location)]),
         WithPropertyResource::class.'::toArray' => $shape([new ArrayShapeField('tag', ScalarT::string())]),
+        // What the engine reads `(object) []` and `(object) ['self' => …]` as.
+        EnvelopeController::class.'::cast' => new ActionAnalysis(returns: [new ReturnSite(new ClassT(CastMetaResource::class), $location)]),
+        CastMetaResource::class.'::toArray' => $shape([
+            new ArrayShapeField('tag', ScalarT::string()),
+            new ArrayShapeField('settings', new ArrayShapeT([], isObject: true)),
+        ]),
+        CastMetaResource::class.'::with' => $shape([
+            new ArrayShapeField('meta', new ArrayShapeT([], isObject: true)),
+            new ArrayShapeField('links', new ArrayShapeT([new ArrayShapeField('self', ScalarT::string())], isObject: true)),
+        ]),
     ]);
 
     $this->routes = static function (Router $router): void {
@@ -71,6 +83,7 @@ beforeEach(function (): void {
         $router->get('api/zz-linked-releases', [EnvelopeController::class, 'linked']);
         $router->get('api/zz-sparse', [EnvelopeController::class, 'sparse']);
         $router->get('api/zz-configured', [EnvelopeController::class, 'configured']);
+        $router->get('api/zz-cast', [EnvelopeController::class, 'cast']);
     };
 });
 
@@ -95,7 +108,16 @@ it('emits the with() members of a root resource byte-identical to its committed 
         // Every key conditional: Laravel filters them all out and sends `[]`, which the object rejects.
         ->and($document['components']['schemas']['SparseResource']['anyOf'][1])->toBe(['type' => 'array', 'maxItems' => 0])
         // A `$with` set on the class may say anything at runtime, so the envelope names only `data`.
-        ->and(array_keys($body('/api/zz-configured')['properties']))->toBe(['data']);
+        ->and(array_keys($body('/api/zz-configured')['properties']))->toBe(['data'])
+        // An object is sent as `{}` however it was spelled and never filtered, so an empty cast is a bare
+        // object in the body as in `with()`, and a keyed one carries its keys.
+        ->and($document['components']['schemas']['CastMetaResource']['properties']['settings'])->toBe(['type' => 'object'])
+        ->and($body('/api/zz-cast')['properties']['meta'])->toBe(['type' => 'object'])
+        ->and($body('/api/zz-cast')['properties']['links'])->toBe([
+            'type' => 'object',
+            'properties' => ['self' => ['type' => 'string']],
+            'required' => ['self'],
+        ]);
 });
 
 it('keys the fragment on the file with() is written in, and a warm build equals a cold one', function (): void {

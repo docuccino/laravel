@@ -296,7 +296,7 @@ it('resolves a dotted rule key to an object rather than an array with properties
                 'properties' => [
                     'mode' => [
                         'type' => 'string',
-                        'description' => 'Required when any of metadata is present.',
+                        'description' => 'Required when metadata is present.',
                     ],
                 ],
             ],

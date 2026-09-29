@@ -31,6 +31,7 @@ final class ValidationRequestExtension implements OperationExtension
         private readonly RuleOrdering $ordering = new RuleOrdering,
         private readonly RuleSetNormalizer $normalizer = new RuleSetNormalizer,
         private readonly RecoveredRequest $request = new RecoveredRequest,
+        private readonly CopiedInputs $copied = new CopiedInputs,
     ) {}
 
     public function phase(): OperationPhase
@@ -45,8 +46,17 @@ final class ValidationRequestExtension implements OperationExtension
             return;
         }
 
-        $normalized = $this->normalizer->normalize($rules);
+        $normalized = $this->normalizer->normalize($rules, RecoveredRequest::publishesVariants($context, $sourceClass));
         RuleSetNormalizer::report($normalized, $context, $sourceClass);
+
+        // A key the FormRequest overwrites with a header, query value or route parameter validates that
+        // part of the request, never the body; its rules are published there ({@see CopiedInputParameters}).
+        if ($sourceClass !== null) {
+            $normalized = $this->copied->move($operation, $context, $sourceClass, $normalized);
+            if (CopiedInputs::movedFrom($operation) !== []) {
+                $operation->declareValidatesInput();
+            }
+        }
 
         $result = $context->validation()->convert($this->ordering->order($normalized), $context->converter());
         if ($result->isEmpty()) {

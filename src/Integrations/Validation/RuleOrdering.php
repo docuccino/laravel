@@ -55,12 +55,7 @@ final class RuleOrdering
 
     public function order(RuleSet $rules): RuleSet
     {
-        $fields = [];
-        foreach ($rules->fields as $field => $fieldRules) {
-            $fields[$field] = $this->orderField($fieldRules);
-        }
-
-        return new RuleSet($fields);
+        return $rules->mapFields($this->orderField(...));
     }
 
     /**

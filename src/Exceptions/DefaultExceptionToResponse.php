@@ -71,9 +71,14 @@ final class DefaultExceptionToResponse implements ExceptionToResponse
 
         // Generic body, but not a generic error: the status still says which one, so the shared
         // component is named after it. A status with no reason phrase of its own declares nothing.
+        //
+        // `message` is required because the framework always writes it: whatever reaches its JSON
+        // renderer is turned into an array that carries `message` in debug and production alike, an
+        // `HttpException` of any status included — the same body the framework-errors tier publishes.
         $draft->claimComponentName(FrameworkExceptionTable::componentName($status), $contribution, isStatusDefault: true);
         $draft->content('application/json')->set('type', 'object', $contribution);
         $draft->content('application/json')->set('properties', ['message' => ['type' => 'string']], $contribution);
+        $draft->content('application/json')->set('required', ['message'], $contribution);
 
         return $draft;
     }

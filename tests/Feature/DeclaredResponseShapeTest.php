@@ -57,6 +57,11 @@ it('publishes a declared body as the shape the author declared', function (strin
         'list<string>',
         ['type' => 'array', 'items' => ['type' => 'string']],
     ],
+    // A body declared to have no keys is `[]` on the wire — json_encode never writes an empty array as `{}`.
+    'an empty array over the map it replaced' => [
+        'array{}',
+        ['type' => 'array', 'items' => []],
+    ],
     'a scalar over the map it replaced' => [
         'string',
         ['type' => 'string'],

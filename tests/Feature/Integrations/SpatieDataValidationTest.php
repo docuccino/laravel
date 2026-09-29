@@ -116,7 +116,7 @@ it('drives the supported tokens through the shared chain to the expected schema'
         ->and($props['in'])->toBe(['type' => 'string', 'enum' => ['draft', 'published'], 'x-enum-varnames' => ['Draft', 'Published'], 'x-enumNames' => ['Draft', 'Published'], 'example' => 'draft'])
         ->and($props['max'])->toBe(['type' => 'string', 'maxLength' => 500, 'example' => 'example'])
         ->and($props['between'])->toBe(['type' => 'integer', 'minimum' => 1, 'maximum' => 10, 'example' => 1])
-        ->and($props['regex'])->toBe(['type' => 'string', 'pattern' => '^[a-z]+$', 'example' => 'example'])
+        ->and($props['regex'])->toBe(['type' => 'string', 'pattern' => '^[a-z]+\\n?$', 'example' => 'example'])
         // `#[ArrayType]` alone says only "an array"; the recovered `list<string>` synthesises the
         // `arrayType.*` item field Laravel would write by hand, so the items survive it.
         ->and($props['arrayType'])->toBe(['type' => 'array', 'items' => ['type' => 'string']]);

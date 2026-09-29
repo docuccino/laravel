@@ -33,6 +33,7 @@ use Docuccino\Laravel\Tests\Fixtures\ApiResources\ReleaseCollection;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ReleaseFeedCollection;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ReleaseResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\SparseResource;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\TalliedReleaseCollection;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\WithPropertyResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -73,6 +74,12 @@ beforeEach(function (): void {
         ]))]),
         ReleaseCollection::class.'::with' => new ActionAnalysis(returns: [$site(new ArrayShapeT([
             new ArrayShapeField('meta', new ArrayShapeT([new ArrayShapeField('key', ScalarT::string())])),
+        ]))]),
+        TalliedReleaseCollection::class.'::with' => new ActionAnalysis(returns: [$site(new ArrayShapeT([
+            new ArrayShapeField('meta', new ArrayShapeT([
+                new ArrayShapeField('total', ScalarT::int()),
+                new ArrayShapeField('key', ScalarT::string()),
+            ])),
         ]))]),
         LinkedReleaseCollection::class.'::toArray' => new ActionAnalysis(returns: [$site(new ArrayShapeT([
             new ArrayShapeField('data', new ListT(new ClassT(ReleaseResource::class))),
@@ -188,6 +195,23 @@ it('accepts a named collection with Laravel\'s own toArray, paginated or not, wi
         ->and($paged->meta->total)->toBe(2)
         ->and(($this->accepts)($schema, $plain))->toBeTrue()
         ->and(($this->accepts)($schema, $paged))->toBeTrue();
+});
+
+it('accepts a with() meta key a paginated named collection also sends, as the array Laravel merges them into', function (): void {
+    $schema = ($this->published)(TalliedReleaseCollection::class);
+    $items = [(object) ['tag' => 'a'], (object) ['tag' => 'b']];
+
+    $plain = ($this->sent)(new TalliedReleaseCollection(collect($items)));
+    $paged = ($this->sent)(new TalliedReleaseCollection(new LengthAwarePaginator($items, 2, 15)));
+
+    // array_merge_recursive keeps both values of a key both sides send, as a list.
+    expect($plain->meta->total)->toBe(5)
+        ->and($paged->meta->total)->toBe([2, 5])
+        ->and($paged->meta->key)->toBe('value')
+        ->and(($this->accepts)($schema, $plain))->toBeTrue()
+        ->and(($this->accepts)($schema, $paged))->toBeTrue()
+        // The key the page never sends keeps its type.
+        ->and(($this->accepts)($schema, (object) [...(array) $plain, 'meta' => (object) ['total' => 5, 'key' => [1]]]))->toBeFalse();
 });
 
 it('does not wrap a collection whose toArray already returns its data key', function (): void {

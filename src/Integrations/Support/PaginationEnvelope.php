@@ -22,6 +22,9 @@ namespace Docuccino\Laravel\Integrations\Support;
  */
 final class PaginationEnvelope
 {
+    /** What `array_merge_recursive` sends for a key both sides send: an array, a list or not. */
+    public const MERGED = ['type' => ['array', 'object']];
+
     /**
      * The envelope for `$kind`. An unknown kind gets the length-aware shape — the paginator an
      * application reaches for unless it says otherwise.
@@ -105,6 +108,79 @@ final class PaginationEnvelope
                 ])),
             ],
         };
+    }
+
+    /**
+     * Every key Laravel sends in each part for `$kind`, as what it sends there — which can be more than the
+     * part names: the links are always all four, null where there is no such page, and the meta is the
+     * paginator's `toArray()` less `data` and the page URLs.
+     *
+     * @return array{links: array<string, array<string, mixed>>, meta: array<string, array<string, mixed>>}
+     */
+    public static function sent(string $kind): array
+    {
+        $built = self::builds($kind);
+        $parts = self::parts($built);
+        $named = static fn (string $part): array => is_array($parts[$part]['schema']['properties'] ?? null) ? $parts[$part]['schema']['properties'] : [];
+
+        // What each kind sends beyond what its part names.
+        [$links, $meta] = match ($built) {
+            'simple' => [['last' => ['type' => 'null']], ['current_page_url' => ['type' => 'string']]],
+            'cursor' => [[], []],
+            default => [[], ['links' => ['type' => 'array', 'items' => ['type' => 'object']]]],
+        };
+
+        /** @var array<string, array<string, mixed>> $links */
+        $links = [...$named('links'), ...$links];
+        /** @var array<string, array<string, mixed>> $meta */
+        $meta = [...$named('meta'), ...$meta];
+
+        return ['links' => $links, 'meta' => $meta];
+    }
+
+    /**
+     * `with()`'s members as they are sent when the collection may or may not hold a paginator, whose `links`
+     * and `meta` are merged with them by `array_merge_recursive`: a member under either name is its own
+     * value or an object the page's joins, and a key both send is its own value or the array the two are
+     * merged into. A part whose keys are not all named is widened to any object, since the page's keys
+     * join it whatever it says of the rest.
+     *
+     * @param  array<string, mixed>  $properties
+     * @return array<string, mixed>
+     */
+    public static function mayMergeInto(array $properties): array
+    {
+        foreach (['links', 'meta'] as $part) {
+            $member = $properties[$part] ?? null;
+            if (! is_array($member)) {
+                continue;
+            }
+
+            if (($member['type'] ?? null) !== 'object') {
+                $properties[$part] = ['anyOf' => [$member, ['type' => 'object']]];
+
+                continue;
+            }
+
+            if (array_key_exists('patternProperties', $member) || (array_key_exists('additionalProperties', $member) && $member['additionalProperties'] !== false)) {
+                unset($member['patternProperties'], $member['additionalProperties']);
+            }
+
+            $named = is_array($member['properties'] ?? null) ? $member['properties'] : [];
+            $sent = [];
+            foreach (['length', 'simple', 'cursor'] as $kind) {
+                $sent = [...$sent, ...self::sent($kind)[$part]];
+            }
+            foreach (array_intersect_key($named, $sent) as $key => $schema) {
+                $named[$key] = ['anyOf' => [$schema, self::MERGED]];
+            }
+            if ($named !== []) {
+                $member['properties'] = $named;
+            }
+            $properties[$part] = $member;
+        }
+
+        return $properties;
     }
 
     /**

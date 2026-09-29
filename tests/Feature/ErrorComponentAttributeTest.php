@@ -55,8 +55,9 @@ use Workbench\App\Http\Controllers\FormController;
  * producer uses, so there is one naming path and the precedence ladder is the ordinary one — the status
  * default the built-in tiers claim, then the attribute, then a mapper that named the body itself.
  *
- * 409 is the status throughout: the workbench documents none, so what these rows publish is theirs
- * alone. 410 stands in for a status with no default name at all.
+ * 409 is the status throughout. The workbench documents one 409 of its own, the framework's `{message}`
+ * body, so a row whose assertion holds only while it is the sole 409 scopes the build to its own routes.
+ * 410 is what the actions' `#[Response]` declares, a body no tier claims a name for.
  */
 
 /** The action symbols the rows script, one per route registered below. */
@@ -456,6 +457,11 @@ it('names an undeclared exception\'s error after its status, as it always did', 
 });
 
 it('publishes an error under the name its exception declares', function (): void {
+    // Only the declared routes: the workbench states a framework 409 of its own, the same `{message}` body,
+    // and a second statement of a body is what shares it — so beside the workbench this error would not be
+    // the only one at its status and the rule under test would not be what decides.
+    setBuild('documents.default.routes.include', ['api/zz-declared-*']);
+
     $document = declaringBuild([
         'first' => [ThingMissingException::class, 409],
         'second' => [ThingMissingException::class, 409],
@@ -474,6 +480,11 @@ it('leaves an error only one operation states inline, declared or not', function
     // declared error alone publishes exactly what an undeclared one alone publishes, which is nothing.
     // What repeats decides WHETHER a body is hoisted; a declaration decides only what the component is
     // called, and it cannot promote a body the document states once.
+    // Only the declared routes: the workbench states a framework 409 of its own, the same `{message}` body,
+    // and a second statement of a body is what shares it — so beside the workbench this error would not be
+    // the only one at its status and the rule under test would not be what decides.
+    setBuild('documents.default.routes.include', ['api/zz-declared-*']);
+
     $result = declaringBuild(['first' => [ThingMissingException::class, 409]]);
     $document = $result->document->toArray();
 
@@ -481,8 +492,8 @@ it('leaves an error only one operation states inline, declared or not', function
 
     expect($response)->not->toHaveKey('$ref')
         ->and($response['content']['application/json']['schema'])->not->toHaveKey('$ref')
-        ->and($document['components']['schemas'])->not->toHaveKey('ResourceMissing')
-        ->and($document['components']['responses'])->not->toHaveKey('ResourceMissing')
+        ->and($document['components']['schemas'] ?? [])->not->toHaveKey('ResourceMissing')
+        ->and($document['components']['responses'] ?? [])->not->toHaveKey('ResourceMissing')
         // Nothing to report either: the author's declaration is neither wrong nor ignored, and a warning
         // on every one-off error would fire where its reader can do nothing but throw the exception twice.
         ->and(diagnosticsCoded($result->diagnostics, 'attribute.error-component-invalid'))->toBeEmpty()
@@ -493,20 +504,25 @@ it('leaves an error only one operation states inline, declared or not', function
 });
 
 it('names a status that has no default name of its own', function (): void {
-    // 410 has no reason phrase in the table, so nothing claims a name for it and the body would be
-    // `Error410`. The declaration is the only name it will ever have.
+    // The IANA registry does not name 419, so nothing claims a name for it and the body would be
+    // `Error419`. The declaration is the only name it will ever have.
     $document = declaringBuild([
-        'first' => [ThingMissingException::class, 410],
-        'second' => [ThingMissingException::class, 410],
+        'first' => [ThingMissingException::class, 419],
+        'second' => [ThingMissingException::class, 419],
     ])->document->toArray();
 
     expect($document['components']['schemas'])->toHaveKey('ResourceMissing')
-        ->and($document['components']['schemas'])->not->toHaveKey('Error410');
+        ->and($document['components']['schemas'])->not->toHaveKey('Error419');
 });
 
 it('inherits a declaration from a base exception that carries one', function (): void {
     // PHP does not inherit class attributes; an application's `ApiException` base naming its component
     // once is the shape the reader walks parents for.
+    // Only the declared routes: the workbench states a framework 409 of its own, the same `{message}` body,
+    // and a second statement of a body is what shares it — so beside the workbench this error would not be
+    // the only one at its status and the rule under test would not be what decides.
+    setBuild('documents.default.routes.include', ['api/zz-declared-*']);
+
     $document = declaringBuild([
         'first' => [InheritedApiException::class, 409],
         'second' => [InheritedApiException::class, 409],
@@ -691,6 +707,11 @@ it('does not let a name it refused contest one it accepted', function (): void {
     // A refused name is not a declaration, so the status has one declaration and not two: the legal name
     // stands. Counting the refused one as a contestant would let a typo on an unrelated exception strip
     // a correctly named response back to its default.
+    // Only the declared routes: the workbench states a framework 409 of its own, the same `{message}` body,
+    // and a second statement of a body is what shares it — so beside the workbench this error would not be
+    // the only one at its status and the rule under test would not be what decides.
+    setBuild('documents.default.routes.include', ['api/zz-declared-*']);
+
     /** @var Router $router */
     $router = app('router');
     $router->get('api/zz-declared-first', [DeclaredErrorsController::class, 'first']);

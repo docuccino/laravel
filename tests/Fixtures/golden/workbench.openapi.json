@@ -294,7 +294,7 @@
             }
           },
           "402": {
-            "description": "Error",
+            "description": "Payment Required",
             "content": {
               "application/json": {
                 "schema": {
@@ -1512,7 +1512,10 @@
           "message": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "message"
+        ]
       },
       "Forbidden": {
         "type": "object",

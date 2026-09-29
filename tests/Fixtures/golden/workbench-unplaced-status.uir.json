@@ -159,6 +159,7 @@
                         "layer": "fallback",
                         "fields": [
                           "properties",
+                          "required",
                           "type"
                         ],
                         "source": {
@@ -174,7 +175,10 @@
                     "message": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "required": [
+                    "message"
+                  ]
                 }
               }
             }
@@ -482,14 +486,17 @@
     "schemas": {
       "InternalServerError": {
         "x-docuccino": {
-          "id": "sch:v1:syuzvew3d6x3t4zg"
+          "id": "sch:v1:ymhinvqj233m43e2"
         },
         "type": "object",
         "properties": {
           "message": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "message"
+        ]
       }
     },
     "responses": {
@@ -509,7 +516,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "19bce5833a3808b8bee3b77f8a08ba1f508285b5ea777588a292837c4b24ac4a"
+      "contentHash": "dd64fe6b150bcb3bf3e9d66a68758389dcd68a21ee0e7cc7b4760c33fa180ad1"
     },
     "generator": {
       "name": "docuccino/laravel",

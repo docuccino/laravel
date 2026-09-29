@@ -11,8 +11,11 @@ use Docuccino\Laravel\Pipeline\DocumentGenerator;
 use Docuccino\Laravel\Tests\Support\TraceScript;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Illuminate\Routing\Router;
+use Workbench\App\Http\Controllers\NotesController;
 use Workbench\App\Http\Controllers\RequestHeadersController;
 use Workbench\App\Http\Requests\PlaceOrderRequest;
+use Workbench\App\Http\Requests\SubmitNoteRequest;
+use Workbench\App\Http\Requests\TenantNoteRequest;
 
 /**
  * A header the server reads is an input the document owes the consumer: a client generated from a document
@@ -33,6 +36,8 @@ function requestHeadersDocument(array $settings = [], bool $golden = false): arr
     $formRequest = (string) (new ReflectionClass(PlaceOrderRequest::class))->getFileName();
     $request = new ClassT('Illuminate\\Http\\Request');
     $placeOrder = new ClassT(PlaceOrderRequest::class);
+    $submitNote = (string) (new ReflectionClass(SubmitNoteRequest::class))->getFileName();
+    $tenantNote = (string) (new ReflectionClass(TenantNoteRequest::class))->getFileName();
 
     $store = TraceScript::forMethod($controller, RequestHeadersController::class, 'store', ['request' => $placeOrder]);
     $callee = TraceScript::forMethod($formRequest, PlaceOrderRequest::class, 'idempotencyKey', ['this' => $placeOrder]);
@@ -49,6 +54,10 @@ function requestHeadersDocument(array $settings = [], bool $golden = false): arr
         PlaceOrderRequest::class.'::authorize' => TraceScript::forMethod($formRequest, PlaceOrderRequest::class, 'authorize', ['this' => $placeOrder]),
         PlaceOrderRequest::class.'::withValidator' => TraceScript::forMethod($formRequest, PlaceOrderRequest::class, 'withValidator', ['this' => $placeOrder]),
         PlaceOrderRequest::class.'::prepareForValidation' => TraceScript::forMethod($formRequest, PlaceOrderRequest::class, 'prepareForValidation', ['this' => $placeOrder]),
+        SubmitNoteRequest::class.'::rules' => TraceScript::forMethod($submitNote, SubmitNoteRequest::class, 'rules'),
+        SubmitNoteRequest::class.'::prepareForValidation' => TraceScript::forMethod($submitNote, SubmitNoteRequest::class, 'prepareForValidation', ['this' => new ClassT(SubmitNoteRequest::class)]),
+        TenantNoteRequest::class.'::rules' => TraceScript::forMethod($tenantNote, TenantNoteRequest::class, 'rules'),
+        TenantNoteRequest::class.'::prepareForValidation' => TraceScript::forMethod($tenantNote, TenantNoteRequest::class, 'prepareForValidation', ['this' => new ClassT(TenantNoteRequest::class)]),
     ]));
 
     /** @var Router $router */
@@ -57,11 +66,15 @@ function requestHeadersDocument(array $settings = [], bool $golden = false): arr
     $router->get('api/traced/{dynamic}', [RequestHeadersController::class, 'trace']);
     $router->get('api/pinned', [RequestHeadersController::class, 'pinned']);
     $router->get('api/quiet', [RequestHeadersController::class, 'quiet']);
+    $router->post('api/notes/{note}', [NotesController::class, 'submitNote']);
+    $router->get('api/notes/{note}', [NotesController::class, 'showNote']);
+    $router->put('api/notes/{note}', [NotesController::class, 'replayNote']);
+    $router->post('api/tenant-notes', [NotesController::class, 'tenantNote']);
 
     /** @var array<string, mixed> $raw */
     $raw = array_replace(documentSettings(), $settings);
     $raw['info'] = ['title' => 'Request Headers API', 'version' => '1.0.0'];
-    $raw['routes'] = ['include' => ['api/orders', 'api/traced/*', 'api/pinned', 'api/quiet']];
+    $raw['routes'] = ['include' => ['api/orders', 'api/traced/*', 'api/pinned', 'api/quiet', 'api/notes/*', 'api/tenant-notes']];
 
     $config = app(DocumentConfigFactory::class)->make('request-headers', $raw, 'skeleton');
     $emitted = (new UirEmitter)->emit(app(DocumentGenerator::class)->generate($config, app(TypeEngine::class))->document);
@@ -166,4 +179,65 @@ it('drops a header it read when the author ignores it by the name it publishes',
     // The one way to keep a header the code reads out of the contract, so it has to reach this producer's
     // parameters as it reaches any other's.
     expect(array_keys(requestHeaderParameters(requestHeadersDocument(), '/api/quiet', 'get')))->toBe(['X-Request-Id']);
+});
+
+it('publishes the rules for a copied header on the header, and drops the body field they never read', function (): void {
+    $document = requestHeadersDocument();
+    $headers = requestHeaderParameters($document, '/api/notes/{note}', 'post');
+
+    // `merge()` writes the header's value over whatever the body sent, and an absent header arrives as a
+    // present null — so `sometimes` never skips the key, `in:` fails the null, and a request without the
+    // header is a 422: required. `nullable` lets the null through, so `X-Trace-Id` may be left off.
+    // `X-Forwarded-For` is a header a proxy sets, which no read publishes, so its rules have nowhere to go.
+    expect($headers)->toBe([
+        'Idempotency-Key' => ['name' => 'Idempotency-Key', 'in' => 'header', 'required' => true, 'schema' => ['type' => 'string', 'format' => 'uuid', 'example' => '3fa85f64-5717-4562-b3fc-2c963f66afa6']],
+        'X-Channel' => ['name' => 'X-Channel', 'in' => 'header', 'required' => true, 'schema' => ['type' => 'string', 'enum' => ['web', 'mobile'], 'example' => 'web', 'x-enum-varnames' => ['Web', 'Mobile'], 'x-enumNames' => ['Web', 'Mobile']]],
+        'X-Trace-Id' => ['name' => 'X-Trace-Id', 'in' => 'header', 'required' => false, 'schema' => ['type' => 'string', 'maxLength' => 64, 'example' => 'example']],
+    ]);
+
+    // The body keeps what the server reads from it, and the computed `slug` stays as it was: whether a
+    // computed value reads the body key it overwrites is not something this can tell.
+    $body = $document['components']['schemas']['SubmitNoteRequest'];
+    expect(array_keys($body['properties']))->toBe(['note', 'slug', 'title'])
+        ->and($body['required'])->toBe(['note', 'title', 'slug']);
+});
+
+it('publishes the rules for a copied query value on that query parameter, under the name it is read by', function (): void {
+    $parameters = $document = requestHeadersDocument()['paths']['/api/notes/{note}']['post']['parameters'];
+    $query = array_values(array_filter($parameters, static fn (array $parameter): bool => $parameter['in'] === 'query'));
+    unset($query[0]['x-docuccino'], $query[0]['schema']['x-docuccino']);
+
+    // The route parameter `note` already states its own value, so the copy of it only leaves the body.
+    expect($query)->toBe([
+        ['name' => 'per_page', 'in' => 'query', 'required' => false, 'schema' => ['type' => 'integer', 'maximum' => 100, 'minimum' => 1, 'example' => 1]],
+    ]);
+});
+
+it('publishes no query parameter for a copied key on a read verb, where the copy overwrites that key too', function (): void {
+    $parameters = requestHeadersDocument()['paths']['/api/notes/{note}']['get']['parameters'];
+    $query = array_column(array_filter($parameters, static fn (array $parameter): bool => $parameter['in'] === 'query'), 'name');
+
+    expect($query)->toBe(['note', 'per_page', 'slug', 'title'])
+        ->and(requestHeaderParameters(requestHeadersDocument(), '/api/notes/{note}', 'get')['Idempotency-Key']['required'])->toBeTrue();
+});
+
+it('leaves a copied header the author declared as they declared it, and fills in only what they left out', function (): void {
+    $headers = requestHeaderParameters(requestHeadersDocument(), '/api/notes/{note}', 'put');
+
+    // One parameter under the declared spelling; the declared `required: false` stands over the rules.
+    expect($headers['idempotency-key'])->toBe([
+        'name' => 'idempotency-key',
+        'in' => 'header',
+        'description' => 'Makes a retried request safe to repeat.',
+        'required' => false,
+        'schema' => ['type' => 'string', 'format' => 'uuid', 'example' => '3fa85f64-5717-4562-b3fc-2c963f66afa6'],
+    ])->and($headers)->not->toHaveKey('Idempotency-Key');
+});
+
+it('leaves a header copied only when it was sent to the body field a client without it fills in', function (): void {
+    $document = requestHeadersDocument();
+
+    expect(requestHeaderParameters($document, '/api/tenant-notes', 'post'))->toBe([
+        'X-Tenant' => ['name' => 'X-Tenant', 'in' => 'header', 'required' => false, 'schema' => ['type' => 'string']],
+    ])->and($document['components']['schemas']['TenantNoteRequest']['required'])->toBe(['tenant']);
 });

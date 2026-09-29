@@ -162,36 +162,21 @@
             "example": "example"
           },
           "payment": {
-            "type": "object",
-            "properties": {
-              "card_number": {
-                "description": "Required when payment.method is card.",
-                "type": "string"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StorePaymentRequestPaymentCard"
               },
-              "iban": {
-                "description": "Required when payment.method is transfer.",
-                "type": "string"
-              },
-              "method": {
-                "type": "string",
-                "enum": [
-                  "card",
-                  "transfer"
-                ],
-                "example": "card",
-                "x-enum-varnames": [
-                  "Card",
-                  "Transfer"
-                ],
-                "x-enumNames": [
-                  "Card",
-                  "Transfer"
-                ]
+              {
+                "$ref": "#/components/schemas/StorePaymentRequestPaymentTransfer"
               }
-            },
-            "required": [
-              "method"
-            ]
+            ],
+            "discriminator": {
+              "mapping": {
+                "card": "#/components/schemas/StorePaymentRequestPaymentCard",
+                "transfer": "#/components/schemas/StorePaymentRequestPaymentTransfer"
+              },
+              "propertyName": "method"
+            }
           },
           "reference": {
             "type": "string"
@@ -205,6 +190,44 @@
           "reference",
           "channel"
         ]
+      },
+      "StorePaymentRequestPaymentCard": {
+        "x-docuccino": {
+          "id": "sch:v1:7cse7bckox7jr7bh"
+        },
+        "type": "object",
+        "properties": {
+          "card_number": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "const": "card"
+          }
+        },
+        "required": [
+          "method",
+          "card_number"
+        ]
+      },
+      "StorePaymentRequestPaymentTransfer": {
+        "x-docuccino": {
+          "id": "sch:v1:vf3admmk7yar3f2n"
+        },
+        "type": "object",
+        "properties": {
+          "iban": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "const": "transfer"
+          }
+        },
+        "required": [
+          "method",
+          "iban"
+        ]
       }
     }
   },
@@ -212,7 +235,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "a1c51c8f7e14880229470d0a469b44b3cca149916dcfd1addc719bd875ead954"
+      "contentHash": "f5320e0cb63d99a36606baf9172bc016ce38c26a5a76d1dce91d6b0240c10286"
     },
     "generator": {
       "name": "docuccino/laravel",

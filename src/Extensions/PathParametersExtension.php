@@ -19,9 +19,14 @@ use Docuccino\Core\Extensions\Contracts\RouteBindingSchemaResolver;
 use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Extensions\Schema\DeclarationFiles;
+use Docuccino\Core\Extensions\Schema\EnumDecoration;
 use Docuccino\Core\Extensions\Schema\EnumReflection;
 use Docuccino\Core\Inference\DType\EnumT;
 use Docuccino\Core\Patch\Contribution;
+use Docuccino\Core\Support\PortablePattern;
+use Docuccino\Laravel\Routing\RouteConstraints;
+use Docuccino\Laravel\Support\ListValueNames;
+use Illuminate\Routing\Route;
 use ReflectionEnum;
 
 /**
@@ -33,6 +38,13 @@ use ReflectionEnum;
  * segment — a disabled Eloquent integration, an int-backed or pure enum, a custom `UrlRoutable` —
  * gives a required string, as does a binding whose matching column is a method body, and
  * `#[PathParameter]` can refine any of it from the higher attribute layer.
+ *
+ * A segment the route constrains (`->where()`, `whereUuid()`, `Route::pattern()`) and nothing typed is
+ * published as what the router will match, since any other value is a 404 and never reaches the action:
+ * the framework's UUID and ULID expressions as those formats, an alternation of literals (`whereIn()`)
+ * as that enum, and any other expression as a `pattern` accepting what it does ({@see RouteConstraints::pattern()}).
+ * One no pattern can state truly is left a plain string and reported — a pattern narrower than the
+ * router would mark working requests invalid.
  *
  * A bound parameter also carries what the route and the model settle about how it RESOLVES, which is
  * the half a consumer cannot read off the path: the column the value is matched on, the parent it is
@@ -52,6 +64,12 @@ use ReflectionEnum;
 final class PathParametersExtension implements OperationExtension
 {
     private const TRASHED_NOTE = 'Resolves soft-deleted (trashed) records as well as active ones.';
+
+    /** Constraints that match any segment at all. */
+    private const CATCH_ALL = ['.*', '.+'];
+
+    /** @var array<string, string>|null */
+    private static ?array $frameworkFormats = null;
 
     public function phase(): OperationPhase
     {
@@ -84,12 +102,21 @@ final class PathParametersExtension implements OperationExtension
                     $parameter->schema()->set((string) $keyword, $value, $contribution);
                 }
             } else {
+                // The route's constraint answers what the binding could not, and the document then no
+                // longer says "a plain string", so a notice saying it does would be false.
+                $constraint = $this->constraint($context, $name);
+                foreach ($constraint ?? [] as $keyword => $value) {
+                    $parameter->schema()->set($keyword, $value, Contribution::inference());
+                }
+
                 // A binding nothing could type is a fallback string, not an inferred one — and it is
                 // reported, because the route says more about this parameter than the document does.
                 $degraded = $isBound;
-                $parameter->schema()->set('type', 'string', $degraded ? Contribution::fallback() : $contribution);
+                if ($constraint === null) {
+                    $parameter->schema()->set('type', 'string', $degraded ? Contribution::fallback() : $contribution);
+                }
 
-                if ($isBound && ! self::declaresType($context, $name)) {
+                if ($isBound && $constraint === null && ! self::declaresType($context, $name)) {
                     if (self::isCustomBound($context, $name)) {
                         $this->reportCustomBinding($context, $name);
                     } elseif ($field !== null) {
@@ -104,6 +131,93 @@ final class PathParametersExtension implements OperationExtension
                 $this->describeBinding($parameter, $context, $name, $field, $contribution);
             }
         }
+    }
+
+    /**
+     * What the route's constraint on this segment settles, or null when it settles nothing a schema can
+     * say truly — reported, unless the constraint is a catch-all a plain string already describes.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function constraint(RouteContext $context, string $name): ?array
+    {
+        $expression = $context->pathParameterConstraints[$name] ?? null;
+        if ($expression === null || in_array($expression, self::CATCH_ALL, true)) {
+            return null;
+        }
+
+        $schema = self::constraintSchema($expression, $context);
+        if ($schema === null) {
+            $this->reportUnportableConstraint($context, $name, $expression);
+        }
+
+        return $schema;
+    }
+
+    /**
+     * The schema that says what the expression matches, or null when none says it truly.
+     *
+     * @return array<string, mixed>|null
+     */
+    private static function constraintSchema(string $expression, RouteContext $context): ?array
+    {
+        $format = self::frameworkFormats()[$expression] ?? null;
+        if ($format !== null) {
+            return ['type' => 'string', 'format' => $format];
+        }
+
+        $values = PortablePattern::literals($expression);
+        if ($values !== null) {
+            return EnumDecoration::apply(
+                ['type' => 'string', 'enum' => $values],
+                $context->representation()->enumNaming,
+                ListValueNames::names($values),
+                [],
+            );
+        }
+
+        $pattern = RouteConstraints::pattern($expression);
+
+        return $pattern === null ? null : ['type' => 'string', 'pattern' => $pattern];
+    }
+
+    /**
+     * The expressions the framework's own `whereUuid()`/`whereUlid()` write, read off the framework
+     * installed rather than copied, so a release that changes one cannot leave this matching the old.
+     * The UUID one spells its digits `\d`, which is Unicode-wide under the router's modifiers and so
+     * no portable pattern; the format is what the shorthand states, and what a UUID-keyed binding
+     * publishes too.
+     *
+     * @return array<string, string>
+     */
+    private static function frameworkFormats(): array
+    {
+        if (self::$frameworkFormats === null) {
+            $probe = new Route(['GET'], '{segment}', static fn (): null => null);
+            $uuid = $probe->whereUuid('segment')->wheres['segment'];
+            $ulid = $probe->whereUlid('segment')->wheres['segment'];
+
+            self::$frameworkFormats = is_string($uuid) && is_string($ulid) ? [$uuid => 'uuid', $ulid => 'ulid'] : [];
+        }
+
+        return self::$frameworkFormats;
+    }
+
+    /** Says the route constrains the segment in a way no portable `pattern` can state. */
+    private function reportUnportableConstraint(RouteContext $context, string $name, string $expression): void
+    {
+        $context->components->addDiagnostic(new Diagnostic(
+            severity: Severity::Info,
+            code: 'route-constraint.unportable',
+            message: sprintf(
+                '{%s} must match the route constraint `%s`, which reads differently as a JSON Schema pattern, so the parameter is documented as a plain string.',
+                $name,
+                $expression,
+            ),
+            routeSignature: $context->route->signature($context->httpMethod()),
+            help: 'Spell the constraint with literal characters, bracket classes, groups, alternation and quantifiers, and it is published as the parameter\'s `pattern`. '
+                .'A count over `\d`, `\w` or a negated class, such as `\d{4}`, counts characters in the router and UTF-16 units in a JSON Schema validator, so write `[0-9]{4}` where ASCII digits are meant.',
+        ));
     }
 
     /**

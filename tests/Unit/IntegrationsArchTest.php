@@ -81,6 +81,10 @@ function publicExtensionSurface(): array
         'Docuccino\Core\Extensions\Validation\RecoveredRequest',
         'Docuccino\Core\Extensions\Validation\ResponseDraftApplier',
         'Docuccino\Core\Extensions\Validation\RuleSet',
+        // The value a rule set carries beside its fields: which object a recovery proved is partitioned by
+        // a tag. RuleSet's own constructor takes it, so it is already on the surface RuleSet is on; the
+        // vocabulary that proves one stays in the recovering integration.
+        'Docuccino\Core\Extensions\Validation\TaggedVariants',
         'Docuccino\Core\Extensions\Validation\ValidationField',
         'Docuccino\Core\Extensions\Validation\ValidationRule',
         'Docuccino\Core\Extensions\Context',
@@ -119,6 +123,14 @@ function publicExtensionSurface(): array
         // publishing a different email address for the same keyword. It also carries the document's own
         // `representation.examples.formats` overrides at the single lookup, which a copy would not.
         'Docuccino\Core\Support\FormatSamples',
+        // Same exemption, same reason: the ONE answer to what an HTTP status is called. Every error tier
+        // describes a response and names its shared component by it, and a partial copy is how a `501`
+        // came to be described as "Error" beside a success response the registry already named.
+        'Docuccino\Core\Support\ReasonPhrase',
+        // Same exemption, same reason: the ONE reading of a PHP regex as a JSON Schema `pattern`. The
+        // router's constraints and the validation `regex:` rule are both PCRE, and a second reader beside
+        // the first is how one of them publishes `\d` as ASCII digits while the other knows better.
+        'Docuccino\Core\Support\PortablePattern',
         // Same exemption, same reason: the ONE ladder from a set of numeric bounds to a value they admit.
         // A bound both constrains a value and names one, so `minimum: 5` has a legal illustration where a
         // `pattern` has none — and an integration filling an unread member has to reach for the same one
@@ -173,6 +185,11 @@ function publicExtensionSurface(): array
         // and the guard→driver resolution are integrations — and each holding its own list is how three
         // of them came to read the alias only (consequence stated in the class).
         'Docuccino\Laravel\Support\AuthMiddlewareNames',
+        // And again: the ONE reading of what a header name is and when two are the same header. The
+        // request-header reads (an extension) publish a header under the framework's lookup key, and a
+        // FormRequest's copied input (an integration) has to find that parameter by the same key — a
+        // private copy of the fold is how a copy stops finding the header its read published.
+        'Docuccino\Laravel\Support\HeaderNames',
     ];
 }
 

@@ -132,6 +132,7 @@ final class LaravelRouteResolver implements RouteResolver
             cacheInputs: [
                 ...($route->allowsTrashedBindings() ? ['trashed'] : []),
                 ...RouteBindingFields::cacheInputs($route),
+                ...RouteConstraints::cacheInputs($route),
                 ...RouteBindingResolution::cacheInputs($this->router, $route),
                 ...self::aliasInputs($middleware, $aliases),
             ],

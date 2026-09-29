@@ -216,12 +216,11 @@ it('refuses a table that has gone short, or that pins the wrong number', functio
         ->and(array_values($pins))->not->toContain('418');
 });
 
-it('names every status it pins, so no error goes out described as a bare Error', function (): void {
-    // A status with no phrase publishes a generic `Error` description and no component name at all, so
-    // a class mapped without its phrase trades one under-description for another.
+it('pins only registered statuses, so every framework error is named after what it is', function (): void {
+    // A status the registry leaves unnamed is described by its class and declares no component name, so a
+    // class pinned to one would trade one under-description for another.
     foreach (frameworkHttpExceptionPins() as $status) {
-        expect(FrameworkExceptionTable::reason($status))->not->toBe('Error')
-            ->and(FrameworkExceptionTable::componentName($status))->not->toBeNull();
+        expect(FrameworkExceptionTable::componentName($status))->not->toBeNull();
     }
 });
 

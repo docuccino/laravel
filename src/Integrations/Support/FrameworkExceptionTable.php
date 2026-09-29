@@ -4,17 +4,18 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\Support;
 
+use Docuccino\Core\Support\ReasonPhrase;
+
 /**
  * How Laravel's stock exceptions map to HTTP responses. Every error tier reads this one table — the
  * plain-JSON framework-errors tier, the terminal fallback and the inferred-handler builder — so no two
  * presentations can drift on a status or its label.
  *
- * Reason phrases are the canonical ones from the RFC that DEFINES each status — RFC 9110 §15 for the
- * statuses it registers, and the extension's own RFC otherwise (423 is RFC 4918 §11.3, 428 and 429 are
- * RFC 6585 §3–4) — used verbatim as the framework-error response description. Note 401 is
- * "Unauthorized" (§15.5.2), not "Unauthenticated" — Laravel's own message wording is not the reason
- * phrase — and 413 is "Content Too Large" (§15.5.14), the name RFC 9110 gave what RFC 7231 called
- * "Payload Too Large".
+ * What a status is CALLED is not this table's to say: it is the IANA registry's, read through
+ * {@see ReasonPhrase}, which every other response in the document is described by too. An error's status
+ * is whatever the code threw — a `501` from an `HttpException` subclass is as much the framework's
+ * rendering as a `404` from `NotFoundHttpException` — so a list of the statuses Laravel ships an
+ * exception for is the wrong domain to name them from.
  *
  * @phpstan-type PlacedStatus array{status: string, unplaced: bool}
  */
@@ -86,34 +87,6 @@ final class FrameworkExceptionTable
     ];
 
     /**
-     * HTTP status → reason phrase. Covers every status the error tiers can emit; anything unlisted
-     * degrades to a generic `Error`. Typed `array<int, string>` because PHP coerces the numeric-string
-     * keys to int.
-     *
-     * @var array<int, string>
-     */
-    private const REASON_PHRASES = [
-        '400' => 'Bad Request',
-        '401' => 'Unauthorized',
-        '403' => 'Forbidden',
-        '404' => 'Not Found',
-        '405' => 'Method Not Allowed',
-        '406' => 'Not Acceptable',
-        '409' => 'Conflict',
-        '410' => 'Gone',
-        '411' => 'Length Required',
-        '412' => 'Precondition Failed',
-        '413' => 'Content Too Large',
-        '415' => 'Unsupported Media Type',
-        '422' => 'Unprocessable Entity',
-        '423' => 'Locked',
-        '428' => 'Precondition Required',
-        '429' => 'Too Many Requests',
-        '500' => 'Internal Server Error',
-        '503' => 'Service Unavailable',
-    ];
-
-    /**
      * The mapped exception FQCNs in table order — drives the dataset test over every entry.
      *
      * @return list<string>
@@ -180,37 +153,26 @@ final class FrameworkExceptionTable
             : ['status' => $facts['status'], 'unplaced' => false];
     }
 
-    /** The reason phrase for a status, or a generic `Error` when unlisted. */
+    /**
+     * The reason phrase for a status: the registered one, or the name of its class (`Server Error`) for a
+     * code the registry leaves unnamed — never another code's phrase.
+     */
     public static function reason(string $status): string
     {
-        return self::REASON_PHRASES[$status] ?? 'Error';
+        return ReasonPhrase::of($status);
     }
 
     /**
-     * The component name an error body for this status is published under — the reason phrase as one
-     * word, so what a client catches is called `NotFound` rather than `Error404`. Null for a status
-     * with no phrase of its own: `Error` names nothing, and every unlisted status would claim it.
+     * The component name an error body for this status is published under — the registered reason phrase
+     * as one identifier, so what a client catches is called `NotFound` rather than `Error404`. Registered
+     * phrases are distinct, so no two statuses ask for one name. Null for a code the registry does not
+     * name: its class is shared by every unregistered code in it, so `ClientError` would be asked for by
+     * a `419` and a `499` alike, and the body keeps `Error<status>`.
      */
     public static function componentName(string $status): ?string
     {
-        $phrase = self::REASON_PHRASES[$status] ?? null;
+        $phrase = ReasonPhrase::registeredPhrase($status);
 
-        return $phrase === null ? null : str_replace(' ', '', $phrase);
-    }
-
-    /**
-     * The `[status, phrase]` pairs, for the dataset test over every entry. A list of pairs rather than a
-     * map because PHP coerces the numeric-string keys back to int.
-     *
-     * @return list<array{string, string}>
-     */
-    public static function reasonPhrases(): array
-    {
-        $out = [];
-        foreach (self::REASON_PHRASES as $status => $phrase) {
-            $out[] = [(string) $status, $phrase];
-        }
-
-        return $out;
+        return $phrase === null ? null : (string) preg_replace('/[^A-Za-z0-9]/', '', $phrase);
     }
 }

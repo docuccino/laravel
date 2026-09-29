@@ -1,0 +1,657 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-phrase-first": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:am3xokq2jjtzxjv5",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/DeclaredErrors/DeclaredErrorsController.php",
+                "line": 20,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DeclaredErrors\\DeclaredErrorsController::first"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-phrase-first",
+        "tags": [
+          "DeclaredErrors"
+        ],
+        "responses": {
+          "402": {
+            "x-docuccino": {
+              "id": "res:v1:xgr24xydxorgm6xq",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DeclaredErrors/DeclaredErrorsController.php",
+                    "line": 20,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DeclaredErrors\\DeclaredErrorsController::first"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "PaymentRequired"
+              }
+            },
+            "$ref": "#/components/responses/PaymentRequired"
+          },
+          "404": {
+            "x-docuccino": {
+              "id": "res:v1:c7ljbve556dshy75",
+              "provenance": [
+                {
+                  "producer": "integration:framework-errors",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DeclaredErrors/DeclaredErrorsController.php",
+                    "line": 20,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DeclaredErrors\\DeclaredErrorsController::first"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "NotFound"
+              }
+            },
+            "$ref": "#/components/responses/NotFound"
+          },
+          "408": {
+            "x-docuccino": {
+              "id": "res:v1:4p4ynyb2ipzz623i",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DeclaredErrors/DeclaredErrorsController.php",
+                    "line": 20,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DeclaredErrors\\DeclaredErrorsController::first"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "RequestTimeout"
+              }
+            },
+            "$ref": "#/components/responses/RequestTimeout"
+          },
+          "419": {
+            "x-docuccino": {
+              "id": "res:v1:soii25zicroy7i4l",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DeclaredErrors/DeclaredErrorsController.php",
+                    "line": 20,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DeclaredErrors\\DeclaredErrorsController::first"
+                  }
+                }
+              ]
+            },
+            "$ref": "#/components/responses/Error419"
+          },
+          "501": {
+            "x-docuccino": {
+              "id": "res:v1:sb2wygyoodcb62nx",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DeclaredErrors/DeclaredErrorsController.php",
+                    "line": 20,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DeclaredErrors\\DeclaredErrorsController::first"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "NotImplemented"
+              }
+            },
+            "$ref": "#/components/responses/NotImplemented"
+          },
+          "502": {
+            "x-docuccino": {
+              "id": "res:v1:dehw26najmo7uxho",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DeclaredErrors/DeclaredErrorsController.php",
+                    "line": 20,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DeclaredErrors\\DeclaredErrorsController::first"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "BadGateway"
+              }
+            },
+            "$ref": "#/components/responses/BadGateway"
+          },
+          "504": {
+            "x-docuccino": {
+              "id": "res:v1:7klnmd3uqla4ms2o",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DeclaredErrors/DeclaredErrorsController.php",
+                    "line": 20,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DeclaredErrors\\DeclaredErrorsController::first"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "GatewayTimeout"
+              }
+            },
+            "$ref": "#/components/responses/GatewayTimeout"
+          },
+          "599": {
+            "x-docuccino": {
+              "id": "res:v1:ibji4rqin52cmdwv",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DeclaredErrors/DeclaredErrorsController.php",
+                    "line": 20,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DeclaredErrors\\DeclaredErrorsController::first"
+                  }
+                }
+              ]
+            },
+            "$ref": "#/components/responses/Error599"
+          }
+        }
+      }
+    },
+    "/api/zz-phrase-second": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:oczoryj36lmu5hin",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/DeclaredErrors/DeclaredErrorsController.php",
+                "line": 25,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DeclaredErrors\\DeclaredErrorsController::second"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-phrase-second",
+        "tags": [
+          "DeclaredErrors"
+        ],
+        "responses": {
+          "402": {
+            "x-docuccino": {
+              "id": "res:v1:nrmou7kqhu5fuggk",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DeclaredErrors/DeclaredErrorsController.php",
+                    "line": 25,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DeclaredErrors\\DeclaredErrorsController::second"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "PaymentRequired"
+              }
+            },
+            "$ref": "#/components/responses/PaymentRequired"
+          },
+          "404": {
+            "x-docuccino": {
+              "id": "res:v1:irfztaf73jg642qj",
+              "provenance": [
+                {
+                  "producer": "integration:framework-errors",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DeclaredErrors/DeclaredErrorsController.php",
+                    "line": 25,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DeclaredErrors\\DeclaredErrorsController::second"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "NotFound"
+              }
+            },
+            "$ref": "#/components/responses/NotFound"
+          },
+          "408": {
+            "x-docuccino": {
+              "id": "res:v1:dqmsovihgotp36ta",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DeclaredErrors/DeclaredErrorsController.php",
+                    "line": 25,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DeclaredErrors\\DeclaredErrorsController::second"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "RequestTimeout"
+              }
+            },
+            "$ref": "#/components/responses/RequestTimeout"
+          },
+          "419": {
+            "x-docuccino": {
+              "id": "res:v1:cchwhclp32uiyjwy",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DeclaredErrors/DeclaredErrorsController.php",
+                    "line": 25,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DeclaredErrors\\DeclaredErrorsController::second"
+                  }
+                }
+              ]
+            },
+            "$ref": "#/components/responses/Error419"
+          },
+          "501": {
+            "x-docuccino": {
+              "id": "res:v1:whxm564blzjedsnx",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DeclaredErrors/DeclaredErrorsController.php",
+                    "line": 25,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DeclaredErrors\\DeclaredErrorsController::second"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "NotImplemented"
+              }
+            },
+            "$ref": "#/components/responses/NotImplemented"
+          },
+          "502": {
+            "x-docuccino": {
+              "id": "res:v1:jxuewft5xt72q4fd",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DeclaredErrors/DeclaredErrorsController.php",
+                    "line": 25,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DeclaredErrors\\DeclaredErrorsController::second"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "BadGateway"
+              }
+            },
+            "$ref": "#/components/responses/BadGateway"
+          },
+          "504": {
+            "x-docuccino": {
+              "id": "res:v1:o6susvnkza24gbap",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DeclaredErrors/DeclaredErrorsController.php",
+                    "line": 25,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DeclaredErrors\\DeclaredErrorsController::second"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "GatewayTimeout"
+              }
+            },
+            "$ref": "#/components/responses/GatewayTimeout"
+          },
+          "599": {
+            "x-docuccino": {
+              "id": "res:v1:d23ccsb7dzpss3qs",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DeclaredErrors/DeclaredErrorsController.php",
+                    "line": 25,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DeclaredErrors\\DeclaredErrorsController::second"
+                  }
+                }
+              ]
+            },
+            "$ref": "#/components/responses/Error599"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BadGateway": {
+        "x-docuccino": {
+          "id": "sch:v1:fwgzwrb44vvx46rj"
+        },
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "Error419": {
+        "x-docuccino": {
+          "id": "sch:v1:lmljzxwdoai3hwtz"
+        },
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "Error599": {
+        "x-docuccino": {
+          "id": "sch:v1:mkun5kobmptjpvnq"
+        },
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "GatewayTimeout": {
+        "x-docuccino": {
+          "id": "sch:v1:5b4x5lzsjeu7va4k"
+        },
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "NotFound": {
+        "x-docuccino": {
+          "id": "sch:v1:bvvuacym2wsq7ebk"
+        },
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "NotImplemented": {
+        "x-docuccino": {
+          "id": "sch:v1:pjefpjwp54lazv3l"
+        },
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "PaymentRequired": {
+        "x-docuccino": {
+          "id": "sch:v1:cxqzqisaw2eirgwa"
+        },
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "RequestTimeout": {
+        "x-docuccino": {
+          "id": "sch:v1:xr76q3hchrekrpfw"
+        },
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      }
+    },
+    "responses": {
+      "BadGateway": {
+        "description": "Bad Gateway",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/BadGateway"
+            }
+          }
+        }
+      },
+      "Error419": {
+        "description": "Client Error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error419"
+            }
+          }
+        }
+      },
+      "Error599": {
+        "description": "Server Error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error599"
+            }
+          }
+        }
+      },
+      "GatewayTimeout": {
+        "description": "Gateway Timeout",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/GatewayTimeout"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Not Found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/NotFound"
+            }
+          }
+        }
+      },
+      "NotImplemented": {
+        "description": "Not Implemented",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/NotImplemented"
+            }
+          }
+        }
+      },
+      "PaymentRequired": {
+        "description": "Payment Required",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PaymentRequired"
+            }
+          }
+        }
+      },
+      "RequestTimeout": {
+        "description": "Request Timeout",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/RequestTimeout"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "1ac91826f17fc02e7da196115ff0523548ac09eb02ba9a1b67e318920eecb90e",
+      "contentHash": "158c39eb202f8575ba7cb5ccbf500727ebfb4b5861b79ab85982b67657cdb41a"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.20.3",
+      "specVersion": "2.0.0",
+      "schema": "https://spec.docuccino.app/uir/2.0/schema.json"
+    }
+  }
+}

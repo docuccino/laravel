@@ -58,7 +58,7 @@ final class RateLimitResponse
             ],
             'content' => [
                 'application/json' => [
-                    'schema' => ['type' => 'object', 'properties' => ['message' => ['type' => 'string']]],
+                    'schema' => ['type' => 'object', 'properties' => ['message' => ['type' => 'string']], 'required' => ['message']],
                 ],
             ],
         ];

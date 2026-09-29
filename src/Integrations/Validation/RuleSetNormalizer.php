@@ -66,9 +66,29 @@ final class RuleSetNormalizer
         'exclude_without' => ['required' => 'required_with_all', 'prohibited' => null, 'min' => 1],
     ];
 
-    public function normalize(RuleSet $rules): RuleSet
+    /**
+     * `$variants` asks for the objects tagged by one of their members to be proved first ({@see TaggedRules}),
+     * which reads the rules in the order written and so has to see them before anything here rewrites them.
+     * Only a caller whose body can publish them asks ({@see RecoveredRequest::publishesVariants()}).
+     */
+    public function normalize(RuleSet $rules, bool $variants = false): RuleSet
     {
-        $fields = $this->withoutProhibited(array_map(self::gated(...), $rules->fields));
+        if ($variants) {
+            $rules = TaggedRules::split($rules);
+        }
+
+        // The merged reading is normalized as the fields are, so an object whose variants are given up
+        // later reads exactly as it would had none been proved.
+        return new RuleSet($this->fields($rules->fields), $rules->variants, $rules->variants === [] ? [] : $this->fields($rules->merged));
+    }
+
+    /**
+     * @param  array<string, list<ValidationRule>>  $fields
+     * @return array<string, list<ValidationRule>>
+     */
+    private function fields(array $fields): array
+    {
+        $fields = $this->withoutProhibited(array_map(self::gated(...), $fields));
 
         $keys = array_keys($fields);
 
@@ -82,7 +102,7 @@ final class RuleSetNormalizer
             };
         }
 
-        return new RuleSet($out);
+        return $out;
     }
 
     /**

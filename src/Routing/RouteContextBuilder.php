@@ -100,6 +100,7 @@ final class RouteContextBuilder
             operationId: $operationId,
             deprecated: $prose['deprecated'],
             deprecationReason: $prose['deprecationReason'],
+            pathParameterConstraints: RouteConstraints::of($route),
         );
 
         // Class-level attributes walk the controller's parents, so the whole hierarchy's files key the

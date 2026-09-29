@@ -1,0 +1,136 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "Forms API",
+    "version": "2026-06-01"
+  },
+  "paths": {
+    "/api/versioned-forms": {
+      "get": {
+        "operationId": "get.api.versioned-forms",
+        "summary": "List published forms.",
+        "description": "Returns the published forms with their identifiers, titles and publication timestamps.",
+        "tags": [
+          "Forms"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/XApiVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The published forms.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FormData"
+                  }
+                },
+                "example": [
+                  {
+                    "id": 1,
+                    "name": "Onboarding",
+                    "publishedAt": "2026-08-01T09:00:00Z"
+                  }
+                ]
+              }
+            },
+            "x-docuccino-id": "res:v1:xkt3ayjxyjc6q4xv"
+          }
+        },
+        "x-docuccino-id": "op:v1:lksjjglmlhnityxq"
+      }
+    },
+    "/api/versioned-forms/archived": {
+      "get": {
+        "operationId": "listArchivedForms",
+        "summary": "List archived forms.",
+        "description": "Returns the forms that are no longer published, in the same shape as the published ones — a\nsecond operation over one shared component, which is what a scoped version change has to fork.",
+        "tags": [
+          "Forms"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/XApiVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The archived forms.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FormData"
+                  }
+                }
+              }
+            },
+            "x-docuccino-id": "res:v1:3f4aa2zefjlsbrwu"
+          }
+        },
+        "x-docuccino-id": "op:v1:sy5j23lpfacx5e5k"
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "FormData": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "publishedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "x-docuccino-id": "sch:v1:6iocn62c7ru5zutw"
+      }
+    },
+    "parameters": {
+      "XApiVersion": {
+        "name": "X-Api-Version",
+        "in": "header",
+        "description": "The API version this request is answered as. Omit it and the request is answered as the version this document describes.",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "enum": [
+            "2026-06-01",
+            "2026-09-01"
+          ],
+          "default": "2026-06-01",
+          "x-enum-descriptions": [
+            "",
+            "A form publishes `title` where it published `name`."
+          ],
+          "x-enum-varnames": [
+            "V2026_06_01",
+            "V2026_09_01"
+          ],
+          "x-enumNames": [
+            "V2026_06_01",
+            "V2026_09_01"
+          ]
+        },
+        "x-docuccino-id": "par:v1:tbvh7ol7jzjn5kpw"
+      }
+    }
+  }
+}

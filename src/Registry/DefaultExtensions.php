@@ -39,6 +39,7 @@ use Docuccino\Laravel\Extensions\SignedRouteParametersExtension;
 use Docuccino\Laravel\Extensions\UnmatchedIgnoredResponsesExtension;
 use Docuccino\Laravel\Extensions\ViewMediaType;
 use Docuccino\Laravel\Extensions\ViewTypeToSchema;
+use Docuccino\Laravel\Integrations\FormRequest\CopiedInputParameters;
 use Docuccino\Laravel\Integrations\FormRequest\ValidationRequestExtension;
 use Docuccino\Laravel\Integrations\FrameworkErrors\FrameworkErrorsIntegration;
 use Docuccino\Laravel\Integrations\InferredHandler\InferredHandlerIntegration;
@@ -127,6 +128,9 @@ final class DefaultExtensions
             // FormRequest / inline validate() request documentation; the rule vocabulary registers
             // through the same chain.
             ValidationRequestExtension::class,
+            // A key the FormRequest copies from a header or query value: its rules go on that parameter,
+            // after the request-header reads have published every header the code may publish.
+            CopiedInputParameters::class,
             ...ValidationIntegration::transformers(),
             // Reflection-rich enum schemas (backing values, #[CaseDescription]) — must sit ahead of the
             // core case-names-only mapper.

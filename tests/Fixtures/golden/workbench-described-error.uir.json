@@ -502,7 +502,7 @@
     "schemas": {
       "DescribedFailure": {
         "x-docuccino": {
-          "id": "sch:v1:ag2h6cfma2ynhg5o"
+          "id": "sch:v1:3i6trczkvuwvcfiz"
         },
         "description": "The request could not be completed.",
         "type": "object",
@@ -510,7 +510,10 @@
           "message": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "message"
+        ]
       },
       "FormData": {
         "x-docuccino": {
@@ -538,7 +541,7 @@
       },
       "ResourceMissing": {
         "x-docuccino": {
-          "id": "sch:v1:g5ge5i3466x54jws"
+          "id": "sch:v1:q4aapuskx3zegf4o"
         },
         "description": "No record matches the identifier in the path.",
         "type": "object",
@@ -546,7 +549,10 @@
           "message": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "message"
+        ]
       }
     },
     "responses": {
@@ -576,7 +582,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "d83636c0a895ee4b5f20bdd5be872256234ed38e6b5aea482fef485000499eba"
+      "contentHash": "be8a9070e3b822195940854690538998501efa7945a25496556fddc89c714b30"
     },
     "generator": {
       "name": "docuccino/laravel",

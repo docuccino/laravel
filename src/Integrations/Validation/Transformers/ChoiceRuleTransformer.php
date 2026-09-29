@@ -171,7 +171,7 @@ final class ChoiceRuleTransformer implements RuleTransformer
         $decorated = EnumDecoration::apply(
             ['enum' => $enum],
             $context->representation()->enumNaming,
-            $this->names($enum, $note),
+            self::names(array_map(strval(...), $enum), $note),
             $note === null ? [] : EnumReflection::descriptions($note),
         );
 
@@ -186,15 +186,14 @@ final class ChoiceRuleTransformer implements RuleTransformer
      * The member names for the set: the enum's own case names where the rule folded from one and every
      * published value is one of its cases — matched BY VALUE, because a rule may list a subset or another
      * order and names applied by position would put a case's name on its neighbour. Failing that, names
-     * minted from the values themselves, exactly as every other published value set is named.
+     * minted from the values themselves, exactly as every other published value set is named. Public
+     * because a branch of a union tagged by the set is named by the same word its value is.
      *
-     * @param  list<int|string>  $enum
+     * @param  list<string>  $strings
      * @return list<string>
      */
-    private function names(array $enum, ?string $note): array
+    public static function names(array $strings, ?string $note): array
     {
-        $strings = array_map(strval(...), $enum);
-
         if ($note !== null && enum_exists($note)) {
             $cases = array_map(strval(...), EnumReflection::values($note));
             $byValue = array_combine($cases, EnumReflection::names($note));

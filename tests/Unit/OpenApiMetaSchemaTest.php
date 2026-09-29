@@ -73,6 +73,18 @@ it('emits JSON that answers to its own OpenAPI meta-schema', function (string $g
     expect(OpenApiMetaSchema::findings($format, $json))->toBe([]);
 })->with(adapterMetaSchemaSubjects());
 
+/*
+ * With ids kept, which is what `docuccino:export` writes unless told otherwise — the default the rest of
+ * this file does not emit. Every id lands on a node of its own, so a Reference Object carrying one is
+ * the finding this is here to see: a strict reader refuses the whole document over it.
+ */
+it('emits JSON with ids kept that answers to its own OpenAPI meta-schema', function (string $golden, string $format): void {
+    $document = UirDocument::fromArray(loadDocument(golden($golden)));
+    $json = json_decode(Formats::emit($format, $document, (new EmitOptions)->withKeepIds())->output, flags: JSON_THROW_ON_ERROR);
+
+    expect(OpenApiMetaSchema::findings($format, $json))->toBe([]);
+})->with(adapterMetaSchemaSubjects());
+
 it('emits YAML that answers to its own OpenAPI meta-schema', function (string $golden, string $format): void {
     [, $yaml] = adapterMetaSchemaEmissions($golden, $format);
 

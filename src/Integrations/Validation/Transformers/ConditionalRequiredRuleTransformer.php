@@ -56,16 +56,20 @@ final class ConditionalRequiredRuleTransformer implements RuleTransformer
         $field = $params[0];
         $values = array_slice($params, 1);
         $list = implode(', ', $params);
+        // One field is neither "any of" nor "all of" anything: each of the four reads as the one sentence.
+        $one = count($params) === 1;
 
         return match ($rule->name) {
             'required_if' => $values === []
                 ? sprintf('Required when %s is present.', $field)
                 : sprintf('Required when %s is %s.', $field, implode(' or ', $values)),
             'required_unless' => sprintf('Required unless %s is %s.', $field, $values === [] ? 'present' : implode(' or ', $values)),
-            'required_with' => sprintf('Required when any of %s is present.', $list),
-            'required_with_all' => sprintf('Required when %s are all present.', $list),
-            'required_without' => sprintf('Required when any of %s is absent.', $list),
-            'required_without_all' => sprintf('Required when %s are all absent.', $list),
+            'required_with', 'required_with_all' => $one
+                ? sprintf('Required when %s is present.', $field)
+                : sprintf($rule->name === 'required_with' ? 'Required when any of %s is present.' : 'Required when %s are all present.', $list),
+            'required_without', 'required_without_all' => $one
+                ? sprintf('Required when %s is absent.', $field)
+                : sprintf($rule->name === 'required_without' ? 'Required when any of %s is absent.' : 'Required when %s are all absent.', $list),
             default => null,
         };
     }

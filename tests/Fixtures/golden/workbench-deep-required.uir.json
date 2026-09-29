@@ -932,14 +932,17 @@
     "schemas": {
       "BadRequest": {
         "x-docuccino": {
-          "id": "sch:v1:s46jnknuwmxt4uep"
+          "id": "sch:v1:ezf5e6ailaljycet"
         },
         "type": "object",
         "properties": {
           "message": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "message"
+        ]
       },
       "UnprocessableEntity": {
         "x-docuccino": {
@@ -1020,7 +1023,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "1f83564a5bc7b01f951172a9dde37d44bfa50dd0535b39dab4cbe32db6e172d9",
-      "contentHash": "95de86faf17c87fa3a90262b3ead47e8eda0473597e771679650d025ae58bdf1"
+      "contentHash": "7aca3f3e4cc1bd6f972ab2a418eb49bb21c57113f7b96a2f4267fcba08bbd194"
     },
     "generator": {
       "name": "docuccino/laravel",

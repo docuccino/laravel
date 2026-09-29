@@ -6,6 +6,1172 @@
     "version": "1.0.0"
   },
   "paths": {
+    "/api/notes/{note}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:labmsov43vj3v7h5",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NotesController.php",
+                "line": 25,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::showNote"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.notes.@note",
+        "summary": "The same request on a read verb, where its rules become query parameters.",
+        "tags": [
+          "Notes"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:dwyup7g7xk3jkoy3",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "note",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:kmx4xiuwpqivwfqc",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/NotesController.php",
+                    "line": 25,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::showNote"
+                  }
+                }
+              ]
+            },
+            "name": "note",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/NotesController.php",
+                      "line": 25,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::showNote"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:eel6jrrm23sdznst",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/NotesController.php",
+                    "line": 25,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::showNote"
+                  }
+                }
+              ]
+            },
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "example",
+                      "maximum",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/NotesController.php",
+                      "line": 25,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::showNote"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "example": 1
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:pkctmqqpxfudqnrp",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/NotesController.php",
+                    "line": 25,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::showNote"
+                  }
+                }
+              ]
+            },
+            "name": "slug",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/NotesController.php",
+                      "line": 25,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::showNote"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:5erxgrvh2oizviqg",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/NotesController.php",
+                    "line": 25,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::showNote"
+                  }
+                }
+              ]
+            },
+            "name": "title",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/NotesController.php",
+                      "line": 25,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::showNote"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:hs4ziz2blbtltcus",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/NotesController.php",
+                    "line": 25,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::showNote"
+                  },
+                  "overrode": [
+                    {
+                      "field": "required",
+                      "value": false,
+                      "producer": "integration:request"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "example",
+                      "format",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/NotesController.php",
+                      "line": 25,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::showNote"
+                    },
+                    "overrode": [
+                      {
+                        "field": "type",
+                        "value": "string",
+                        "producer": "integration:request"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "type": "string",
+              "format": "uuid",
+              "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:d7axqrayitbuwybr",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/NotesController.php",
+                    "line": 25,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::showNote"
+                  },
+                  "overrode": [
+                    {
+                      "field": "required",
+                      "value": false,
+                      "producer": "integration:request"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "X-Channel",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "enum",
+                      "example",
+                      "type",
+                      "x-enum-varnames",
+                      "x-enumNames"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/NotesController.php",
+                      "line": 25,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::showNote"
+                    },
+                    "overrode": [
+                      {
+                        "field": "type",
+                        "value": "string",
+                        "producer": "integration:request"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "type": "string",
+              "enum": [
+                "web",
+                "mobile"
+              ],
+              "example": "web",
+              "x-enum-varnames": [
+                "Web",
+                "Mobile"
+              ],
+              "x-enumNames": [
+                "Web",
+                "Mobile"
+              ]
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:4xs5g2iedxo2x22b",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/NotesController.php",
+                    "line": 25,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::showNote"
+                  },
+                  "overrode": [
+                    {
+                      "field": "required",
+                      "value": false,
+                      "producer": "integration:request"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "X-Trace-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "example",
+                      "maxLength",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/NotesController.php",
+                      "line": 25,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::showNote"
+                    },
+                    "overrode": [
+                      {
+                        "field": "type",
+                        "value": "string",
+                        "producer": "integration:request"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "type": "string",
+              "maxLength": 64,
+              "example": "example"
+            }
+          }
+        ],
+        "responses": {
+          "422": {
+            "x-docuccino": {
+              "id": "res:v1:cy25jrzb7ct7wpby",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/NotesController.php",
+                    "line": 25,
+                    "symbol": "implicit:validated-request"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "UnprocessableEntity"
+              }
+            },
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      },
+      "put": {
+        "x-docuccino": {
+          "id": "op:v1:vbg6bmw22mjkjgj7",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NotesController.php",
+                "line": 32,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::replayNote"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:form-request",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NotesController.php",
+                "line": 32,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::replayNote"
+              }
+            }
+          ]
+        },
+        "operationId": "put.api.notes.@note",
+        "summary": "The same request, with the copied header declared under another case: the declaration stands.",
+        "tags": [
+          "Notes"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:cud72ue6u73axmgf",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "note",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:mmn7uynr6ncrcqxc",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/NotesController.php",
+                    "line": 32,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::replayNote"
+                  }
+                }
+              ]
+            },
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "example",
+                      "maximum",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/NotesController.php",
+                      "line": 32,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::replayNote"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "example": 1
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:nsiodkwubw2xthvg",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/NotesController.php",
+                    "line": 32,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::replayNote"
+                  },
+                  "overrode": [
+                    {
+                      "field": "required",
+                      "value": false,
+                      "producer": "integration:request"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "X-Channel",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "enum",
+                      "example",
+                      "type",
+                      "x-enum-varnames",
+                      "x-enumNames"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/NotesController.php",
+                      "line": 32,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::replayNote"
+                    },
+                    "overrode": [
+                      {
+                        "field": "type",
+                        "value": "string",
+                        "producer": "integration:request"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "type": "string",
+              "enum": [
+                "web",
+                "mobile"
+              ],
+              "example": "web",
+              "x-enum-varnames": [
+                "Web",
+                "Mobile"
+              ],
+              "x-enumNames": [
+                "Web",
+                "Mobile"
+              ]
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:fxfmwv5tdoyx3tys",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/NotesController.php",
+                    "line": 32,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::replayNote"
+                  },
+                  "overrode": [
+                    {
+                      "field": "required",
+                      "value": false,
+                      "producer": "integration:request"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "X-Trace-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "example",
+                      "maxLength",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/NotesController.php",
+                      "line": 32,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::replayNote"
+                    },
+                    "overrode": [
+                      {
+                        "field": "type",
+                        "value": "string",
+                        "producer": "integration:request"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "type": "string",
+              "maxLength": 64,
+              "example": "example"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:2x2wt3bipwhbjxq5",
+              "provenance": [
+                {
+                  "producer": "attribute",
+                  "layer": "attribute",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/NotesController.php",
+                    "line": 32,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::replayNote"
+                  },
+                  "overrode": [
+                    {
+                      "field": "required",
+                      "value": true,
+                      "producer": "integration:form-request"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "idempotency-key",
+            "in": "header",
+            "description": "Makes a retried request safe to repeat.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "example",
+                      "format",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/NotesController.php",
+                      "line": 32,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::replayNote"
+                    }
+                  }
+                ]
+              },
+              "type": "string",
+              "format": "uuid",
+              "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitNoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "422": {
+            "x-docuccino": {
+              "id": "res:v1:avmh4aoldsel27pw",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/NotesController.php",
+                    "line": 32,
+                    "symbol": "implicit:validated-request"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "UnprocessableEntity"
+              }
+            },
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      },
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:6mnwjkl6edsl5gmp",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NotesController.php",
+                "line": 19,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::submitNote"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:form-request",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NotesController.php",
+                "line": 19,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::submitNote"
+              }
+            }
+          ]
+        },
+        "operationId": "post.api.notes.@note",
+        "summary": "Validates headers, a query value and a route parameter its request copies into the input.",
+        "tags": [
+          "Notes"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:3warmg7sc3kkfj36",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "note",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:biljhlh6alv3aw3q",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/NotesController.php",
+                    "line": 19,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::submitNote"
+                  }
+                }
+              ]
+            },
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "example",
+                      "maximum",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/NotesController.php",
+                      "line": 19,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::submitNote"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "example": 1
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:gk4s57wezx7maqzw",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/NotesController.php",
+                    "line": 19,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::submitNote"
+                  },
+                  "overrode": [
+                    {
+                      "field": "required",
+                      "value": false,
+                      "producer": "integration:request"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "example",
+                      "format",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/NotesController.php",
+                      "line": 19,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::submitNote"
+                    },
+                    "overrode": [
+                      {
+                        "field": "type",
+                        "value": "string",
+                        "producer": "integration:request"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "type": "string",
+              "format": "uuid",
+              "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:vxvifq5rsx4o6skl",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/NotesController.php",
+                    "line": 19,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::submitNote"
+                  },
+                  "overrode": [
+                    {
+                      "field": "required",
+                      "value": false,
+                      "producer": "integration:request"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "X-Channel",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "enum",
+                      "example",
+                      "type",
+                      "x-enum-varnames",
+                      "x-enumNames"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/NotesController.php",
+                      "line": 19,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::submitNote"
+                    },
+                    "overrode": [
+                      {
+                        "field": "type",
+                        "value": "string",
+                        "producer": "integration:request"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "type": "string",
+              "enum": [
+                "web",
+                "mobile"
+              ],
+              "example": "web",
+              "x-enum-varnames": [
+                "Web",
+                "Mobile"
+              ],
+              "x-enumNames": [
+                "Web",
+                "Mobile"
+              ]
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:phfjtzgzqielnymv",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/NotesController.php",
+                    "line": 19,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::submitNote"
+                  },
+                  "overrode": [
+                    {
+                      "field": "required",
+                      "value": false,
+                      "producer": "integration:request"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name": "X-Trace-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "example",
+                      "maxLength",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/NotesController.php",
+                      "line": 19,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::submitNote"
+                    },
+                    "overrode": [
+                      {
+                        "field": "type",
+                        "value": "string",
+                        "producer": "integration:request"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "type": "string",
+              "maxLength": 64,
+              "example": "example"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitNoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "422": {
+            "x-docuccino": {
+              "id": "res:v1:jevp6hkopq7fizzo",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/NotesController.php",
+                    "line": 19,
+                    "symbol": "implicit:validated-request"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "UnprocessableEntity"
+              }
+            },
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
     "/api/orders": {
       "post": {
         "x-docuccino": {
@@ -333,6 +1499,135 @@
         ]
       }
     },
+    "/api/tenant-notes": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:vwbeznrhfoqttjef",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NotesController.php",
+                "line": 38,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::tenantNote"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:form-request",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NotesController.php",
+                "line": 38,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NotesController::tenantNote"
+              }
+            }
+          ]
+        },
+        "operationId": "post.api.tenant-notes",
+        "summary": "A header copied into the input only when it was sent.",
+        "tags": [
+          "Notes"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:otsqbamckchf5eky",
+              "provenance": [
+                {
+                  "producer": "integration:request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Requests/TenantNoteRequest.php",
+                    "line": 25
+                  }
+                }
+              ]
+            },
+            "name": "X-Tenant",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:request",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Requests/TenantNoteRequest.php",
+                      "line": 25
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantNoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "422": {
+            "x-docuccino": {
+              "id": "res:v1:3padqc26owwtuqtq",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/NotesController.php",
+                    "line": 38,
+                    "symbol": "implicit:validated-request"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "UnprocessableEntity"
+              }
+            },
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
     "/api/traced/{dynamic}": {
       "get": {
         "x-docuccino": {
@@ -524,11 +1819,87 @@
       }
     }
   },
+  "components": {
+    "schemas": {
+      "SubmitNoteRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:qeurlluj3dyxx67m"
+        },
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "note",
+          "title",
+          "slug"
+        ]
+      },
+      "TenantNoteRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:53thl2oawu3oiqdy"
+        },
+        "type": "object",
+        "properties": {
+          "tenant": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant"
+        ]
+      },
+      "UnprocessableEntity": {
+        "x-docuccino": {
+          "id": "sch:v1:f3tcwvg2vhs255gy"
+        },
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "errors"
+        ]
+      }
+    },
+    "responses": {
+      "UnprocessableEntity": {
+        "description": "Unprocessable Entity",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/UnprocessableEntity"
+            }
+          }
+        }
+      }
+    }
+  },
   "x-docuccino": {
     "document": {
       "id": "doc:request-headers",
-      "configHash": "458e8d27e943e983b6ab0a6fb0fc4ce1cb9447d4adc3cde1df37bbb2a0795a14",
-      "contentHash": "bad4e478e7bbb20454b7b2683fb65205a4e13196a5faafe4059c82e53abb3369"
+      "configHash": "8e5e2466af4663164a35bad43c1a9854d9a97c1104924d91d324209e3f0659bd",
+      "contentHash": "5f147ae09483e39ca0ca017c7eb33f2a6915b9f5ef8fcf36050bafd95346a53f"
     },
     "generator": {
       "name": "docuccino/laravel",

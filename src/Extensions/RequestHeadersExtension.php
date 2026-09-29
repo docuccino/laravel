@@ -16,6 +16,7 @@ use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Patch\Contribution;
 use Docuccino\Core\Provenance\Source;
+use Docuccino\Laravel\Support\HeaderNames;
 use ReflectionClass;
 
 /**
@@ -143,7 +144,7 @@ final class RequestHeadersExtension implements OperationExtension
         $skipped = self::TRANSPORT_HEADERS;
         foreach ($operation->parameterKeys() as $parameter) {
             if (str_starts_with($parameter, 'header:')) {
-                $skipped[] = RequestHeaderReads::lookupKey(substr($parameter, strlen('header:')));
+                $skipped[] = HeaderNames::lookupKey(substr($parameter, strlen('header:')));
             }
         }
 
@@ -158,12 +159,12 @@ final class RequestHeadersExtension implements OperationExtension
 
         foreach ($schemes as $scheme) {
             if (($scheme['type'] ?? null) === 'apiKey' && ($scheme['in'] ?? null) === 'header' && is_string($scheme['name'] ?? null)) {
-                $skipped[] = RequestHeaderReads::lookupKey($scheme['name']);
+                $skipped[] = HeaderNames::lookupKey($scheme['name']);
             }
         }
 
         if ($context->document->declaresApiVersion()) {
-            $skipped[] = RequestHeaderReads::lookupKey($context->document->apiVersionHeader());
+            $skipped[] = HeaderNames::lookupKey($context->document->apiVersionHeader());
         }
 
         return $skipped;

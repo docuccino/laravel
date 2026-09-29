@@ -11,6 +11,7 @@ use Docuccino\Core\Extensions\Contracts\OperationPhase;
 use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Patch\Contribution;
+use Docuccino\Core\Support\ReasonPhrase;
 use Docuccino\Laravel\Support\HtmlRepresentation;
 use Docuccino\Laravel\Support\IgnoredResponses;
 
@@ -44,7 +45,7 @@ final class ActionHtmlResponseExtension implements OperationExtension
         $by = Contribution::integration('laravel-actions', $context->actionSource());
 
         $response = $operation->response('200');
-        $response->setDescription('OK', $by);
+        $response->setDescription(ReasonPhrase::of(200), $by);
 
         $response->content(HtmlRepresentation::MEDIA_TYPE)->declareShape(HtmlRepresentation::SCHEMA, $by);
     }

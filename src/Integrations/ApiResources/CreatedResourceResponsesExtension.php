@@ -12,6 +12,7 @@ use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Patch\Contribution;
+use Docuccino\Core\Support\ReasonPhrase;
 use Docuccino\Laravel\Support\FrameworkClasses;
 use Docuccino\Laravel\Support\IgnoredResponses;
 
@@ -63,7 +64,7 @@ final class CreatedResourceResponsesExtension implements OperationExtension
         $by = Contribution::integration('api-resources', $context->actionSource());
 
         $created = $operation->response('201');
-        $created->setDescription('Created', $by);
+        $created->setDescription(ReasonPhrase::of(201), $by);
         foreach ($result->schema as $keyword => $value) {
             $created->content($mediaType)->set($keyword, $value, $by);
         }

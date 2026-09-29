@@ -17,6 +17,7 @@ use Docuccino\Core\Extensions\Schema\SchemaResult;
 use Docuccino\Core\Inference\ClassRef;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\DType\DType;
+use Docuccino\Laravel\Integrations\Support\PaginationEnvelope;
 use Docuccino\Laravel\Integrations\Support\ResourceWrapping;
 use ReflectionClass;
 
@@ -137,6 +138,9 @@ final class JsonResourceSchema implements TypeToSchema
         if ($with !== null) {
             unset($with['properties'][$key ?? 'data']);
             $with['required'] = array_values(array_diff($with['required'], [$key ?? 'data']));
+            if (ResourceReflector::isNamedCollection($fqcn)) {
+                $with['properties'] = PaginationEnvelope::mayMergeInto($with['properties']);
+            }
         }
 
         if ($key !== null) {
