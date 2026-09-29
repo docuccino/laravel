@@ -1,0 +1,214 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-addresses": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:ybb2wnxp3hew3kyc",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/RegexRules/AddressController.php",
+                "line": 12,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\RegexRules\\AddressController::store"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:form-request",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "tests/Fixtures/RegexRules/AddressController.php",
+                "line": 12,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\RegexRules\\AddressController::store"
+              }
+            }
+          ]
+        },
+        "operationId": "post.api.zz-addresses",
+        "tags": [
+          "Address"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreAddressRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:sfrj7anmnkhnq6ad",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "x-docuccino": {
+              "id": "res:v1:5muwzob4xthou3v7",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/RegexRules/AddressController.php",
+                    "line": 12,
+                    "symbol": "implicit:validated-request"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "UnprocessableEntity"
+              }
+            },
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:implicit-response",
+                        "layer": "integration",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "tests/Fixtures/RegexRules/AddressController.php",
+                          "line": 12,
+                          "symbol": "implicit:validated-request"
+                        }
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "errors": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StoreAddressRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:2blihsss5oxpc3in"
+        },
+        "type": "object",
+        "properties": {
+          "colour": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^#(?:[0-9a-fA-F]{3}){1,2}\\n?$"
+          },
+          "full_name": {
+            "type": "string"
+          },
+          "initials": {
+            "type": "string",
+            "pattern": "^(?:[A-Za-z]|[^\\x00-\\x7F])+$",
+            "example": "example"
+          },
+          "postcode": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{1,2}[0-9][A-Z0-9a-z]? ?[0-9][A-Za-z]{2}$"
+          },
+          "recipient": {
+            "type": "string",
+            "pattern": "^(?:[A-Za-z\\t-\\r \\-]|[^\\x00-\\x7F])+$",
+            "example": "example"
+          },
+          "unit": {
+            "type": "string",
+            "pattern": "^[a-zA-ZKſ]+$",
+            "example": "example"
+          }
+        },
+        "required": [
+          "postcode",
+          "unit",
+          "recipient",
+          "initials",
+          "full_name"
+        ]
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "b3c9767e5fa64ae5b73c32341c0785c82818ef12e8b6e3ba1ebf466da8f20614"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.20.3",
+      "specVersion": "2.0.0",
+      "schema": "https://spec.docuccino.app/uir/2.0/schema.json"
+    }
+  }
+}

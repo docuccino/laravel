@@ -128,3 +128,17 @@ it('says nothing about the route behind two operations that share a method and a
         ->and($operations[0]->name)->toBeNull()
         ->and($operations[0]->action)->toBeNull();
 });
+
+it('joins each URL form of a route with an optional segment on that route', function (): void {
+    /** @var Router $router */
+    $router = app('router');
+    $router->get('api/receipts/{status?}', [FormController::class, 'index'])->name('receipts.index');
+
+    $operations = (new OperationLookup($router))->operations('default', ['paths' => [
+        '/api/receipts' => ['get' => ['operationId' => 'receipts.index.without-status']],
+        '/api/receipts/{status}' => ['get' => ['operationId' => 'receipts.index']],
+    ]]);
+
+    // Both paths are served by the one route, so both are answered with its name.
+    expect(array_map(static fn (OperationMatch $o): ?string => $o->name, $operations))->toBe(['receipts.index', 'receipts.index']);
+});

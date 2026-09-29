@@ -101,10 +101,8 @@ enum GateBody
      */
     private static function parsed(ReflectionMethod $method, string $file): self
     {
-        $node = ParsedClassFile::methods($file)[$method->getName()] ?? null;
-        // One file can hold several classes and traits declaring one method name, and the parse keys by
-        // name alone. The line is what ties a node to the method reflection found.
-        if ($node === null || $node->getStartLine() !== $method->getStartLine()) {
+        $node = ParsedClassFile::declarationOf($method, ParsedClassFile::statements($file));
+        if ($node === null) {
             return self::Unread;
         }
 

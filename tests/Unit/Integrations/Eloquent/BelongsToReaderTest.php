@@ -8,6 +8,7 @@ use Docuccino\Laravel\Tests\Fixtures\Eloquent\ContestedRelationModel;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\CustomCaster;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\FilterCastModel;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\FilterRelationModel;
+use Docuccino\Laravel\Tests\Fixtures\Eloquent\Quire;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Vault;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\VetoedRelationModel;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Waybill;
@@ -65,6 +66,17 @@ it('surfaces literal-key refusals for conditional relations and non-model target
             ['related' => FilterCastModel::class, 'foreignKey' => 'branch_id'],
             ['related' => CustomCaster::class, 'foreignKey' => 'relic_id'],
         ]);
+});
+
+it('reads each relation from the body PHP runs for it, not a same-named method elsewhere in its file', function (): void {
+    // Quire takes `auditor` from a trait twice — under its own name and as `keeper` — and its file also
+    // holds a model whose own `keeper()` belongs to a Waybill. Both of Quire's relations belong to a Vault.
+    ['readable' => $readable, 'refused' => $refused] = (new BelongsToReader)->relations(Quire::class);
+
+    expect($readable)->toBe([
+        ['related' => Vault::class, 'foreignKey' => 'keeper_id', 'ownerKey' => null],
+        ['related' => Vault::class, 'foreignKey' => 'keeper_id', 'ownerKey' => null],
+    ])->and($refused)->toBe([]);
 });
 
 it('returns nothing for a model with no belongsTo relations', function (): void {

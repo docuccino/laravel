@@ -17,10 +17,12 @@ use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Laravel\Integrations\ApiResources\JsonResourceSchema;
 use Docuccino\Laravel\Integrations\ApiResources\ResourceReflector;
+use Docuccino\Laravel\Integrations\Support\PaginationEnvelope;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ArticleResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ConditionalMetaResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ConditionalWithResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\DynamicMetaResource;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\ForwardedDataResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\MergedDataResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\MergingWithResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\PartlyDynamicMetaResource;
@@ -238,6 +240,39 @@ it('does not wrap a body that already carries its wrap key, and offers both wher
             ['$ref' => '#/components/schemas/ArticleResource'],
         ]]);
 });
+
+it('publishes a carried data key a with() data key is merged into as what the merge sends', function (array $toArray, array $with, array $expected): void {
+    $loc = new SourceLocation('');
+    $site = static fn (array $fields): ReturnSite => new ReturnSite(new ArrayShapeT($fields), $loc);
+    $engine = new StubTypeEngine(analyses: [
+        ForwardedDataResource::class.'::toArray' => new ActionAnalysis(returns: array_map($site, $toArray)),
+        ForwardedDataResource::class.'::with' => new ActionAnalysis(returns: [$site([new ArrayShapeField('data', new ArrayShapeT($with))])]),
+    ]);
+
+    expect((new SchemaConverter([new JsonResourceSchema, ...DefaultTypeMappers::all()], $engine, new ComponentRegistry))
+        ->toSchema(new ClassT(ForwardedDataResource::class))->schema)->toBe($expected);
+})->with([
+    // Laravel leaves a body carrying `data` unwrapped, and merges with()'s `data` into that key.
+    'its keys only join the carried object: the component stands' => [
+        [[new ArrayShapeField('data', new ArrayShapeT([new ArrayShapeField('tag', ScalarT::string())]))]],
+        [new ArrayShapeField('traced', ScalarT::bool())],
+        ['$ref' => '#/components/schemas/ForwardedDataResource'],
+    ],
+    'a key both send becomes the list of both: restated inline' => [
+        [[new ArrayShapeField('data', new ArrayShapeT([new ArrayShapeField('tag', ScalarT::string())]))]],
+        [new ArrayShapeField('tag', ScalarT::string())],
+        ['type' => 'object', 'properties' => ['data' => PaginationEnvelope::MERGED], 'required' => ['data']],
+    ],
+    // One branch returns [], so the component is its object or the empty list, and has no keys to restate.
+    'carried on one branch of a body that may be empty: an object' => [
+        [[new ArrayShapeField('data', new ArrayShapeT([new ArrayShapeField('tag', ScalarT::string())]))], []],
+        [new ArrayShapeField('tag', ScalarT::string())],
+        ['anyOf' => [
+            ['type' => 'object', 'properties' => ['data' => ['$ref' => '#/components/schemas/ForwardedDataResource']], 'required' => ['data']],
+            ['type' => 'object'],
+        ]],
+    ],
+]);
 
 it('publishes a named collection whose collected resource cannot be named as a list of anything', function (): void {
     $components = new ComponentRegistry;

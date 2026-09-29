@@ -245,8 +245,7 @@ final class EloquentModelReflector
 
         // $casts merged with the casts() method (Laravel 11+), the method winning on a key conflict —
         // mirrors HasAttributes::getCasts().
-        $file = $reflection->getFileName();
-        $casts = [...self::castMap($defaults['casts'] ?? []), ...$this->castsMethod->read($file === false ? null : $file)];
+        $casts = [...self::castMap($defaults['casts'] ?? []), ...$this->castsMethod->read($fqcn)];
 
         return [
             'hidden' => self::stringList($defaults['hidden'] ?? []),

@@ -34,6 +34,11 @@ final readonly class WorkflowStepExtension implements OperationExtension
 
     public function handle(OperationDraft $operation, RouteContext $context): void
     {
+        // A step names one operation: the route's full form, whose parameters its declaration can bind.
+        if ($context->route->omitted !== []) {
+            return;
+        }
+
         // The route as the DOCUMENT names it, never the operation's node id. A node id is minted per
         // document, and a stored fragment is shared between documents that build alike and re-stamped
         // on restore — so a note carrying one would hand the second document the first document's

@@ -74,6 +74,20 @@ final class VersionedFormController
     }
 
     /**
+     * List published forms, with the version header documented by hand under another spelling.
+     *
+     * The framework reads `x_api_version` and `X-Api-Version` as one header, so this documents the same
+     * one as {@see documented()}.
+     */
+    #[Group('Forms')]
+    #[HeaderParameter('x_api_version', description: 'Pin the API version, or take the current one.')]
+    #[Response(status: 200, type: 'list<FormData>', description: 'The published forms.')]
+    public function documentedSpelledApart(): JsonResponse
+    {
+        return $this->index();
+    }
+
+    /**
      * Create a form.
      *
      * Records a form under the title given and returns it, unpublished.

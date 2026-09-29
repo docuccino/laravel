@@ -24,6 +24,7 @@ use Docuccino\Laravel\Integrations\Eloquent\ModelSchema;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Astrolabe;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Blank;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Boutique;
+use Docuccino\Laravel\Tests\Fixtures\Eloquent\CaptionsByTitle;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Chronicle;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Consignment;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Coupon;
@@ -34,15 +35,18 @@ use Docuccino\Laravel\Tests\Fixtures\Eloquent\Emblem;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Gadget;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Hourglass;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Invoice;
+use Docuccino\Laravel\Tests\Fixtures\Eloquent\Lectern;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Ledger;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Merchant;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Metronome;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Persona;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Post;
+use Docuccino\Laravel\Tests\Fixtures\Eloquent\Quire;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Sandglass;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Showcase;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Signpost;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Strongbox;
+use Docuccino\Laravel\Tests\Fixtures\Eloquent\SummarisesQuires;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Vault;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Waterclock;
 use Docuccino\Laravel\Tests\Fixtures\Eloquent\Waybill;
@@ -484,6 +488,41 @@ it('discovers a model\'s classic and Attribute accessors via real reflection', f
         ->and($nickname->class)->toBeNull()
         ->and($nickname->method)->toBeNull();
 });
+
+it('locates an Attribute accessor\'s get closure at the line reflection gives it', function (string $method): void {
+    // The engine finds a line-located closure where ReflectionFunction places it — its `fn` keyword — so the
+    // ref must carry that line, not the one its `static` or attribute starts on.
+    $refs = [];
+    foreach ((new AccessorReader)->read(Lectern::class) as $accessor) {
+        $refs[$accessor['attribute']] = $accessor['ref'];
+    }
+    $get = (new Lectern)->{$method}()->get;
+
+    expect($get)->toBeInstanceOf(Closure::class)
+        ->and($refs[$method]->line)->toBe((new ReflectionFunction($get))->getStartLine());
+})->with([
+    'static on the line above' => ['heading'],
+    'an attribute on the line above' => ['slug'],
+]);
+
+it('locates an Attribute accessor\'s get closure in the body PHP runs for the model', function (string $method, string $writer): void {
+    // Quire takes `caption` from one of two traits by `insteadof` and `summary` from a trait in a file of
+    // its own, and its file also holds a model writing `caption` again. The ref must name the closure the
+    // model's accessor really returns — its file and its line — or the engine types another closure.
+    $refs = [];
+    foreach ((new AccessorReader)->read(Quire::class) as $accessor) {
+        $refs[$accessor['attribute']] = $accessor['ref'];
+    }
+    $get = (new ReflectionFunction((new Quire)->{$method}()->get));
+
+    expect($refs)->toHaveKey($method)
+        ->and($refs[$method]->file)->toBe($get->getFileName())
+        ->and($refs[$method]->file)->toBe((new ReflectionClass($writer))->getFileName())
+        ->and($refs[$method]->line)->toBe($get->getStartLine());
+})->with([
+    'chosen between two traits by insteadof, a sibling model writing it after' => ['caption', CaptionsByTitle::class],
+    'written in a trait\'s own file' => ['summary', SummarisesQuires::class],
+]);
 
 it('types appended accessors, overrides a column\'s cast with its accessor, and maps the As* casts', function (): void {
     $registry = modelRegistry(new ClassT(Boutique::class));

@@ -5,10 +5,12 @@ declare(strict_types=1);
 use Composer\InstalledVersions;
 use Docuccino\Laravel\Integrations\Support\FrameworkExceptionTable;
 use Docuccino\Laravel\Integrations\Support\ParsedClassFile;
+use PhpParser\Node;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Name;
 use PhpParser\Node\Scalar\Int_;
+use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\NodeFinder;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -123,8 +125,12 @@ function frameworkHttpExceptionPins(): array
  */
 function frameworkParentStatusArgument(string $file): ?Expr
 {
-    $constructor = ParsedClassFile::methods($file)['__construct'] ?? null;
-    if ($constructor === null) {
+    // Each file here declares the one class it is named for, so its constructor is the file's.
+    $constructor = (new NodeFinder)->findFirst(
+        ParsedClassFile::statements($file),
+        static fn (Node $node): bool => $node instanceof ClassMethod && $node->name->toString() === '__construct',
+    );
+    if (! $constructor instanceof ClassMethod) {
         return null;
     }
 

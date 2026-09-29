@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Laravel\Integrations\LaravelActions\LaravelAction;
 use Docuccino\Laravel\Routing\LaravelActionRouteMethod;
+use Docuccino\Laravel\Support\LaravelActionHooks;
 use Docuccino\Laravel\Tests\Fixtures\LaravelActions\ArchiveArticleAction;
 use Docuccino\Laravel\Tests\Fixtures\LaravelActions\ExplicitMethodAction;
 use Docuccino\Laravel\Tests\Fixtures\LaravelActions\HandlelessAction;
@@ -14,6 +15,7 @@ use Docuccino\Laravel\Tests\Fixtures\LaravelActions\JsonResponseAction;
 use Docuccino\Laravel\Tests\Fixtures\LaravelActions\PublishArticleAction;
 use Docuccino\Laravel\Tests\Fixtures\LaravelActions\SimpleAction;
 use Docuccino\Laravel\Tests\Fixtures\LaravelActions\WithAttributesAction;
+use Lorisleiva\Actions\Concerns\AsController;
 use Workbench\App\Http\Controllers\FormController;
 
 /**
@@ -23,6 +25,12 @@ use Workbench\App\Http\Controllers\FormController;
  * non-action controller) so every branch of the asController > handle > __invoke precedence + the
  * non-action degradation is covered with real reflection.
  */
+it('activates on the trait the one reading of the package recognises an action by', function (): void {
+    // The integration spells the name out, since it may import no package; both are the package's own trait.
+    expect(LaravelAction::CONTROLLER_TRAIT)->toBe(AsController::class)
+        ->and(LaravelActionHooks::CONTROLLER_TRAIT)->toBe(AsController::class);
+});
+
 it('recognises an action by its AsController/AsAction trait', function (string $class, bool $expected): void {
     expect(LaravelAction::isAction($class))->toBe($expected);
 })->with([

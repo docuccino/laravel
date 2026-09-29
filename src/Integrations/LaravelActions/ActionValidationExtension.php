@@ -9,6 +9,7 @@ use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
 use Docuccino\Core\Extensions\Validation\RecoveredRequest;
+use Docuccino\Laravel\Integrations\FormRequest\CopiedInputs;
 use Docuccino\Laravel\Integrations\Validation\RuleOrdering;
 use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
 
@@ -16,7 +17,9 @@ use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
  * Documents an action's request from its own `rules()` — the action-class analogue of the Form Request
  * integration. Recovers the rule set statically ({@see ActionRules}), orders it into Laravel's effect
  * sequence, and runs it through the shared chain: body verbs get a request body, read verbs get query
- * parameters. Writes at the integration layer, so docblocks and attributes still override.
+ * parameters. Writes at the integration layer, so docblocks and attributes still override. A key the
+ * action's `prepareForValidation()` copies from a header, query value or route parameter leaves the body, as
+ * a FormRequest's does ({@see CopiedInputs}).
  */
 final class ActionValidationExtension implements OperationExtension
 {
@@ -25,6 +28,7 @@ final class ActionValidationExtension implements OperationExtension
         private readonly RuleOrdering $ordering = new RuleOrdering,
         private readonly RuleSetNormalizer $normalizer = new RuleSetNormalizer,
         private readonly RecoveredRequest $request = new RecoveredRequest,
+        private readonly CopiedInputs $copied = new CopiedInputs,
     ) {}
 
     public function phase(): OperationPhase
@@ -41,6 +45,8 @@ final class ActionValidationExtension implements OperationExtension
 
         $normalized = $this->normalizer->normalize($rules, RecoveredRequest::publishesVariants($context, $context->actionRef->class));
         RuleSetNormalizer::report($normalized, $context, $context->actionRef->class);
+
+        $normalized = $this->copied->move($operation, $this->copied->ofAction($context, $context->actionRef->class), $normalized);
 
         $result = $context->validation()->convert($this->ordering->order($normalized), $context->converter());
         if ($result->isEmpty()) {

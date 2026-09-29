@@ -12,12 +12,20 @@ use Illuminate\Routing\Route;
  * `->where()`, its `whereUuid()`-style shorthands, and the `Route::pattern()`s merged in when the route
  * was registered — read as the router reads it. The route's compiler strips one leading `^`/`\A` and one
  * trailing `$`/`\z` and embeds the rest in the whole path's regex, so the expression returned here is the
- * one that regex holds. Both the descriptor's cache key and the route context read it from here.
+ * one that regex holds. The route's HOST is compiled from the same constraints, so a `{tenant}` in
+ * `Route::domain()` is read the same way. Both the descriptor's cache key and the route context read it
+ * from here.
  *
  * @internal
  */
 final class RouteConstraints
 {
+    /** Constraints that match any segment at all, which say nothing a plain string does not. */
+    public const CATCH_ALL = ['.*', '.+'];
+
+    /** @var array<string, string>|null */
+    private static ?array $frameworkFormats = null;
+
     /**
      * Segment name → expression, for the segments of the path template that carry one. A global
      * pattern is in every route's `wheres`, so a name the path does not use is dropped: it constrains
@@ -27,18 +35,17 @@ final class RouteConstraints
      */
     public static function of(Route $route): array
     {
-        preg_match_all('/\{([^}]+)}/', $route->uri(), $matches);
-        $segments = array_map(static fn (string $raw): string => rtrim($raw, '?'), $matches[1]);
+        return self::forTemplate($route, $route->uri());
+    }
 
-        $constraints = [];
-        foreach ($route->wheres as $name => $expression) {
-            if (is_string($name) && is_string($expression) && in_array($name, $segments, true)) {
-                $constraints[$name] = self::unanchored($expression);
-            }
-        }
-        ksort($constraints);
-
-        return $constraints;
+    /**
+     * The same, for the segments of the route's host.
+     *
+     * @return array<string, string>
+     */
+    public static function ofHost(Route $route): array
+    {
+        return self::forTemplate($route, (string) $route->getDomain());
     }
 
     /**
@@ -53,8 +60,45 @@ final class RouteConstraints
         foreach (self::of($route) as $name => $expression) {
             $inputs[] = 'where:'.$name.'='.$expression;
         }
+        foreach (self::ofHost($route) as $name => $expression) {
+            $inputs[] = 'host-where:'.$name.'='.$expression;
+        }
 
         return $inputs;
+    }
+
+    /**
+     * The format the framework's own `whereUuid()`/`whereUlid()` expression states, or null for any other
+     * expression. Read off the framework installed rather than copied, so a release that changes one
+     * cannot leave this matching the old.
+     */
+    public static function format(string $expression): ?string
+    {
+        if (self::$frameworkFormats === null) {
+            $probe = new Route(['GET'], '{segment}', static fn (): null => null);
+            $uuid = $probe->whereUuid('segment')->wheres['segment'];
+            $ulid = $probe->whereUlid('segment')->wheres['segment'];
+
+            self::$frameworkFormats = is_string($uuid) && is_string($ulid) ? [$uuid => 'uuid', $ulid => 'ulid'] : [];
+        }
+
+        return self::$frameworkFormats[$expression] ?? null;
+    }
+
+    /** @return array<string, string> */
+    private static function forTemplate(Route $route, string $template): array
+    {
+        $segments = RouteTemplate::parameters($template);
+
+        $constraints = [];
+        foreach ($route->wheres as $name => $expression) {
+            if (is_string($name) && is_string($expression) && in_array($name, $segments, true)) {
+                $constraints[$name] = self::unanchored($expression);
+            }
+        }
+        ksort($constraints);
+
+        return $constraints;
     }
 
     /**

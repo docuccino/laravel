@@ -9,6 +9,9 @@ use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
 use Docuccino\Core\Patch\Contribution;
+use Docuccino\Core\Support\PortablePattern;
+use Docuccino\Laravel\Routing\RouteConstraints;
+use Docuccino\Laravel\Routing\RouteTemplate;
 use Docuccino\Laravel\Support\MachineDependentValue;
 
 /**
@@ -22,8 +25,10 @@ use Docuccino\Laravel\Support\MachineDependentValue;
  * outright, so dropping the `/v1` off `https://api.example.com/v1` would point a generated client at a
  * URL that does not exist. A templated host (`{tenant}.example.com`) becomes a server variable
  * defaulting to the placeholder's own name, which is as close to a value as the routes can honestly
- * get, and any variable the inherited path still names is carried over with it — an operation-level
- * server has to define every variable in its own URL.
+ * get — unless the route constrains it to a closed set, which is then its `enum` ({@see variables()}).
+ * A route's `->defaults()` is not published for a host segment: a host the router matches carries
+ * the segment, so the default is not what the action receives. Any variable the inherited path still
+ * names is carried over with it — an operation-level server has to define every variable in its own URL.
  */
 final class RouteServersExtension implements OperationExtension
 {
@@ -62,7 +67,7 @@ final class RouteServersExtension implements OperationExtension
 
         $server = ['url' => $url];
 
-        $variables = $this->variables($host) + $this->inheritedVariables($inherited, $path);
+        $variables = $this->variables($host, $context) + $this->inheritedVariables($inherited, $path);
         if ($variables !== []) {
             $server['variables'] = $variables;
         }
@@ -114,21 +119,58 @@ final class RouteServersExtension implements OperationExtension
     }
 
     /**
-     * @return array<string, array<string, string>>
+     * One variable per host segment. A segment the route constrains to literals (`whereIn()`) is that
+     * closed set, defaulting to its first value because a default must be one of them; any other
+     * constraint has no keyword in a Server Variable Object, so its description states it. OpenAPI
+     * requires a default, and nothing else names a host the route answers on, so the placeholder's own
+     * name stays one — said to be no value at all where the constraint refuses it.
+     *
+     * @return array<string, array<string, mixed>>
      */
-    private function variables(string $host): array
+    private function variables(string $host, RouteContext $context): array
     {
-        preg_match_all('/\{([^}]+)}/', $host, $matches);
-
         $variables = [];
-        foreach ($matches[1] as $name) {
+        foreach (RouteTemplate::parameters($host) as $name) {
+            $expression = $context->hostParameterConstraints[$name] ?? null;
+            $values = $expression === null ? null : PortablePattern::literals($expression);
+
+            $sentences = [sprintf('The "%s" segment of the host this operation is served from.', $name)];
+            if ($expression !== null && $values === null) {
+                $sentences[] = self::constraintNote($expression);
+                // The router matches a host ignoring case.
+                if (@preg_match('{^(?:'.$expression.')$}sDiu', $name) === 0) {
+                    $sentences[] = 'The default only names the segment, and is not a value it accepts.';
+                }
+            }
+
             $variables[$name] = [
-                'default' => $name,
-                'description' => sprintf('The "%s" segment of the host this operation is served from.', $name),
+                ...($values === null ? [] : ['enum' => $values]),
+                'default' => $values[0] ?? $name,
+                'description' => implode(' ', array_filter($sentences, static fn (?string $sentence): bool => $sentence !== null)),
             ];
         }
 
         return $variables;
+    }
+
+    /**
+     * The sentence stating a constraint no keyword can, or null where none states it truly. The router
+     * matches a host ignoring case, and a pattern it reads differently from ECMA-262 says nothing.
+     */
+    private static function constraintNote(string $expression): ?string
+    {
+        if (in_array($expression, RouteConstraints::CATCH_ALL, true)) {
+            return null;
+        }
+
+        $format = RouteConstraints::format($expression);
+        if ($format !== null) {
+            return sprintf('It is a %s.', strtoupper($format));
+        }
+
+        $pattern = RouteConstraints::pattern($expression);
+
+        return $pattern === null ? null : sprintf('It matches the pattern `%s`, ignoring case.', $pattern);
     }
 
     /**

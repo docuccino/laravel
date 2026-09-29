@@ -27,6 +27,18 @@ final class InputNormaliser
         $request->merge(['key' => 'overwritten']);
     }
 
+    /**
+     * @param  array<string, mixed>  $variables
+     */
+    public static function all(array $variables): void
+    {
+        foreach ($variables as $variable) {
+            if ($variable instanceof Request) {
+                $variable->merge(['key' => 'overwritten']);
+            }
+        }
+    }
+
     public function run(): void
     {
         $this->request?->merge(['key' => 'overwritten']);

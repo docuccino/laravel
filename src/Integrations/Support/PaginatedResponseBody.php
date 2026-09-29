@@ -70,7 +70,7 @@ final class PaginatedResponseBody
         }
 
         $result = $context->converter()->toSchema($collection);
-        $items = self::itemsSchema($result->schema);
+        $items = self::itemsSchema($result->schema) ?? self::mergedItems($context, $collection, $result->schema);
         if ($items === null) {
             return;
         }
@@ -110,7 +110,9 @@ final class PaginatedResponseBody
      * names is appended into the part as a positional member, which the open part already admits, so it is
      * left out rather than claimed as the part's type. A key the part already sends is merged with it into
      * an array, so where one collides the part is restated inline with that key widened, and the page is
-     * never referenced: the page component's type for the key is no longer what is sent.
+     * never referenced: the page component's type for the key is no longer what is sent. The same holds for
+     * `data`, which a `with()` member under that name is merged into — the body's data already says what it
+     * is sent as, so it is stated in place of the page's list.
      *
      * @param  array<string, mixed>  $page
      * @param  array<string, mixed>  $envelope  the page inline, its parts as references
@@ -120,10 +122,10 @@ final class PaginatedResponseBody
     private static function withMembers(array $page, array $envelope, string $kind, array $body): array
     {
         $properties = is_array($body['properties'] ?? null) ? $body['properties'] : [];
+        $restated = self::itemsSchema($body) === null && is_array($properties['data'] ?? null) ? ['data' => $properties['data']] : [];
         unset($properties['data']);
         $parts = PaginationEnvelope::parts($kind);
         $sent = PaginationEnvelope::sent($kind);
-        $restated = [];
         foreach (['links', 'meta'] as $part) {
             if (! array_key_exists($part, $properties)) {
                 continue;
@@ -217,6 +219,24 @@ final class PaginatedResponseBody
         $required = array_values(array_unique([...$stated, ...$colliding]));
 
         return ['type' => 'object', 'properties' => $properties, 'required' => $required];
+    }
+
+    /**
+     * The item schema of a collection whose converted body states its data as something other than the list
+     * of them — what a `with()` member merged into it sends — read off the framework's collection of the same
+     * item, which merges nothing in. Null where the body has no data member.
+     *
+     * @param  array<string, mixed>  $body
+     * @return array<array-key, mixed>|null
+     */
+    private static function mergedItems(RouteContext $context, ClassT $collection, array $body): ?array
+    {
+        $properties = $body['properties'] ?? null;
+        if (! is_array($properties) || ! is_array($properties['data'] ?? null)) {
+            return null;
+        }
+
+        return self::itemsSchema($context->converter()->toSchema(new ClassT(ResourceReflector::ANONYMOUS_COLLECTION, $collection->typeArgs))->schema);
     }
 
     /**

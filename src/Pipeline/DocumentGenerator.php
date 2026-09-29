@@ -42,6 +42,7 @@ use Docuccino\Laravel\Registry\IntegrationToggles;
 use Docuccino\Laravel\Routing\LaravelRouteResolver;
 use Docuccino\Laravel\Routing\OasPath;
 use Docuccino\Laravel\Routing\RouteContextBuilder;
+use Docuccino\Laravel\Routing\ServedForms;
 use Docuccino\Laravel\Webhooks\WebhookCollector;
 use Docuccino\Laravel\Webhooks\WebhookDeclaration;
 use Docuccino\Laravel\Webhooks\WebhookOperationBuilder;
@@ -150,6 +151,8 @@ final class DocumentGenerator
         $documentScope = FragmentCache::documentScope($document, $documentId, $resolved);
 
         $fragments = [];
+        /** @var list<array{RouteDescriptor, string, OperationFragment}> $built */
+        $built = [];
         foreach ($this->descriptors($resolved, $document, $bag) as $descriptor) {
             if ($descriptor->fallback) {
                 $bag->add(self::fallbackOmitted($descriptor));
@@ -162,11 +165,12 @@ final class DocumentGenerator
                 $fragment = $this->processRoute($descriptor, $method, $document, $documentId, $documentScope, $engine, $resolved, $components, $bag, $fragmentHash, $extensionClasses, $cache);
                 if ($fragment !== null) {
                     $fragments[] = $fragment;
-                    $bag->addAll($fragment->diagnostics);
+                    $built[] = [$descriptor, $method, $fragment];
                     $this->collectNotes($fragment, $resolved);
                 }
             }
         }
+        $bag->addAll($this->formDiagnostics($built));
 
         // Webhooks are document-level — no route reaches them — but each one is still an operation, so
         // it travels as a fragment and is cached, restored and reported exactly like a route's.
@@ -209,6 +213,47 @@ final class DocumentGenerator
         }
 
         return new GenerationResult(UirDocument::fromArray($assembly->document), $bag->sorted(), $assembly->schemaSources);
+    }
+
+    /**
+     * Every built route's diagnostics, less what a short form of a route says that its full form already
+     * said. The forms share one action, so almost everything one reports the other reports word for word,
+     * and an author reading it once per URL form is reading about one fix several times. Only a finding
+     * the full form did NOT raise — one about the short form's own path — is kept, and a short form whose
+     * full form is not in the document keeps everything. The forms are joined by the router's own route,
+     * and a finding is what {@see DiagnosticCollector::finding()} says it is.
+     *
+     * @param  list<array{RouteDescriptor, string, OperationFragment}>  $built
+     * @return list<Diagnostic>
+     */
+    private function formDiagnostics(array $built): array
+    {
+        $route = function (RouteDescriptor $descriptor, string $method): ?string {
+            $route = $this->contextBuilder->route($descriptor);
+
+            return $route === null ? null : ServedForms::key($route).' '.$method;
+        };
+        $finding = static fn (Diagnostic $diagnostic): string => serialize(DiagnosticCollector::finding($diagnostic));
+
+        $said = [];
+        foreach ($built as [$descriptor, $method, $fragment]) {
+            $key = $descriptor->omitted === [] ? $route($descriptor, $method) : null;
+            foreach ($key === null ? [] : $fragment->diagnostics as $diagnostic) {
+                $said[$key][$finding($diagnostic)] = true;
+            }
+        }
+
+        $diagnostics = [];
+        foreach ($built as [$descriptor, $method, $fragment]) {
+            $key = $descriptor->omitted === [] ? null : $route($descriptor, $method);
+            foreach ($fragment->diagnostics as $diagnostic) {
+                if ($key === null || ! isset($said[$key][$finding($diagnostic)])) {
+                    $diagnostics[] = $diagnostic;
+                }
+            }
+        }
+
+        return $diagnostics;
     }
 
     /**
@@ -791,9 +836,7 @@ final class DocumentGenerator
         // action is what could not be read — so this is the route's own name, or the mint that stands
         // in for one, and never the empty field that leaves the generator to invent a name.
         $operation->setOperationId(
-            $descriptor->name === null || $descriptor->name === ''
-                ? RouteOperationId::mint($method, $path)
-                : $descriptor->name,
+            RouteOperationId::forRoute($descriptor, $method, $descriptor->name === '' ? null : $descriptor->name),
             Contribution::fallback(),
         );
 

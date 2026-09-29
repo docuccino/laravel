@@ -13,29 +13,37 @@ use PhpParser\Node\Scalar\String_;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\Node\Stmt\Return_;
 use PhpParser\NodeFinder;
+use ReflectionMethod;
 
 /**
  * Recovers the cast map a model declares via the Laravel 11+ `casts()` METHOD (the default skeleton
  * style), which {@see \ReflectionClass::getDefaultProperties()} cannot see. Reads the method's literal
  * `return [...]` array statically — column => `'datetime'`/`'array'`/… string literal, or
- * `Status::class` enum-cast (resolved to its FQCN via php-parser's NameResolver). Anything the method
- * does not express as a flat literal array (a conditional, a computed value) is skipped; a parse
- * failure yields an empty map, so the model simply falls back to its `$casts` property — never an error.
+ * `Status::class` enum-cast (resolved to its FQCN via php-parser's NameResolver), from the body PHP runs,
+ * which a parent or a trait may write. Anything the method does not express as a flat literal array (a
+ * conditional, a computed value) is skipped; a parse failure yields an empty map, so the model simply falls back to its `$casts` property — never an error.
  */
 final class CastsMethodReader
 {
     /**
+     * The casts the model's `casts()` returns — the one PHP calls on it, wherever that is written.
+     *
      * @return array<string, string>
      */
-    public function read(?string $file): array
+    public function read(string $model): array
     {
-        if ($file === null || ! is_file($file)) {
+        if (! class_exists($model) || ! method_exists($model, 'casts')) {
             return [];
         }
 
-        $method = ParsedClassFile::methods($file)['casts'] ?? null;
+        $method = new ReflectionMethod($model, 'casts');
+        if (str_starts_with($method->getDeclaringClass()->getName(), 'Illuminate\\')) {
+            return []; // the framework's own `casts()` declares none
+        }
 
-        return $method instanceof ClassMethod ? $this->fromMethod($method) : [];
+        $node = ParsedClassFile::declarationOf($method);
+
+        return $node instanceof ClassMethod ? $this->fromMethod($node) : [];
     }
 
     /**

@@ -9,7 +9,6 @@ use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Illuminate\Contracts\Auth\Access\Gate;
 use Illuminate\Support\Str;
-use ReflectionClass;
 use ReflectionMethod;
 use ReflectionNamedType;
 use ReflectionParameter;
@@ -95,9 +94,9 @@ final class GateDenial
             return null;
         }
 
-        // Both files, because they can differ and either can change the answer: `before()` would be added
-        // to the policy class, while an inherited or trait-provided ability method is written elsewhere.
-        $this->recordClassFile($context, $policy);
+        // The whole hierarchy, not the policy's own file: a parent or trait can write the ability method
+        // or a `before()`, and a parent's `insteadof` decides which trait's body runs.
+        $context->recordDependencyFiles(DeclarationFiles::of($policy));
 
         $name = str_contains($gate->ability, '-') ? Str::camel($gate->ability) : $gate->ability;
         if (! method_exists($policy, $name)) {
@@ -111,7 +110,6 @@ final class GateDenial
         if ($file === false) {
             return null;
         }
-        $context->recordDependencyFiles([$file]);
 
         // Where the body is WRITTEN is what decides whether the reader can act: an inherited or
         // trait-provided ability method belongs to whoever ships that file, and the diagnostic's remedy
@@ -169,18 +167,6 @@ final class GateDenial
     {
         foreach ($names as $name) {
             $context->recordDependencyFiles(Psr4ClassFile::candidates($name));
-        }
-    }
-
-    private function recordClassFile(RouteContext $context, string $class): void
-    {
-        if (! class_exists($class)) {
-            return;
-        }
-
-        $file = (new ReflectionClass($class))->getFileName();
-        if ($file !== false) {
-            $context->recordDependencyFiles([$file]);
         }
     }
 

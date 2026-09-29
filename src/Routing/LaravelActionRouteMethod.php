@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Routing;
 
+use Docuccino\Laravel\Support\LaravelActionHooks;
 use ReflectionClass;
 
 /**
@@ -17,15 +18,13 @@ use ReflectionClass;
  */
 final class LaravelActionRouteMethod
 {
-    private const CONTROLLER_TRAIT = 'Lorisleiva\\Actions\\Concerns\\AsController';
-
     /**
      * Only an invokable registration is remapped; an explicit `[Action::class, 'method']` is honoured
      * verbatim, as in the package's own `replaceRouteMethod()`.
      */
     public static function resolve(string $fqcn, string $method): string
     {
-        if ($method !== '__invoke' || ! self::isAction($fqcn) || ! class_exists($fqcn)) {
+        if ($method !== '__invoke' || ! class_exists($fqcn) || ! LaravelActionHooks::isAction($fqcn)) {
             return $method;
         }
 
@@ -36,33 +35,5 @@ final class LaravelActionRouteMethod
         }
 
         return $reflection->hasMethod('handle') ? 'handle' : $method;
-    }
-
-    /** An action used as a controller, i.e. one carrying the AsController trait. */
-    private static function isAction(string $fqcn): bool
-    {
-        if (! trait_exists(self::CONTROLLER_TRAIT) || ! class_exists($fqcn)) {
-            return false;
-        }
-
-        $traits = [];
-        foreach (array_merge([$fqcn], class_parents($fqcn) ?: []) as $class) {
-            self::collectTraits($class, $traits);
-        }
-
-        return isset($traits[self::CONTROLLER_TRAIT]);
-    }
-
-    /**
-     * @param  array<string, string>  $acc
-     */
-    private static function collectTraits(string $class, array &$acc): void
-    {
-        foreach (class_uses($class) ?: [] as $trait) {
-            if (! isset($acc[$trait])) {
-                $acc[$trait] = $trait;
-                self::collectTraits($trait, $acc);
-            }
-        }
     }
 }

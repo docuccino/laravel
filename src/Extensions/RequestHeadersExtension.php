@@ -17,11 +17,13 @@ use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Patch\Contribution;
 use Docuccino\Core\Provenance\Source;
 use Docuccino\Laravel\Support\HeaderNames;
+use Docuccino\Laravel\Support\LaravelActionHooks;
 use ReflectionClass;
 
 /**
  * Publishes an optional string `in: header` parameter for every header the action reads by a literal name —
- * in its body, in anything it calls, and in the FormRequest methods the framework runs while resolving it.
+ * in its body, in anything it calls, in the FormRequest methods the framework runs while resolving it, and in
+ * the action's own methods laravel-actions runs while validating for it.
  * A read proves presence and nothing more, so every declaration outranks it; {@see skipped()} is what is
  * never published this way, and why.
  */
@@ -81,6 +83,7 @@ final class RequestHeadersExtension implements OperationExtension
         $reads = new RequestHeaderReads;
         $context->trace($reads);
         $this->traceFormRequestHooks($context, $reads);
+        $this->traceActionHooks($context, $reads);
 
         $skipped = $this->skipped($operation, $context);
 
@@ -127,6 +130,38 @@ final class RequestHeadersExtension implements OperationExtension
 
             $line = $method->getStartLine();
             $context->traceFrom(new ActionRef($file, $declaring, $name, $line === false ? 0 : $line), $reads);
+        }
+    }
+
+    /**
+     * A laravel-actions action's hooks, which the package calls through the container while it validates the
+     * request — never from the dispatched method, so its trace does not reach them. The gate is left out for
+     * the reason a FormRequest's is.
+     */
+    private function traceActionHooks(RouteContext $context, RequestHeaderReads $reads): void
+    {
+        $action = $context->actionRef->class;
+        if ($action === null || ! class_exists($action) || ! LaravelActionHooks::isAction($action)) {
+            return;
+        }
+
+        // Before the checks: a hook added to the action, a parent or a trait has to invalidate.
+        $context->recordDependencyFiles(DeclarationFiles::of($action));
+
+        if (! LaravelActionHooks::runsHooks($action, $context->actionRef->method)) {
+            return;
+        }
+
+        $reflection = new ReflectionClass($action);
+        foreach (LaravelActionHooks::HOOKS as $name) {
+            $method = $name === self::AUTHORIZE || ! $reflection->hasMethod($name) ? null : $reflection->getMethod($name);
+            $file = $method?->getFileName();
+            if ($method === null || $file === false || $file === null) {
+                continue;
+            }
+
+            $line = $method->getStartLine();
+            $context->traceFrom(new ActionRef($file, $method->getDeclaringClass()->getName(), $name, $line === false ? 0 : $line), $reads);
         }
     }
 

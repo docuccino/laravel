@@ -25,8 +25,8 @@ use Docuccino\Core\Inference\DType\EnumT;
 use Docuccino\Core\Patch\Contribution;
 use Docuccino\Core\Support\PortablePattern;
 use Docuccino\Laravel\Routing\RouteConstraints;
+use Docuccino\Laravel\Routing\RouteTemplate;
 use Docuccino\Laravel\Support\ListValueNames;
-use Illuminate\Routing\Route;
 use ReflectionEnum;
 
 /**
@@ -45,6 +45,12 @@ use ReflectionEnum;
  * as that enum, and any other expression as a `pattern` accepting what it does ({@see RouteConstraints::pattern()}).
  * One no pattern can state truly is left a plain string and reported — a pattern narrower than the
  * router would mark working requests invalid.
+ *
+ * Every path parameter is required, which is OpenAPI's rule at every version: the path it sits in is only
+ * ever this path with the segment present. A route with optional segments is one operation per URL form
+ * instead ({@see RouteTemplate::forms()}), and the last optional segment of a form, where nothing but
+ * the route typed it, carries the value leaving it off sends as its `default` — sending that value
+ * answers exactly as the next shorter form does.
  *
  * A bound parameter also carries what the route and the model settle about how it RESOLVES, which is
  * the half a consumer cannot read off the path: the column the value is matched on, the parent it is
@@ -65,12 +71,6 @@ final class PathParametersExtension implements OperationExtension
 {
     private const TRASHED_NOTE = 'Resolves soft-deleted (trashed) records as well as active ones.';
 
-    /** Constraints that match any segment at all. */
-    private const CATCH_ALL = ['.*', '.+'];
-
-    /** @var array<string, string>|null */
-    private static ?array $frameworkFormats = null;
-
     public function phase(): OperationPhase
     {
         return OperationPhase::Parameters;
@@ -86,7 +86,9 @@ final class PathParametersExtension implements OperationExtension
                 ? Contribution::inference($context->actionSource())
                 : Contribution::fallback();
 
-            $parameter->setRequired(! in_array($name, $context->optionalPathParameters, true), $contribution);
+            // Every OpenAPI version requires a path parameter, since the path it sits in is only this
+            // path with the segment present. A shorter form of the route is an operation of its own.
+            $parameter->setRequired(true, $contribution);
 
             if ($isBound) {
                 // Switching a model to HasUuids changes the route-key schema, so a warm fragment has to
@@ -116,6 +118,15 @@ final class PathParametersExtension implements OperationExtension
                     $parameter->schema()->set('type', 'string', $degraded ? Contribution::fallback() : $contribution);
                 }
 
+                // The schema is the route's own only while nothing typed the segment, so a bound or
+                // declared one keeps its shape and says nothing about a default spelled as a segment.
+                $default = $isBound || self::declaresType($context, $name) ? null : ($context->pathParameterDefaults[$name] ?? null);
+                if ($default !== null) {
+                    $parameter->schema()->set('default', $default, Contribution::inference());
+                    // Which path this one then answers exactly as, which no schema keyword can say.
+                    $parameter->setDescription(sprintf('Leaving it off is the same as sending `%s`.', $default), $contribution);
+                }
+
                 if ($isBound && $constraint === null && ! self::declaresType($context, $name)) {
                     if (self::isCustomBound($context, $name)) {
                         $this->reportCustomBinding($context, $name);
@@ -142,7 +153,7 @@ final class PathParametersExtension implements OperationExtension
     private function constraint(RouteContext $context, string $name): ?array
     {
         $expression = $context->pathParameterConstraints[$name] ?? null;
-        if ($expression === null || in_array($expression, self::CATCH_ALL, true)) {
+        if ($expression === null || in_array($expression, RouteConstraints::CATCH_ALL, true)) {
             return null;
         }
 
@@ -161,7 +172,10 @@ final class PathParametersExtension implements OperationExtension
      */
     private static function constraintSchema(string $expression, RouteContext $context): ?array
     {
-        $format = self::frameworkFormats()[$expression] ?? null;
+        // The UUID shorthand spells its digits `\d`, which is Unicode-wide under the router's modifiers and
+        // so no portable pattern; the format is what the shorthand states, and what a UUID-keyed binding
+        // publishes too.
+        $format = RouteConstraints::format($expression);
         if ($format !== null) {
             return ['type' => 'string', 'format' => $format];
         }
@@ -179,28 +193,6 @@ final class PathParametersExtension implements OperationExtension
         $pattern = RouteConstraints::pattern($expression);
 
         return $pattern === null ? null : ['type' => 'string', 'pattern' => $pattern];
-    }
-
-    /**
-     * The expressions the framework's own `whereUuid()`/`whereUlid()` write, read off the framework
-     * installed rather than copied, so a release that changes one cannot leave this matching the old.
-     * The UUID one spells its digits `\d`, which is Unicode-wide under the router's modifiers and so
-     * no portable pattern; the format is what the shorthand states, and what a UUID-keyed binding
-     * publishes too.
-     *
-     * @return array<string, string>
-     */
-    private static function frameworkFormats(): array
-    {
-        if (self::$frameworkFormats === null) {
-            $probe = new Route(['GET'], '{segment}', static fn (): null => null);
-            $uuid = $probe->whereUuid('segment')->wheres['segment'];
-            $ulid = $probe->whereUlid('segment')->wheres['segment'];
-
-            self::$frameworkFormats = is_string($uuid) && is_string($ulid) ? [$uuid => 'uuid', $ulid => 'ulid'] : [];
-        }
-
-        return self::$frameworkFormats;
     }
 
     /** Says the route constrains the segment in a way no portable `pattern` can state. */

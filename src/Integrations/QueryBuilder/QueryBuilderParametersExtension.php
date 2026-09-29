@@ -284,9 +284,7 @@ final class QueryBuilderParametersExtension implements OperationExtension
         }
 
         $facts = $this->customFilters->read($filter->filterClass);
-        if ($facts->file !== null) {
-            $context->recordDependencyFiles([$facts->file]);
-        }
+        $context->recordDependencyFiles($facts->files);
 
         if ($facts->attribute !== null) {
             return $this->applyCustomAttribute($filter, $facts->attribute, $context);

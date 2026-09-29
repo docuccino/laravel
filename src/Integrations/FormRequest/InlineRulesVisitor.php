@@ -23,18 +23,33 @@ use PhpParser\Node\Identifier;
  */
 final class InlineRulesVisitor extends RulesHarvestingVisitor
 {
+    /**
+     * Each call rules were harvested from, by where it is written, so one the walk reaches twice counts once.
+     *
+     * @var array<string, true>
+     */
+    private array $sites = [];
+
     public function enterNode(Node $node, TypeScope $scope): bool
     {
-        $rulesArgument = $this->rulesArgument($node);
+        $rulesArgument = self::rulesArgumentOf($node);
         if ($rulesArgument instanceof Array_) {
+            $location = $scope->location($node);
+            $this->sites[$location->file.':'.$location->line.':'.$location->pos] = true;
             $this->harvest($rulesArgument, $scope);
         }
 
         return $node instanceof MethodCall || $node instanceof StaticCall;
     }
 
+    /** How many calls in the walk the rules were harvested from. */
+    public function validations(): int
+    {
+        return count($this->sites);
+    }
+
     /** The rules-array argument of a `validate()` / `Validator::make()` call, or null. */
-    private function rulesArgument(Node $node): ?Node
+    public static function rulesArgumentOf(Node $node): ?Node
     {
         if ($node instanceof MethodCall && $node->name instanceof Identifier && $node->name->toString() === 'validate') {
             return $node->getArgs()[0]->value ?? null;
@@ -43,21 +58,13 @@ final class InlineRulesVisitor extends RulesHarvestingVisitor
         if ($node instanceof StaticCall
             && $node->name instanceof Identifier
             && $node->name->toString() === 'make'
-            && $this->isValidatorFactory($node)
+            && $node->class instanceof Node\Name
+            && $node->class->getLast() === 'Validator'
         ) {
             // Validator::make($data, $rules, ...) — the rules are the second argument.
             return $node->getArgs()[1]->value ?? null;
         }
 
         return null;
-    }
-
-    private function isValidatorFactory(StaticCall $node): bool
-    {
-        if (! $node->class instanceof Node\Name) {
-            return false;
-        }
-
-        return $node->class->getLast() === 'Validator';
     }
 }

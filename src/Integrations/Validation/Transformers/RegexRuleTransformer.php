@@ -14,14 +14,14 @@ use Docuccino\Core\Support\PortablePattern;
 
 /**
  * `regex:/…/` → a string schema whose `pattern` is the body read as {@see PortablePattern} reads it: exact,
- * or wider where PHP's `u` makes a class escape match every script or its `$` without `D` takes a final `\n`.
- * A modifier changing what matches (`i`, `m`, `s`, `x`), a body no pattern states truly, or a regex PHP
- * cannot compile publishes no pattern.
+ * or wider where PHP's `u` makes a class escape match every script or its `$` without `D` takes a final `\n`;
+ * under `i` each letter is spelled with its case partners. Another modifier changing what matches (`m`,
+ * `s`, `x`), a body no pattern states truly, or a regex PHP cannot compile publishes no pattern.
  */
 final class RegexRuleTransformer implements RuleTransformer
 {
-    /** The PCRE modifiers that change which strings match; dropping any other (`u`, `A`, `D`, `U`, …) never narrows it. */
-    private const MATCH_CHANGING = ['i', 'm', 's', 'x'];
+    /** The PCRE modifiers that change which strings match and no pattern spells; dropping any other (`A`, `U`, …) never narrows it. */
+    private const MATCH_CHANGING = ['m', 's', 'x'];
 
     public function supports(ValidationRule $rule): bool
     {
@@ -52,9 +52,9 @@ final class RegexRuleTransformer implements RuleTransformer
                     $field->path(),
                     implode('', $dropped),
                 ),
-                help: 'Spell what the modifier does inside the pattern — `[a-zA-Z]` for `/i`, `[\s\S]` for a dot under `/s` — '
-                    .'and the pattern is published. Without the modifier the pattern would refuse values your API accepts, '
-                    .'so the field is published without one rather than wrongly.',
+                help: 'Write the regex without the modifier — for `/x`, with its whitespace and comments removed — and the pattern '
+                    .'is published. Without the modifier the pattern would refuse values your API accepts, so the field is published '
+                    .'without one rather than wrongly.',
             ));
 
             return;
@@ -63,7 +63,13 @@ final class RegexRuleTransformer implements RuleTransformer
         // Laravel runs the regex as written, a search anchored only where the author anchored it.
         $pattern = @preg_match($regex, '') === false
             ? null
-            : PortablePattern::translate($body, unicode: str_contains($modifiers, 'u'), anchors: true, endOnly: str_contains($modifiers, 'D'));
+            : PortablePattern::translate(
+                $body,
+                unicode: str_contains($modifiers, 'u'),
+                anchors: true,
+                endOnly: str_contains($modifiers, 'D'),
+                caseless: str_contains($modifiers, 'i'),
+            );
 
         if ($pattern !== null) {
             $field->set('pattern', $pattern);
@@ -79,9 +85,11 @@ final class RegexRuleTransformer implements RuleTransformer
                 $field->path(),
             ),
             help: 'Spell it with ASCII literals, escaped syntax characters, bracket classes such as `[0-9]`, anchors, groups, '
-                .'alternation and quantifiers, and it is published. PHP and a JSON Schema validator part on `.`, on `\s` and `\b` '
-                .'under `/u`, on `\\B` without it, on a count such as `{4}` over a negated class or a class escape, and on PHP-only syntax: inline '
-                .'flags, lookarounds, possessive quantifiers.',
+                .'alternation and quantifiers, and it is published. PHP and a JSON Schema validator part on `.`, on `\b` '
+                .'under `/u`, on `\\B` without it, on a count such as `{4}` over a negated class or — under `/u` — over a class escape '
+                .'or a Unicode property, on such an escape or property beside a second unbounded quantifier or inside a repeated group, '
+                .'such as `\\pL+\\s*\\pL*` or `(?:\\pL+-?)*`, which a validator could backtrack through for far longer than PHP — one '
+                .'class such as `[\\pL\\s\\-]+` is published — and on PHP-only syntax: inline flags, lookarounds, possessive quantifiers.',
         ));
     }
 

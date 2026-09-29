@@ -55,3 +55,29 @@ it('reads a constraint under the router\'s own modifiers', function (): void {
     expect(RouteConstraints::pattern('\d+'))->toBe('^(?:[0-9]|[^\x00-\x7F])+$')
         ->and(RouteConstraints::pattern('[a-z]{2}|latest'))->toBe('^(?:[a-z]{2}|latest)$');
 });
+
+it('reads the host\'s segments apart from the path\'s, and keys both', function (): void {
+    $route = (new Route(['GET'], 'items/{item}', static fn (): null => null))
+        ->domain('{tenant}.{region?}.example.com')
+        ->where(['tenant' => '[a-z]+', 'item' => '[0-9]+', 'region' => 'eu|us', 'unused' => '[0-9]+']);
+
+    // The router compiles the host from the same constraints as the path, so a host segment is read the
+    // same way and keys the fragment beside them.
+    expect(RouteConstraints::ofHost($route))->toBe(['region' => 'eu|us', 'tenant' => '[a-z]+'])
+        ->and(RouteConstraints::of($route))->toBe(['item' => '[0-9]+'])
+        ->and(RouteConstraints::cacheInputs($route))->toBe(['where:item=[0-9]+', 'host-where:region=eu|us', 'host-where:tenant=[a-z]+'])
+        ->and(RouteConstraints::ofHost(new Route(['GET'], 'items', static fn (): null => null)))->toBe([]);
+});
+
+it('names the format of each framework shorthand that states one, and of no other expression', function (string $shorthand, ?string $format): void {
+    $route = (new Route(['GET'], '{segment}', static fn (): null => null))->{$shorthand}('segment');
+    $expression = $route->wheres['segment'];
+
+    expect(is_string($expression) ? RouteConstraints::format($expression) : 'not a string')->toBe($format);
+})->with([
+    'whereUuid' => ['whereUuid', 'uuid'],
+    'whereUlid' => ['whereUlid', 'ulid'],
+    'whereNumber' => ['whereNumber', null],
+    'whereAlpha' => ['whereAlpha', null],
+    'whereAlphaNumeric' => ['whereAlphaNumeric', null],
+]);

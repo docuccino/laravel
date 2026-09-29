@@ -8,7 +8,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 /**
  * Lists of a resource whose family overrides `newCollection()`, unpaginated and paginated, beside a list
- * of a resource keeping the framework's, and a paginated list whose collection's `with()` collides with the page.
+ * of a resource keeping the framework's, and paginated lists whose collection's `with()` collides with the page.
  */
 final class ListedCollectionController
 {
@@ -28,6 +28,11 @@ final class ListedCollectionController
     }
 
     public function tallied(): AnonymousResourceCollection
+    {
+        return CatalogueResource::collection([]);
+    }
+
+    public function appended(): AnonymousResourceCollection
     {
         return CatalogueResource::collection([]);
     }

@@ -21,9 +21,14 @@ use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Laravel\Integrations\ApiResources\JsonApiResourceSchema;
 use Docuccino\Laravel\Integrations\ApiResources\JsonResourceSchema;
 use Docuccino\Laravel\Integrations\ApiResources\ResourceReflector;
+use Docuccino\Laravel\Integrations\Support\PaginationEnvelope;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\AppendedReleaseCollection;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ConditionalWithResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\DynamicMetaResource;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\EmptiedDataResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\EmptyBranchResource;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\ForwardedDataResource;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\ForwardedReleaseCollection;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\LinkedReleaseCollection;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\MergedDataResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\MergingWithResource;
@@ -32,6 +37,7 @@ use Docuccino\Laravel\Tests\Fixtures\ApiResources\PartlyDynamicMetaResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ReleaseCollection;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ReleaseFeedCollection;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ReleaseResource;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\RetaggedResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\SparseResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\TalliedReleaseCollection;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\WithPropertyResource;
@@ -101,6 +107,30 @@ beforeEach(function (): void {
                 new ClassT('Illuminate\\Http\\Resources\\MergeValue', [new ArrayShapeT([new ArrayShapeField('debug', ScalarT::string())])]),
                 $missing,
             ])),
+        ]))]),
+        RetaggedResource::class.'::toArray' => new ActionAnalysis(returns: [$site($tag)]),
+        RetaggedResource::class.'::with' => new ActionAnalysis(returns: [$site(new ArrayShapeT([
+            new ArrayShapeField('data', new ArrayShapeT([
+                new ArrayShapeField('tag', ScalarT::string()),
+                new ArrayShapeField('traced', ScalarT::bool()),
+            ])),
+        ]))]),
+        EmptiedDataResource::class.'::toArray' => new ActionAnalysis(returns: [$site(new ArrayShapeT([])), $site($tag)]),
+        EmptiedDataResource::class.'::with' => new ActionAnalysis(returns: [$site(new ArrayShapeT([
+            new ArrayShapeField('data', new ArrayShapeT([new ArrayShapeField('traced', ScalarT::bool())])),
+        ]))]),
+        ForwardedDataResource::class.'::toArray' => new ActionAnalysis(returns: [$site($tag)]),
+        ForwardedDataResource::class.'::with' => new ActionAnalysis(returns: [$site(new ArrayShapeT([
+            new ArrayShapeField('data', new MapT(ScalarT::string(), new UnknownT('mixed'))),
+        ]))]),
+        AppendedReleaseCollection::class.'::with' => new ActionAnalysis(returns: [$site(new ArrayShapeT([
+            new ArrayShapeField('data', new ArrayShapeT([new ArrayShapeField('source', ScalarT::string())])),
+        ]))]),
+        ForwardedReleaseCollection::class.'::toArray' => new ActionAnalysis(returns: [$site(new ArrayShapeT([
+            new ArrayShapeField('data', new ListT(new ClassT(ReleaseResource::class))),
+        ]))]),
+        ForwardedReleaseCollection::class.'::with' => new ActionAnalysis(returns: [$site(new ArrayShapeT([
+            new ArrayShapeField('data', new ArrayShapeT([new ArrayShapeField('source', ScalarT::string())])),
         ]))]),
         MeteredJsonApiResource::class.'::toAttributes' => new ActionAnalysis(returns: [$site(new ArrayShapeT([new ArrayShapeField('title', ScalarT::string())]))]),
         MeteredJsonApiResource::class.'::toMeta' => new ActionAnalysis(returns: [$site(new ArrayShapeT([
@@ -180,6 +210,68 @@ it('wraps an unwrapped resource whose with() returns only the data key, merged i
 
     expect($sent)->toEqual((object) ['data' => (object) ['tag' => 'a', 'traced' => true]])
         ->and(($this->accepts)(($this->published)(MergedDataResource::class), $sent))->toBeTrue();
+});
+
+it('accepts the data a with() data key is merged into, which is not the list or the object toArray builds', function (): void {
+    $items = [(object) ['tag' => 'a'], (object) ['tag' => 'b']];
+    $collection = ($this->published)(AppendedReleaseCollection::class);
+    $plain = ($this->sent)(new AppendedReleaseCollection(collect($items)));
+    $paged = ($this->sent)(new AppendedReleaseCollection(new LengthAwarePaginator($items, 2, 15)));
+    $forwarded = ($this->sent)(new ForwardedReleaseCollection(collect($items)));
+    $retagged = ($this->sent)(new RetaggedResource((object) ['tag' => 'a']));
+
+    // array_merge_recursive: the object joins the list's positions, and a key both send becomes the list of both.
+    expect($plain->data)->toEqual((object) ['0' => (object) ['tag' => 'a'], '1' => (object) ['tag' => 'b'], 'source' => 'ledger'])
+        ->and($paged->data)->toEqual($plain->data)
+        ->and($forwarded->data)->toEqual($plain->data)
+        ->and($retagged->data)->toEqual((object) ['tag' => ['a', 'pinned'], 'traced' => true])
+        ->and(($this->accepts)($collection, $plain))->toBeTrue()
+        ->and(($this->accepts)($collection, $paged))->toBeTrue()
+        ->and(($this->accepts)(($this->published)(ForwardedReleaseCollection::class), $forwarded))->toBeTrue()
+        ->and(($this->accepts)(($this->published)(RetaggedResource::class), $retagged))->toBeTrue()
+        // Neither the list's items nor the resource's string is what is sent: the data is widened to it.
+        ->and($collection->properties->data)->toEqual((object) PaginationEnvelope::MERGED)
+        ->and(($this->published)(RetaggedResource::class)->properties->data)->toEqual((object) PaginationEnvelope::MERGED)
+        ->and(($this->published)(ForwardedReleaseCollection::class)->properties->data)->toEqual((object) PaginationEnvelope::MERGED)
+        // Still an array or an object, which is all a response can send there.
+        ->and(($this->accepts)($collection, (object) ['data' => 'x']))->toBeFalse();
+});
+
+it('accepts a with() data key whose keys may be the resource\'s own, widened, and keeps a body its keys only join', function (): void {
+    $forwarded = ($this->sent)(new ForwardedDataResource((object) ['tag' => 'a']), ['extra' => ['tag' => 'x']]);
+    $emptied = ($this->sent)(new EmptiedDataResource((object) ['tag' => 'a']), ['empty' => '1']);
+    $keyed = ($this->sent)(new EmptiedDataResource((object) ['tag' => 'a']));
+
+    // The empty body's [] takes the member's keys and is sent as an object — one the open body requires nothing of.
+    expect($forwarded->data)->toEqual((object) ['tag' => ['a', 'x']])
+        ->and($emptied->data)->toEqual((object) ['traced' => true])
+        ->and($keyed->data)->toEqual((object) ['tag' => 'a', 'traced' => true])
+        ->and(($this->published)(ForwardedDataResource::class)->properties->data)->toEqual((object) PaginationEnvelope::MERGED)
+        // The body the member only joins stands, as the same toArray with no with() publishes it.
+        ->and(($this->published)(EmptiedDataResource::class)->properties->data)->toEqual(($this->published)(EmptyBranchResource::class)->properties->data)
+        ->and(($this->accepts)(($this->published)(ForwardedDataResource::class), $forwarded))->toBeTrue()
+        ->and(($this->accepts)(($this->published)(EmptiedDataResource::class), $emptied))->toBeTrue()
+        ->and(($this->accepts)(($this->published)(EmptiedDataResource::class), $keyed))->toBeTrue();
+});
+
+it('accepts the data a with() data key is merged into under withoutWrapping', function (): void {
+    JsonResource::withoutWrapping();
+
+    try {
+        $policy = new RepresentationPolicy(resourceWrap: RepresentationPolicy::WRAP_DISABLED);
+        $collection = ($this->published)(AppendedReleaseCollection::class, $policy);
+        $resource = ($this->published)(RetaggedResource::class, $policy);
+        $plain = ($this->sent)(new AppendedReleaseCollection(collect([(object) ['tag' => 'a']])));
+        $retagged = ($this->sent)(new RetaggedResource((object) ['tag' => 'a']));
+    } finally {
+        JsonResource::wrap('data');
+    }
+
+    // with() returning anything wraps the unwrapped body under data, and the merge follows.
+    expect($plain)->toEqual((object) ['data' => (object) ['0' => (object) ['tag' => 'a'], 'source' => 'ledger']])
+        ->and($retagged->data->tag)->toBe(['a', 'pinned'])
+        ->and(($this->accepts)($collection, $plain))->toBeTrue()
+        ->and(($this->accepts)($resource, $retagged))->toBeTrue();
 });
 
 it('accepts a named collection with Laravel\'s own toArray, paginated or not, with() meta merged in', function (): void {

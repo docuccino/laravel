@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\Eloquent;
 
 use Docuccino\Core\Inference\CallableRef;
+use Docuccino\Core\Inference\DeclarationLine;
 use Docuccino\Laravel\Integrations\Support\ParsedClassFile;
 use Illuminate\Support\Str;
 use PhpParser\Node\Arg;
@@ -54,7 +55,8 @@ final class AccessorReader
                 return [];
             }
 
-            $methodNodes = null;
+            $statements = [];
+            $sources = [];
             $accessors = [];
             foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
                 if ($method->isStatic() || str_starts_with($method->getDeclaringClass()->getName(), 'Illuminate\\')) {
@@ -78,12 +80,18 @@ final class AccessorReader
                     continue;
                 }
 
-                $methodNodes ??= ParsedClassFile::methods($file);
-                $line = $this->getClosureLine($methodNodes[$name] ?? null);
+                // The body PHP runs is where its closure is, and a parent or a trait may write it.
+                $written = $method->getFileName();
+                if ($written === false) {
+                    continue;
+                }
+                $statements[$written] ??= ParsedClassFile::statements($written);
+                $sources[$written] ??= (string) file_get_contents($written);
+                $line = $this->getClosureLine(ParsedClassFile::declarationOf($method, $statements[$written]), $sources[$written]);
                 if ($line !== null) {
                     $accessors[] = [
                         'attribute' => Str::snake($name),
-                        'ref' => new CallableRef($file, null, null, $line),
+                        'ref' => new CallableRef($written, null, null, $line),
                     ];
                 }
             }
@@ -101,8 +109,11 @@ final class AccessorReader
         return $type instanceof ReflectionNamedType && $type->getName() === self::ATTRIBUTE;
     }
 
-    /** The start line of the `get:` closure inside the method's Attribute call, if there is one. */
-    private function getClosureLine(?ClassMethod $method): ?int
+    /**
+     * The line reflection gives the `get:` closure inside the method's Attribute call, if there is one —
+     * the line the engine looks a closure up by, which is its keyword's and not its first modifier's.
+     */
+    private function getClosureLine(?ClassMethod $method, string $source): ?int
     {
         if ($method === null) {
             return null;
@@ -112,7 +123,7 @@ final class AccessorReader
             /** @var StaticCall|New_ $call */
             $getArg = self::getCallbackArg($call);
             if ($getArg instanceof Closure || $getArg instanceof ArrowFunction) {
-                return $getArg->getStartLine();
+                return DeclarationLine::of($getArg, $source);
             }
         }
 

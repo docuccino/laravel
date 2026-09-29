@@ -23,6 +23,8 @@ use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
  * attribute body extension runs behind this one — and why the recovery notes read the declarations for
  * wherever these rules landed before they say a field went undocumented, since one naming a field
  * publishes it after this runs.
+ *
+ * @phpstan-import-type CopySource from CopiedInputs
  */
 final class ValidationRequestExtension implements OperationExtension
 {
@@ -41,7 +43,7 @@ final class ValidationRequestExtension implements OperationExtension
 
     public function handle(OperationDraft $operation, RouteContext $context): void
     {
-        [$rules, $sourceClass] = $this->recover($context);
+        [$rules, $sourceClass, $copied] = $this->recover($context);
         if ($rules === null || $rules->isEmpty()) {
             return;
         }
@@ -49,14 +51,9 @@ final class ValidationRequestExtension implements OperationExtension
         $normalized = $this->normalizer->normalize($rules, RecoveredRequest::publishesVariants($context, $sourceClass));
         RuleSetNormalizer::report($normalized, $context, $sourceClass);
 
-        // A key the FormRequest overwrites with a header, query value or route parameter validates that
+        // A key overwritten with a header, query value or route parameter before validation validates that
         // part of the request, never the body; its rules are published there ({@see CopiedInputParameters}).
-        if ($sourceClass !== null) {
-            $normalized = $this->copied->move($operation, $context, $sourceClass, $normalized);
-            if (CopiedInputs::movedFrom($operation) !== []) {
-                $operation->declareValidatesInput();
-            }
-        }
+        $normalized = $this->copied->move($operation, $copied, $normalized);
 
         $result = $context->validation()->convert($this->ordering->order($normalized), $context->converter());
         if ($result->isEmpty()) {
@@ -69,15 +66,16 @@ final class ValidationRequestExtension implements OperationExtension
     }
 
     /**
-     * The rule set plus the FormRequest class it came from; the class is null for an inline body.
+     * The rule set, the FormRequest class it came from (null for an inline body), and the keys copied into
+     * the input before it validates ({@see CopiedInputs}).
      *
-     * @return array{0: ?RuleSet, 1: ?string}
+     * @return array{0: ?RuleSet, 1: ?string, 2: array<string, CopySource>}
      */
     private function recover(RouteContext $context): array
     {
         $fromFormRequest = $this->formRequest->recover($context);
-        if ($fromFormRequest !== null && ! $fromFormRequest->isEmpty()) {
-            return [$fromFormRequest, $context->formRequestClass];
+        if ($fromFormRequest !== null && ! $fromFormRequest->isEmpty() && $context->formRequestClass !== null) {
+            return [$fromFormRequest, $context->formRequestClass, $this->copied->of($context, $context->formRequestClass)];
         }
 
         $visitor = new InlineRulesVisitor;
@@ -102,6 +100,6 @@ final class ValidationRequestExtension implements OperationExtension
             $notes->widened($context, $field, sprintf('Inline validation field "%s" states values this build cannot read, so that constraint is left off %s; the rest of its rules are documented.', $field, RecoveredRequest::destination($context)));
         }
 
-        return $inline->isEmpty() ? [null, null] : [$inline, null];
+        return $inline->isEmpty() ? [null, null, []] : [$inline, null, $this->copied->ofInline($context, $visitor->validations())];
     }
 }

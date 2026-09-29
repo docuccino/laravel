@@ -200,6 +200,26 @@ final readonly class OperationLookup
     }
 
     /**
+     * Adds what the router knows about one route to the operation `method /path` it answers.
+     *
+     * @param  array<string, array{name: list<string>, action: list<string>}>  $index
+     */
+    private function indexRoute(array &$index, string $key, Route $route): void
+    {
+        $index[$key] ??= ['name' => [], 'action' => []];
+
+        $name = RouteName::of($route);
+        if ($name !== null && ! in_array($name, $index[$key]['name'], true)) {
+            $index[$key]['name'][] = $name;
+        }
+
+        $action = $route->getActionName();
+        if ($action !== '' && ! in_array($action, $index[$key]['action'], true)) {
+            $index[$key]['action'][] = $action;
+        }
+    }
+
+    /**
      * A leading HTTP method, when the query has one. A route name never carries a space, so the split
      * only ever fires on a `POST /api/invoices`-shaped query.
      *
@@ -227,28 +247,17 @@ final readonly class OperationLookup
     {
         $index = [];
 
+        $collection = $this->router->getRoutes();
         /** @var iterable<Route> $routes */
-        $routes = $this->router->getRoutes();
+        $routes = $collection;
+
+        // A route answers each of its URL forms the router reaches it by ({@see ServedForms}).
+        $served = new ServedForms($collection);
 
         foreach ($routes as $route) {
-            $path = OasPath::of($route->uri());
-
-            foreach ($route->methods() as $method) {
-                if (! is_string($method)) {
-                    continue;
-                }
-
-                $key = strtolower($method).' '.$path;
-                $index[$key] ??= ['name' => [], 'action' => []];
-
-                $name = $route->getName();
-                if ($name !== null && $name !== '' && ! in_array($name, $index[$key]['name'], true)) {
-                    $index[$key]['name'][] = $name;
-                }
-
-                $action = $route->getActionName();
-                if ($action !== '' && ! in_array($action, $index[$key]['action'], true)) {
-                    $index[$key]['action'][] = $action;
+            foreach ($served->of($route) as $form) {
+                foreach ($form['methods'] as $method) {
+                    $this->indexRoute($index, strtolower($method).' '.OasPath::of($form['uri']), $route);
                 }
             }
         }

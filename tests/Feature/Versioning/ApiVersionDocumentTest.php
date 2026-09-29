@@ -243,6 +243,25 @@ it('leaves an application that documents the header itself to say it its own way
         ->and($parameters[0]['schema'])->not->toHaveKey('enum');
 });
 
+it('leaves a header the author declared under another spelling of the version header to say it their way', function (): void {
+    /** @var Router $router */
+    $router = app('router');
+    $router->get('api/versioned-forms/spelled-apart', [VersionedFormController::class, 'documentedSpelledApart']);
+
+    $document = generateDocument(static function (array $raw): array {
+        $raw['routes'] = ['include' => ['api/versioned-forms/spelled-apart']];
+
+        return $raw;
+    }, 'v2026-06-01')->document->toArray();
+
+    $parameters = $document['paths']['/api/versioned-forms/spelled-apart']['get']['parameters'];
+
+    // The framework's header bag reads `_` as `-` and ignores case, so a server reads `x_api_version` as the
+    // version header: a second parameter beside it would be one header a client is told to send twice.
+    expect($parameters)->toHaveCount(1)
+        ->and($parameters[0]['name'])->toBe('x_api_version');
+});
+
 it('leaves a document that declares no version untouched', function (): void {
     // The head-document guarantee the six committed goldens depend on: a document with no `api_version`
     // is not an API version, and nothing here moves a byte of it.

@@ -16,6 +16,7 @@ use Docuccino\Core\Identity\IdentityGenerator;
 use Docuccino\Core\Support\Arr;
 use Docuccino\Core\Versioning\VersionOrder;
 use Docuccino\Laravel\Config\ConfiguredDocuments;
+use Docuccino\Laravel\Support\HeaderNames;
 use Docuccino\Laravel\Support\ListValueNames;
 
 /**
@@ -252,8 +253,9 @@ final readonly class ApiVersionHeader
             $stated = $parameter['name'] ?? null;
 
             // An application that documents the header itself keeps its own wording; two parameters of
-            // one name in one location is a document no client can read.
-            if (is_string($stated) && strcasecmp($stated, $name) === 0) {
+            // one name in one location is a document no client can read. "One name" is as the framework's
+            // header bag reads it, so `x_api_version` is the version header too.
+            if (is_string($stated) && HeaderNames::lookupKey($stated) === HeaderNames::lookupKey($name)) {
                 return $operation;
             }
         }

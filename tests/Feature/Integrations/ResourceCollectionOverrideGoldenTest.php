@@ -13,6 +13,7 @@ use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Laravel\Integrations\ApiResources\ResourceReflector;
 use Docuccino\Laravel\Integrations\Support\PaginationEnvelope;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\AppendedCollection;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\CatalogueResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ListedCollection;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ListedCollectionController;
@@ -48,6 +49,10 @@ beforeEach(function (): void {
             ListedCollectionController::class.'::index' => $listed,
             ListedCollectionController::class.'::paginated' => $listed,
             ListedCollectionController::class.'::tallied' => new ActionAnalysis(returns: [new ReturnSite(new ClassT(TalliedCollection::class, [new ClassT(CatalogueResource::class)]), $location)]),
+            ListedCollectionController::class.'::appended' => new ActionAnalysis(returns: [new ReturnSite(new ClassT(AppendedCollection::class, [new ClassT(CatalogueResource::class)]), $location)]),
+            AppendedCollection::class.'::with' => $shape([
+                new ArrayShapeField('data', new ArrayShapeT([new ArrayShapeField('source', ScalarT::string())])),
+            ]),
             TalliedCollection::class.'::with' => $shape([
                 new ArrayShapeField('meta', new ArrayShapeT([
                     new ArrayShapeField('total', ScalarT::int()),
@@ -65,6 +70,7 @@ beforeEach(function (): void {
         traceOverrides: [
             ListedCollectionController::class.'::paginated' => TraceScript::forChain('$q->paginate(15)', 'Illuminate\\Database\\Eloquent\\Builder'),
             ListedCollectionController::class.'::tallied' => TraceScript::forChain('$q->paginate(15)', 'Illuminate\\Database\\Eloquent\\Builder'),
+            ListedCollectionController::class.'::appended' => TraceScript::forChain('$q->paginate(15)', 'Illuminate\\Database\\Eloquent\\Builder'),
         ],
     );
 
@@ -163,6 +169,53 @@ it('publishes a with() meta key the page also sends as the array Laravel merges 
     // Invalid without the widening: a validator that accepts anything proves nothing.
     $claimed = $body;
     $claimed['properties']['meta']['properties']['total'] = ['type' => 'integer'];
+    expect((new Validator)->validate($sent, $inline($claimed))->isValid())->toBeFalse();
+});
+
+it('publishes the data a with() data key is merged into, paginated, as the array or object it is sent as', function (): void {
+    // with()'s data is merged into the page's data by array_merge_recursive, so the list the page component
+    // states is not what is sent: its items and the member's keys arrive as one object.
+    $result = localityBuild(static function (Router $router): void {
+        $router->get('api/zz-appended', [ListedCollectionController::class, 'appended']);
+    }, $this->engine);
+    $document = $result->document->toArray();
+    $body = $document['paths']['/api/zz-appended']['get']['responses']['200']['content']['application/json']['schema'];
+
+    $sent = json_decode((string) (new AppendedCollection(new LengthAwarePaginator([(object) ['name' => 'a']], 2, 15), CatalogueResource::class))
+        ->toResponse(Request::create('/'))->getContent());
+
+    $inline = static function (mixed $node, ?string $key = null) use (&$inline, $document): mixed {
+        if (! is_array($node)) {
+            return $node;
+        }
+        if (isset($node['$ref']) && is_string($node['$ref'])) {
+            return $inline($document['components']['schemas'][substr($node['$ref'], strlen('#/components/schemas/'))]);
+        }
+        if ($node === [] && ! in_array($key, ['required', 'enum'], true)) {
+            return new stdClass;
+        }
+        $out = [];
+        foreach ($node as $k => $v) {
+            $out[$k] = $inline($v, is_string($k) ? $k : $key);
+        }
+
+        return array_is_list($out) && in_array($key, ['required', 'enum', 'type', 'examples', 'anyOf', 'allOf', 'oneOf'], true) ? $out : (object) $out;
+    };
+
+    expect($sent->data)->toEqual((object) ['0' => (object) ['name' => 'widget'], 'source' => 'ledger'])
+        ->and($sent->meta->total)->toBe(2)
+        ->and((new Validator)->validate($sent, $inline($body))->isValid())->toBeTrue()
+        // Still paginated: the page's own links and meta are stated beside the widened data.
+        ->and($body['properties']['data'] ?? null)->toBe(PaginationEnvelope::MERGED)
+        ->and($body['properties']['links'])->toBe(['$ref' => '#/components/schemas/PaginationLinks'])
+        ->and($body['properties']['meta'])->toBe(['$ref' => '#/components/schemas/PaginationMeta'])
+        // The page component is every collection of this item's, and keeps the list it states for them.
+        ->and($document['components']['schemas']['CatalogueResourcePage']['properties']['data']['items'] ?? null)
+        ->toBe(['$ref' => '#/components/schemas/CatalogueResource']);
+
+    // Invalid with the page's list: a validator that accepts anything proves nothing.
+    $claimed = $body;
+    $claimed['properties']['data'] = ['type' => 'array', 'items' => ['$ref' => '#/components/schemas/CatalogueResource']];
     expect((new Validator)->validate($sent, $inline($claimed))->isValid())->toBeFalse();
 });
 

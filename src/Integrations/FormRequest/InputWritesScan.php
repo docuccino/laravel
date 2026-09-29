@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\FormRequest;
 
+use Docuccino\Laravel\Support\LaravelActionHooks;
 use PhpParser\Node;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\MethodCall;
@@ -12,12 +13,13 @@ use PhpParser\NodeVisitorAbstract;
 use ReflectionClass;
 
 /**
- * Everything in a `prepareForValidation()` body, other than its unconditional merges, that writes the
+ * Everything in the body that runs before validation, other than its unconditional merges, that writes the
  * request's input: which literal keys a further merge names, and whether anything writes keys that cannot
  * be named at all ({@see $opaque}). {@see CopiedInputs} trusts a copied key only when nothing here touches it.
  *
- * `$this` is safe only as the receiver of a call or a read. Handed anywhere else — an argument, an
- * assignment, an array — it reaches code that may `merge()` over the copy, and so does one of its bags.
+ * The request ({@see InputHandle}) is safe only as the receiver of a call or a read. Handed anywhere else —
+ * an argument, an assignment, an array — it reaches code that may `merge()` over the copy, and so does one
+ * of its bags. Where `$this` is not the request, the object it is may hold one, so it is held to the same.
  */
 final class InputWritesScan extends NodeVisitorAbstract
 {
@@ -33,8 +35,14 @@ final class InputWritesScan extends NodeVisitorAbstract
     /** The facade, by its class and by the global alias the framework registers for it. */
     private const REQUEST_FACADES = ['Illuminate\\Support\\Facades\\Request', 'Request'];
 
-    /** What the container resolves to the current request: its key and the classes the framework aliases to it. */
-    private const CONTAINER_REQUEST = ['request', 'Illuminate\\Http\\Request', 'Symfony\\Component\\HttpFoundation\\Request'];
+    /**
+     * What the container resolves to a request sharing the validated input: its key, the classes the framework
+     * aliases to it, and the request laravel-actions binds for the action it validates.
+     */
+    private const CONTAINER_REQUEST = ['request', 'Illuminate\\Http\\Request', 'Symfony\\Component\\HttpFoundation\\Request', LaravelActionHooks::ACTION_REQUEST];
+
+    /** Functions that read or write a variable by its name, which a body can reach the request by. */
+    private const NAMED_VARIABLE_ACCESS = ['compact', 'extract', 'get_defined_vars'];
 
     /** Something writes, or may skip writing, keys this cannot name. */
     public bool $opaque = false;
@@ -52,11 +60,10 @@ final class InputWritesScan extends NodeVisitorAbstract
     private array $ancestors = [];
 
     /**
-     * @param  ReflectionClass<object>  $class
      * @param  array<int, true>  $unconditional  the object ids of the merge calls already read as statements
      */
     public function __construct(
-        private readonly ReflectionClass $class,
+        private readonly InputHandle $handle,
         private readonly array $unconditional,
     ) {}
 
@@ -73,7 +80,7 @@ final class InputWritesScan extends NodeVisitorAbstract
 
         if ($node instanceof Expr\Assign || $node instanceof Expr\AssignOp || $node instanceof Expr\AssignRef || $node instanceof Node\Stmt\Unset_) {
             foreach ($node instanceof Node\Stmt\Unset_ ? $node->vars : [$node->var] as $target) {
-                if (($target instanceof Expr\ArrayDimFetch || $target instanceof Expr\PropertyFetch) && CopiedInputs::rootsAtThis($target->var)) {
+                if (($target instanceof Expr\ArrayDimFetch || $target instanceof Expr\PropertyFetch) && $this->handle->rootsAt($target->var)) {
                     $this->opaque = true;
                 }
             }
@@ -82,7 +89,7 @@ final class InputWritesScan extends NodeVisitorAbstract
         if ($node instanceof Expr\StaticCall && $node->class instanceof Node\Name) {
             $class = ltrim($node->class->toString(), '\\');
             if (in_array(strtolower($class), ['parent', 'self', 'static'], true)) {
-                $this->ownMethod($node->name);
+                $this->ownMethod($this->handle->owner, $node->name);
             } elseif (in_array($class, self::REQUEST_FACADES, true)) {
                 $this->otherHandle($node->name);
             }
@@ -92,8 +99,17 @@ final class InputWritesScan extends NodeVisitorAbstract
             $this->methodCall($node);
         }
 
-        if ($node instanceof Expr\Variable && CopiedInputs::isThis($node)) {
-            $this->follow($node);
+        if ($node instanceof Expr\Variable) {
+            $this->variable($node);
+        }
+
+        // A request variable can be reached by its name as well as by itself.
+        if (! $this->handle->isSelf() && $node instanceof Expr\FuncCall) {
+            foreach (self::NAMED_VARIABLE_ACCESS as $function) {
+                if (self::functionNamed($node, $function)) {
+                    $this->opaque = true;
+                }
+            }
         }
 
         $this->ancestors[] = $node;
@@ -117,21 +133,32 @@ final class InputWritesScan extends NodeVisitorAbstract
         $name = $call->name instanceof Node\Identifier ? $call->name->toString() : null;
 
         // The container's request is the one the FormRequest was built from, which shares its JSON bag.
-        if (self::isContainerRequest($call->var)) {
+        if ($this->isContainerRequest($call->var)) {
             $this->otherHandle($call->name);
 
             return;
         }
 
-        if (! CopiedInputs::isThis($call->var)) {
-            if ($name !== null && in_array($name, self::BAG_WRITERS, true) && CopiedInputs::rootsAtThis($call->var)) {
+        if (! $this->handle->is($call->var)) {
+            if ($name !== null && in_array($name, self::BAG_WRITERS, true) && $this->handle->rootsAt($call->var)) {
                 $this->opaque = true;
+            }
+
+            // An object that is not the request may hold one: its own code, or a writer called on what it holds.
+            if (! $this->handle->isSelf() && InputHandle::isThis(InputHandle::root($call->var))) {
+                if (InputHandle::isThis($call->var)) {
+                    $this->ownMethod($this->handle->owner, $call->name);
+                } elseif ($name !== null && in_array($name, self::BAG_WRITERS, true)) {
+                    $this->opaque = true;
+                } else {
+                    $this->otherHandle($call->name);
+                }
             }
 
             return;
         }
 
-        if ($name === null || in_array($name, self::INPUT_WRITERS, true) || CopiedInputs::isApplicationMethod($this->class, $name)) {
+        if ($name === null || in_array($name, self::INPUT_WRITERS, true) || CopiedInputs::isApplicationMethod($this->handle->request, $name)) {
             $this->opaque = true;
 
             return;
@@ -157,12 +184,12 @@ final class InputWritesScan extends NodeVisitorAbstract
      * The container's request, however it is asked for: `request()`, or `app()`, `resolve()` or a
      * container's `make()` given `'request'` or a class the container aliases to it.
      */
-    private static function isContainerRequest(Expr $expr): bool
+    private function isContainerRequest(Expr $expr): bool
     {
         if ($expr instanceof MethodCall
             && $expr->name instanceof Node\Identifier
             && strtolower($expr->name->toString()) === 'make'
-            && self::isContainer($expr->var)
+            && $this->isContainer($expr->var)
         ) {
             return self::namesRequest($expr->args);
         }
@@ -178,15 +205,15 @@ final class InputWritesScan extends NodeVisitorAbstract
         return (self::functionNamed($expr, 'app') || self::functionNamed($expr, 'resolve')) && self::namesRequest($expr->args);
     }
 
-    /** `app()`, or the container a FormRequest is handed as `$this->container`. */
-    private static function isContainer(Expr $expr): bool
+    /** `app()`, or the container a FormRequest is handed as its `container`. */
+    private function isContainer(Expr $expr): bool
     {
         if ($expr instanceof Expr\FuncCall) {
             return self::functionNamed($expr, 'app') && $expr->args === [];
         }
 
         return $expr instanceof Expr\PropertyFetch
-            && CopiedInputs::isThis($expr->var)
+            && $this->handle->is($expr->var)
             && $expr->name instanceof Node\Identifier
             && $expr->name->toString() === 'container';
     }
@@ -218,10 +245,27 @@ final class InputWritesScan extends NodeVisitorAbstract
             && in_array(ltrim($only->class->toString(), '\\'), self::CONTAINER_REQUEST, true);
     }
 
-    /** `static::`, `self::`, `parent::` or `$this::` naming a method of the class's own code, which may write anything. */
-    private function ownMethod(Node $name): void
+    /**
+     * A call naming a method of the class's own code, which may write anything.
+     *
+     * @param  ReflectionClass<object>  $class
+     */
+    private function ownMethod(ReflectionClass $class, Node $name): void
     {
-        if (! $name instanceof Node\Identifier || CopiedInputs::isApplicationMethod($this->class, $name->toString())) {
+        if (! $name instanceof Node\Identifier || CopiedInputs::isApplicationMethod($class, $name->toString())) {
+            $this->opaque = true;
+        }
+    }
+
+    /** The request followed out through the uses of it; so is `$this` where it is not the request, since it may hold one. */
+    private function variable(Expr\Variable $variable): void
+    {
+        if ($this->handle->is($variable)) {
+            $this->follow($variable, $this->handle->request);
+        } elseif (! $this->handle->isSelf() && InputHandle::isThis($variable)) {
+            $this->follow($variable, $this->handle->owner);
+        } elseif (! $this->handle->isSelf() && ! is_string($variable->name)) {
+            // `$$name` may be the request variable.
             $this->opaque = true;
         }
     }
@@ -235,12 +279,13 @@ final class InputWritesScan extends NodeVisitorAbstract
     }
 
     /**
-     * Follows `$this` out through the request's own objects — a declared property such as a bag, or a
-     * method that hands a bag back — to the expression that uses it. A call on it, a read of an input
-     * value (`$this->title`), an offset read, a class-name use and `isset()` keep it here; anything else
-     * hands it on.
+     * Follows a variable out through its own objects — a declared property such as a bag, or a method that
+     * hands a bag back — to the expression that uses it. A call on it, a read of an input value
+     * (`$this->title`), an offset read, a class-name use and `isset()` keep it here; anything else hands it on.
+     *
+     * @param  ReflectionClass<object>  $class  the variable's class
      */
-    private function follow(Expr\Variable $request): void
+    private function follow(Expr\Variable $request, ReflectionClass $class): void
     {
         $child = $request;
         for ($i = count($this->ancestors) - 1; $i >= 0; $i--) {
@@ -254,7 +299,7 @@ final class InputWritesScan extends NodeVisitorAbstract
                 }
 
                 // An undeclared property is `__get()`, which answers an input value, not an object.
-                if (! $this->class->hasProperty($parent->name->toString())) {
+                if (! $class->hasProperty($parent->name->toString())) {
                     return;
                 }
 
@@ -275,11 +320,17 @@ final class InputWritesScan extends NodeVisitorAbstract
 
             if ($parent instanceof Expr\StaticCall && $parent->class === $child) {
                 if ($child === $request) {
-                    $this->ownMethod($parent->name);
+                    $this->ownMethod($class, $parent->name);
                 } else {
                     $this->opaque = true;
                 }
 
+                return;
+            }
+
+            // A write INTO one of its objects: the enter check has already refused it where that object is the
+            // request's, so what is left is the state of an object that is not the request.
+            if (($parent instanceof Expr\Assign || $parent instanceof Expr\AssignOp) && $parent->var === $child && $child !== $request) {
                 return;
             }
 

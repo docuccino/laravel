@@ -14,8 +14,9 @@ use Throwable;
 
 /**
  * The relation-method calls a model's own methods make — every `$this->belongsTo(...)`, say — read
- * statically: reflection finds the candidates, each declaring file is parsed once. What a call means is
- * left to the reader asking ({@see BelongsToReader}, {@see MorphToReader}).
+ * statically: reflection finds the candidates, each declaring file is parsed once, and each body read is
+ * the one PHP runs for the method, never a sibling's of that name. What a call means is left to the reader
+ * asking ({@see BelongsToReader}, {@see MorphToReader}).
  */
 final class RelationCalls
 {
@@ -55,9 +56,9 @@ final class RelationCalls
 
         $found = [];
         foreach ($byFile as $file => $candidates) {
-            $nodes = ParsedClassFile::methods($file);
+            $statements = ParsedClassFile::statements($file);
             foreach ($candidates as $method) {
-                $node = $nodes[$method->getName()] ?? null;
+                $node = ParsedClassFile::declarationOf($method, $statements);
                 if ($node === null) {
                     continue;
                 }

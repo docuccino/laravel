@@ -347,6 +347,25 @@ it('publishes a Unicode-wide class escape under /u no narrower than the server',
 })->with([
     '\\d' => ['regex:/^\\d+$/u', '^(?:[0-9]|[^\\x00-\\x7F])+\\n?$', ['42', '٣', '𝟎', "42\n"]],
     '\\w in a class' => ['regex:/^[\\w-]+$/uD', '^(?:[0-9A-Za-z_-]|[^\\x00-\\x7F])+$', ['a-b', 'é-名前']],
+    // A name of any script's letters, spaces and hyphens: `\\s` takes U+0085 and U+3000 under `/u` too.
+    'a letter property and \\s in a class' => ['regex:/^[\\pL\\s\\-]+$/u', '^(?:[A-Za-z\\t-\\r \\-]|[^\\x00-\\x7F])+\\n?$', ['Anne-Marie', 'Zoë Smith', 'Ωμέγα', "名前\u{3000}名前", "a\u{85}b"]],
+]);
+
+it('publishes a case-insensitive regex with every case of its letters, no narrower than the server', function (string $rule, string $pattern, array $accepted): void {
+    $property = convertFieldRules([['regex', [substr($rule, 6)]]])->schema['properties']['f'];
+
+    // Under `/i` PHP takes each letter in either case, and under `/iu` the Kelvin sign for `k` and the long s
+    // for `s` too; the pattern spells those cases out, so it takes every value Laravel accepts.
+    expect($property['pattern'])->toBe($pattern);
+    foreach ($accepted as $value) {
+        expect(Validator::make(['f' => $value], ['f' => [$rule]])->passes())->toBeTrue()
+            ->and(preg_match('/(*UTF)'.$pattern.'/D', $value))->toBe(1);
+    }
+})->with([
+    'a postcode' => ['regex:/^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i', '^[A-Za-z]{1,2}[0-9][A-Z0-9a-z]? ?[0-9][A-Za-z]{2}\\n?$', ['SW1A 1AA', 'sw1a1aa', 'm1 1Ae', "EC1A 1BB\n"]],
+    'a hex colour' => ['regex:/^#(?:[0-9a-f]{3}){1,2}$/iD', '^#(?:[0-9a-fA-F]{3}){1,2}$', ['#fff', '#FFF', '#a1B2c3']],
+    'a literal' => ['regex:/^v[0-9]+$/iD', '^[vV][0-9]+$', ['v1', 'V2']],
+    'the Kelvin sign and the long s under /u' => ['regex:/^[a-z]+$/iuD', "^[a-zA-Z\u{212A}\u{17F}]+$", ['abc', 'ABC', "\u{212A}\u{17F}"]],
 ]);
 
 it('publishes no pattern for a regex whose body a pattern reads differently, as the server reads it', function (string $rule, string $value, string $read): void {
@@ -376,6 +395,26 @@ it('publishes no pattern for a regex whose body a pattern reads differently, as 
     'a dot' => ['regex:/^a.b$/', "a\rb", '/^a[^\\n\\r]b$/'],
 ]);
 
+it('publishes no pattern a consumer would backtrack through where the server does not', function (string $rule, string $unit): void {
+    // Laravel answers a long run of `é` or `€` at once — its atoms part on `é` and all refuse `€` — but widened,
+    // every one takes both, and a validator tries every way of splitting the run between them.
+    $attack = str_repeat($unit, 30).'!';
+    expect(Validator::make(['f' => $attack], ['f' => [$rule]])->passes())->toBeFalse()
+        ->and(preg_last_error())->toBe(PREG_NO_ERROR);
+
+    $context = vocabularyContext();
+    $ordered = (new RuleOrdering)->order(new RuleSet(['f' => [ValidationRule::of('regex', [substr($rule, 6)])]]));
+    $result = (new DefaultValidationRulesToSchema(ValidationIntegration::transformers()))->convert($ordered, $context);
+
+    expect($result->schema['properties']['f'])->toBe(['type' => 'string'])
+        ->and(array_map(static fn ($d): string => $d->code, $context->components()->diagnostics()))->toBe(['validation.regex-unportable']);
+})->with([
+    'letters between spaces' => ['regex:/^(?:[\pL]+[\s]+)*[\pL]+$/u', 'é'],
+    'word characters between digits' => ['regex:/^(?:\w+\d+)*\w+$/u', 'é'],
+    'a repeat around one property' => ['regex:/^(?:\pL+-?)*$/u', '€'],
+    'adjacent properties' => ['regex:/^\pL+\s*\pL*\s*\pL*$/u', '€'],
+]);
+
 it('publishes no pattern for a regex PHP itself cannot compile', function (string $raw): void {
     $context = vocabularyContext();
     $ordered = (new RuleOrdering)->order(new RuleSet(['f' => [ValidationRule::of('regex', [$raw])]]));
@@ -401,11 +440,10 @@ it('publishes no pattern for a regex whose modifier changes what matches, as the
     expect($result->schema['properties']['f'])->toBe(['type' => 'string'])
         ->and(array_map(static fn ($d): string => $d->code, $diagnostics))->toBe(['validation.regex-modifier']);
 })->with([
-    'i — case-insensitive' => ['regex:/^[a-z]+$/i', 'ABC'],
     'm — anchors per line' => ['regex:/^[a-z]+$/m', "abc\n123"],
     's — a dot matches a newline' => ['regex:/^a.b$/s', "a\nb"],
     'x — whitespace is not literal' => ['regex:/^a b$/x', 'ab'],
-    'with others beside it' => ['regex:/^[a-z]+$/ui', 'ABC'],
+    'with others beside it' => ['regex:/^[a-z]+$/uim', "abc\n123"],
 ]);
 
 it('keeps the pattern under a modifier that never narrows it', function (string $raw): void {

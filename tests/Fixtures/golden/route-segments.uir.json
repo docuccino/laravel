@@ -1,0 +1,548 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-archive": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:bb6mjbrkjxm3w4ak",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/RouteConstraints/OptionalSegmentController.php",
+                "line": 39,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\RouteConstraints\\OptionalSegmentController::archive"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-archive",
+        "tags": [
+          "OptionalSegment"
+        ]
+      }
+    },
+    "/api/zz-archive/{year}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:jgtb67kesmsqeql5",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/RouteConstraints/OptionalSegmentController.php",
+                "line": 39,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\RouteConstraints\\OptionalSegmentController::archive"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-archive.@year",
+        "tags": [
+          "OptionalSegment"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:v6cmuzhswipjzmpi",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "year",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/zz-archive/{year}/{month}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:qi6deub6yivo7o3r",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/RouteConstraints/OptionalSegmentController.php",
+                "line": 39,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\RouteConstraints\\OptionalSegmentController::archive"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-archive.@year.@month",
+        "tags": [
+          "OptionalSegment"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:2cx6xpsrdtr7ozll",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description",
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "month",
+            "in": "path",
+            "description": "Leaving it off is the same as sending `01`.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  },
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "default"
+                    ]
+                  }
+                ]
+              },
+              "type": "string",
+              "default": "01"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:nml4wng4yokp7jid",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "year",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/zz-latest": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:zthaj4cro4ewhwpi",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/RouteConstraints/OptionalSegmentController.php",
+                "line": 19,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\RouteConstraints\\OptionalSegmentController::page"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-latest",
+        "tags": [
+          "OptionalSegment"
+        ]
+      }
+    },
+    "/api/zz-latest/{page}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:2zdtfmtevm74vkz3",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/RouteConstraints/OptionalSegmentController.php",
+                "line": 19,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\RouteConstraints\\OptionalSegmentController::page"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-latest.@page",
+        "tags": [
+          "OptionalSegment"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:swaaxyyofwhiigxl",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description",
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "page",
+            "in": "path",
+            "description": "Leaving it off is the same as sending `latest`.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  },
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "default"
+                    ]
+                  }
+                ]
+              },
+              "type": "string",
+              "default": "latest"
+            }
+          }
+        ]
+      }
+    },
+    "/api/zz-pages": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:glv7tu4e6fz2kmim",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/RouteConstraints/OptionalSegmentController.php",
+                "line": 24,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\RouteConstraints\\OptionalSegmentController::first"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "pages.show.without-page",
+        "tags": [
+          "OptionalSegment"
+        ]
+      }
+    },
+    "/api/zz-pages/{page}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:lycoirned4fcaftm",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/RouteConstraints/OptionalSegmentController.php",
+                "line": 24,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\RouteConstraints\\OptionalSegmentController::first"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "pages.show",
+        "tags": [
+          "OptionalSegment"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:qniuzomwzzha6a4g",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description",
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "page",
+            "in": "path",
+            "description": "Leaving it off is the same as sending `first`.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  },
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "default"
+                    ]
+                  }
+                ]
+              },
+              "type": "string",
+              "default": "first"
+            }
+          }
+        ]
+      }
+    },
+    "/api/zz-regions": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:4pkfq3sn5v2mbtgc",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/RouteConstraints/ConstraintController.php",
+                "line": 45,
+                "symbol": "\\Docuccino\\Laravel\\Tests\\Fixtures\\RouteConstraints\\ConstraintController::hosted"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId",
+                "servers"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-regions",
+        "summary": "For a route whose only segments are in its host.",
+        "tags": [
+          "Constraint"
+        ],
+        "servers": [
+          {
+            "url": "https://{region}.example.com",
+            "variables": {
+              "region": {
+                "default": "region",
+                "description": "The \"region\" segment of the host this operation is served from. It matches the pattern `^[a-z]{2}-[0-9]$`, ignoring case. The default only names the segment, and is not a value it accepts."
+              }
+            }
+          }
+        ]
+      }
+    },
+    "/api/zz-tenants": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:e545wt4bwebb64eq",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/RouteConstraints/ConstraintController.php",
+                "line": 45,
+                "symbol": "\\Docuccino\\Laravel\\Tests\\Fixtures\\RouteConstraints\\ConstraintController::hosted"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId",
+                "servers"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-tenants",
+        "summary": "For a route whose only segments are in its host.",
+        "tags": [
+          "Constraint"
+        ],
+        "servers": [
+          {
+            "url": "https://{tenant}.example.com",
+            "variables": {
+              "tenant": {
+                "enum": [
+                  "acme",
+                  "globex"
+                ],
+                "default": "acme",
+                "description": "The \"tenant\" segment of the host this operation is served from."
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "bdacba7377c5f8cf14f631fae9e288ef85f583c5033305c8a0723eac910dbea4"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.20.3",
+      "specVersion": "2.0.0",
+      "schema": "https://spec.docuccino.app/uir/2.0/schema.json"
+    }
+  }
+}

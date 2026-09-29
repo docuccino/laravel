@@ -7,6 +7,7 @@ namespace Docuccino\Laravel\Integrations\LaravelActions;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Docuccino\Core\Inference\ActionRef;
+use Docuccino\Laravel\Support\LaravelActionHooks;
 use ReflectionMethod;
 
 /**
@@ -20,13 +21,11 @@ use ReflectionMethod;
  */
 final class LaravelAction
 {
+    /**
+     * The trait the integration activates on, spelled out because an integration imports no package yet has
+     * to name the one it targets; it is {@see LaravelActionHooks::CONTROLLER_TRAIT}, which a test holds it to.
+     */
     public const CONTROLLER_TRAIT = 'Lorisleiva\\Actions\\Concerns\\AsController';
-
-    /** The trait that opts an action out of the package's automatic request validation. */
-    public const WITH_ATTRIBUTES_TRAIT = 'Lorisleiva\\Actions\\Concerns\\WithAttributes';
-
-    /** The methods the package treats as non-explicit (it remaps invokable routes onto these). */
-    private const DISPATCH_METHODS = ['asController', 'handle', '__invoke'];
 
     /**
      * Record the dispatched action's declaration hierarchy as a fragment dependency. Every question
@@ -42,54 +41,13 @@ final class LaravelAction
 
     public static function isAction(string $fqcn): bool
     {
-        if (! trait_exists(self::CONTROLLER_TRAIT)) {
-            return false;
-        }
-
-        return self::usesTrait($fqcn, self::CONTROLLER_TRAIT);
+        return LaravelActionHooks::isAction($fqcn);
     }
 
-    /**
-     * Mirrors `ControllerDecorator::shouldValidateRequest()`: the package only validates for a
-     * non-explicit dispatched method (so an explicitly-registered `[Action::class, 'store']` never does)
-     * on an action without `WithAttributes`. Documenting `rules()` elsewhere would misreport runtime.
-     */
+    /** {@see LaravelActionHooks::dispatchesValidation()}: documenting `rules()` elsewhere would misreport runtime. */
     public static function dispatchesValidation(string $fqcn, string $method): bool
     {
-        return self::isAction($fqcn)
-            && in_array($method, self::DISPATCH_METHODS, true)
-            && ! self::usesTrait($fqcn, self::WITH_ATTRIBUTES_TRAIT);
-    }
-
-    /**
-     * Walks own traits + parents' + traits-used-by-traits, so `AsAction` (which uses `AsController`)
-     * counts. Built-ins only, no reflection.
-     */
-    private static function usesTrait(string $fqcn, string $trait): bool
-    {
-        if (! class_exists($fqcn)) {
-            return false;
-        }
-
-        $traits = [];
-        foreach (array_merge([$fqcn], class_parents($fqcn) ?: []) as $class) {
-            self::collectTraits($class, $traits);
-        }
-
-        return isset($traits[$trait]);
-    }
-
-    /**
-     * @param  array<string, string>  $acc
-     */
-    private static function collectTraits(string $class, array &$acc): void
-    {
-        foreach (class_uses($class) ?: [] as $trait) {
-            if (! isset($acc[$trait])) {
-                $acc[$trait] = $trait;
-                self::collectTraits($trait, $acc);
-            }
-        }
+        return LaravelActionHooks::dispatchesValidation($fqcn, $method);
     }
 
     /**

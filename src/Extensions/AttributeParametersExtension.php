@@ -99,6 +99,11 @@ final class AttributeParametersExtension implements OperationExtension
         $reported = [];
 
         foreach ($context->attributes->all(PathParameter::class) as $attribute) {
+            // A short form of the route leaves the segment off, and the full form documents it.
+            if (in_array($attribute->name, $context->route->omitted, true)) {
+                continue;
+            }
+
             if (! in_array($attribute->name, $context->pathParameters, true)) {
                 // Deduped: two declarations naming one missing segment are one mistake, and saying it
                 // twice sends the reader looking for a second one.

@@ -8,6 +8,7 @@ use Docuccino\Laravel\Config\BuildConfig;
 use Docuccino\Laravel\Support\MachineDependentValue;
 use Docuccino\Laravel\Tests\Fixtures\TagNames\Admin\ReportController as AdminReportController;
 use Docuccino\Laravel\Tests\Fixtures\TagNames\Api\ReportController as ApiReportController;
+use Illuminate\Http\Request;
 use Illuminate\Routing\RouteCollection;
 use Illuminate\Routing\Router;
 
@@ -92,10 +93,17 @@ it('lets a host-less route keep the URI when a hosted sibling arrives, byte for 
         $router->domain('admin.example.com')->get('api/zz-hosts', [AdminReportController::class, 'index']);
     });
 
+    // The router is the oracle for which report is owed. Where it tries the host-less route first
+    // (Laravel 12), that route answers the sibling's host too, so the sibling is never reached; where it
+    // tries host-bound routes first (Laravel 13), both are reached and one path has room for one.
+    $router = app('router');
+    $unreached = $router->getRoutes()->match(Request::create('http://admin.example.com/api/zz-hosts'))->getDomain() === null;
+
     expect($withSibling['paths']['/api/zz-hosts']['get'])->toEqual($alone['paths']['/api/zz-hosts']['get'])
         ->and($withSibling['paths']['/api/zz-hosts']['get'])->not->toHaveKey('servers')
         // …and the sibling that could not be emitted is still reported, not lost quietly.
-        ->and(diagnosticsCoded($diagnostics, 'route.operation-collision'))->toHaveCount(1);
+        ->and(diagnosticsCoded($diagnostics, 'route.operation-collision'))->toHaveCount($unreached ? 0 : 1)
+        ->and(array_map(static fn ($d): ?string => $d->routeSignature, diagnosticsCoded($diagnostics, 'route.shadowed')))->toBe($unreached ? ['GET admin.example.com/api/zz-hosts'] : []);
 });
 
 it('names the host a route is bound to in operation-level servers', function (): void {

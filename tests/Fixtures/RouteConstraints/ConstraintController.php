@@ -41,6 +41,12 @@ final class ConstraintController
         return [];
     }
 
+    /** For a route whose only segments are in its host. */
+    public function hosted(): array
+    {
+        return [];
+    }
+
     public function vault(Vault $vault): array
     {
         return [];

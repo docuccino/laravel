@@ -39,6 +39,12 @@ final class RouteContextBuilder
         private readonly ResolvedRouteIndex $index = new ResolvedRouteIndex,
     ) {}
 
+    /** The router's route a descriptor is a form of, or null when none is. */
+    public function route(RouteDescriptor $descriptor): ?Route
+    {
+        return $this->index->get($descriptor)['route'] ?? $this->locate($descriptor);
+    }
+
     /** The extension set travels whole — see {@see ResolvedExtensions} for why it isn't unpacked here. */
     public function build(
         RouteDescriptor $descriptor,
@@ -64,7 +70,10 @@ final class RouteContextBuilder
 
         $prose = $this->docblocks->read($reflected->reflection->getDocComment() ?: null);
 
-        [$pathParameters, $optional] = $this->pathParameters($descriptor->uri);
+        $pathParameters = RouteTemplate::parameters($descriptor->uri);
+        $optional = RouteTemplate::optional($descriptor->uri);
+        $last = $optional === [] ? null : $optional[array_key_last($optional)];
+        $lastDefault = $last === null ? null : OptionalSegments::defaultOf($route, $reflected->reflection, $last);
 
         $documentedMethod = $method ?? $descriptor->primaryMethod();
         $signature = $descriptor->signature($documentedMethod);
@@ -101,7 +110,16 @@ final class RouteContextBuilder
             deprecated: $prose['deprecated'],
             deprecationReason: $prose['deprecationReason'],
             pathParameterConstraints: RouteConstraints::of($route),
+            hostParameterConstraints: RouteConstraints::ofHost($route),
+            pathParameterDefaults: $last === null || $lastDefault === null ? [] : [$last => $lastDefault],
         );
+
+        // An optional segment's default can be the action parameter's own, which is written where the
+        // action is — a trait or a closure's file as readily as the controller's.
+        $actionFile = $reflected->reflection->getFileName();
+        if ($optional !== [] && is_string($actionFile)) {
+            $context->recordDependencyFiles([$actionFile]);
+        }
 
         // Class-level attributes walk the controller's parents, so the whole hierarchy's files key the
         // fragment — an attribute added to a base controller must retire warm fragments.
@@ -170,11 +188,13 @@ final class RouteContextBuilder
 
         $fallback = null;
         foreach ($routes as $route) {
-            if ('/'.ltrim($route->uri(), '/') !== $descriptor->uri) {
+            if (! self::hasForm($route, $descriptor)) {
                 continue;
             }
 
-            if (array_values(array_filter($route->methods(), 'is_string')) !== $descriptor->methods) {
+            // A form serves only the methods no earlier route took, so the descriptor's may be fewer.
+            $methods = array_values(array_filter($route->methods(), 'is_string'));
+            if (array_diff($descriptor->methods, $methods) !== []) {
                 continue;
             }
 
@@ -188,25 +208,16 @@ final class RouteContextBuilder
         return $descriptor->domain === null ? $fallback : null;
     }
 
-    /**
-     * @return array{0: list<string>, 1: list<string>}
-     */
-    private function pathParameters(string $uri): array
+    /** Whether the descriptor is one of the route's URL forms ({@see RouteTemplate::forms()}). */
+    private static function hasForm(Route $route, RouteDescriptor $descriptor): bool
     {
-        preg_match_all('/\{([^}]+)}/', $uri, $matches);
-
-        $names = [];
-        $optional = [];
-        foreach ($matches[1] as $raw) {
-            $optionalParam = str_ends_with($raw, '?');
-            $name = rtrim($raw, '?');
-            $names[] = $name;
-            if ($optionalParam) {
-                $optional[] = $name;
+        foreach (RouteTemplate::forms($route->uri()) as $form) {
+            if ('/'.ltrim($form['uri'], '/') === $descriptor->uri && $form['omitted'] === $descriptor->omitted) {
+                return true;
             }
         }
 
-        return [$names, $optional];
+        return false;
     }
 
     /**

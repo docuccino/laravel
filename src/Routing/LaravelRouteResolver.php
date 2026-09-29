@@ -7,6 +7,7 @@ namespace Docuccino\Laravel\Routing;
 use Docuccino\Attributes\ExcludeFromDocs;
 use Docuccino\Attributes\InDocs;
 use Docuccino\Core\Diagnostics\Diagnostic;
+use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Extensions\Contracts\RouteResolver;
@@ -74,16 +75,20 @@ final class LaravelRouteResolver implements RouteResolver
 
     public function resolve(DocumentConfig $document): iterable
     {
+        $collection = $this->router->getRoutes();
         /** @var iterable<Route> $routes */
-        $routes = $this->router->getRoutes();
+        $routes = $collection;
 
         // Build-constant, and read once rather than per route: filling the router costs a container
         // resolution and the alias map a reflection and an array merge ({@see MiddlewareRegistrations}).
         ['aliases' => $aliases, 'groups' => $groups] = $this->registrations->read($this->record(...));
 
+        $served = new ServedForms($collection);
+
         foreach ($routes as $route) {
             $descriptor = $this->describe($route, $aliases, $groups);
 
+            // Filters judge the ROUTE, so every form of one route is in a document or none is.
             if (! $this->passesFilters($descriptor, $document)) {
                 continue;
             }
@@ -99,10 +104,107 @@ final class LaravelRouteResolver implements RouteResolver
                 continue;
             }
 
-            $this->index->put($descriptor, $route, $reflected);
+            foreach (self::shadowedDiagnostics($descriptor, $served->shadowed($route)) as $diagnostic) {
+                $this->record($diagnostic);
+            }
+            foreach (self::contestedDiagnostics($descriptor, $served->contested($route)) as $diagnostic) {
+                $this->record($diagnostic);
+            }
 
-            yield $descriptor;
+            foreach ($served->of($route) as $form) {
+                $methods = array_values(array_filter($form['methods'], static fn (string $method): bool => strtoupper($method) !== 'HEAD'));
+                if ($methods === []) {
+                    continue;
+                }
+
+                $described = $form['omitted'] === [] && $form['methods'] === $descriptor->methods
+                    ? $descriptor
+                    : $descriptor->withForm('/'.ltrim($form['uri'], '/'), $form['methods'], $form['omitted']);
+
+                $this->index->put($described, $route, $reflected);
+
+                yield $described;
+            }
         }
+    }
+
+    /**
+     * Says a route is never reached for some of its methods: another route answers every URL it matches
+     * and the router tries that one first, or a later registration of the same URL replaced it. Where
+     * only its full form is answered for, it says which shorter paths still reach it.
+     *
+     * @param  array<string, array{by: string, replaced: bool, reached: list<string>}>  $shadowed
+     * @return list<Diagnostic>
+     */
+    private static function shadowedDiagnostics(RouteDescriptor $descriptor, array $shadowed): array
+    {
+        /** @var array<string, array{by: string, replaced: bool, reached: list<string>, methods: list<string>}> $grouped */
+        $grouped = [];
+        foreach ($shadowed as $method => $shadow) {
+            $key = serialize([$shadow['replaced'], $shadow['by'], $shadow['reached']]);
+            $grouped[$key] ??= [...$shadow, 'methods' => []];
+            $grouped[$key]['methods'][] = $method;
+        }
+        ksort($grouped);
+
+        $diagnostics = [];
+        foreach ($grouped as $group) {
+            $methods = $group['methods'];
+            sort($methods);
+
+            $diagnostics[] = new Diagnostic(
+                severity: Severity::Warning,
+                code: 'route.shadowed',
+                message: match (true) {
+                    $group['replaced'] => sprintf('%s is never reached for %s: the route %s, registered after it for the same URL, replaces it.', $descriptor->signature(), implode(', ', $methods), $group['by']),
+                    $group['reached'] === [] => sprintf('%s is never reached for %s: the route %s answers every URL it matches, and the router tries that route first.', $descriptor->signature(), implode(', ', $methods), $group['by']),
+                    default => sprintf('%s is reached for %s only at %s: the route %s answers every URL it matches with all its segments given, and the router tries that route first.', $descriptor->signature(), implode(', ', $methods), implode(', ', $group['reached']), $group['by']),
+                },
+                routeSignature: $descriptor->signature(),
+                help: match (true) {
+                    $group['replaced'] => 'Remove one of the two registrations.',
+                    $group['reached'] === [] => 'Remove this route, or narrow the one that answers for it with a constraint or a path of its own.',
+                    default => 'Register this route for the paths it is reached at alone, or narrow the one that answers for it with a constraint.',
+                },
+            );
+        }
+
+        return $diagnostics;
+    }
+
+    /**
+     * Says a URL form of a route is served but not published, because another route's own path is the
+     * same path and method, and OpenAPI has room for one.
+     *
+     * @param  list<array{omitted: list<string>, method: string, path: string, by: string}>  $contested
+     * @return list<Diagnostic>
+     */
+    private static function contestedDiagnostics(RouteDescriptor $descriptor, array $contested): array
+    {
+        $diagnostics = [];
+        foreach ($contested as $contest) {
+            if (strtoupper($contest['method']) === 'HEAD') {
+                continue;
+            }
+
+            $signature = $descriptor->signature($contest['method']);
+            $diagnostics[] = new Diagnostic(
+                severity: Severity::Error,
+                code: 'route.operation-collision',
+                message: sprintf(
+                    'OpenAPI documents one operation per path and method, and %s %s — %s without {%s} — is held by %s; that form of this route is not in the document.',
+                    strtoupper($contest['method']),
+                    $contest['path'],
+                    $signature,
+                    implode('}, {', $contest['omitted']),
+                    $contest['by'],
+                ),
+                routeSignature: $signature,
+                help: 'Give one of the two routes a path of its own.',
+            );
+        }
+
+        return $diagnostics;
     }
 
     /**
@@ -119,7 +221,7 @@ final class LaravelRouteResolver implements RouteResolver
         $descriptor = new RouteDescriptor(
             methods: self::strings($route->methods()),
             uri: '/'.ltrim($route->uri(), '/'),
-            name: $route->getName(),
+            name: RouteName::of($route),
             action: $route->getActionName(),
             middleware: $middleware,
             // `->withTrashed()` puts a note and a fact on every bound parameter but touches nothing
@@ -133,6 +235,7 @@ final class LaravelRouteResolver implements RouteResolver
                 ...($route->allowsTrashedBindings() ? ['trashed'] : []),
                 ...RouteBindingFields::cacheInputs($route),
                 ...RouteConstraints::cacheInputs($route),
+                ...OptionalSegments::cacheInputs($route),
                 ...RouteBindingResolution::cacheInputs($this->router, $route),
                 ...self::aliasInputs($middleware, $aliases),
             ],

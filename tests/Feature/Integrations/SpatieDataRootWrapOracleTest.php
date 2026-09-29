@@ -10,6 +10,7 @@ use Docuccino\Laravel\Tests\Fixtures\SpatieData\HelperContextProblemData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\NestedTransformDisabledData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\OwnResponseProblemData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ProblemDocumentData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\RowsWrapData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\SiblingWrapData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\WrappedData;
 
@@ -75,6 +76,12 @@ it('publishes the envelope the server really sends', function (string $case, cal
         fn (): array => (new WrappedData(1, 'a'))->toResponse(request())->getData(true),
         ['record'],
         'record',
+    ],
+    'a class whose defaultWrap() one trait wins by insteadof' => [
+        RowsWrapData::class,
+        fn (): array => (new RowsWrapData(1))->toResponse(request())->getData(true),
+        ['rows'],
+        'rows',
     ],
 ]);
 

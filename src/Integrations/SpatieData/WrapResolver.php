@@ -34,9 +34,9 @@ use ReflectionMethod;
  *
  * Reads are static AST reads over method bodies, never invoked, and over the class's OWN declarations
  * — a file may hold more than one class. Two things they do not reach: an unwrapping inherited from a
- * parent or a trait, and a runtime `wrap('key')`. The key's read is the one that follows a file rather
- * than a class, since `defaultWrap()` may arrive through a trait; the base `Data` declares none, so
- * `method_exists` being true already means a real override. Answers are memoised per FQCN.
+ * parent or a trait, and a runtime `wrap('key')`. The key's read follows the one `defaultWrap()` PHP
+ * runs instead, since it may arrive through a trait; the base `Data` declares none, so `method_exists`
+ * being true already means a real override. Answers are memoised per FQCN.
  *
  * {@see DataSchema} applies the key at the response root only — deliberately, since a nested Data
  * property publishes a shared `$ref` that must not carry one caller's envelope. Spatie itself does wrap
@@ -53,9 +53,6 @@ final class WrapResolver
 
     /** @var array<string, array<string, WrapReason>> FQCN → the reasons its own source raises */
     private array $standing = [];
-
-    /** @var array<string, array<string, ClassMethod>> file → every class-method node in it */
-    private array $parsed = [];
 
     /** @var array<string, array<string, ClassMethod>> file + FQCN → the method nodes that class declares */
     private array $declared = [];
@@ -236,30 +233,11 @@ final class WrapResolver
     /** The literal an overridden `defaultWrap()` returns, or null when it's dynamic. */
     private function defaultWrap(string $fqcn): ?string
     {
-        $method = new ReflectionMethod($fqcn, 'defaultWrap');
-        $file = $method->getFileName();
-
-        if ($file === false) {
-            return null;
-        }
-
-        // The declaring OWNER, so a sibling class in the same file cannot answer for this one. A trait
-        // reports the using class as its declarer while naming the trait's file, which matches nothing
-        // there — so that read falls back to the file, where the method name is the only key there is.
-        $owner = $method->getDeclaringClass()->getName();
-        $node = $this->methodsOf($file, $owner)['defaultWrap']
-            ?? $this->methods($file)['defaultWrap']
-            ?? null;
+        // The body PHP runs: a sibling class in the same file cannot answer for this one, and a trait's
+        // is followed through an alias or an `insteadof` to the one the class took.
+        $node = ParsedClassFile::declarationOf(new ReflectionMethod($fqcn, 'defaultWrap'));
 
         return $node === null ? null : self::literalReturn($node);
-    }
-
-    /**
-     * @return array<string, ClassMethod>
-     */
-    private function methods(string $file): array
-    {
-        return $this->parsed[$file] ??= ParsedClassFile::methods($file);
     }
 
     /**

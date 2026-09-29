@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\QueryBuilder;
 
 use Docuccino\Attributes\QueryParameter;
+use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Docuccino\Laravel\Integrations\Support\ParsedClassFile;
 use ReflectionClass;
 use Throwable;
@@ -21,8 +22,9 @@ use Throwable;
  *      ({@see WhereColumnAnalyzer}), so the value types off the subject model's cast exactly like a
  *      callback filter.
  *
- * Always returns the class file (when resolvable) so it joins the fragment-cache dependency set —
- * editing the filter class re-documents the endpoint. Reflection/parse failures degrade to no facts.
+ * Always returns the files the class's declaration spans so they join the fragment-cache dependency set —
+ * editing the filter class, or the parent or trait its `__invoke` comes from, re-documents the endpoint.
+ * Reflection/parse failures degrade to no facts, and keep the files.
  */
 final class CustomFilterReader
 {
@@ -36,19 +38,20 @@ final class CustomFilterReader
             return new CustomFilterFacts;
         }
 
-        try {
-            $reflection = new ReflectionClass($fqcn);
-            $file = $reflection->getFileName();
-            $file = $file === false ? null : $file;
+        $reflection = new ReflectionClass($fqcn);
+        // Outside the try: a class this fails to read is still one the build read, and a warm build
+        // has to re-read it once it is fixed.
+        $files = DeclarationFiles::forClass($reflection);
 
+        try {
             $attribute = $this->attribute($reflection);
             if ($attribute !== null) {
-                return new CustomFilterFacts(file: $file, attribute: $attribute);
+                return new CustomFilterFacts(files: $files, attribute: $attribute);
             }
 
-            return new CustomFilterFacts(file: $file, column: $file === null ? null : $this->invokeColumn($file));
+            return new CustomFilterFacts(files: $files, column: $this->invokeColumn($reflection));
         } catch (Throwable) {
-            return new CustomFilterFacts;
+            return new CustomFilterFacts(files: $files);
         }
     }
 
@@ -62,10 +65,14 @@ final class CustomFilterReader
         return $attributes === [] ? null : $attributes[0]->newInstance();
     }
 
-    /** The column the class's `__invoke` filters on, by parsing the class file. */
-    private function invokeColumn(string $file): ?string
+    /**
+     * The column the `__invoke` PHP calls on the class filters on, parsed from wherever it is written.
+     *
+     * @param  ReflectionClass<object>  $reflection
+     */
+    private function invokeColumn(ReflectionClass $reflection): ?string
     {
-        $method = ParsedClassFile::methods($file)['__invoke'] ?? null;
+        $method = $reflection->hasMethod('__invoke') ? ParsedClassFile::declarationOf($reflection->getMethod('__invoke')) : null;
 
         return $method === null ? null : $this->whereColumns->fromInvoke($method);
     }

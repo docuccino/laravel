@@ -41,9 +41,31 @@ function gateBodyFile(): string
                 public function denies(?object \$u): bool { return \$u !== null; }
                 public function branches(?object \$u): bool { if (\$u !== null) { return true; } return false; }
                 public function twin(?object \$u): bool { return true; }
+                #[\\Deprecated]
+                public function attributed(?object \$u): bool { return true; }
+                public
+                function modified(?object \$u): bool { return true; }
             }
             class Shadow {
                 public function twin(?object \$u): bool { return true; }
+            }
+            trait Grants {
+                public function granted(?object \$u): bool { return true; }
+            }
+            class Grantor {
+                use Grants { granted as permits; }
+            }
+            trait Allows {
+                public function decide(?object \$u): bool { return true; }
+            }
+            trait Refuses {
+                public function decide(?object \$u): bool { return \$u !== null; }
+            }
+            class RefusingWins {
+                use Allows, Refuses { Refuses::decide insteadof Allows; }
+            }
+            class AllowingWins {
+                use Refuses, Allows { Allows::decide insteadof Refuses; }
             }
             PHP);
         require $file;
@@ -84,12 +106,20 @@ it('reads a body off the source when no analyser answered', function (string $cl
     'a literal return true' => ['Bodies', 'allows', GateBody::AlwaysAllows],
     'anything read at all' => ['Bodies', 'denies', GateBody::CanDeny],
     'true reached conditionally' => ['Bodies', 'branches', GateBody::CanDeny],
-    // Two classes in one file declaring one method name: the parse keys by name, so the line is what
-    // ties a node to the reflection found, and a body it cannot tie is one nobody read.
-    'a method name a second class in the file also declares' => ['Bodies', 'twin', GateBody::Unread],
-    // The same reflection against the class the parse DID keep, so the row above is about the tie-break
-    // and not about the method.
-    'the declaration the name resolves to' => ['Shadow', 'twin', GateBody::AlwaysAllows],
+    // Two classes in one file declaring one method name: the body read is the one the declaring class
+    // writes, each for its own reflection, whichever the file declares last.
+    'a method name a second class in the file also declares' => ['Bodies', 'twin', GateBody::AlwaysAllows],
+    'the same name in the class declared last' => ['Shadow', 'twin', GateBody::AlwaysAllows],
+    // Reflection places a method on its `function` keyword, the parser on its first attribute or
+    // modifier; the body is matched on the keyword line, so neither hides a literal `return true;`.
+    'an attribute on the line above' => ['Bodies', 'attributed', GateBody::AlwaysAllows],
+    'a modifier on the line above' => ['Bodies', 'modified', GateBody::AlwaysAllows],
+    // PHP reports the alias as the using class's method; only the trait writes it, under its own name.
+    'a trait method imported under an alias' => ['Grantor', 'permits', GateBody::AlwaysAllows],
+    // Two traits writing one name, `insteadof` choosing the one listed second: the body read is the
+    // one PHP runs, and reading the other would drop a 403 the gate really sends.
+    'the refusing trait chosen by insteadof' => ['RefusingWins', 'decide', GateBody::CanDeny],
+    'the allowing trait chosen by insteadof' => ['AllowingWins', 'decide', GateBody::AlwaysAllows],
 ]);
 
 it('reads a file it cannot open as a body nobody read', function (): void {

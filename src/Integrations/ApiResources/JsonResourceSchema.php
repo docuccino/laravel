@@ -69,9 +69,10 @@ final class JsonResourceSchema implements TypeToSchema
             return $this->wrapTopLevel(new SchemaResult($array, 0.9), $type->fqcn, $context);
         }
 
-        // The body toArray builds, kept so the root can tell whether it already carries its wrap key.
-        $body = null;
-        $result = $this->hoist->hoist($context, $type->fqcn, function () use ($type, $context, &$body): ?array {
+        // The body toArray builds, kept so the root can tell whether it already carries its wrap key and
+        // what a with() member merged into it lands on; and the component as built, to restate it from.
+        $body = $built = null;
+        $result = $this->hoist->hoist($context, $type->fqcn, function () use ($type, $context, &$body, &$built): ?array {
             // A named collection that keeps Laravel's toArray serialises the resources it collects.
             if (ResourceReflector::inheritsCollectionBody($type->fqcn)) {
                 $item = ResourceReflector::collects($type->fqcn);
@@ -102,20 +103,22 @@ final class JsonResourceSchema implements TypeToSchema
             $object = MockHints::applyTo($context, $object, $type->fqcn);
 
             // A body that may carry no key is sent as `[]`, so the object is published beside it.
-            return $read['mayBeEmpty'] ? ToArrayObject::orEmpty($object) : $object;
+            return $built = $read['mayBeEmpty'] ? ToArrayObject::orEmpty($object) : $object;
         });
 
-        return $this->wrapTopLevel($result, $type->fqcn, $context, $body);
+        return $this->wrapTopLevel($result, $type->fqcn, $context, $body, $built);
     }
 
     /**
      * Laravel's `ResourceResponse::wrap()` for a root resource; nested results pass through. The data is
      * wrapped unless it already carries the wrap key, an unwrapped resource is wrapped under `data`
-     * whenever `with()` returns anything, and `with()` members merge in beside it.
+     * whenever `with()` returns anything, and `with()` members merge in beside it — one under the wrap key
+     * merging into the data ({@see self::mergedInto()}).
      *
      * @param  array<string, mixed>|null  $body
+     * @param  array<string, mixed>|null  $built
      */
-    private function wrapTopLevel(SchemaResult $result, string $fqcn, SchemaContext $context, ?array $body = null): SchemaResult
+    private function wrapTopLevel(SchemaResult $result, string $fqcn, SchemaContext $context, ?array $body = null, ?array $built = null): SchemaResult
     {
         if (! $context->atRoot()) {
             return $result;
@@ -135,6 +138,8 @@ final class JsonResourceSchema implements TypeToSchema
         $alwaysAdds = $with !== null && $with['required'] !== [];
 
         // A `with()` key equal to the wrap key merges INTO the data, so it is never a sibling.
+        $into = $with['properties'][$key ?? 'data'] ?? null;
+        $data = is_array($into) ? self::mergedInto($result->schema, $into, $body) : $result->schema;
         if ($with !== null) {
             unset($with['properties'][$key ?? 'data']);
             $with['required'] = array_values(array_diff($with['required'], [$key ?? 'data']));
@@ -144,13 +149,13 @@ final class JsonResourceSchema implements TypeToSchema
         }
 
         if ($key !== null) {
-            $wrapped = $this->envelope($key, $result->schema, $with);
+            $wrapped = $this->envelope($key, $data, $with);
             $carries = self::carries($body, $key);
             if ($carries === null) {
                 return new SchemaResult($wrapped, $result->confidence);
             }
 
-            $bare = self::merged($result->schema, $with);
+            $bare = self::merged(is_array($into) ? self::restated($result->schema, $built, $key, $into) : $result->schema, $with);
 
             return new SchemaResult($carries ? $bare : ['anyOf' => [$wrapped, $bare]], $result->confidence);
         }
@@ -159,7 +164,7 @@ final class JsonResourceSchema implements TypeToSchema
             return $result;
         }
 
-        $wrapped = $this->envelope('data', $result->schema, $with);
+        $wrapped = $this->envelope('data', $data, $with);
 
         // Unless `with()` always returns a member, the body is bare when it returns nothing and wrapped
         // when it returns something — and an unreadable `with()` may do either.
@@ -178,6 +183,58 @@ final class JsonResourceSchema implements TypeToSchema
         }
 
         return in_array($key, is_array($body['required'] ?? null) ? $body['required'] : [], true);
+    }
+
+    /**
+     * The data a `with()` member under the wrap key is merged into by `array_merge_recursive`. An object's
+     * keys join an object body, which is open and — even where it may be sent empty — requires none of them
+     * there, so the body stands where each is a key the body never sends. Otherwise they join a list's
+     * positions, or a key both send becomes the list of both, and the data is published as the array or
+     * object that is sent, whatever either side states.
+     *
+     * @param  array<array-key, mixed>  $data
+     * @param  array<array-key, mixed>  $member
+     * @param  array<array-key, mixed>|null  $body
+     * @return array<array-key, mixed>
+     */
+    private static function mergedInto(array $data, array $member, ?array $body): array
+    {
+        $own = is_array($body['properties'] ?? null) && ($body['type'] ?? null) === 'object' ? $body['properties'] : null;
+        $named = is_array($member['properties'] ?? null) ? $member['properties'] : [];
+        $open = array_key_exists('patternProperties', $member)
+            || (array_key_exists('additionalProperties', $member) && $member['additionalProperties'] !== false);
+
+        $joins = $own !== null && ! $open
+            && ($member['type'] ?? null) === 'object'
+            && array_intersect_key($named, $own) === [];
+
+        return $joins ? $data : PaginationEnvelope::MERGED;
+    }
+
+    /**
+     * The component a body carrying its own wrap key builds, restated with that key as what a `with()`
+     * member merged into it sends — the component's own type for the key is no longer what is sent. A
+     * component that cannot be restated is published as the object the body is.
+     *
+     * @param  array<string, mixed>  $component
+     * @param  array<string, mixed>|null  $built
+     * @param  array<array-key, mixed>  $member
+     * @return array<string, mixed>
+     */
+    private static function restated(array $component, ?array $built, string $key, array $member): array
+    {
+        if ($built === null || ! is_array($built['properties'] ?? null)) {
+            return ['type' => 'object'];
+        }
+        $properties = $built['properties'];
+        $value = $properties[$key] ?? null;
+        if (! is_array($value)) {
+            return ['type' => 'object'];
+        }
+
+        $merged = self::mergedInto($value, $member, $value);
+
+        return $merged === $value ? $component : [...$built, 'properties' => [...$properties, $key => $merged]];
     }
 
     /**
@@ -202,7 +259,7 @@ final class JsonResourceSchema implements TypeToSchema
     }
 
     /**
-     * @param  array<string, mixed>  $data
+     * @param  array<array-key, mixed>  $data
      * @param  array{properties: array<string, mixed>, required: list<string>}|null  $with
      * @return array<string, mixed>
      */

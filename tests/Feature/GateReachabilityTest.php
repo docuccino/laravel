@@ -466,6 +466,52 @@ it('invalidates the fragment when the policy method it read is edited', function
     unlink($file);
 });
 
+it('invalidates the fragment when the parent a policy takes its ability from is edited', function (string $edited): void {
+    // The verdict depends on the whole policy hierarchy, not on the policy's own file: a parent decides
+    // which trait's body PHP runs (`insteadof`), and a `before()` added to it vetoes the method outright.
+    // Keying on the policy's file and the body's file leaves the parent's file out, so a warm build kept
+    // reporting a gate whose refusing body now runs.
+    $directory = sys_get_temp_dir().'/docuccino-gate-inherited-'.uniqid('', true);
+    mkdir($directory);
+    $namespace = 'DocuccinoInheritedGate'.dechex(random_int(0, PHP_INT_MAX));
+    file_put_contents($directory.'/Kiosk.php', "<?php\nnamespace $namespace;\nclass Kiosk {}\n"
+        ."trait Allows { public function viewAny(?object \$user): bool { return true; } }\n"
+        ."trait Refuses { public function viewAny(?object \$user): bool { return \$user !== null; } }\n");
+    $base = static fn (string $body): string => "<?php\nnamespace $namespace;\nabstract class BasePolicy { $body }\n";
+    file_put_contents($directory.'/BasePolicy.php', $base('use Allows, Refuses { Allows::viewAny insteadof Refuses; }'));
+    file_put_contents($directory.'/KioskPolicy.php', "<?php\nnamespace $namespace;\nclass KioskPolicy extends BasePolicy {}\n");
+    require $directory.'/Kiosk.php';
+    require $directory.'/BasePolicy.php';
+    require $directory.'/KioskPolicy.php';
+
+    app('router')->get('api/kiosks-inherited', [KioskController::class, 'index'])
+        ->middleware('auth:web')
+        ->can('viewAny', $namespace.'\\Kiosk');
+    app('router')->getRoutes()->refreshNameLookups();
+    Gate::policy($namespace.'\\Kiosk', $namespace.'\\KioskPolicy');
+
+    $engine = gateWarmedEngine();
+    expect(gateFindings())->toHaveKey('GET /api/kiosks-inherited');
+
+    // The classes are loaded, so only the parent file's hash changes — which is the claim.
+    file_put_contents($directory.'/BasePolicy.php', $base($edited));
+    clearstatcache();
+    touch($directory.'/BasePolicy.php', time() + 5);
+
+    $engine->analyzeCount = 0;
+    generateDocument();
+
+    expect($engine->analyzeCount)->toBeGreaterThan(0);
+
+    unlink($directory.'/KioskPolicy.php');
+    unlink($directory.'/BasePolicy.php');
+    unlink($directory.'/Kiosk.php');
+    rmdir($directory);
+})->with([
+    'the parent now lets the refusing trait win' => ['use Allows, Refuses { Refuses::viewAny insteadof Allows; }'],
+    'the parent now declares before()' => ['use Allows, Refuses { Allows::viewAny insteadof Refuses; } public function before(): ?bool { return null; }'],
+]);
+
 it('invalidates the fragment when a policy appears at the name the convention looks under', function (): void {
     // The under-keyed direction: the Gate resolves a conventional policy by class_exists, so CREATING
     // one changes the verdict while changing no file the build read and no registration the digest

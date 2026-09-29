@@ -190,6 +190,11 @@ function publicExtensionSurface(): array
         // FormRequest's copied input (an integration) has to find that parameter by the same key — a
         // private copy of the fold is how a copy stops finding the header its read published.
         'Docuccino\Laravel\Support\HeaderNames',
+        // And again: the ONE reading of whether laravel-actions validates for a dispatch and which of the
+        // action's methods it runs doing so. The request-header reads (an extension) trace those hooks and
+        // the laravel-actions integration documents the rules they validate by — two readings of the gate
+        // are how a header read in a hook that never runs gets published.
+        'Docuccino\Laravel\Support\LaravelActionHooks',
     ];
 }
 
