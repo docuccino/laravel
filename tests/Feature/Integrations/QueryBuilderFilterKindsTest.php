@@ -341,3 +341,27 @@ it('describes the filters the installed package actually ships', function (): vo
     expect(count($factories))->toBeGreaterThanOrEqual(10)
         ->and(array_diff($factories, QueryBuilderParameters::filterKinds()))->toBe([]);
 });
+
+it('types a custom filter from a class-level attribute that leaves out the name', function (): void {
+    // The form the untyped-filter help spells: on a filter class the registration names the parameter,
+    // so the attribute is read without one. The body filters an uncast column, so `integer` — and the
+    // description — can only have come from the attribute, and nothing is left untyped to report.
+    [$byName, $diagnostics] = runFilterKinds('QueryBuilder::for(\\Workbench\\App\\Models\\Gadget::class)->allowedFilters(['
+        ."AllowedFilter::custom('band', \\Docuccino\\Laravel\\Tests\\Fixtures\\QueryBuilder\\NamelessFilter::class), "
+        .'])->paginate()');
+
+    expect($byName['filter[band]']['schema']['type'])->toBe('integer')
+        ->and($byName['filter[band]']['description'])->toBe('Minimum band.')
+        ->and($diagnostics)->toBe([]);
+});
+
+it('reports a custom filter attribute PHP cannot construct against the route, and types off the body', function (): void {
+    [$byName, $diagnostics] = runFilterKinds('QueryBuilder::for(\\Workbench\\App\\Models\\Gadget::class)->allowedFilters(['
+        ."AllowedFilter::custom('band', \\Docuccino\\Laravel\\Tests\\Fixtures\\QueryBuilder\\UnreadableFilter::class), "
+        .'])->paginate()');
+
+    // The body's `score` column is an integer cast — the answer an unannotated class gets.
+    expect($byName['filter[band]']['schema']['type'])->toBe('integer')
+        ->and(array_map(static fn ($d): array => [$d->code, $d->routeSignature], $diagnostics))->toBe([['attribute.unreadable', 'GET api/gadgets']])
+        ->and($diagnostics[0]->message)->toContain('UnreadableFilter');
+});

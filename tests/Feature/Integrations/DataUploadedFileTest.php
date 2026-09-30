@@ -47,7 +47,7 @@ it('keeps a nullable UploadedFile property binary and null-admitting', function 
     ]);
 
     expect($result->mediaType)->toBe('multipart/form-data')
-        ->and($result->schema['properties']['avatar'])->toBe(['type' => ['string', 'null'], 'format' => 'binary'])
+        ->and($result->schema['properties']['avatar'])->toBe(blankAsNull(['type' => ['string', 'null'], 'format' => 'binary']))
         // Nullable ⇒ not required.
         ->and($result->schema['required'] ?? [])->not->toContain('avatar');
 });

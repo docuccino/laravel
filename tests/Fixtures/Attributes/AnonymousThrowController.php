@@ -14,7 +14,7 @@ use Docuccino\Attributes\Summary;
  */
 final class AnonymousThrowController
 {
-    /* @phpstan-ignore-next-line argument.type — the throwing argument IS the fixture */
+    /* @phpstan-ignore argument.type (the throwing argument IS the fixture) */
     #[Group(new ThrowsAnonymously)]
     #[Summary('Still documented')]
     public function index(): array

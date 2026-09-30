@@ -40,6 +40,7 @@ function environmentDigestGating(): array
         // application has — so the inferred-handler chain is not toggled either.
         'Docuccino\Laravel\Integrations\InferredHandler\RenderCallbackDigestContributor' => null,
         // A package's globals, which a document that disabled the integration must never be keyed on.
+        'Docuccino\Laravel\Integrations\ApiResources\ResourceWrapDigestContributor' => 'api_resources',
         'Docuccino\Laravel\Integrations\Eloquent\MorphMapDigestContributor' => 'eloquent',
         'Docuccino\Laravel\Integrations\JsonApiPaginate\JsonApiPaginateConfigDigestContributor' => 'json_api_paginate',
         'Docuccino\Laravel\Integrations\Passport\PassportDigestContributor' => 'passport',
@@ -137,7 +138,7 @@ it('names every environment-digest contributor the adapter declares, and none it
 
     // The plausible minimum beside the real assertion: a scan whose pattern stopped matching would
     // otherwise agree with an empty table forever.
-    expect($declared)->toHaveCount(11)
+    expect($declared)->toHaveCount(12)
         ->and($tabled)->toBe($declared);
 });
 

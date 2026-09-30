@@ -7,6 +7,7 @@ use Docuccino\Laravel\Tests\Fixtures\QueryBuilder\NamelessFilter;
 use Docuccino\Laravel\Tests\Fixtures\QueryBuilder\ScoreBandFilter;
 use Docuccino\Laravel\Tests\Fixtures\QueryBuilder\SlugFilter;
 use Docuccino\Laravel\Tests\Fixtures\QueryBuilder\TitleFilter;
+use Docuccino\Laravel\Tests\Fixtures\QueryBuilder\UnreadableFilter;
 use Workbench\App\Filters\CompositeFilter;
 use Workbench\App\Filters\DocumentedFilter;
 use Workbench\App\Filters\ScoreFilter;
@@ -62,12 +63,37 @@ it('reads the __invoke PHP calls on the filter, not the last one its file writes
     'the file\'s last filter' => [ScoreBandFilter::class, 'score'],
 ]);
 
-it('keys the files it read even where reading the class throws', function (): void {
-    // The attribute cannot be built, so a cold build gets no facts — and a warm one must still re-read
-    // once the author fixes it. Dropping the files with the facts left the fragment keyed on nothing.
+it('reads an attribute that leaves out the name the filter registration supplies', function (): void {
+    // The parameter's name is the `AllowedFilter` one, so a class-level declaration has nothing to name;
+    // requiring it anyway made the documented form an attribute PHP refused to construct.
     $facts = (new CustomFilterReader)->read(NamelessFilter::class);
 
+    expect($facts->attribute?->name)->toBeNull()
+        ->and($facts->attribute?->type)->toBe('int')
+        ->and($facts->attribute?->description)->toBe('Minimum band.')
+        ->and($facts->diagnostics)->toBe([]);
+});
+
+it('reports an attribute PHP cannot construct, and reads the body as if it were not there', function (): void {
+    // The author wrote a declaration and it took no effect, so they are told where — the class and what
+    // was thrown, never the thrown message with its absolute path. What is left is what an unannotated
+    // class gets, so the answer stays true.
+    $facts = (new CustomFilterReader)->read(UnreadableFilter::class, 'GET /api/gadgets');
+
     expect($facts->attribute)->toBeNull()
-        ->and($facts->column)->toBeNull()
-        ->and(array_map(basename(...), $facts->files))->toBe(['NamelessFilter.php']);
+        ->and($facts->column)->toBe('score')
+        ->and(array_map(static fn ($d): array => [$d->code, $d->message, $d->help, $d->routeSignature], $facts->diagnostics))->toBe([[
+            'attribute.unreadable',
+            'The #[QueryParameter] on '.UnreadableFilter::class.' could not be instantiated and was ignored.',
+            'Its constructor threw TypeError. Check the arguments at that declaration against the attribute\'s constructor.',
+            'GET /api/gadgets',
+        ]]);
+});
+
+it('keys the files it read even where the attribute cannot be built', function (): void {
+    // A cold build gets no attribute — and a warm one must still re-read once the author fixes it.
+    // Dropping the files with the facts left the fragment keyed on nothing.
+    $facts = (new CustomFilterReader)->read(UnreadableFilter::class);
+
+    expect(array_map(basename(...), $facts->files))->toBe(['UnreadableFilter.php']);
 });

@@ -132,3 +132,30 @@ it('escapes a segment name it did not write', function (): void {
         ->and($message)->not->toContain("\x1b")
         ->and($message)->not->toContain("\x07");
 });
+
+it('documents nothing for a query declaration that names no parameter, and says so once', function (array $written, array $inherited, array $published): void {
+    // A name is optional only on a custom filter class, whose registration supplies it. An action and
+    // its controller supply none, so there is no parameter to mint — and minting one under an empty name
+    // would publish a query parameter no request can send. Inherited declarations are reported too:
+    // unlike a segment some actions have, a nameless one has no reading on any route.
+    [$names, $diagnostics] = pathAttributeRun($written, ['post'], $inherited);
+
+    $reports = diagnosticsCoded($diagnostics, 'attribute.query-parameter-unnamed');
+
+    expect($names)->toBe($published)
+        ->and($reports)->toHaveCount(1)
+        ->and($reports[0]->severity)->toBe(Severity::Warning)
+        ->and($reports[0]->routeSignature)->toBe('GET api/posts/{post}')
+        ->and($reports[0]->help)->toContain("#[QueryParameter(name: 'page'");
+})->with([
+    'on the action' => [[new QueryParameter(type: 'int')], [], []],
+    'twice on the action, one mistake' => [[new QueryParameter(type: 'int'), new QueryParameter(description: 'x')], [], []],
+    'inherited from the controller' => [[], [new QueryParameter(type: 'int')], []],
+    'beside a named one that still publishes' => [[new QueryParameter(type: 'int'), new QueryParameter('page', type: 'int')], [], ['query:page']],
+]);
+
+it('says nothing about query declarations that each name their parameter', function (): void {
+    [, $diagnostics] = pathAttributeRun([new QueryParameter('page', type: 'int')], ['post']);
+
+    expect(diagnosticsCoded($diagnostics, 'attribute.query-parameter-unnamed'))->toBe([]);
+});

@@ -98,7 +98,7 @@ it('names a closure route\'s site relatively, since a closure has no name but it
     [, $diagnostics] = ($this->builtDocument)(static function (Router $router): void {
         $router->get(
             'api/zz-attr-closure-malformed',
-            /* @phpstan-ignore-next-line argument.type — the wrong argument type IS the fixture */
+            /* @phpstan-ignore argument.type (the wrong argument type IS the fixture) */
             #[Group(123)]
             static fn (): array => [],
         );
@@ -117,7 +117,7 @@ it('names a sub-namespaced attribute the way the author wrote it', function (): 
     [, $diagnostics] = ($this->builtDocument)(static function (Router $router): void {
         $router->get(
             'api/zz-attr-versioning-malformed',
-            /* @phpstan-ignore-next-line argument.type — the wrong argument type IS the fixture */
+            /* @phpstan-ignore argument.type, attribute.target (a target and an argument type it does not take ARE the fixture) */
             #[ApiVersionChange(since: 123, description: 'Not a version.')]
             static fn (): array => [],
         );

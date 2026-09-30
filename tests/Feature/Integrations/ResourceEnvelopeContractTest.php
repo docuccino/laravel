@@ -18,32 +18,43 @@ use Docuccino\Core\Inference\DType\UnknownT;
 use Docuccino\Core\Inference\ReturnSite;
 use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
+use Docuccino\Laravel\Integrations\ApiResources\CollectionKeys;
 use Docuccino\Laravel\Integrations\ApiResources\JsonApiResourceSchema;
 use Docuccino\Laravel\Integrations\ApiResources\JsonResourceSchema;
 use Docuccino\Laravel\Integrations\ApiResources\ResourceReflector;
 use Docuccino\Laravel\Integrations\Support\PaginationEnvelope;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\AppendedReleaseCollection;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\ChannelResource;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\ChannelShelfCollection;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ConditionalWithResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\DynamicMetaResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\EmptiedDataResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\EmptyBranchResource;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\ForceWrappedResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ForwardedDataResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ForwardedReleaseCollection;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\KeyedReleaseCollection;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\KeyedReleaseResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\LinkedReleaseCollection;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\MergedDataResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\MergingWithResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\MeteredJsonApiResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\PartlyDynamicMetaResource;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\PinnedKeysReleaseCollection;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\PinnedKeysReleaseResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ReleaseCollection;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ReleaseFeedCollection;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ReleaseResource;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\ReleaseResourceCollection;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\RetaggedResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\SparseResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\TalliedReleaseCollection;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\WithPropertyResource;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Fluent;
 use Opis\JsonSchema\Validator;
 
@@ -132,6 +143,13 @@ beforeEach(function (): void {
         ForwardedReleaseCollection::class.'::with' => new ActionAnalysis(returns: [$site(new ArrayShapeT([
             new ArrayShapeField('data', new ArrayShapeT([new ArrayShapeField('source', ScalarT::string())])),
         ]))]),
+        ChannelResource::class.'::toArray' => new ActionAnalysis(returns: [$site(new ArrayShapeT([new ArrayShapeField('channel', ScalarT::string())]))]),
+        KeyedReleaseResource::class.'::toArray' => new ActionAnalysis(returns: [$site($tag)]),
+        PinnedKeysReleaseResource::class.'::toArray' => new ActionAnalysis(returns: [$site($tag)]),
+        ForceWrappedResource::class.'::toArray' => new ActionAnalysis(returns: [$site(new ArrayShapeT([
+            new ArrayShapeField('data', new ArrayShapeT([new ArrayShapeField('source', ScalarT::string())])),
+            new ArrayShapeField('tag', ScalarT::string()),
+        ]))]),
         MeteredJsonApiResource::class.'::toAttributes' => new ActionAnalysis(returns: [$site(new ArrayShapeT([new ArrayShapeField('title', ScalarT::string())]))]),
         MeteredJsonApiResource::class.'::toMeta' => new ActionAnalysis(returns: [$site(new ArrayShapeT([
             new ArrayShapeField('cached', UnionT::of([ScalarT::bool(), $missing])),
@@ -139,10 +157,10 @@ beforeEach(function (): void {
     ]);
 
     // The published schema with every `$ref` inlined from the registry, as a validator reads it.
-    $this->published = static function (string $fqcn, ?RepresentationPolicy $policy = null) use ($engine): object {
+    $this->published = static function (string|ClassT $type, ?RepresentationPolicy $policy = null) use ($engine): object {
         $components = new ComponentRegistry;
         $schema = (new SchemaConverter([new JsonApiResourceSchema, new JsonResourceSchema, ...DefaultTypeMappers::all()], $engine, $components, $policy ?? new RepresentationPolicy))
-            ->toSchema(new ClassT($fqcn))->schema;
+            ->toSchema(is_string($type) ? new ClassT($type) : $type)->schema;
 
         $inline = static function (mixed $node, ?string $key = null) use (&$inline, $components): mixed {
             if (! is_array($node)) {
@@ -394,4 +412,88 @@ it('rejects a body the published envelope does not allow, so an accepting run pr
     // A ReleaseResource response always carries meta and version; one without them is not what is sent.
     expect(($this->accepts)($schema, ($this->sent)(new ReleaseResource((object) ['tag' => 'a']))))->toBeTrue()
         ->and(($this->accepts)($schema, (object) ['data' => (object) ['tag' => 'a']]))->toBeFalse();
+});
+
+it('publishes the resource a named collection collects as the installed framework resolves it', function (): void {
+    $schema = ($this->published)(ReleaseResourceCollection::class);
+    $sent = ($this->sent)(new ReleaseResourceCollection(collect([new Fluent(['tag' => 'a', 'channel' => 'c'])])));
+    $release = (object) ['tag' => 'a'];
+    $channel = (object) ['channel' => 'c'];
+
+    // #[Collects] names what a framework shipping it maps each item into, ahead of the class's name;
+    // one without the attribute finds ReleaseResource by that name.
+    $reads = class_exists(ResourceReflector::COLLECTS_ATTRIBUTE);
+    expect($sent->data)->toEqual([$reads ? $channel : $release])
+        ->and(($this->accepts)($schema, $sent))->toBeTrue()
+        ->and(($this->accepts)($schema, (object) ['data' => [$reads ? $release : $channel]]))->toBeFalse();
+
+    // A parent's #[Collects] is not read, so a collection whose name finds nothing sends each item as it is.
+    $shelf = ($this->sent)(new ChannelShelfCollection(collect([new Fluent(['tag' => 'a', 'channel' => 'c'])])));
+    expect($shelf->data)->toEqual([(object) ['tag' => 'a', 'channel' => 'c']])
+        ->and(($this->published)(ChannelShelfCollection::class)->properties->data->items)->toEqual(new stdClass);
+});
+
+it('publishes a collection that keeps its keys as the array or object its keys make it', function (callable $make, bool $preserves): void {
+    $keyed = collect([3 => new Fluent(['tag' => 'a']), 7 => new Fluent(['tag' => 'b'])]);
+    $collection = $make($keyed);
+    $schema = ($this->published)(new ClassT($collection::class, $collection instanceof AnonymousResourceCollection ? [new ClassT($collection->collects)] : []));
+
+    $sentKeyed = ($this->sent)($collection);
+    $sentListed = ($this->sent)($make(collect([new Fluent(['tag' => 'a'])])));
+
+    // Kept integer keys that are not 0…n-1 encode as an object; renumbered ones, and kept ones that run
+    // from 0, as a list.
+    expect(is_object($sentKeyed->data))->toBe($preserves)
+        ->and($sentListed->data)->toEqual([(object) ['tag' => 'a']])
+        ->and(($this->accepts)($schema, $sentKeyed))->toBeTrue()
+        ->and(($this->accepts)($schema, $sentListed))->toBeTrue()
+        // A collection Laravel renumbers stays the list it is always sent as.
+        ->and($schema->properties->data->type)->toBe($preserves ? ['array', 'object'] : 'array')
+        // Either way each item is still the resource.
+        ->and(($this->accepts)($schema, (object) ['data' => (object) ['3' => (object) ['name' => 'n']]]))->toBeFalse();
+})->with([
+    '$preserveKeys on the collected resource' => [fn (Collection $items): AnonymousResourceCollection => KeyedReleaseResource::collection($items), true],
+    '#[PreserveKeys] on the collected resource' => [fn (Collection $items): AnonymousResourceCollection => PinnedKeysReleaseResource::collection($items), class_exists(CollectionKeys::PRESERVE_KEYS_ATTRIBUTE)],
+    '$preserveKeys on a named collection' => [fn (Collection $items): KeyedReleaseCollection => new KeyedReleaseCollection($items), true],
+    '#[PreserveKeys] on a named collection' => [fn (Collection $items): PinnedKeysReleaseCollection => new PinnedKeysReleaseCollection($items), class_exists(CollectionKeys::PRESERVE_KEYS_ATTRIBUTE)],
+    'neither' => [fn (Collection $items): AnonymousResourceCollection => ReleaseResource::collection($items), false],
+]);
+
+it('wraps a body that carries its own wrap key where the resource forces its wrap', function (): void {
+    $schema = ($this->published)(ForceWrappedResource::class);
+    $sent = ($this->sent)(new ForceWrappedResource((object) ['tag' => 'a']));
+    $body = (object) ['data' => (object) ['source' => 'ledger'], 'tag' => 'a'];
+
+    // $forceWrapping wraps whatever the body carries; a framework without the property leaves a body
+    // already carrying its key as it is.
+    $forces = property_exists(JsonResource::class, 'forceWrapping');
+    expect($sent)->toEqual($forces ? (object) ['data' => $body] : $body)
+        ->and(($this->accepts)($schema, $sent))->toBeTrue()
+        ->and(($this->accepts)($schema, $forces ? $body : (object) ['data' => $body]))->toBeFalse();
+});
+
+it('wraps a body carrying its own wrap key, and a JSON:API document, where every resource forces its wrap', function (): void {
+    if (! property_exists(JsonResource::class, 'forceWrapping')) {
+        $this->markTestSkipped('The installed framework has no $forceWrapping.');
+    }
+
+    JsonResource::$forceWrapping = true;
+
+    try {
+        $collection = ($this->published)(LinkedReleaseCollection::class);
+        $document = ($this->published)(MeteredJsonApiResource::class);
+        $linked = ($this->sent)(new LinkedReleaseCollection(collect([(object) ['tag' => 'a']])));
+        $jsonApi = ($this->sent)(new MeteredJsonApiResource(new Fluent(['id' => 1, 'title' => 't'])));
+    } finally {
+        JsonResource::$forceWrapping = false;
+    }
+
+    // The static is shared down the hierarchy, and a JSON:API resource's resolve() returns its own `data`.
+    expect(array_keys((array) $linked))->toBe(['data'])
+        ->and(array_keys((array) $linked->data))->toBe(['data', 'links'])
+        ->and($jsonApi->data->data->type)->toBe('metered')
+        ->and(($this->accepts)($collection, $linked))->toBeTrue()
+        ->and(($this->accepts)($document, $jsonApi))->toBeTrue()
+        ->and(($this->accepts)($collection, $linked->data))->toBeFalse()
+        ->and(($this->accepts)($document, $jsonApi->data))->toBeFalse();
 });

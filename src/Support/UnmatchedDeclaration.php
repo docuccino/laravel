@@ -14,14 +14,14 @@ use Docuccino\Core\Support\NameList;
  * The one report for an author-supplied name that matched nothing — `#[IgnoreParam]` naming a parameter
  * this operation does not document, `#[IgnoreResponse]` naming a status no producer would have written,
  * `#[InDocs]` naming a document nobody configured, `#[PathParameter]` naming a segment the route has no
- * template variable for.
+ * template variable for — and, its limiting case, a `#[QueryParameter]` naming nothing at all.
  *
  * A name that matches nothing leaves no evidence of its own: a parameter that was never there and a
  * parameter that was dropped both leave the same document, and a route pinned to a document that does
  * not exist reads exactly like a route somebody meant to keep out. So an author who typo'd a name, or
- * kept one through a rename, sees exactly what a working declaration produces. All four members say the
- * same three things — the declaration as written, that it took no effect, and what there WAS to name so
- * the typo is visible beside it — so they say them from here rather than four times.
+ * kept one through a rename, sees exactly what a working declaration produces. Every member naming
+ * something says the same three things — the declaration as written, that it took no effect, and what
+ * there WAS to name so the typo is visible beside it — so they say them from here rather than once each.
  *
  * Warning, not info: the document is not wrong (nothing was dropped, so nothing is missing that should
  * be there), but the author asked for something and did not get it, which is a request refused rather
@@ -138,6 +138,24 @@ final class UnmatchedDeclaration
             source: $source,
             routeSignature: $routeSignature,
             help: 'Correct the name to a segment of the route\'s own URI, or delete the declaration — a segment that was renamed keeps its old spelling only in the attribute. A query, header or cookie parameter that is not in the URI is #[QueryParameter], #[HeaderParameter] or #[CookieParameter]; only a path parameter has to be in the template. A segment only some of a controller\'s actions have belongs on the class, where an action without it is not a mistake.',
+        );
+    }
+
+    /**
+     * A `#[QueryParameter]` on an action, or the controller it inherits from, that names no parameter —
+     * the name is optional for the one position that supplies it, a custom filter class, and an action
+     * is not that position. Reported wherever it is written, inherited included: unlike a segment only
+     * some actions have, a nameless declaration has no reading on any route.
+     */
+    public static function unnamedQueryParameter(?Source $source, ?string $routeSignature): Diagnostic
+    {
+        return new Diagnostic(
+            severity: Severity::Warning,
+            code: 'attribute.query-parameter-unnamed',
+            message: '#[QueryParameter] documented nothing: it names no parameter, and on an action or its controller nothing else names one.',
+            source: $source,
+            routeSignature: $routeSignature,
+            help: 'Name the parameter it documents — #[QueryParameter(name: \'page\', …)], or #[QueryParameter(name: \'filter[status]\', …)] for a Query Builder filter. The name may be left off only on a Spatie Query Builder custom filter class, where AllowedFilter::custom names the parameter.',
         );
     }
 

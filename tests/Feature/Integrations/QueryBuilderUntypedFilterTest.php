@@ -54,7 +54,7 @@ function untypedFilterChain(): string
  *
  * @param  list<object>  $attributes
  * @param  array<string, mixed>  $representation
- * @return array{0: array<string, array<string, mixed>>, 1: list<string>}
+ * @return array{0: array<string, array<string, mixed>>, 1: list<string>, 2: list<string>, 3: list<Diagnostic>}
  */
 function runUntypedFilterPasses(array $attributes = [], array $representation = []): array
 {
@@ -78,12 +78,14 @@ function runUntypedFilterPasses(array $attributes = [], array $representation = 
         $byName[$parameter->name] = $parameter->toArray();
     }
 
-    $reported = array_map(
-        static fn ($diagnostic): string => $diagnostic->message,
-        diagnosticsCoded($context->components->diagnostics(), 'query-builder.untyped-filter'),
-    );
+    $coded = diagnosticsCoded($context->components->diagnostics(), 'query-builder.untyped-filter');
 
-    return [$byName, array_values($reported)];
+    return [
+        $byName,
+        array_values(array_map(static fn ($diagnostic): string => $diagnostic->message, $coded)),
+        array_values(array_map(static fn ($diagnostic): string => (string) $diagnostic->help, $coded)),
+        $context->components->diagnostics(),
+    ];
 }
 
 it('reports the filter the document publishes untyped, and not the one an attribute typed', function (): void {
@@ -115,6 +117,28 @@ it('reads the deepObject property, where that representation publishes the filte
         ->and($reported)->toHaveCount(1)
         ->and($reported[0])->toContain('"opaque"');
 });
+
+it('clears the report with the very declaration its help spells, in either representation', function (array $representation): void {
+    // A help nobody executes is a promise to remember: the name it gives an action-level declaration
+    // has to be the address the attribute layer patches, and a name that lands anywhere else leaves the
+    // filter untyped and the report standing. So the declaration is read back out of the help and run.
+    [, , $helps] = runUntypedFilterPasses([], $representation);
+    $opaque = array_values(array_filter($helps, static fn (string $help): bool => str_contains($help, '"opaque"')));
+
+    expect($opaque)->toHaveCount(1)
+        ->and(preg_match("/#\\[QueryParameter\\(name: '([^']+)', type: 'string'\\)\\] to the action/", $opaque[0], $match))->toBe(1);
+
+    [$byName, $reported, , $diagnostics] = runUntypedFilterPasses([new QueryParameter(name: $match[1], type: 'string')], $representation);
+
+    $schema = $representation === [] ? $byName['filter[opaque]']['schema'] : $byName['filter']['schema']['properties']['opaque'];
+
+    expect($schema['type'])->toBe('string')
+        ->and(implode(' ', $reported))->not->toContain('"opaque"')
+        ->and(diagnosticsCoded($diagnostics, 'attribute.query-parameter-unnamed'))->toBe([]);
+})->with([
+    'flat bracketed keys' => [[]],
+    'one deepObject parameter' => [['filters' => 'deepObject']],
+]);
 
 it('says nothing about a filter #[IgnoreParam] dropped, which the document does not carry at all', function (): void {
     [$byName, $reported] = runUntypedFilterPasses([

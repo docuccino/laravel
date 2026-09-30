@@ -4281,6 +4281,11 @@
         "type": "object",
         "properties": {
           "author": {
+            "x-docuccino": {
+              "facts": {
+                "blankAsNull": "^[\\x00\\t-\\r  ­͏؜ᅟᅠ ឴឵᠎           ​‌‍‎‏\u2028\u2029  ⁠⁡⁢⁣⁤⁥⁪⁫⁬⁭⁮⁯⠀　ㅤ﻿ﾠ𝅙𝅳𝅴𝅵𝅶𝅷𝅸𝅹𝅺󠀠]*$"
+              }
+            },
             "type": [
               "object",
               "null"
@@ -4645,6 +4650,11 @@
         "type": "object",
         "properties": {
           "avatar": {
+            "x-docuccino": {
+              "facts": {
+                "blankAsNull": "^[\\x00\\t-\\r  ­͏؜ᅟᅠ ឴឵᠎           ​‌‍‎‏\u2028\u2029  ⁠⁡⁢⁣⁤⁥⁪⁫⁬⁭⁮⁯⠀　ㅤ﻿ﾠ𝅙𝅳𝅴𝅵𝅶𝅷𝅸𝅹𝅺󠀠]*$"
+              }
+            },
             "description": "An image file.",
             "type": [
               "string",
@@ -4915,7 +4925,7 @@
     "document": {
       "id": "doc:secured",
       "configHash": "d89a86d522eb398c0a3d894b165ad3d553ea98b9606eab23fb4d7a6a100fb07f",
-      "contentHash": "74a9f99435f4f2feadc6b78f3fff2890b91bd87a10951a6bcb0e134557f0bbd4"
+      "contentHash": "fe62fec05e9c2a4bda182743d98e0bedeebdf2cd03727566342d0adfc532a18f"
     },
     "generator": {
       "name": "docuccino/laravel",

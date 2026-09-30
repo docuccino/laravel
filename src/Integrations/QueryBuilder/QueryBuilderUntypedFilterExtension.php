@@ -48,10 +48,24 @@ final class QueryBuilderUntypedFilterExtension implements OperationExtension
                     code: 'query-builder.untyped-filter',
                     message: sprintf('Filter "%s" is handled by your own code and nothing types its value, so it is documented with no type at all.', $filter),
                     routeSignature: $context->route->signature(),
-                    help: sprintf('Add #[QueryParameter(type: \'string\')] to the filter class, or to the action, to give "%s" a documented type.', $filter),
+                    help: sprintf(
+                        'Add #[QueryParameter(name: \'%s\', type: \'string\')] to the action to give "%s" a documented type — or, for a custom filter class, #[QueryParameter(type: \'string\')] on the class, which types it on every route that registers it.',
+                        $this->declarationName($context, $parameter, $filter),
+                        $filter,
+                    ),
                 ));
             }
         }
+    }
+
+    /**
+     * The name a route-level `#[QueryParameter]` documents this filter under: the published parameter,
+     * or under deepObject the bracketed member the route-level attribute layer patches — the same
+     * address {@see publishedSchema()} reads, so the declaration the help spells lands where it looked.
+     */
+    private function declarationName(RouteContext $context, string $parameter, string $filter): string
+    {
+        return $context->representation()->filtersDeepObject() ? sprintf('%s[%s]', $parameter, $filter) : $parameter;
     }
 
     /**

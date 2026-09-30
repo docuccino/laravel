@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\Validation\Transformers;
 
+use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Extensions\Contracts\RuleTransformer;
 use Docuccino\Core\Extensions\Contracts\SchemaContext;
 use Docuccino\Core\Extensions\Schema\EnumComponent;
@@ -89,10 +90,15 @@ final class ChoiceRuleTransformer implements RuleTransformer
         }
 
         $field->set('enum', $enum);
-        $this->decorate($enum, $rule->note, $field, $context);
+        $unreadable = $this->decorate($enum, $rule->note, $field, $context);
 
         if ($wholeEnum !== null) {
+            // Asking about the whole enum raises its case reports, so they are not raised twice.
             $this->describe($wholeEnum, $field, $context);
+        } else {
+            foreach ($unreadable as $diagnostic) {
+                $context->diagnostic($diagnostic);
+            }
         }
     }
 
@@ -164,15 +170,20 @@ final class ChoiceRuleTransformer implements RuleTransformer
      * rather than replaced. `enum` itself is already set and is skipped — the decoration is computed
      * against the very values published, which is what keeps the parallel arrays in step with them.
      *
+     * Hands back the reports for the case prose PHP could not construct, for the caller to raise.
+     *
      * @param  list<int|string>  $enum
+     * @return list<Diagnostic>
      */
-    private function decorate(array $enum, ?string $note, ValidationField $field, SchemaContext $context): void
+    private function decorate(array $enum, ?string $note, ValidationField $field, SchemaContext $context): array
     {
+        [$descriptions, $unreadable] = $note === null ? [[], []] : EnumReflection::descriptions($note);
+
         $decorated = EnumDecoration::apply(
             ['enum' => $enum],
             $context->representation()->enumNaming,
             self::names(array_map(strval(...), $enum), $note),
-            $note === null ? [] : EnumReflection::descriptions($note),
+            $descriptions,
         );
 
         foreach ($decorated as $keyword => $value) {
@@ -180,6 +191,8 @@ final class ChoiceRuleTransformer implements RuleTransformer
                 $field->set($keyword, $value);
             }
         }
+
+        return $unreadable;
     }
 
     /**

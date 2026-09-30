@@ -13,7 +13,7 @@ use Docuccino\Attributes\Summary;
  */
 final class MalformedAttributeController
 {
-    /* @phpstan-ignore-next-line argument.type — the wrong argument type IS the fixture */
+    /* @phpstan-ignore argument.type (the wrong argument type IS the fixture) */
     #[Group(123)]
     #[Summary('Still documented')]
     public function index(): array

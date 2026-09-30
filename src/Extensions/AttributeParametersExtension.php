@@ -27,6 +27,8 @@ use Docuccino\Laravel\Support\UnmatchedDeclaration;
  *
  * A `#[PathParameter]` naming no segment of the route template is withheld and reported rather than
  * minted — see {@see applyPathParameters()}, the one member here whose name cannot create what it names.
+ * A `#[QueryParameter]` naming nothing at all is reported too: its name is optional only on a custom
+ * filter class, where the filter's registration supplies it, and an action supplies none.
  *
  * A bracketed name (`#[QueryParameter('filter[status]')]`) patches the matching property of a deepObject
  * container parameter when one exists — type/description/format/example/default onto the property
@@ -49,7 +51,14 @@ final class AttributeParametersExtension implements OperationExtension
     public function handle(OperationDraft $operation, RouteContext $context): void
     {
         $members = new DeepObjectMembers($operation);
+        $unnamed = false;
         foreach ($context->attributes->all(QueryParameter::class) as $attribute) {
+            if ($attribute->name === null) {
+                $unnamed = true;
+
+                continue;
+            }
+
             $property = $members->schemaFor($attribute->name);
             if ($property === null) {
                 $parameter = $operation->parameter('query', $attribute->name);
@@ -62,6 +71,11 @@ final class AttributeParametersExtension implements OperationExtension
             $members->stateRequired($attribute->name, $attribute->required);
         }
         $members->flush(Contribution::attribute($context->actionSource()));
+
+        // Once per route: two nameless declarations are one mistake, and the report names no parameter.
+        if ($unnamed) {
+            $context->components->addDiagnostic(UnmatchedDeclaration::unnamedQueryParameter($context->actionSource(), $context->route->signature()));
+        }
 
         foreach ($context->attributes->all(HeaderParameter::class) as $attribute) {
             $parameter = $operation->parameter('header', $attribute->name);

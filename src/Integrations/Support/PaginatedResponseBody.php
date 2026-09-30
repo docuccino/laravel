@@ -8,6 +8,7 @@ use Docuccino\Core\Draft\OperationDraft;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Patch\Contribution;
+use Docuccino\Laravel\Integrations\ApiResources\CollectionKeys;
 use Docuccino\Laravel\Integrations\ApiResources\PaginatedResourceResponsesExtension;
 use Docuccino\Laravel\Integrations\ApiResources\ResourceReflector;
 use Docuccino\Laravel\Integrations\TimacdonaldJsonApi\TimacdonaldResourceReflector;
@@ -77,7 +78,7 @@ final class PaginatedResponseBody
 
         $envelope = PaginationParts::hoist(
             $context->converter(),
-            PaginationEnvelope::of($kind, $items),
+            PaginationEnvelope::of($kind, $items, CollectionKeys::preserved($collection)),
             PaginationEnvelope::parts($kind),
         );
 
@@ -241,7 +242,7 @@ final class PaginatedResponseBody
 
     /**
      * The item schema inside a converted collection body — `properties.data.items` when wrapped, the
-     * top-level `items` for a withoutWrapping bare array. Null for any other shape.
+     * top-level `items` for a withoutWrapping bare array, keys preserved or not. Null for any other shape.
      *
      * @param  array<string, mixed>  $body
      * @return array<array-key, mixed>|null
@@ -253,7 +254,7 @@ final class PaginatedResponseBody
             return $properties['data']['items'];
         }
 
-        if (($body['type'] ?? null) === 'array' && is_array($body['items'] ?? null)) {
+        if (in_array('array', (array) ($body['type'] ?? null), true) && is_array($body['items'] ?? null)) {
             return $body['items'];
         }
 

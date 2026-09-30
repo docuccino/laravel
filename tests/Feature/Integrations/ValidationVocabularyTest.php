@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Extensions\BuiltIn\DefaultTypeMappers;
 use Docuccino\Core\Extensions\Context\RepresentationPolicy;
 use Docuccino\Core\Extensions\Schema\ComponentRegistry;
@@ -14,6 +15,7 @@ use Docuccino\Core\Inference\NullTypeEngine;
 use Docuccino\Laravel\Integrations\Support\RuleParsing;
 use Docuccino\Laravel\Integrations\Validation\RuleOrdering;
 use Docuccino\Laravel\Integrations\Validation\ValidationIntegration;
+use Docuccino\Laravel\Tests\Fixtures\EnumDescription\UnbuildableCaseStage;
 use Illuminate\Support\Facades\Validator;
 use Workbench\App\Enums\WidgetStatus;
 
@@ -94,6 +96,29 @@ it('names a folded enum rule from the enum cases, matched by value rather than b
         // The enum's own FQCN is the author's vocabulary: it never reaches a reader.
         ->and($schema)->not->toHaveKey('description');
 });
+
+it('reports a case description PHP cannot construct on every form a folded enum rule publishes', function (array $values, bool $components): void {
+    // The rule publishes that case's prose whether it names the whole enum or only some of it, and
+    // whether the set is a component or inline — so every form owes the author the one report: the
+    // sentence they wrote for the case was dropped, and its docblock answers instead.
+    $registry = new ComponentRegistry;
+    $context = new SchemaConverter(DefaultTypeMappers::all(), new NullTypeEngine, $registry, new RepresentationPolicy(enumComponents: $components));
+    $ordered = (new RuleOrdering)->order(new RuleSet(['f' => [ValidationRule::of('enum', $values, UnbuildableCaseStage::class)]]));
+    $field = (new DefaultValidationRulesToSchema(ValidationIntegration::transformers()))->convert($ordered, $context)->schema['properties']['f'];
+
+    $published = isset($field['$ref']) ? $registry->schemas()['UnbuildableCaseStage'] : $field;
+    $reports = array_map(static fn (Diagnostic $d): array => [$d->code, $d->message], $registry->diagnostics());
+
+    expect($published['x-enum-descriptions'][array_search('held', $published['enum'], true)] ?? null)->toBe('Waiting for a reviewer.')
+        ->and($reports)->toBe([[
+            'attribute.unreadable',
+            'The #[CaseDescription] on '.UnbuildableCaseStage::class.'::Held could not be instantiated and was ignored.',
+        ]]);
+})->with([
+    'the whole enum, as its component' => [['held', 'released', 'withdrawn'], true],
+    'the whole enum, inline' => [['held', 'released', 'withdrawn'], false],
+    'some of the enum, which is always inline' => [['held', 'released'], true],
+]);
 
 it('maps every schema-producing string rule to its fragment', function (array $rules, array $expected): void {
     $property = convertFieldRules($rules)->schema['properties']['f'];
@@ -660,8 +685,8 @@ it('widens an undecided container for null under either nullable policy', functi
         new RepresentationPolicy(nullable: 'anyof'),
     )->schema['properties']['meta'];
 
-    expect($folded)->toBe(['type' => ['array', 'object', 'null']])
-        ->and($branched)->toBe(['anyOf' => [['type' => 'array'], ['type' => 'object'], ['type' => 'null']]]);
+    expect($folded)->toBe(blankAsNull(['type' => ['array', 'object', 'null']]))
+        ->and($branched)->toBe(blankAsNull(['anyOf' => [['type' => 'array'], ['type' => 'object'], ['type' => 'null']]]));
 });
 
 /**

@@ -10,6 +10,7 @@ use Docuccino\Laravel\Integrations\ApiResources\JsonResourceSchema;
 use Docuccino\Laravel\Integrations\ApiResources\PaginatedResourceParametersExtension;
 use Docuccino\Laravel\Integrations\ApiResources\PaginatedResourceResponsesExtension;
 use Docuccino\Laravel\Integrations\ApiResources\ResourceMediaType;
+use Docuccino\Laravel\Integrations\ApiResources\ResourceWrapDigestContributor;
 use Docuccino\Laravel\Integrations\JsonApiPaginate\JsonApiPaginateIntegration;
 use Docuccino\Laravel\Integrations\JsonApiPaginate\JsonApiPaginateParametersExtension;
 use Docuccino\Laravel\Integrations\JsonApiPaginate\JsonApiPaginateResponsesExtension;
@@ -76,9 +77,9 @@ it('omits the JSON:API pieces on a Laravel without the first-party JsonApiResour
     // Absent → the always-on JsonResource mapper + the paginated-collection request/response pair;
     // JSON:API schema + params dropped.
     expect(ApiResourcesIntegration::extensions($absent))
-        ->toBe([JsonResourceSchema::class, PaginatedResourceParametersExtension::class, PaginatedResourceResponsesExtension::class, CreatedResourceResponsesExtension::class, ResourceMediaType::class]);
+        ->toBe([JsonResourceSchema::class, PaginatedResourceParametersExtension::class, PaginatedResourceResponsesExtension::class, CreatedResourceResponsesExtension::class, ResourceMediaType::class, ResourceWrapDigestContributor::class]);
 
     // Present → the JSON:API mapper and parameters extension join the set.
     expect(ApiResourcesIntegration::extensions($present))
-        ->toBe([JsonResourceSchema::class, PaginatedResourceParametersExtension::class, PaginatedResourceResponsesExtension::class, CreatedResourceResponsesExtension::class, ResourceMediaType::class, JsonApiResourceSchema::class, JsonApiParametersExtension::class]);
+        ->toBe([JsonResourceSchema::class, PaginatedResourceParametersExtension::class, PaginatedResourceResponsesExtension::class, CreatedResourceResponsesExtension::class, ResourceMediaType::class, ResourceWrapDigestContributor::class, JsonApiResourceSchema::class, JsonApiParametersExtension::class]);
 });

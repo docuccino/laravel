@@ -8,6 +8,7 @@ use Docuccino\Core\Extensions\Contracts\RuleTransformer;
 use Docuccino\Core\Extensions\Contracts\SchemaContext;
 use Docuccino\Core\Extensions\Validation\ValidationField;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
+use Docuccino\Laravel\Integrations\Validation\BlankString;
 
 /**
  * `accepted` → a boolean `const: true`, `declined` → `const: false`. The `_if` variants keep the same
@@ -33,6 +34,11 @@ final class BooleanConstRuleTransformer implements RuleTransformer
 
         $field->setType('boolean');
         $field->set('const', $accepted);
+
+        // An `_if` holds a blank to account only while its condition does, which no schema can state.
+        if (BlankString::refusedBy($rule->name)) {
+            $field->refuseBlank();
+        }
 
         if ($rule->name === 'accepted_if' || $rule->name === 'declined_if') {
             $condition = $this->condition($rule);

@@ -1,0 +1,304 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "Filter-class API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/filter-classes": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:pd6prspj3essfule",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FilterClassListController.php",
+                "line": 27,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FilterClassListController::index"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.filter-classes",
+        "summary": "List gadgets by score band, popularity and score.",
+        "tags": [
+          "FilterClassList"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:jrbmm4wp3no6xfg3",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "example",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/FilterClassListController.php",
+                    "line": 27,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\FilterClassListController::index"
+                  }
+                }
+              ]
+            },
+            "name": "filter[band]",
+            "in": "query",
+            "description": "The lowest score band to include.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FilterClassListController.php",
+                      "line": 27,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\FilterClassListController::index"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            },
+            "example": 3
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:auh2k2ldzhp7m4g7",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "example",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/FilterClassListController.php",
+                    "line": 27,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\FilterClassListController::index"
+                  }
+                }
+              ]
+            },
+            "name": "filter[popular]",
+            "in": "query",
+            "description": "Minimum popularity score.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FilterClassListController.php",
+                      "line": 27,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\FilterClassListController::index"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            },
+            "example": 42
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:ehrmjltddysj2pcg",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/FilterClassListController.php",
+                    "line": 27,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\FilterClassListController::index"
+                  }
+                }
+              ]
+            },
+            "name": "filter[score]",
+            "in": "query",
+            "description": "Filters the result set by `score`.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FilterClassListController.php",
+                      "line": 27,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\FilterClassListController::index"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:4knmynfk3yk3seyx",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/FilterClassListController.php",
+                    "line": 27,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\FilterClassListController::index"
+                  }
+                }
+              ]
+            },
+            "name": "page",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FilterClassListController.php",
+                      "line": 27,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\FilterClassListController::index"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "x-docuccino": {
+              "id": "res:v1:ym72fqmfjlode57x",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/FilterClassListController.php",
+                    "line": 27,
+                    "symbol": "query-builder:strict-mode"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "BadRequest"
+              }
+            },
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:query-builder",
+                        "layer": "integration",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/FilterClassListController.php",
+                          "line": 27,
+                          "symbol": "query-builder:strict-mode"
+                        }
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "b778d751ca6379d349c966e39d6709ed73d6ebc5fac376a8014b4e1d94d0d0f4",
+      "contentHash": "01e2c6ee09a8b12b716c2d6d3332227f3715c8c528d4c6b16a644fddf5502fca"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.20.3",
+      "specVersion": "2.0.0",
+      "schema": "https://spec.docuccino.app/uir/2.0/schema.json"
+    }
+  }
+}

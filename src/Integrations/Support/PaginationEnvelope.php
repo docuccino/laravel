@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\Support;
 
+use Docuccino\Laravel\Integrations\ApiResources\CollectionKeys;
+
 /**
  * The `{data, links, meta}` envelopes Laravel serialises around a page of items, shared by every
  * integration that documents a Laravel-paginated collection. Each builder wraps an already-converted item
@@ -27,16 +29,17 @@ final class PaginationEnvelope
 
     /**
      * The envelope for `$kind`. An unknown kind gets the length-aware shape — the paginator an
-     * application reaches for unless it says otherwise.
+     * application reaches for unless it says otherwise. A page whose collection preserves its keys sends
+     * its data as the array or object they make ({@see CollectionKeys}).
      *
      * @param  array<array-key, mixed>  $items
      * @return array<string, mixed>
      */
-    public static function of(string $kind, array $items): array
+    public static function of(string $kind, array $items, bool $preservedKeys = false): array
     {
         $built = self::builds($kind);
 
-        return self::wrap($items, self::parts($built), PageComponent::description($built));
+        return self::wrap(CollectionKeys::sent($items, $preservedKeys), self::parts($built), PageComponent::description($built));
     }
 
     /**
@@ -184,13 +187,13 @@ final class PaginationEnvelope
     }
 
     /**
-     * @param  array<array-key, mixed>  $items
+     * @param  array<string, mixed>  $data
      * @param  array<string, Part>  $parts
      * @return array<string, mixed>
      */
-    private static function wrap(array $items, array $parts, string $description): array
+    private static function wrap(array $data, array $parts, string $description): array
     {
-        $properties = ['data' => ['type' => 'array', 'items' => $items]];
+        $properties = ['data' => $data];
         foreach ($parts as $member => $part) {
             $properties[$member] = PaginationParts::inline($part);
         }

@@ -11,7 +11,7 @@ use Docuccino\Attributes\Webhook;
  * A webhook class carrying one attribute whose arguments don't fit its constructor, beside the
  * `#[Webhook]` that must still publish it.
  */
-/* @phpstan-ignore-next-line argument.type — the wrong argument type IS the fixture */
+/* @phpstan-ignore argument.type (the wrong argument type IS the fixture) */
 #[Group(123)]
 #[Webhook('malformed.reported')]
 final readonly class Reported {}

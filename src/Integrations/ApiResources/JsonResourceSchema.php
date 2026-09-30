@@ -62,7 +62,11 @@ final class JsonResourceSchema implements TypeToSchema
 
         if (ResourceReflector::isAnonymousCollection($type->fqcn)) {
             $item = $type->typeArgs[0] ?? null;
-            $array = ['type' => 'array', 'items' => $item !== null ? $context->convert($item) : []];
+            if ($item instanceof ClassT) {
+                // The collected resource's own `$preserveKeys` decides the collection's keys.
+                $context->dependsOn(...DeclarationFiles::of($item->fqcn));
+            }
+            $array = CollectionKeys::sent($item !== null ? $context->convert($item) : [], CollectionKeys::preserved($type));
 
             // Laravel wraps under the COLLECTION's $wrap (AnonymousResourceCollection → 'data'), not the
             // item resource's redeclared one — so the key resolves off the collection type.
@@ -77,7 +81,7 @@ final class JsonResourceSchema implements TypeToSchema
             if (ResourceReflector::inheritsCollectionBody($type->fqcn)) {
                 $item = ResourceReflector::collects($type->fqcn);
 
-                return ['type' => 'array', 'items' => $item !== null ? $context->convert(new ClassT($item)) : []];
+                return CollectionKeys::sent($item !== null ? $context->convert(new ClassT($item)) : [], CollectionKeys::preserved($type));
             }
 
             $read = $this->toArray->analyzeBody($type->fqcn, $context);
@@ -111,9 +115,9 @@ final class JsonResourceSchema implements TypeToSchema
 
     /**
      * Laravel's `ResourceResponse::wrap()` for a root resource; nested results pass through. The data is
-     * wrapped unless it already carries the wrap key, an unwrapped resource is wrapped under `data`
-     * whenever `with()` returns anything, and `with()` members merge in beside it — one under the wrap key
-     * merging into the data ({@see self::mergedInto()}).
+     * wrapped unless it already carries the wrap key and `$forceWrapping` is off, an unwrapped resource is
+     * wrapped under `data` whenever `with()` returns anything, and `with()` members merge in beside it —
+     * one under the wrap key merging into the data ({@see self::mergedInto()}).
      *
      * @param  array<string, mixed>|null  $body
      * @param  array<string, mixed>|null  $built
@@ -150,7 +154,7 @@ final class JsonResourceSchema implements TypeToSchema
 
         if ($key !== null) {
             $wrapped = $this->envelope($key, $data, $with);
-            $carries = self::carries($body, $key);
+            $carries = ResourceWrapping::forced($fqcn) ? null : self::carries($body, $key);
             if ($carries === null) {
                 return new SchemaResult($wrapped, $result->confidence);
             }

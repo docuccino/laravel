@@ -216,7 +216,7 @@ final class QueryBuilderParametersExtension implements OperationExtension
 
         if ($filter->factoryClass !== null) {
             // The factory file itself is already recorded by recordFactoryFile().
-            $facts = $this->customFilters->read($filter->factoryClass);
+            $facts = $this->readFilterClass($filter->factoryClass, $context);
             if ($facts->attribute !== null) {
                 return $this->applyCustomAttribute($filter, $facts->attribute, $context);
             }
@@ -225,6 +225,17 @@ final class QueryBuilderParametersExtension implements OperationExtension
         return $filter->typeColumn !== null
             ? $this->applyColumn($filter, $this->columns->resolve($model, $filter->typeColumn), $context, asArray: false)
             : $filter;
+    }
+
+    /** What a custom filter class declares, with what reading it owes the author raised on this route. */
+    private function readFilterClass(string $class, RouteContext $context): CustomFilterFacts
+    {
+        $facts = $this->customFilters->read($class, $context->route->signature());
+        foreach ($facts->diagnostics as $diagnostic) {
+            $context->components->addDiagnostic($diagnostic);
+        }
+
+        return $facts;
     }
 
     /** A column for a backed-enum class-string recovered from a project-factory argument. */
@@ -283,7 +294,7 @@ final class QueryBuilderParametersExtension implements OperationExtension
             return $filter;
         }
 
-        $facts = $this->customFilters->read($filter->filterClass);
+        $facts = $this->readFilterClass($filter->filterClass, $context);
         $context->recordDependencyFiles($facts->files);
 
         if ($facts->attribute !== null) {
@@ -299,7 +310,7 @@ final class QueryBuilderParametersExtension implements OperationExtension
 
     /**
      * Folds the attribute's schema/description/format/default/example into the filter. Its `name` is
-     * ignored — the parameter name is always the `AllowedFilter` name. A route-level attribute still
+     * optional and ignored — the parameter name is always the `AllowedFilter` name. A route-level attribute still
      * overrides this downstream.
      *
      * The class attribute speaks for EVERY call site, so anything the entry itself says is the narrower

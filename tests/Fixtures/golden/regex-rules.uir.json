@@ -159,6 +159,11 @@
         "type": "object",
         "properties": {
           "colour": {
+            "x-docuccino": {
+              "facts": {
+                "blankAsNull": "^[\\x00\\t-\\r  ­͏؜ᅟᅠ ឴឵᠎           ​‌‍‎‏\u2028\u2029  ⁠⁡⁢⁣⁤⁥⁪⁫⁬⁭⁮⁯⠀　ㅤ﻿ﾠ𝅙𝅳𝅴𝅵𝅶𝅷𝅸𝅹𝅺󠀠]*$"
+              }
+            },
             "type": [
               "string",
               "null"
@@ -202,7 +207,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "b3c9767e5fa64ae5b73c32341c0785c82818ef12e8b6e3ba1ebf466da8f20614"
+      "contentHash": "eb82c4fd67fa54fbc8a12170caddee107640ae471fbfc7529d6f573f3f6e2614"
     },
     "generator": {
       "name": "docuccino/laravel",

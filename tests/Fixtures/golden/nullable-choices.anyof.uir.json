@@ -231,6 +231,11 @@
             ]
           },
           "priority": {
+            "x-docuccino": {
+              "facts": {
+                "blankAsNull": "^[\\x00\\t-\\r  ­͏؜ᅟᅠ ឴឵᠎           ​‌‍‎‏\u2028\u2029  ⁠⁡⁢⁣⁤⁥⁪⁫⁬⁭⁮⁯⠀　ㅤ﻿ﾠ𝅙𝅳𝅴𝅵𝅶𝅷𝅸𝅹𝅺󠀠]*$"
+              }
+            },
             "anyOf": [
               {
                 "type": "string",
@@ -254,6 +259,11 @@
             "example": "low"
           },
           "status": {
+            "x-docuccino": {
+              "facts": {
+                "blankAsNull": "^[\\x00\\t-\\r  ­͏؜ᅟᅠ ឴឵᠎           ​‌‍‎‏\u2028\u2029  ⁠⁡⁢⁣⁤⁥⁪⁫⁬⁭⁮⁯⠀　ㅤ﻿ﾠ𝅙𝅳𝅴𝅵𝅶𝅷𝅸𝅹𝅺󠀠]*$"
+              }
+            },
             "anyOf": [
               {
                 "type": "string",
@@ -287,7 +297,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "bf3a7a4d6f919326274db6b670676eeba342e102ef5609832adfa1470595ce93",
-      "contentHash": "92d35d42e28dac584ff6780c8232fe2b20cef7b85cf729ce30bd76f3640b74d9"
+      "contentHash": "2af1e557b9edc3f501a355aaa833d26b4e206d62dff1a6ca6ba5b51b435f6d45"
     },
     "generator": {
       "name": "docuccino/laravel",

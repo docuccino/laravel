@@ -1088,7 +1088,8 @@ it('refuses a #[Description] a schema cannot hold and says which form it was', f
 it('documents a route whose exception mistyped the #[Description], and prints no path into the document', function (): void {
     // The sibling of the mistyped `#[ErrorComponent]` row above, and it owes the same discipline:
     // `#[Description(5)]` cannot be constructed, and the `TypeError` that says so names the absolute file
-    // it was written in. The reader swallows it, so the class simply described nothing.
+    // it was written in. The reader reads it as absent and reports it by the thrown class alone, so the
+    // class describes nothing and the author is told why.
     $result = declaringBuild([
         'first' => [MistypedDescriptionException::class, 409],
         'second' => [MistypedDescriptionException::class, 409],
@@ -1104,7 +1105,10 @@ it('documents a route whose exception mistyped the #[Description], and prints no
         // The name it declared still publishes: one broken attribute does not cost the other.
         ->and($document['components']['schemas'])->toHaveKey('MistypedDescription')
         ->and(describedComponent($document, 'MistypedDescription'))->toBeNull()
-        ->and(json_encode($document))->not->toContain(dirname(__DIR__, 4));
+        ->and(json_encode($document))->not->toContain(dirname(__DIR__, 4))
+        ->and(json_encode(array_map(static fn ($d): array => $d->toArray(), diagnosticsCoded($result->diagnostics, 'attribute.unreadable'))))
+        ->toContain('MistypedDescriptionException')
+        ->not->toContain(dirname(__DIR__, 4));
 });
 
 it('describes only the component the declaration named, not a body sharing its status', function (): void {
@@ -1188,7 +1192,9 @@ function classSentenceContract(): array
         ['text and file', DoublyDescribedException::class, null, ['attribute.description-unusable']],
         ['neither text nor file', EmptyDescribedException::class, null, ['attribute.description-unusable']],
         ['text with request', RequestDescribedException::class, null, ['attribute.property-unsupported']],
-        ['an argument PHP cannot construct', MistypedDescriptionException::class, null, []],
+        // The author wrote a sentence and none is published, so they are owed the report — naming the
+        // class and the thrown class, never the `TypeError`'s message with its absolute path.
+        ['an argument PHP cannot construct', MistypedDescriptionException::class, null, ['attribute.unreadable']],
     ];
 }
 

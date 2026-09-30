@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\Support;
 
 use Docuccino\Core\Extensions\Context\RepresentationPolicy;
+use Docuccino\Laravel\Integrations\ApiResources\ResourceReflector;
+use Docuccino\Laravel\Integrations\ApiResources\ResourceWrapDigestContributor;
 use ReflectionClass;
 use Throwable;
 
@@ -12,9 +14,10 @@ use Throwable;
  * Resolves the top-level `data`-wrapping key Laravel applies to a resource response (design §Phase 4
  * — API Resources). Laravel wraps a single resource and an anonymous collection under a key — the
  * resource's static `$wrap` property, default `'data'` — at the response root only; nested resources
- * (a resource inside another's `toArray`) are never wrapped. `JsonResource::withoutWrapping()` clears
- * the key at runtime, which is not statically visible, so the per-document
- * `integrations.api_resources.wrap` config is the escape hatch ({@see RepresentationPolicy::$resourceWrap}).
+ * (a resource inside another's `toArray`) are never wrapped. The statics are read off the booted app,
+ * so `JsonResource::withoutWrapping()` in a service provider is seen — and keys the cache through
+ * {@see ResourceWrapDigestContributor}; the per-document `integrations.api_resources.wrap` config
+ * overrides both ({@see RepresentationPolicy::$resourceWrap}).
  *
  * Resolution order: config override wins (`disabled` → no wrapping, any other value → forced key),
  * else the resource's own static `$wrap` (default `'data'`, `null` → no wrapping).
@@ -37,6 +40,24 @@ final class ResourceWrapping
         }
 
         return self::staticWrap($fqcn);
+    }
+
+    /**
+     * Whether `$fqcn` forces its wrap — `$forceWrapping`, which wraps a body that already carries the wrap
+     * key. Static, so a parent's value or one set at boot decides it; never where the installed framework
+     * declares no such property, since a subclass declaring one there is only a property of its own.
+     */
+    public static function forced(?string $fqcn): bool
+    {
+        if ($fqcn === null || ! class_exists($fqcn) || ! property_exists(ResourceReflector::JSON_RESOURCE, 'forceWrapping')) {
+            return false;
+        }
+
+        try {
+            return ((new ReflectionClass($fqcn))->getStaticProperties()['forceWrapping'] ?? null) === true;
+        } catch (Throwable) {
+            return false;
+        }
     }
 
     /** The resource class's static `$wrap` value (default `'data'`; `null` → unwrapped). */

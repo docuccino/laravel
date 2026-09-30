@@ -10,16 +10,17 @@ use Illuminate\Database\Eloquent\Model;
 use Spatie\QueryBuilder\Filters\Filter;
 
 /**
- * A custom filter whose `#[QueryParameter]` leaves out the required `name`, so the attribute cannot be
- * built and the reader gets nothing from it. Fixing the attribute is an edit to this file.
+ * A custom filter whose `#[QueryParameter]` leaves out `name`, as a filter class may: its parameter is
+ * named by the `AllowedFilter` registration. The body filters on a string column (`title`), so an
+ * `integer` published for it can only have come from the attribute.
  *
  * @implements Filter<Model>
  */
-#[QueryParameter(type: 'int')]
+#[QueryParameter(type: 'int', description: 'Minimum band.')]
 final class NamelessFilter implements Filter
 {
     public function __invoke(Builder $query, mixed $value, string $property): void
     {
-        $query->where('score', '>=', $value);
+        $query->where('title', '>=', $value);
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Docuccino\Core\Contract\ContractChecker;
 use Docuccino\Core\Contract\ContractIndex;
 use Docuccino\Core\Contract\Exchange;
+use Docuccino\Core\Document\BlankAsNull;
 use Docuccino\Core\Emit\UirEmitter;
 use Docuccino\Core\Inference\ActionAnalysis;
 use Docuccino\Core\Inference\DType\ArrayShapeField;
@@ -13,6 +14,7 @@ use Docuccino\Core\Inference\DType\LiteralT;
 use Docuccino\Core\Inference\ReturnSite;
 use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Inference\TypeEngine;
+use Docuccino\Laravel\Integrations\Validation\BlankString;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Workbench\App\Http\Controllers\ValidationController;
 use Workbench\App\Http\Requests\StoreWidgetRequest;
@@ -80,4 +82,11 @@ it('reads a query value back as the type a generated document wrote inside an an
         // problem it is, rather than the integer zero the naive conversion would have made of it.
         ->and(array_map(static fn ($violation): string => $violation->message, $nonsense->violations))
         ->toContain('The data (string) must match the type: integer');
+
+    // The field is nullable, so the server reads `?per_page=` as its null: the fact rides from the rule to the
+    // parameter's own schema, and the checker reads the blank as that null — the schema itself is untouched.
+    $blank = $checker->request($operation, new Exchange('GET', '/api/coerced-widgets', 200, query: ['per_page' => ' ']));
+
+    expect(BlankAsNull::of($parameter['schema']))->toBe(BlankString::PATTERN)
+        ->and($blank->violations)->toBe([]);
 });

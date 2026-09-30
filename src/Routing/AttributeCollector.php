@@ -6,15 +6,13 @@ namespace Docuccino\Laravel\Routing;
 
 use Closure;
 use Docuccino\Core\Diagnostics\Diagnostic;
-use Docuccino\Core\Diagnostics\Severity;
+use Docuccino\Core\Diagnostics\UnreadableAttribute;
 use Docuccino\Core\Extensions\Context\AttributeSet;
-use Docuccino\Core\Provenance\ClassNames;
 use Docuccino\Core\Provenance\MessagePaths;
 use Docuccino\Core\Provenance\RootRelativeSourcePathResolver;
-use Docuccino\Core\Support\Fqcn;
+use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionFunctionAbstract;
-use Throwable;
 
 /**
  * Collects the Docuccino attributes declared on a route's action: method-level first, then the
@@ -23,8 +21,7 @@ use Throwable;
  * nearest-wins walk `#[ErrorComponent]` gets on an exception hierarchy) — and marks the class walk's
  * declarations INHERITED, so a reader can tell what the author wrote on the action itself. Only
  * `Docuccino\Attributes\*` instances are materialised; foreign attributes are ignored, and one that
- * fails to instantiate is skipped and handed to `$onUnreadable` as the `attribute.unreadable`
- * diagnostic this class is the single mint for.
+ * fails to instantiate is skipped and handed to `$onUnreadable` as `attribute.unreadable`.
  *
  * The guarantee everything reading an attribute leans on is narrower than "nothing of the application
  * runs", and this is where it is stated. PHP requires every attribute argument to be a constant
@@ -43,15 +40,11 @@ final class AttributeCollector
 
     /**
      * Both halves of `attribute.unreadable` name something reflection supplied, and neither may be
-     * published as it stands. The CAUSE: PHP allows `new` in an attribute's arguments, so what
-     * instantiating one throws is not limited to the named errors PHP raises itself, and an anonymous
-     * exception's `::class` spells the absolute file it was written in plus a counter of the anonymous
-     * classes the PROCESS declared before it — {@see ClassNames} is where that becomes publishable. The
-     * SITE: an action's symbol falls back to the FILE where there is no class, so an ordinary closure
-     * route names one absolutely — {@see MessagePaths} is where that does.
+     * published as it stands. The CAUSE is {@see UnreadableAttribute}'s to make publishable. The SITE:
+     * an action's symbol falls back to the FILE where there is no class, so an ordinary closure route
+     * names one absolutely — {@see MessagePaths} is where that does.
      */
     public function __construct(
-        private readonly ClassNames $classNames = new ClassNames(new RootRelativeSourcePathResolver('')),
         private readonly MessagePaths $messagePaths = new MessagePaths(new RootRelativeSourcePathResolver('')),
     ) {}
 
@@ -96,32 +89,20 @@ final class AttributeCollector
      */
     private function addFrom(AttributeSet $set, ReflectionClass|ReflectionFunctionAbstract $reflection, string $site, ?Closure $onUnreadable, ?string $routeSignature, bool $inherited = false): void
     {
-        foreach ($reflection->getAttributes() as $attribute) {
-            if (! str_starts_with($attribute->getName(), self::NAMESPACE_PREFIX)) {
-                continue;
-            }
-
-            try {
-                $set->add($attribute->newInstance(), $inherited);
-            } catch (Throwable $cause) {
-                $onUnreadable?->__invoke($this->unreadable($attribute->getName(), $site, $cause, $routeSignature));
-            }
+        $declarations = array_values(array_filter(
+            $reflection->getAttributes(),
+            static fn (ReflectionAttribute $attribute): bool => str_starts_with($attribute->getName(), self::NAMESPACE_PREFIX),
+        ));
+        if ($declarations === []) {
+            return;
         }
-    }
 
-    /** The one `attribute.unreadable` mint — a route's actions and a webhook class both report it. */
-    private function unreadable(string $attribute, string $site, Throwable $cause, ?string $routeSignature): Diagnostic
-    {
-        return new Diagnostic(
-            severity: Severity::Warning,
-            code: 'attribute.unreadable',
-            message: sprintf(
-                'The #[%s] on %s could not be instantiated and was ignored.',
-                Fqcn::short($attribute),
-                $this->messagePaths->relative($site),
-            ),
-            routeSignature: $routeSignature,
-            help: sprintf('Its constructor threw %s. Check the arguments at that declaration against the attribute\'s constructor.', $this->classNames->of($cause)),
-        );
+        [$instances, $diagnostics] = UnreadableAttribute::instantiate($declarations, $this->messagePaths->relative($site), $routeSignature);
+        foreach ($instances as $instance) {
+            $set->add($instance, $inherited);
+        }
+        foreach ($diagnostics as $diagnostic) {
+            $onUnreadable?->__invoke($diagnostic);
+        }
     }
 }

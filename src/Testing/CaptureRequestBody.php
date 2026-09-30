@@ -10,10 +10,10 @@ use Symfony\Component\HttpFoundation\Response;
 use WeakMap;
 
 /**
- * Keeps what a request body was, read at the FRONT of the middleware stack.
+ * Keeps what a request body and query string were, read at the FRONT of the middleware stack.
  *
- * By the time an assertion asks, the parameter bag is no longer the message: `TrimStrings` and
- * `ConvertEmptyStringsToNull` ship in Laravel's default global stack and rewrite it in place, and
+ * By the time an assertion asks, the parameter bags are no longer the message: `TrimStrings` and
+ * `ConvertEmptyStringsToNull` ship in Laravel's default global stack and rewrite both in place, and
  * `$request->merge()` adds fields no client sent. {@see ApiContract::captureRequestBodies()} prepends
  * this so the record is taken first.
  */
@@ -23,7 +23,7 @@ final class CaptureRequestBody
      * A `WeakMap` because a record's life is its request's: nothing has to remember to clear it between
      * tests, and it is invisible to the application, which a bag or an attribute would not be.
      *
-     * @var WeakMap<Request, array{fields: array<array-key, mixed>, files: array<array-key, mixed>, type: string|null, body: string}>|null
+     * @var WeakMap<Request, array{fields: array<array-key, mixed>, files: array<array-key, mixed>, query: array<array-key, mixed>, type: string|null, body: string}>|null
      */
     private static ?WeakMap $records = null;
 
@@ -35,6 +35,7 @@ final class CaptureRequestBody
         self::$records[$request] = [
             'fields' => $request->request->all(),
             'files' => $request->files->all(),
+            'query' => $request->query->all(),
             'type' => $request->headers->get('Content-Type'),
             'body' => $request->getContent(),
         ];
@@ -45,7 +46,7 @@ final class CaptureRequestBody
     /**
      * What this request arrived carrying, or null where nothing recorded it.
      *
-     * @return array{fields: array<array-key, mixed>, files: array<array-key, mixed>, type: string|null, body: string}|null
+     * @return array{fields: array<array-key, mixed>, files: array<array-key, mixed>, query: array<array-key, mixed>, type: string|null, body: string}|null
      */
     public static function of(Request $request): ?array
     {

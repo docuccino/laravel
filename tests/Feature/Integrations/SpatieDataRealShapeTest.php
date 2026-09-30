@@ -204,7 +204,7 @@ it('carries a recovered map and list through the rule vocabulary intact', functi
     $schema = realRequestSchema(SaveAnswersData::class, $metadata);
 
     // `array<string, mixed>|null` — an OBJECT with open values, not an array a JSON object fails against.
-    expect($schema['properties']['answers'])->toBe(['type' => ['object', 'null'], 'additionalProperties' => []])
+    expect($schema['properties']['answers'])->toBe(blankAsNull(['type' => ['object', 'null'], 'additionalProperties' => []]))
         ->and($schema['properties']['touched_fields'])->toBe(['type' => 'array', 'items' => ['type' => 'string']])
         ->and($schema['properties']['zone_key'])->toBe(['type' => 'string'])
         // `touched_fields = []` has a default, so it may legitimately be omitted.
@@ -348,7 +348,7 @@ it('documents the recovered metadata map when no rules() override replaces it', 
     $metadata = realMetadataAs('App\\Data\\UpdateNodeData', UpdateNodeData::class);
 
     expect(realRequestSchema(UpdateNodeData::class, $metadata)['properties']['metadata'])
-        ->toBe(['type' => ['object', 'null'], 'additionalProperties' => []]);
+        ->toBe(blankAsNull(['type' => ['object', 'null'], 'additionalProperties' => []]));
 })->group('fixture');
 
 it('attaches a #[Mock] hint to the real recovered shape, following a #[MapName] to its published key', function (): void {
@@ -392,11 +392,11 @@ it('reads a date property\'s wire shape off the type the real engine recovered',
     // the rule's coarser reading of it — and the same format the response side publishes.
     // Prose is matched on later, by RecoveredRequest — this harness stops at the rule set, so the shape
     // asserted here is exactly what the ladder decided and nothing else.
-    expect($properties['expectedUpdatedAt'])->toBe([
+    expect($properties['expectedUpdatedAt'])->toBe(blankAsNull([
         'type' => ['string', 'null'],
         'format' => 'date-time',
         'example' => '2024-01-01T00:00:00+00:00',
-    ])
+    ]))
         // A nullable date-time with no date rule at all: the request used to say nothing here.
         ->and($properties['publishedAt']['type'])->toBe(['string', 'null'])
         ->and($properties['publishedAt']['format'])->toBe('date-time')

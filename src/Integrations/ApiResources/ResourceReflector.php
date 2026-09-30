@@ -31,6 +31,9 @@ final class ResourceReflector
 
     public const JSON_API_COLLECTION = 'Illuminate\\Http\\Resources\\JsonApi\\AnonymousResourceCollection';
 
+    /** Laravel 13's `#[Collects]`: the resource a named collection collects, ahead of `$collects`. */
+    public const COLLECTS_ATTRIBUTE = 'Illuminate\\Http\\Resources\\Attributes\\Collects';
+
     /** Whether an FQCN is any `JsonResource` (the schema mapper's trigger — includes subclasses). */
     public static function isResource(string $fqcn): bool
     {
@@ -64,8 +67,9 @@ final class ResourceReflector
     }
 
     /**
-     * The resource a collection collects, as Laravel's `collects()` resolves it: the `$collects` default,
-     * else `FooCollection` → `Foo` or `FooResource`. Null when neither names a resource.
+     * The resource a collection collects, as Laravel's `collects()` resolves it: `#[Collects]` on the class
+     * itself where the installed framework ships the attribute, else the `$collects` default, else
+     * `FooCollection` → `Foo` or `FooResource`. Null when none names a resource.
      */
     public static function collects(string $fqcn): ?string
     {
@@ -73,7 +77,8 @@ final class ResourceReflector
             return null;
         }
 
-        $declared = (new ReflectionClass($fqcn))->getDefaultProperties()['collects'] ?? null;
+        $class = new ReflectionClass($fqcn);
+        $declared = self::collectsAttribute($class) ?? $class->getDefaultProperties()['collects'] ?? null;
 
         $candidates = is_string($declared) && $declared !== ''
             ? [$declared]
@@ -86,6 +91,29 @@ final class ResourceReflector
         }
 
         return null;
+    }
+
+    /**
+     * The class `#[Collects]` names on `$class` — not a parent's, which PHP does not inherit and Laravel
+     * reads no further than the class. A framework without the attribute ignores one written anyway.
+     *
+     * @param  ReflectionClass<object>  $class
+     */
+    private static function collectsAttribute(ReflectionClass $class): ?string
+    {
+        if (! class_exists(self::COLLECTS_ATTRIBUTE)) {
+            return null;
+        }
+
+        $attribute = $class->getAttributes(self::COLLECTS_ATTRIBUTE)[0] ?? null;
+        if ($attribute === null) {
+            return null;
+        }
+
+        $arguments = $attribute->getArguments();
+        $named = $arguments['class'] ?? $arguments[0] ?? null;
+
+        return is_string($named) ? $named : null;
     }
 
     /** Whether an FQCN is a Laravel first-party JSON:API resource (guarded by `class_exists`). */

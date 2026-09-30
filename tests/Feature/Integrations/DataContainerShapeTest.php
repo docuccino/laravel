@@ -125,7 +125,7 @@ it('documents every recovered container shape', function (string $property, DTyp
     ]],
     'list<string|null>' => ['tags', new ListT(UnionT::of([ScalarT::string(), new NullT])), [
         'type' => 'array',
-        'items' => ['type' => ['string', 'null']],
+        'items' => blankAsNull(['type' => ['string', 'null']]),
     ]],
     // A constant shape is an object with named members; an optional key stays out of `required`.
     'array{width: int, label?: string}' => ['box', new ArrayShapeT([
@@ -204,7 +204,7 @@ it('carries the spatie markers and nullability the property states', function ()
 
     // A nullable map is an object OR null, never an array.
     $nullable = containerProperty('settings', UnionT::of([new MapT(ScalarT::string(), ScalarT::int()), new NullT]));
-    expect($nullable)->toBe(['type' => ['object', 'null'], 'additionalProperties' => ['type' => 'integer']]);
+    expect($nullable)->toBe(blankAsNull(['type' => ['object', 'null'], 'additionalProperties' => ['type' => 'integer']]));
 });
 
 it('keeps a recovered map an object when a rules() override says only `array`', function (array $names, array $expected): void {
@@ -221,7 +221,7 @@ it('keeps a recovered map an object when a rules() override says only `array`', 
     "['required', 'array']" => [['required', 'array'], ['type' => 'object', 'additionalProperties' => []]],
     // The two forms an override is actually written in: a presence word beside the type word says nothing
     // about the shape, so the recovered values survive both.
-    "['nullable', 'array']" => [['nullable', 'array'], ['type' => ['object', 'null'], 'additionalProperties' => []]],
+    "['nullable', 'array']" => [['nullable', 'array'], blankAsNull(['type' => ['object', 'null'], 'additionalProperties' => []])],
     "['present', 'array']" => [['present', 'array'], ['type' => 'object', 'additionalProperties' => []]],
 ]);
 
@@ -287,11 +287,11 @@ it('lets the declared container survive every rule vocabulary combination', func
         'type' => 'object',
         'additionalProperties' => ['type' => 'object', 'additionalProperties' => []],
     ]],
-    'map + field override' => ['theme', mapOfMaps(), containerOverride(['theme' => ['nullable', 'array', 'max:100']]), [
+    'map + field override' => ['theme', mapOfMaps(), containerOverride(['theme' => ['nullable', 'array', 'max:100']]), blankAsNull([
         'type' => ['object', 'null'],
         'additionalProperties' => ['type' => 'object', 'additionalProperties' => []],
         'maxProperties' => 100,
-    ]],
+    ])],
     'map + `.*` override' => ['theme', mapOfMaps(), containerOverride(['theme.*' => ['array', 'max:500']]), [
         'type' => 'object',
         'additionalProperties' => ['type' => 'object', 'maxProperties' => 500],
@@ -299,11 +299,11 @@ it('lets the declared container survive every rule vocabulary combination', func
     'map + field and `.*` override' => ['theme', mapOfMaps(), containerOverride([
         'theme' => ['nullable', 'array', 'max:100'],
         'theme.*' => ['array', 'max:500'],
-    ]), [
+    ]), blankAsNull([
         'type' => ['object', 'null'],
         'additionalProperties' => ['type' => 'object', 'maxProperties' => 500],
         'maxProperties' => 100,
-    ]],
+    ])],
 
     // ── A recovered list. Nothing here may move: the container it declares and the rule word an override
     // restates agree already, so the size keyword counts items and the `.*` constraints stay in `items`.
@@ -407,11 +407,11 @@ it('keeps a map and a list side by side under one rules() override', function ()
     );
 
     expect(validationSchema($ruleSet, $context)['properties'])->toBe([
-        'theme' => [
+        'theme' => blankAsNull([
             'type' => ['object', 'null'],
             'additionalProperties' => ['type' => 'object', 'maxProperties' => 500],
             'maxProperties' => 100,
-        ],
+        ]),
         'tags' => [
             'type' => 'array',
             'items' => ['type' => 'string', 'format' => 'uuid', 'example' => '3fa85f64-5717-4562-b3fc-2c963f66afa6'],

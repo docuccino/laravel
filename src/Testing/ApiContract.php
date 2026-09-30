@@ -357,8 +357,10 @@ final class ApiContract
     {
         $base = $response->baseResponse;
 
+        // What the client sent where it was recorded, for the reason a form body is ({@see CaptureRequestBody}):
+        // the bag has been trimmed, and a blank in it turned into null, by the time anything asks.
         /** @var array<string, mixed> $query */
-        $query = $request->query->all();
+        $query = CaptureRequestBody::of($request)['query'] ?? $request->query->all();
 
         [$form, $unread] = FormBody::read($request);
 

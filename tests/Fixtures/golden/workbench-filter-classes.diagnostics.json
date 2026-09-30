@@ -1,0 +1,16 @@
+[
+    {
+        "severity": "warning",
+        "code": "attribute.unreadable",
+        "message": "The #[QueryParameter] on Workbench\\App\\Filters\\MistypedFilter could not be instantiated and was ignored.",
+        "routeSignature": "GET /api/filter-classes",
+        "help": "Its constructor threw TypeError. Check the arguments at that declaration against the attribute's constructor."
+    },
+    {
+        "severity": "info",
+        "code": "query-builder.default-config",
+        "message": "The query-builder config was not readable; documented parameter names use the package defaults (filter/sort/include/fields).",
+        "routeSignature": "GET /api/filter-classes",
+        "help": "Publish the config (php artisan vendor:publish --tag=query-builder-config) so custom parameter names are reflected in the docs."
+    }
+]
