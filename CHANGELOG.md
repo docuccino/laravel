@@ -7,6 +7,34 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.20.4
+
+### Features
+
+- publish every URL form of a route with optional segments, and host constraints on server variables ([#586](https://github.com/docuccino/docuccino/pull/586))
+- publish a request object one field partitions as a union of its shapes ([#579](https://github.com/docuccino/docuccino/pull/579))
+- publish route parameter constraints on the path parameter ([#574](https://github.com/docuccino/docuccino/pull/574))
+
+### Bug fixes
+
+- give a warm build the memory ceiling a cold one gets ([#598](https://github.com/docuccino/docuccino/pull/598))
+- publish a returned collection as the array or object it is sent as ([#595](https://github.com/docuccino/docuccino/pull/595))
+- publish every top-level member of a JSON:API document, pages included, and first-party links as sent ([#594](https://github.com/docuccino/docuccino/pull/594))
+- publish a resource response as Laravel sends it under #[Collects], preserved keys and $forceWrapping ([#590](https://github.com/docuccino/docuccino/pull/590))
+- let a custom filter class omit its #[QueryParameter] name, and report every Docuccino attribute PHP cannot construct ([#589](https://github.com/docuccino/docuccino/pull/589))
+- validate a copied header on the header in laravel-actions and inline validation ([#585](https://github.com/docuccino/docuccino/pull/585))
+- publish the data a with() data key is merged into as what Laravel sends ([#583](https://github.com/docuccino/docuccino/pull/583))
+- document a copied header's rules on the header, not the body ([#578](https://github.com/docuccino/docuccino/pull/578))
+- publish the collection a resource's newCollection() builds, and no forward error for a @method over a real method ([#576](https://github.com/docuccino/docuccino/pull/576))
+- describe and name an error at any registered status by its reason phrase ([#572](https://github.com/docuccino/docuccino/pull/572))
+- publish the alpha rules and a flagged regex no narrower than the server ([#571](https://github.com/docuccino/docuccino/pull/571))
+
+### Performance
+
+- check an export's document against its schema while its targets are written, side by side ([#606](https://github.com/docuccino/docuccino/pull/606))
+- share a cold build's operations between forked workers ([#601](https://github.com/docuccino/docuccino/pull/601))
+- pause the cycle collector while operations build ([#600](https://github.com/docuccino/docuccino/pull/600))
+
 ## v0.20.3
 
 ### Features
