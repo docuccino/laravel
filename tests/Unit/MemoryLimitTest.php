@@ -12,6 +12,7 @@ use Docuccino\Laravel\Engine\OutOfMemoryNotice;
 use Docuccino\Laravel\Engine\TypeEngineFactory;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Support\Facades\Artisan;
+use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\NullOutput;
 
@@ -91,6 +92,44 @@ it('names both levers, and the current ceiling, in the out-of-memory notice', fu
         ->and($text)->toContain('writing it and naming fewer');
 });
 
+it('explains exhaustion in the process that armed the notice, and in none it forks', function (bool $forked, bool $explained): void {
+    // A forked worker inherits the notice's shutdown function with everything else, and what it leaves
+    // unbuilt the build makes itself, so a worker running out of memory is not the build failing. Grpc
+    // is given fork support so the child that dies can end at all; the build's workers end without it.
+    $run = runPhp(<<<'PHP'
+        [$forked] = array_slice($argv, 1);
+        Docuccino\Laravel\Engine\OutOfMemoryNotice::arm();
+
+        $exhaust = static function (): never {
+            ini_set('memory_limit', (string) (memory_get_usage() + 4 * 1024 * 1024));
+            $hog = [];
+            while (true) {
+                $hog[] = str_repeat('x', 65536);
+            }
+        };
+
+        if ($forked === '1') {
+            $pid = pcntl_fork();
+            if ($pid === 0) {
+                $exhaust();
+            }
+
+            pcntl_waitpid($pid, $status);
+            echo 'waited';
+
+            exit(0);
+        }
+
+        $exhaust();
+        PHP, [$forked ? '1' : '0'], ini: ['grpc.enable_fork_support' => '1'], timeout: 20.0);
+
+    expect(str_contains($run['output'], 'Docuccino ran out of memory building your documentation'))->toBe($explained, $run['output'])
+        ->and(str_contains($run['output'], 'waited'))->toBe($forked);
+})->with([
+    'the build itself' => [false, true],
+    'a worker it forked' => [true, false],
+]);
+
 it('declares the flag on every command that builds a document', function (string $command): void {
     expect(Artisan::all()[$command]->getDefinition()->hasOption('memory-limit'))->toBeTrue();
 })->with(['docuccino:export', 'docuccino:cache', 'docuccino:validate', 'docuccino:diff']);
@@ -104,7 +143,7 @@ it('captures the flag into the engine bag the factory reads', function (): void 
 
     MemoryLimitOption::capture(new CommandStarting(
         'docuccino:export',
-        new ArrayInput(['--memory-limit' => '3G']),
+        new ArgvInput(['artisan', 'docuccino:export', '--memory-limit=3G']),
         new NullOutput,
     ));
 
@@ -118,7 +157,7 @@ it('leaves the configured ceiling alone when no flag was passed', function (): v
 
     MemoryLimitOption::capture(new CommandStarting(
         'docuccino:export',
-        new ArrayInput([]),
+        new ArgvInput(['artisan', 'docuccino:export']),
         new NullOutput,
     ));
 
@@ -131,7 +170,22 @@ it('ignores the flag for commands that are not ours', function (): void {
 
     MemoryLimitOption::capture(new CommandStarting(
         'migrate',
-        new ArrayInput(['--memory-limit' => '3G']),
+        new ArgvInput(['artisan', 'migrate', '--memory-limit=3G']),
+        new NullOutput,
+    ));
+
+    expect(MemoryLimitOption::requested())->toBeNull()
+        ->and(app(BuildConfig::class)->engine()['memory_limit'])->toBe('512M');
+});
+
+it('ignores the flag on one of our commands called in-process', function (): void {
+    // A ceiling asked for on the command line is a fact about the process, and a command called with
+    // Artisan::call() is not what started the process it runs in.
+    setBuild('engine.memory_limit', '512M');
+
+    MemoryLimitOption::capture(new CommandStarting(
+        'docuccino:export',
+        new ArrayInput(['command' => 'docuccino:export', '--memory-limit' => '3G']),
         new NullOutput,
     ));
 
@@ -148,34 +202,50 @@ it('refuses to tune the process until one of our commands has started', function
     expect(ConsoleBuild::active())->toBeFalse()
         ->and(app(TypeEngineFactory::class)->mayTuneProcess())->toBeFalse();
 
-    MemoryLimitOption::capture(new CommandStarting('docuccino:export', new ArrayInput([]), new NullOutput));
+    MemoryLimitOption::capture(new CommandStarting('docuccino:export', new ArgvInput(['artisan', 'docuccino:export']), new NullOutput));
 
     expect(ConsoleBuild::active())->toBeTrue()
         ->and(app(TypeEngineFactory::class)->mayTuneProcess())->toBeTrue();
 });
 
 it('is not marked a console build by somebody else\'s command', function (): void {
-    MemoryLimitOption::capture(new CommandStarting('migrate', new ArrayInput([]), new NullOutput));
+    MemoryLimitOption::capture(new CommandStarting('migrate', new ArgvInput(['artisan', 'migrate']), new NullOutput));
 
     expect(ConsoleBuild::active())->toBeFalse()
         ->and(app(TypeEngineFactory::class)->mayTuneProcess())->toBeFalse();
 });
 
-it('defers the ceiling with the engine it belongs to, and takes it no earlier', function (): void {
-    // The engine package IS installed here and this factory MAY tune the process, so an eager one
-    // would have raised the ceiling, created the analyser's scratch directory and booted PHPStan
-    // before the deferred engine is asked a single question. Deferring moves the whole of that —
-    // still ahead of any analysis, since it all lives in the one make() the first question triggers.
+it('raises the ceiling for a console build before the engine exists, and boots nothing', function (): void {
+    // The ceiling is the build's, not only the analyser's. A build whose every fragment is warm never asks
+    // the engine a question, and holding a large document outgrows PHP's default on its own — measured on a
+    // real application's 222-operation document, a warm export peaks near 150 MB with nothing analysed.
+    // Settled where the analyser boots, the same command succeeded cold and died warm. The boot itself
+    // still waits for a question: no scratch directory, no PHPStan.
     $tmp = sys_get_temp_dir().'/docuccino-deferred-'.bin2hex(random_bytes(6));
     $before = ini_get('memory_limit');
 
-    $factory = new TypeEngineFactory(basePath: base_path(), tmpDir: $tmp, engine: new EnginePackage, console: true);
-    $engine = $factory->deferred(['mode' => 'in-process', 'memory_limit' => '9999M']);
+    try {
+        $factory = new TypeEngineFactory(basePath: base_path(), tmpDir: $tmp, engine: new EnginePackage, console: true);
+        $engine = $factory->deferred(['mode' => 'in-process', 'memory_limit' => '9999M']);
 
-    expect($factory->mayTuneProcess())->toBeTrue()
-        ->and($engine)->toBeInstanceOf(LazyTypeEngine::class)
-        ->and(ini_get('memory_limit'))->toBe($before)
-        ->and(is_dir($tmp))->toBeFalse();
+        expect($factory->mayTuneProcess())->toBeTrue()
+            ->and($engine)->toBeInstanceOf(LazyTypeEngine::class)
+            ->and(ini_get('memory_limit'))->toBe('9999M')
+            ->and(is_dir($tmp))->toBeFalse();
+    } finally {
+        ini_set('memory_limit', $before);
+    }
+});
+
+it('leaves the process ceiling alone when a deferred build may not tune it', function (): void {
+    // The viewer resolves a deferred engine on every `.json` request, and a web request must not move the
+    // ceiling the process serves every other request under.
+    $before = ini_get('memory_limit');
+
+    (new TypeEngineFactory(basePath: base_path(), tmpDir: storage_path('docuccino'), engine: new EnginePackage))
+        ->deferred(['mode' => 'in-process', 'memory_limit' => '9999M']);
+
+    expect(ini_get('memory_limit'))->toBe($before);
 });
 
 it('leaves the process ceiling alone when it may not tune it', function (): void {

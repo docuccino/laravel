@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Pipeline;
 
+use Closure;
 use Docuccino\Core\Content\ContentCompiler;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\DiagnosticCollector;
@@ -27,14 +28,17 @@ use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Overlay\OverlayDocument;
 use Docuccino\Core\Patch\Contribution;
 use Docuccino\Core\Pipeline\Assembler;
+use Docuccino\Core\Pipeline\BuildWorkers;
 use Docuccino\Core\Pipeline\FragmentCache;
 use Docuccino\Core\Pipeline\GenerationResult;
 use Docuccino\Core\Pipeline\OperationFragment;
 use Docuccino\Core\Pipeline\OperationPipeline;
 use Docuccino\Core\Provenance\MessagePaths;
 use Docuccino\Core\Provenance\RootRelativeSourcePathResolver;
+use Docuccino\Core\SpecValidation\ValidationError;
 use Docuccino\Core\SpecValidation\Validator;
 use Docuccino\Core\Support\RouteOperationId;
+use Docuccino\Laravel\Engine\LazyTypeEngine;
 use Docuccino\Laravel\Registry\ConfigDiagnostics;
 use Docuccino\Laravel\Registry\DefaultExtensions;
 use Docuccino\Laravel\Registry\ExtensionRegistry;
@@ -61,6 +65,8 @@ final class DocumentGenerator
 {
     private readonly FragmentCache $cache;
 
+    private readonly BuildWorkers $workers;
+
     public function __construct(
         private readonly ExtensionRegistry $registry,
         private readonly Container $container,
@@ -79,19 +85,25 @@ final class DocumentGenerator
         // Foreign text reaches a diagnostic here, and a diagnostic reaches the document. Without a
         // project root the ladder still runs, so the fallback degrades rather than publishing a path.
         private readonly MessagePaths $messagePaths = new MessagePaths(new RootRelativeSourcePathResolver('')),
+        ?BuildWorkers $workers = null,
     ) {
         $this->cache = $cache ?? FragmentCache::disabled();
+        $this->workers = $workers ?? BuildWorkers::none();
     }
 
     /**
      * @param  list<class-string|object>  $configExtensions
      * @param  list<OverlayDocument>  $overlays
+     * @param  (Closure(UirDocument): void)|null  $meanwhile  what the caller does with the finished document
+     *                                                        while it is checked against its schema: handed
+     *                                                        it once, before that check has answered
      */
     public function generate(
         DocumentConfig $document,
         TypeEngine $engine,
         array $configExtensions = [],
         array $overlays = [],
+        ?Closure $meanwhile = null,
     ): GenerationResult {
         $resolved = $this->registry->resolve($this->container, DefaultExtensions::all($document), $configExtensions);
 
@@ -153,41 +165,66 @@ final class DocumentGenerator
         $fragments = [];
         /** @var list<array{RouteDescriptor, string, OperationFragment}> $built */
         $built = [];
-        foreach ($this->descriptors($resolved, $document, $bag) as $descriptor) {
-            if ($descriptor->fallback) {
-                $bag->add(self::fallbackOmitted($descriptor));
 
-                continue;
+        // The cycle collector is paused while the operations build, as PHPStan's own command pauses it for
+        // a whole analysis: every collection walks the analyser's retained graph and frees next to nothing
+        // (docs/design/inference-embedding.md §2 has the measurement). It is put back as it was, so nothing
+        // outside the build runs any differently.
+        $collecting = gc_enabled();
+        gc_disable();
+
+        $scratch = null;
+        /** @var array<string, OperationFragment> $prefetched */
+        $prefetched = [];
+
+        try {
+            $descriptors = $this->descriptors($resolved, $document, $bag);
+            $cache = $this->handOut($descriptors, $document, $documentId, $documentScope, $engine, $resolved, $components, $bag, $fragmentHash, $extensionClasses, $cache, $scratch, $prefetched);
+
+            foreach ($descriptors as $descriptor) {
+                if ($descriptor->fallback) {
+                    $bag->add(self::fallbackOmitted($descriptor));
+
+                    continue;
+                }
+
+                // A route registered for several verbs documents one operation per method.
+                foreach ($descriptor->documentableMethods() as $method) {
+                    $fragment = $this->processRoute($descriptor, $method, $document, $documentId, $documentScope, $engine, $resolved, $components, $bag, $fragmentHash, $extensionClasses, $cache, $prefetched);
+                    if ($fragment !== null) {
+                        $fragments[] = $fragment;
+                        $built[] = [$descriptor, $method, $fragment];
+                        $this->collectNotes($fragment, $resolved);
+                    }
+                }
             }
+            $bag->addAll(self::routelessOnce($this->formDiagnostics($built)));
 
-            // A route registered for several verbs documents one operation per method.
-            foreach ($descriptor->documentableMethods() as $method) {
-                $fragment = $this->processRoute($descriptor, $method, $document, $documentId, $documentScope, $engine, $resolved, $components, $bag, $fragmentHash, $extensionClasses, $cache);
+            // Webhooks are document-level — no route reaches them — but each one is still an operation, so
+            // it travels as a fragment and is cached, restored and reported exactly like a route's.
+            [$declarations, $webhookDiagnostics] = $this->webhooks->collect($document);
+            $bag->addAll($webhookDiagnostics);
+
+            foreach ($declarations as $declaration) {
+                $fragment = $this->processWebhook($declaration, $document, $documentId, $documentScope, $engine, $resolved, $components, $bag, $fragmentHash, $extensionClasses, $cache);
                 if ($fragment !== null) {
                     $fragments[] = $fragment;
-                    $built[] = [$descriptor, $method, $fragment];
+                    $bag->addAll($fragment->diagnostics);
+                    // Everything a fragment carries is drained the same way here as in the route loop
+                    // above. A webhook has no RouteContext, so nothing writes a note while one is BUILT
+                    // today — but a fragment restored from the cache carries whatever it was stored with,
+                    // and a consumer that reads one of an object's members and not the other is where the
+                    // next producer's finding goes missing without anything failing.
                     $this->collectNotes($fragment, $resolved);
                 }
             }
-        }
-        $bag->addAll(self::routelessOnce($this->formDiagnostics($built)));
+        } finally {
+            if ($collecting) {
+                gc_enable();
+            }
 
-        // Webhooks are document-level — no route reaches them — but each one is still an operation, so
-        // it travels as a fragment and is cached, restored and reported exactly like a route's.
-        [$declarations, $webhookDiagnostics] = $this->webhooks->collect($document);
-        $bag->addAll($webhookDiagnostics);
-
-        foreach ($declarations as $declaration) {
-            $fragment = $this->processWebhook($declaration, $document, $documentId, $documentScope, $engine, $resolved, $components, $bag, $fragmentHash, $extensionClasses, $cache);
-            if ($fragment !== null) {
-                $fragments[] = $fragment;
-                $bag->addAll($fragment->diagnostics);
-                // Everything a fragment carries is drained the same way here as in the route loop
-                // above. A webhook has no RouteContext, so nothing writes a note while one is BUILT
-                // today — but a fragment restored from the cache carries whatever it was stored with,
-                // and a consumer that reads one of an object's members and not the other is where the
-                // next producer's finding goes missing without anything failing.
-                $this->collectNotes($fragment, $resolved);
+            if ($scratch !== null) {
+                BuildWorkers::remove($scratch);
             }
         }
 
@@ -201,18 +238,40 @@ final class DocumentGenerator
             $this->generatorVersion,
             $content,
         );
-        $bag->addAll($assembly->diagnostics);
-
-        $validation = $this->validator->validate($assembly->document);
-        foreach ($validation->errors as $error) {
-            $bag->add(new Diagnostic(
-                severity: Severity::Error,
-                code: 'document.schema-invalid',
-                message: trim($error->pointer.' '.$error->message),
-            ));
+        $published = UirDocument::fromArray($assembly->document);
+        foreach ($this->schemaErrors($assembly->document, $published, $meanwhile) as $message) {
+            $bag->add(new Diagnostic(severity: Severity::Error, code: 'document.schema-invalid', message: $message));
         }
 
-        return new GenerationResult(UirDocument::fromArray($assembly->document), $bag->sorted(), $assembly->schemaSources);
+        // Last, since it waits for the lints running beside everything above; the bag sorts what it holds.
+        $bag->addAll($assembly->diagnostics());
+
+        return new GenerationResult($published, $bag->sorted(), $assembly->schemaSources);
+    }
+
+    /**
+     * What each of the document's schema errors says, found beside what `$meanwhile` does with the document
+     * when there is anything ({@see BuildWorkers::later()}).
+     *
+     * @param  array<string, mixed>  $document
+     * @param  (Closure(UirDocument): void)|null  $meanwhile
+     * @return list<string>
+     */
+    private function schemaErrors(array $document, UirDocument $published, ?Closure $meanwhile): array
+    {
+        $check = fn (): array => array_map(
+            static fn (ValidationError $error): string => trim($error->pointer.' '.$error->message),
+            $this->validator->validate($document)->errors,
+        );
+
+        if ($meanwhile === null) {
+            return $check();
+        }
+
+        $errors = $this->workers->later($check);
+        $meanwhile($published);
+
+        return $errors();
     }
 
     /**
@@ -410,6 +469,121 @@ final class DocumentGenerator
     }
 
     /**
+     * Hand this build's cold operations to workers ({@see BuildWorkers}) where there are enough of them to
+     * pay for it, and answer the cache the build then reads every operation through: the configured one,
+     * or — where that stores nothing — a directory of this build's own, named in `$scratch` so it can be
+     * removed. A worker builds an operation through {@see processRoute()}, as this process would.
+     *
+     * @param  list<RouteDescriptor>  $descriptors
+     * @param  list<string>  $extensionClasses
+     * @param  array<string, OperationFragment>  $prefetched  filled with every fragment already warm, by key
+     *
+     * @param-out  string|null  $scratch
+     */
+    private function handOut(
+        array $descriptors,
+        DocumentConfig $document,
+        string $documentId,
+        string $documentScope,
+        TypeEngine $engine,
+        ResolvedExtensions $resolved,
+        ComponentRegistry $components,
+        DiagnosticCollector $bag,
+        string $fragmentHash,
+        array $extensionClasses,
+        FragmentCache $cache,
+        ?string &$scratch,
+        array &$prefetched,
+    ): FragmentCache {
+        // A build that may not fork at all — outside a console build, or with no pcntl — has nothing to count.
+        if (! $this->workers->mayFork()) {
+            return $cache;
+        }
+
+        /** @var array<string, list<array{RouteDescriptor, string}>> $units */
+        $units = [];
+        $operations = 0;
+        foreach ($descriptors as $descriptor) {
+            if ($descriptor->fallback) {
+                continue;
+            }
+
+            foreach ($descriptor->documentableMethods() as $method) {
+                // What is warm is kept, not just counted: the loop restores it from here rather than
+                // reading every fragment a second time.
+                $key = self::fragmentKey($cache, $descriptor, $method, $documentScope, $fragmentHash, $extensionClasses);
+                $warm = $cache->get($key);
+
+                if ($warm !== null) {
+                    $prefetched[$key] = $warm;
+
+                    continue;
+                }
+
+                $units[self::unitOf($descriptor)][] = [$descriptor, $method];
+                $operations++;
+            }
+        }
+
+        $count = $this->workers->for($operations);
+        if ($count < 2) {
+            return $cache;
+        }
+
+        // One booted analyser for every worker to inherit. An engine that would not boot answers nothing
+        // that may be stored, so no worker could leave the build anything to read back.
+        if ($engine instanceof LazyTypeEngine) {
+            $engine->prepare();
+        }
+        if (self::degraded($engine)) {
+            return $cache;
+        }
+
+        $target = $cache;
+        if (! $cache->enabled()) {
+            $scratch = BuildWorkers::directory('fragments');
+            if ($scratch === null) {
+                return $cache;
+            }
+
+            $target = $cache->writingTo($scratch);
+        }
+
+        // The biggest units first, so the last one claimed is a short one; ties keep their name order.
+        ksort($units, SORT_STRING);
+        uasort($units, static fn (array $a, array $b): int => count($b) <=> count($a));
+
+        $this->workers->run($count, array_values($units), function (array $job) use ($document, $documentId, $documentScope, $engine, $resolved, $components, $bag, $fragmentHash, $extensionClasses, $target): void {
+            [$descriptor, $method] = $job;
+            $this->processRoute($descriptor, $method, $document, $documentId, $documentScope, $engine, $resolved, $components, $bag, $fragmentHash, $extensionClasses, $target);
+        }, $scratch);
+
+        return $target;
+    }
+
+    /**
+     * What a worker claims whole: every route of one controller, whose operations share the walk of its
+     * file and most of what that file calls. Every closure route falls in one unit, since the action names
+     * each of them `Closure` — which suits the usual case, a routes file of them sharing one walk.
+     */
+    private static function unitOf(RouteDescriptor $descriptor): string
+    {
+        return explode('@', $descriptor->action ?? '')[0];
+    }
+
+    /**
+     * A route operation's fragment-cache key — one recipe for the build's loop and for what {@see handOut()}
+     * finds warm, or a warm operation would count as cold and be forked for. The method is part of it: GET
+     * query vs POST body are different fragments with different operation identities.
+     *
+     * @param  list<string>  $extensionClasses
+     */
+    private static function fragmentKey(FragmentCache $cache, RouteDescriptor $descriptor, string $method, string $documentScope, string $fragmentHash, array $extensionClasses): string
+    {
+        return $cache->key($descriptor->cacheSignature().'|'.$method, $documentScope, $fragmentHash, $extensionClasses);
+    }
+
+    /**
      * The discovered routes, deduped by everything that makes one route a different route: method, URI
      * and the host it is bound to. Two resolvers reporting the same route collapse; two routes that
      * differ only by host do NOT — they are two operations, and the host-less one sorts first so which
@@ -445,6 +619,7 @@ final class DocumentGenerator
      * @param  list<string>  $extensionClasses
      * @param  FragmentCache  $cache  this document's cache, which is the disabled one when an extension
      *                                the whole signature is keyed on could not be hashed
+     * @param  array<string, OperationFragment>  $prefetched  fragments already read back, by key ({@see handOut()})
      */
     private function processRoute(
         RouteDescriptor $descriptor,
@@ -459,6 +634,7 @@ final class DocumentGenerator
         string $fragmentHash,
         array $extensionClasses,
         FragmentCache $cache,
+        array $prefetched = [],
     ): ?OperationFragment {
         $path = OasPath::of($descriptor->uri);
         // Naming the specific method keeps multi-method routes' diagnostics distinct.
@@ -467,10 +643,8 @@ final class DocumentGenerator
         // identity reads the same string the node ends up carrying instead of deriving a second one.
         $operationId = $this->identity->operationId($documentId, $method, $path, $descriptor->domain);
 
-        // The method is part of the cache key: GET query vs POST body are different fragments with
-        // different operation identities.
-        $cacheKey = $cache->key($descriptor->cacheSignature().'|'.$method, $documentScope, $fragmentHash, $extensionClasses);
-        $cached = $cache->get($cacheKey);
+        $cacheKey = self::fragmentKey($cache, $descriptor, $method, $documentScope, $fragmentHash, $extensionClasses);
+        $cached = $prefetched[$cacheKey] ?? $cache->get($cacheKey);
         if ($cached !== null) {
             // Warm hit: restore components without waking the type engine (design §10), then stamp
             // through the same call the cold path below uses, so warm ids are cold ids.
@@ -646,7 +820,9 @@ final class DocumentGenerator
      * it. The full closure — not just what this route registered first — is what makes a cached
      * fragment self-sufficient: deleting the route that happened to own a shared component can't leave
      * a survivor with a dangling `$ref`, and a build where every fragment came back warm still has the
-     * schemes its operations authenticate with.
+     * schemes its operations authenticate with. The refs are the ones {@see ComponentNames::referenced()}
+     * reads, so a pointer an example states carries nothing: restored, it would publish a component warm
+     * that nothing publishes cold.
      *
      * @param  array<string, mixed>  $operation
      * @return array{0: array<string, array<string, mixed>>, 1: array<string, string>, 2: array<string, array<string, mixed>>, 3: array<string, string>, 4: array<string, array<string, mixed>>, 5: array<string, string>, 6: array<string, string>}
@@ -668,8 +844,8 @@ final class DocumentGenerator
         $schemeBases = [];
         $seenSchema = [];
         $seenResponse = [];
-        $schemaQueue = $this->refs($operation, 'schemas');
-        $responseQueue = $this->refs($operation, 'responses');
+        $schemaQueue = ComponentNames::referenced($operation);
+        $responseQueue = ComponentNames::referenced($operation, 'responses');
 
         // Responses first: pulling in a response can reveal further schema (or response) refs.
         while ($responseQueue !== []) {
@@ -683,12 +859,12 @@ final class DocumentGenerator
                 $responseBases[$name] = $responseBaseMap[$name];
             }
 
-            foreach ($this->refs($responseRegistry[$name], 'responses') as $nested) {
+            foreach (ComponentNames::referenced($responseRegistry[$name], 'responses') as $nested) {
                 if (! isset($seenResponse[$nested])) {
                     $responseQueue[] = $nested;
                 }
             }
-            foreach ($this->refs($responseRegistry[$name], 'schemas') as $schemaRef) {
+            foreach (ComponentNames::referenced($responseRegistry[$name]) as $schemaRef) {
                 $schemaQueue[] = $schemaRef;
             }
         }
@@ -708,7 +884,7 @@ final class DocumentGenerator
                 $schemaBases[$name] = $schemaBaseMap[$name];
             }
 
-            foreach ($this->refs($schemaRegistry[$name], 'schemas') as $nested) {
+            foreach (ComponentNames::referenced($schemaRegistry[$name]) as $nested) {
                 if (! isset($seenSchema[$nested])) {
                     $schemaQueue[] = $nested;
                 }
@@ -748,33 +924,6 @@ final class DocumentGenerator
         }
 
         return array_values(array_unique($names));
-    }
-
-    /**
-     * Component names a node references via `$ref` (`#/components/{$kind}/NAME`), scanned recursively.
-     *
-     * @param  array<array-key, mixed>  $node
-     * @return list<string>
-     */
-    private function refs(array $node, string $kind): array
-    {
-        $prefix = '#/components/'.$kind.'/';
-
-        $refs = [];
-        foreach ($node as $key => $value) {
-            if ($key === '$ref' && is_string($value) && str_starts_with($value, $prefix)) {
-                $refs[] = substr($value, strlen($prefix));
-
-                continue;
-            }
-            if (is_array($value)) {
-                foreach ($this->refs($value, $kind) as $ref) {
-                    $refs[] = $ref;
-                }
-            }
-        }
-
-        return $refs;
     }
 
     /**

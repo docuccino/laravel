@@ -276,6 +276,11 @@ engine:
   # and stubs you already maintain shape your documentation too. Relative to the base path; a file
   # that isn't there warns and inference runs without it.
   # config: 'phpstan.neon'
+  # How many forked workers a console build shares its work between: its uncached operations, its lints,
+  # and an export's schema check and targets. Unset, it is worked out from the CPUs this process may use
+  # and any container memory limit, up to 8; 0 or 1 builds everything in one process. Needs pcntl, so
+  # Windows always builds in one. The document is the same whatever the count.
+  # workers: 4
 
 # What a route whose analysis fails leaves behind: 'skeleton' keeps the path with a diagnostic,
 # 'omit' drops it from the document.

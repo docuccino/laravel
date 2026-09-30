@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Docuccino\Core\Emit\UirEmitter;
+use Docuccino\Core\Inference\ClassRef;
 use Docuccino\Core\Inference\NullTypeEngine;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
@@ -49,6 +50,22 @@ it('builds the engine once on a cold build, never on a fully warm one, and emits
     expect($coldBuilds)->toBe(1)
         ->and($warmBuilds)->toBe(0)
         ->and($warm)->toBe($cold);
+});
+
+it('builds the engine when prepared, and once however it is asked after', function (): void {
+    // A build about to fork prepares the engine so every worker inherits one booted analyser.
+    $builds = 0;
+    $engine = new LazyTypeEngine(function () use (&$builds): TypeEngine {
+        $builds++;
+
+        return WorkbenchEngine::make();
+    }, StubTypeEngine::class);
+
+    $engine->prepare();
+    $engine->prepare();
+    $engine->classMetadata(new ClassRef(stdClass::class));
+
+    expect($builds)->toBe(1);
 });
 
 it('still reports the state of inference on a warm build that never wakes the engine', function (string $mode, bool $installed, string $code): void {

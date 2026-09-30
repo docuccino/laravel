@@ -192,6 +192,15 @@ it('ignores the memory limit, which cannot change a documented byte', function (
         ->toBe(buildFingerprint(['mode' => 'in-process', 'memory_limit' => '2G'])->digest($engine));
 });
 
+it('ignores the worker count, which cannot change a documented byte either', function (): void {
+    $engine = new NullTypeEngine;
+
+    expect(buildFingerprint(['mode' => 'in-process'])->digest($engine))
+        ->toBe(buildFingerprint(['mode' => 'in-process', 'workers' => 4])->digest($engine))
+        ->and(buildFingerprint(['mode' => 'in-process', 'workers' => 1])->digest($engine))
+        ->toBe(buildFingerprint(['mode' => 'in-process', 'workers' => 8])->digest($engine));
+});
+
 it('follows the app composer.lock, and survives an app that has none', function (): void {
     $engine = new NullTypeEngine;
     $root = sys_get_temp_dir().'/docuccino-lock-'.uniqid('', true);

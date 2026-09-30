@@ -558,3 +558,71 @@ it('leaves an entry that already published no operation alone', function (): voi
     expect($transformed['paths'])->toHaveKey('/api/legacy')
         ->and($transformed['paths']['/api/legacy'])->toBe(['description' => 'Kept for the record.']);
 });
+
+/*
+ * What an operation PUBLISHES is what reaches a schema — not a pointer one of its values states. The
+ * archived list below serves a schema document, and its example carries a pointer at the very component
+ * the change renames; a displaced shape its provenance records is the other thing an operation says
+ * without publishing it. Read as reach, either one left the scope short of every operation publishing
+ * `FormTree`, so the change forked the one it named instead of renaming the component — and the older
+ * version's document went on publishing `FormTree` at today's shape.
+ */
+it('renames the component in place when the only other mention of it publishes nothing', function (array $media): void {
+    $document = treeDocument(plainTreeSchemas());
+    $document['paths']['/api/versioned-trees/archived']['get']['responses']['200']['content']['application/json'] = $media;
+
+    [$transformed, $diagnostics] = transformedVersion($document, 'tests/Fixtures/Versioning/ScopedSelfReferential');
+
+    expect(array_map(static fn (Diagnostic $d): string => $d->code, $diagnostics))->toBe([])
+        ->and($transformed['paths']['/api/versioned-trees']['get']['responses']['200']['content']['application/json']['schema'])
+        ->toBe(['$ref' => '#/components/schemas/FormTree'])
+        ->and(array_keys($transformed['components']['schemas']['FormTree']['properties']))->toBe(['id', 'name'])
+        // The archived list says exactly what it said: nothing on it was ever the renamed shape.
+        ->and($transformed['paths']['/api/versioned-trees/archived']['get']['responses']['200']['content']['application/json'])->toBe($media);
+})->with([
+    'an example carrying a pointer at it' => [[
+        'schema' => ['type' => 'object', 'properties' => ['schema' => ['type' => 'object']]],
+        'example' => ['schema' => ['$ref' => '#/components/schemas/FormTree']],
+    ]],
+    'the provenance of a shape a higher layer displaced' => [[
+        'schema' => [
+            'x-docuccino' => ['provenance' => [[
+                'producer' => 'attribute',
+                'layer' => 'attribute',
+                'fields' => ['properties'],
+                'overrode' => [['field' => 'properties', 'value' => ['tree' => ['$ref' => '#/components/schemas/FormTree']], 'producer' => 'inference']],
+            ]]],
+            'type' => 'object',
+            'properties' => ['count' => ['type' => 'integer']],
+        ],
+    ]],
+]);
+
+/*
+ * The fork itself, over an operation that publishes the renamed shape AND serves a schema document
+ * pointing at it. The copy expands every pointer on the way down to the schema it forks, and a pointer
+ * an example states is not on that way: expanded, the example stopped being a schema document the server
+ * sends and became the older shape of `FormTree`, inlined.
+ */
+it('forks an operation and leaves the pointer its example states as the example states it', function (): void {
+    $document = treeDocument(plainTreeSchemas());
+    $document['paths']['/api/versioned-trees']['get']['responses']['200']['content']['application/json'] = [
+        'schema' => ['type' => 'object', 'properties' => [
+            'tree' => ['$ref' => '#/components/schemas/FormTree'],
+            'schema' => ['type' => 'object'],
+        ]],
+        'example' => ['tree' => ['id' => 1, 'title' => 'Root'], 'schema' => ['$ref' => '#/components/schemas/FormTree']],
+    ];
+
+    [$transformed, $diagnostics] = transformedVersion($document, 'tests/Fixtures/Versioning/ScopedSelfReferential');
+
+    $inScope = $transformed['paths']['/api/versioned-trees']['get']['responses']['200']['content']['application/json'];
+
+    expect(array_map(static fn (Diagnostic $d): string => $d->code, $diagnostics))->toBe([])
+        ->and(array_keys($inScope['schema']['properties']['tree']['properties']))->toBe(['id', 'name'])
+        // The example follows the copy where its schema says a tree stands, and nowhere else.
+        ->and($inScope['example'])->toBe(['tree' => ['id' => 1, 'name' => 'Root'], 'schema' => ['$ref' => '#/components/schemas/FormTree']])
+        ->and($transformed['paths']['/api/versioned-trees/archived']['get']['responses']['200']['content']['application/json']['schema'])
+        ->toBe(['$ref' => '#/components/schemas/FormTree'])
+        ->and(array_keys($transformed['components']['schemas']['FormTree']['properties']))->toBe(['id', 'title']);
+});

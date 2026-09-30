@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Config;
 
 use Docuccino\Core\Config\ConfigValues;
+use Docuccino\Core\Pipeline\WorkerCount;
 use Docuccino\Laravel\Registry\ConfigDiagnostics;
 
 /**
@@ -47,6 +48,17 @@ final class ConfiguredShapes
         'documents.*.integrations.query_builder.filter_descriptions',
         'documents.*.representation.examples.formats',
         'lint.leakage.patterns',
+    ];
+
+    /**
+     * What a refused whole number is read as, where that is not the built-in default — named in the refusal,
+     * so the line an author is sent to agrees with what the build did. A worker count that cannot be read
+     * builds in one process rather than working a count out ({@see WorkerCount::UNUSABLE}).
+     *
+     * @var array<string, int>
+     */
+    public const array REFUSED_NUMBERS = [
+        'engine.workers' => WorkerCount::UNUSABLE,
     ];
 
     /**
@@ -132,12 +144,12 @@ final class ConfiguredShapes
             match (DeclaredSettings::valueTypes()[$path] ?? null) {
                 DeclaredSettings::TEXT => $values->string((string) $key),
                 DeclaredSettings::LIST => $values->entries((string) $key),
+                DeclaredSettings::NUMBER => $values->wholeNumber((string) $key, self::REFUSED_NUMBERS[$path] ?? null),
                 // Everything else owes no ask, and each for its own reason: a switch is read and
-                // refused by {@see ConfiguredFlags} wherever it sits, a bag's keys are the author's, a
-                // NONE states no type at all, and the file's one whole number is inside a list entry
-                // so no key addresses it. A key nothing declares is {@see UnknownSettings}' to report,
-                // and the rest of the config report is {@see ConfigDiagnostics}'. The keyword family is
-                // gone before this, above — it is a TEXT key this pass would otherwise ask twice.
+                // refused by {@see ConfiguredFlags} wherever it sits, a bag's keys are the author's, and
+                // a NONE states no type at all. A key nothing declares is {@see UnknownSettings}' to
+                // report, and the rest of the config report is {@see ConfigDiagnostics}'. The keyword
+                // family is gone before this, above — it is a TEXT key this pass would otherwise ask twice.
                 default => null,
             };
         }

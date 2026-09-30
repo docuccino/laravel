@@ -4,15 +4,19 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Commands;
 
+use Closure;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Document\UirDocument;
 use Docuccino\Core\Emit\EmitOptions;
+use Docuccino\Core\Emit\EmitReport;
+use Docuccino\Core\Emit\EmitResult;
 use Docuccino\Core\Emit\Formats;
 use Docuccino\Core\Emit\ProvenanceLevel;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\ExportTarget;
 use Docuccino\Core\Inference\TypeEngine;
+use Docuccino\Core\Pipeline\BuildWorkers;
 use Docuccino\Core\Support\AtomicFile;
 use Docuccino\Core\Support\Directory;
 use Docuccino\Laravel\Config\DocumentEmitOptions;
@@ -59,7 +63,7 @@ final class ExportCommand extends Command
 
     protected $description = 'Generate and export API documentation from your routes.';
 
-    public function handle(DocumentBuilder $builder, TypeEngine $engine): int
+    public function handle(DocumentBuilder $builder, TypeEngine $engine, BuildWorkers $workers): int
     {
         if ($this->abortIfDisabled() || $this->abortIfConfigUnread()) {
             return self::FAILURE;
@@ -69,10 +73,14 @@ final class ExportCommand extends Command
             return self::FAILURE;
         }
 
-        $exit = $this->forEachDocument($builder, function (string $key) use ($builder, $engine): int {
-            $result = $builder->build($key, $engine);
+        $exit = $this->forEachDocument($builder, function (string $key) use ($builder, $engine, $workers): int {
+            // The artifacts are written while the document is checked against its schema, since an artifact
+            // is written whatever that check says.
+            $written = false;
+            $result = $builder->build($key, $engine, function (UirDocument $document) use ($builder, $key, $workers, &$written): void {
+                $written = $this->writeTargets($builder->config($key), $document, $workers);
+            });
 
-            $written = $this->writeTargets($builder->config($key), $result->document);
             $this->renderDiagnostics($key, $this->withAcceptanceNotes($result->diagnostics));
 
             return $written ? self::SUCCESS : self::FAILURE;
@@ -269,22 +277,48 @@ final class ExportCommand extends Command
         return [new ExportTarget($format, $config->exportPath())];
     }
 
-    /** Writes every target for one document, one at a time. False when any write failed. */
-    private function writeTargets(DocumentConfig $config, UirDocument $document): bool
+    /**
+     * Writes and reports every target for one document in the order listed, every emit started before the first
+     * write so they can run side by side ({@see BuildWorkers::later()}). False when any write failed.
+     */
+    private function writeTargets(DocumentConfig $config, UirDocument $document, BuildWorkers $workers): bool
     {
-        $ok = true;
+        $targets = $this->targets($config);
+        $emits = array_map(
+            fn (ExportTarget $target): Closure => $workers->later(
+                fn (): array => self::carried(Formats::emit($target->format, $document, $this->emitOptions($target, $config))),
+            ),
+            $targets,
+        );
 
-        foreach ($this->targets($config) as $target) {
-            $ok = $this->write($target, $document, $config) && $ok;
+        $ok = true;
+        foreach ($targets as $index => $target) {
+            $ok = $this->write($target, self::arrived($emits[$index]())) && $ok;
+            // Let go once written, so this process holds one artifact at a time, as emitting them in turn did.
+            unset($emits[$index]);
         }
 
         return $ok;
     }
 
-    private function write(ExportTarget $target, UirDocument $document, DocumentConfig $config): bool
+    /**
+     * An emit as the data that crosses back from a worker: the bytes exactly, and the report.
+     *
+     * @return array{string, list<array<string, mixed>>}
+     */
+    private static function carried(EmitResult $result): array
     {
-        $result = Formats::emit($target->format, $document, $this->emitOptions($target, $config));
+        return [$result->output, $result->report->toArray()];
+    }
 
+    /** @param  array{string, list<array<string, mixed>>}  $carried */
+    private static function arrived(array $carried): EmitResult
+    {
+        return new EmitResult($carried[0], new EmitReport(array_map(Diagnostic::fromArray(...), $carried[1])));
+    }
+
+    private function write(ExportTarget $target, EmitResult $result): bool
+    {
         $path = Paths::absolute($this->stringOption('out') ?? $target->path, base_path());
 
         // An emitter that produced nothing is one whose format has no empty form — an Arazzo

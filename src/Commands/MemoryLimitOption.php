@@ -12,8 +12,8 @@ use Illuminate\Console\Events\CommandStarting;
 /**
  * Records `--memory-limit` for this run, making the flag and the configured `engine.memory_limit` one
  * lever with the flag winning ({@see BuildConfig::engine()} is where the two meet), and marks the run
- * as a {@see ConsoleBuild} — the same "one of our commands is starting" fact answers both, and this is
- * the only place it is known.
+ * as a {@see ConsoleBuild} — the same "this process was started to run one of our commands" fact answers
+ * both, and this is the only place it is known. A command called in-process has neither.
  *
  * It has to happen this early: the engine reads its ceiling when the container builds it, and that happens
  * while a command's dependencies are injected — before any `handle()` body runs. So the value is read off
@@ -30,11 +30,9 @@ final readonly class MemoryLimitOption
 
     public static function capture(CommandStarting $event): void
     {
-        if (! str_starts_with($event->command ?? '', 'docuccino:')) {
+        if (! str_starts_with($event->command ?? '', 'docuccino:') || ! ConsoleBuild::markStartedBy($event->input)) {
             return;
         }
-
-        ConsoleBuild::mark();
 
         $limit = $event->input->getParameterOption('--memory-limit', '');
         $limit = is_string($limit) ? trim($limit) : '';

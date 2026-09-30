@@ -25,8 +25,9 @@ use Docuccino\Laravel\Support\Psr4Namespaces;
  * scope IS that map and descent defaults to the shipped half of it ({@see TypeEngineFactory}). Both
  * halves are digested separately, since which SECTION a root sits in is itself one of the two scopes.
  *
- * `engine.memory_limit` is the one key deliberately left out: it is a process ceiling that cannot
- * change a documented byte, and `--memory-limit` would otherwise cost a full rebuild each way.
+ * `engine.memory_limit` and `engine.workers` are the two keys deliberately left out: a process ceiling and
+ * how many processes share the work cannot change a documented byte, and either would otherwise cost a full
+ * rebuild each time it moved.
  * `engine.config` goes in twice over — the path with the rest of the bag, and the file's CONTENT — since
  * an extension it registers can change any type the engine infers without the path ever moving.
  *
@@ -52,7 +53,7 @@ final readonly class BuildFingerprint
     public function digest(TypeEngine $engine): string
     {
         $config = $this->engineConfig;
-        unset($config['memory_limit']);
+        unset($config['memory_limit'], $config['workers']);
 
         return hash('sha256', implode("\0", [
             // A deferred engine names what it will build: asking a booted engine for its class would

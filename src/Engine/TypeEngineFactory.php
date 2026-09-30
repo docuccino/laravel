@@ -51,6 +51,13 @@ final readonly class TypeEngineFactory
      */
     public function deferred(array $config): TypeEngine
     {
+        // The ceiling is the build's and not only the analyser's: a build whose every fragment is warm
+        // never asks the engine anything, and holding a large document outgrows PHP's default on its own.
+        // Settled where the analyser boots, the same command would succeed cold and die warm.
+        if ($this->mayTuneProcess()) {
+            $this->applyMemoryLimit($config);
+        }
+
         return new LazyTypeEngine(
             fn (): TypeEngine => $this->make($config),
             $this->engineIdentity($config),
@@ -90,9 +97,8 @@ final readonly class TypeEngineFactory
             return new NullTypeEngine;
         }
 
-        // PHPStan is about to analyse inside this process, so the memory ceiling and the story an OOM
-        // tells are ours to settle first — every console entry point (the build commands, cache warm)
-        // comes through here, which is why it isn't done in the commands.
+        // Settled already where a console build resolved its engine ({@see deferred()}); an eager build
+        // settles it here, before PHPStan analyses anything in this process. Both only ever raise.
         if ($this->mayTuneProcess()) {
             $this->applyMemoryLimit($config);
         }

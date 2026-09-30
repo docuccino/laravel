@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Docuccino\Core\Diagnostics\Severity;
+use Docuccino\Core\Pipeline\WorkerCount;
 use Docuccino\Laravel\Config\BuildConfig;
 use Docuccino\Laravel\Config\ConfiguredFlags;
 use Docuccino\Laravel\Config\ConfiguredKeywords;
@@ -173,8 +174,8 @@ it('refuses a declared key holding the wrong shape, over every key the shipped f
     }
 
     // A bag's keys are the author's, and a key the file ships as `null` states no type — there is
-    // nothing to hold either to. NUMBER is here for completeness and stands empty: see below.
-    if (in_array($type, [DeclaredSettings::BAG, DeclaredSettings::NONE, DeclaredSettings::NUMBER], true)) {
+    // nothing to hold either to.
+    if (in_array($type, [DeclaredSettings::BAG, DeclaredSettings::NONE], true)) {
         expect($refusals)->toBe([]);
 
         return;
@@ -186,8 +187,17 @@ it('refuses a declared key holding the wrong shape, over every key the shipped f
         ->and($refusals[0]->message)->toContain(match (true) {
             in_array($path, DeclaredSettings::sections(), true) => 'the setting takes a map of settings',
             $type === DeclaredSettings::TEXT => 'the setting takes text',
+            $type === DeclaredSettings::NUMBER => 'the setting takes a whole number',
             default => 'the setting takes a list',
         });
+
+    // What a refusal says is used instead is checkable, so it is checked where it is not the built-in
+    // default: a worker count the build cannot read builds in one process — the off switch fails closed —
+    // stated here and held against what the count is worked out as, rather than asked of the code.
+    if ($path === 'engine.workers') {
+        expect($refusals[0]->message)->toEndWith('— 1 is used instead.')
+            ->and(WorkerCount::of(wrongShapeFor($path)))->toBe(1);
+    }
 })->with(declaredKeys());
 
 it('reads what it asks about off the shipped file, by shape', function (): void {
@@ -221,11 +231,16 @@ it('reads what it asks about off the shipped file, by shape', function (): void 
         ->and($types['lint.leakage.enabled'] ?? null)->toBe(DeclaredSettings::SWITCH_TYPE)
         ->and($types['cache.path'] ?? null)->toBe(DeclaredSettings::NONE);
 
-    // Nothing asks for a whole number, because the file's only one sits inside a list ENTRY and no key
-    // addresses it. Stated here rather than assumed: a reachable one appearing would fail this and the
-    // dataset above together, instead of going quietly unasked behind an arm nobody wrote.
+    // Two whole numbers: one inside a list ENTRY, which no key addresses, and `engine.workers`, which the
+    // dataset above holds to its refusal. Stated here rather than assumed: a third appearing is one more
+    // row of that dataset, and this is what says the arm asking it exists.
     expect(array_keys(array_filter($types, static fn (string $type): bool => $type === DeclaredSettings::NUMBER)))
-        ->toBe(['documents.*.tags.definitions.*.weight']);
+        ->toBe(['documents.*.tags.definitions.*.weight', 'engine.workers']);
+
+    // A named fallback for a key that is no whole number the pass asks would never be named at all.
+    foreach (array_keys(ConfiguredShapes::REFUSED_NUMBERS) as $path) {
+        expect($types[$path] ?? null)->toBe(DeclaredSettings::NUMBER);
+    }
 });
 
 it('splits the declared surface in two with nothing over and nothing in between', function (): void {

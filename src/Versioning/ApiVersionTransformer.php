@@ -8,6 +8,7 @@ use Docuccino\Core\Contract\Refs;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Document\DocumentGraph;
+use Docuccino\Core\Document\DocumentMembers;
 use Docuccino\Core\Document\PathItem;
 use Docuccino\Core\Extensions\Context\DocumentContext;
 use Docuccino\Core\Extensions\Contracts\DocumentTransformer;
@@ -144,8 +145,8 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
         // and no schema's identity can be there. Nothing reaches, so nothing expands: an unscoped verb
         // is the walk with its `$ref` half switched off.
         foreach ($rewritten as $key => $value) {
-            if (is_array($value)) {
-                $rewritten[$key] = $this->rewrite($value, $published, $id, $verb, [], [], $outcome, $cyclic);
+            if (is_array($value) && ! DocumentMembers::holdsData((string) $key, $value, null)) {
+                $rewritten[$key] = $this->rewrite($value, $published, $id, $verb, [], [], $outcome, $cyclic, DocumentMembers::nameMap((string) $key, null));
             }
         }
 
@@ -715,6 +716,10 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
      * instead of another pointer at the shared component. An EMPTY `$reaches` expands nothing, and that
      * is the whole of what an unscoped rename is: the same walk, in place.
      *
+     * The nodes are the ones the document publishes, read by {@see DocumentMembers}: a pointer an example
+     * states is payload rather than a step on the way down to the schema, and expanded it would publish
+     * the shape in place of the value the server sends.
+     *
      * `$outcome` is the strongest thing {@see VerbOutcome} saw, so several copies of one schema report
      * one answer and a document that publishes it nowhere reports that instead. `$cyclic` says the
      * expansion met a component that contains itself, which is a copy that cannot be written; it can
@@ -723,11 +728,12 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
      * @param  array<array-key, mixed>  $node
      * @param  array<string, bool>  $reaches
      * @param  list<string>  $visited
+     * @param  ?string  $inNameMap  the name map $node is, or null where its keys are keywords
      * @return array<array-key, mixed>
      */
-    private function rewrite(array $node, PublishedSchemas $published, string $id, VersionVerb $verb, array $reaches, array $visited, VerbOutcome &$outcome, bool &$cyclic): array
+    private function rewrite(array $node, PublishedSchemas $published, string $id, VersionVerb $verb, array $reaches, array $visited, VerbOutcome &$outcome, bool &$cyclic, ?string $inNameMap = null): array
     {
-        $ref = DocumentGraph::componentRef($node);
+        $ref = $inNameMap === null ? DocumentGraph::componentRef($node) : null;
         if ($ref !== null && ($reaches[$ref] ?? false)) {
             if (in_array($ref, $visited, true)) {
                 $cyclic = true;
@@ -749,14 +755,14 @@ final readonly class ApiVersionTransformer implements DocumentTransformer
             return [...$expanded, ...$node];
         }
 
-        $docuccino = $node['x-docuccino'] ?? null;
+        $docuccino = $inNameMap === null ? ($node['x-docuccino'] ?? null) : null;
         if (is_array($docuccino) && ($docuccino['id'] ?? null) === $id) {
             $node = $verb->apply($node, $published, $outcome);
         }
 
         foreach ($node as $key => $value) {
-            if (is_array($value)) {
-                $node[$key] = $this->rewrite($value, $published, $id, $verb, $reaches, $visited, $outcome, $cyclic);
+            if (is_array($value) && ! DocumentMembers::holdsData((string) $key, $value, $inNameMap)) {
+                $node[$key] = $this->rewrite($value, $published, $id, $verb, $reaches, $visited, $outcome, $cyclic, DocumentMembers::nameMap((string) $key, $inNameMap));
             }
         }
 

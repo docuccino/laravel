@@ -23,6 +23,7 @@ use Docuccino\Core\Lint\UndocumentedTagLint;
 use Docuccino\Core\Lint\UnpinnedRedirectLint;
 use Docuccino\Core\Lint\VacuousUnionLint;
 use Docuccino\Core\Pipeline\Assembler;
+use Docuccino\Core\Pipeline\BuildWorkers;
 use Docuccino\Core\Pipeline\FragmentCache;
 use Docuccino\Core\Provenance\RootRelativeSourcePathResolver;
 use Docuccino\Core\Provenance\SourcePathResolver;
@@ -47,6 +48,7 @@ use Docuccino\Laravel\Config\DocumentConfigFactory;
 use Docuccino\Laravel\Config\LeakageOptions;
 use Docuccino\Laravel\Config\ViewerConfig;
 use Docuccino\Laravel\Engine\ConsoleBuild;
+use Docuccino\Laravel\Engine\ConsoleBuildWorkers;
 use Docuccino\Laravel\Engine\EnginePackage;
 use Docuccino\Laravel\Engine\TypeEngineFactory;
 use Docuccino\Laravel\Extensions\RecordedExamplesExtension;
@@ -248,6 +250,10 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
         $this->app->when(DocumentGenerator::class)
             ->needs('$generatorVersion')
             ->give(self::VERSION);
+
+        // The forked workers a build may hand its work to — a console build's only. One set for the whole
+        // run, so every part of it that starts a worker counts against the same limit.
+        $this->app->scoped(BuildWorkers::class, static fn (Application $app): BuildWorkers => ConsoleBuildWorkers::for($app));
 
         // Core does the assembling; the generator metadata names this adapter. A second adapter would
         // bind its own name here.

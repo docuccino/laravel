@@ -16,10 +16,11 @@ use Docuccino\Core\Inference\TraceVisitor;
 use Docuccino\Core\Inference\TypeEngine;
 
 /**
- * A {@see TypeEngine} that builds the real engine on the first question and never before it. Every
- * command resolves a TypeEngine before its `handle()` runs, so the analyser used to boot even for a
- * build whose fragments are all warm and which asks it nothing — the whole of that boot, for no
- * answer. The engine still boots ahead of any analysis, so nothing about its own setup changes.
+ * A {@see TypeEngine} that builds the real engine on the first question, or where a build about to fork
+ * asks for it ({@see prepare()}), and never otherwise. Every command resolves a TypeEngine before its
+ * `handle()` runs, so the analyser used to boot even for a build whose fragments are all warm and which
+ * asks it nothing — the whole of that boot, for no answer. The engine still boots ahead of any analysis,
+ * so nothing about its own setup changes.
  *
  * {@see identity()} is why this can be wrapped at all: the fragment cache keys on which engine
  * resolved (the adapter's build fingerprint) and computes that key before the first route, so it
@@ -53,6 +54,15 @@ final class LazyTypeEngine implements ReportsBootFailure, TypeEngine
     public function bootFailure(): ?string
     {
         return $this->engine instanceof ReportsBootFailure ? $this->engine->bootFailure() : null;
+    }
+
+    /**
+     * Builds the engine now rather than at the first question: a build about to hand its questions to
+     * copies of this process wants them to inherit one booted analyser rather than each boot their own.
+     */
+    public function prepare(): void
+    {
+        $this->engine();
     }
 
     public function analyzeAction(ActionRef $action): ActionAnalysis

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Pipeline;
 
+use Closure;
 use Docuccino\Core\Config\ConfigFile;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\DiagnosticCollector;
 use Docuccino\Core\Diagnostics\Severity;
+use Docuccino\Core\Document\UirDocument;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Inference\ReportsBootFailure;
 use Docuccino\Core\Inference\TypeEngine;
@@ -81,8 +83,12 @@ final class DocumentBuilder
         return $this->configs->make($key, $this->documents->raw($key), $this->onRouteError());
     }
 
-    /** Overlay-parse warnings are folded in alongside the pipeline's own diagnostics. */
-    public function build(string $key, TypeEngine $engine): GenerationResult
+    /**
+     * Overlay-parse warnings are folded in alongside the pipeline's own diagnostics.
+     *
+     * @param  (Closure(UirDocument): void)|null  $meanwhile  {@see DocumentGenerator::generate()}
+     */
+    public function build(string $key, TypeEngine $engine, ?Closure $meanwhile = null): GenerationResult
     {
         $config = $this->config($key);
         [$overlays, $overlayDiagnostics] = $this->overlays($config);
@@ -100,7 +106,7 @@ final class DocumentBuilder
             ...$overlayDiagnostics,
         ];
 
-        $result = $this->generator->generate($config, $engine, $extensions, $overlays);
+        $result = $this->generator->generate($config, $engine, $extensions, $overlays, $meanwhile);
 
         $diagnostics = [
             // The configuration FILE itself: whether it was found and parsed, every setting whose type

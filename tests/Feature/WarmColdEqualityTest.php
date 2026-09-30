@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Docuccino\Core\Emit\UirEmitter;
 use Docuccino\Laravel\Tests\Fixtures\ComponentNames\ClaimController;
+use Docuccino\Laravel\Tests\Fixtures\ComponentNames\SchemaCatalogueController;
 use Docuccino\Laravel\Tests\Fixtures\ComponentNames\SsoController;
 use Docuccino\Laravel\Tests\Fixtures\RouteBindings\BindingController;
 use Docuccino\Laravel\Tests\Fixtures\SharedErrors\ErrorsController;
@@ -164,6 +165,20 @@ it('serves a warm build exactly what a cold one would', function (callable $befo
         static function (Router $r) use ($base): void {
             $base($r);
             $r->domain('b.example.com')->get('api/zz-hosted', [ClaimController::class, 'show']);
+        },
+    ],
+
+    // A value the document states is no reference, even where it spells one. The catalogue serves a
+    // schema document whose example points at `UserData`, which only the user route publishes; read as
+    // a reference, that pointer put `UserData` in the catalogue fragment's closure, so with the user
+    // route gone a warm build restored a component nothing references and a cold one had none.
+    'a route whose example spells a component only a removed route published' => [
+        static function (Router $r): void {
+            $r->get('api/zz-user-api', [ClaimController::class, 'apiUser']);
+            $r->get('api/zz-user-schema', [SchemaCatalogueController::class, 'show']);
+        },
+        static function (Router $r): void {
+            $r->get('api/zz-user-schema', [SchemaCatalogueController::class, 'show']);
         },
     ],
 ]);

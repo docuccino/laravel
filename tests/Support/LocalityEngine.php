@@ -6,14 +6,19 @@ namespace Docuccino\Laravel\Tests\Support;
 
 use Docuccino\Core\Inference\ActionAnalysis;
 use Docuccino\Core\Inference\ClassMetadata;
+use Docuccino\Core\Inference\DType\ArrayShapeField;
+use Docuccino\Core\Inference\DType\ArrayShapeT;
 use Docuccino\Core\Inference\DType\ClassT;
+use Docuccino\Core\Inference\DType\MapT;
 use Docuccino\Core\Inference\DType\ScalarT;
+use Docuccino\Core\Inference\DType\UnknownT;
 use Docuccino\Core\Inference\PropertyMetadata;
 use Docuccino\Core\Inference\ReturnSite;
 use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Laravel\Tests\Fixtures\ComponentNames\ClaimController;
+use Docuccino\Laravel\Tests\Fixtures\ComponentNames\SchemaCatalogueController;
 use Docuccino\Laravel\Tests\Fixtures\ComponentNames\SsoController;
 
 /**
@@ -82,6 +87,11 @@ final class LocalityEngine
                 ClaimController::class.'::workingGizmo' => $returns(self::WORKING_GIZMO),
                 ClaimController::class.'::billingReceipt' => $returns(self::BILLING_RECEIPT),
                 ClaimController::class.'::supportReceipt' => $returns(self::SUPPORT_RECEIPT),
+                // A named entry and the schema document it stands for, which is any JSON object at all.
+                SchemaCatalogueController::class.'::show' => new ActionAnalysis(returns: [new ReturnSite(new ArrayShapeT([
+                    new ArrayShapeField('name', ScalarT::string()),
+                    new ArrayShapeField('schema', new MapT(ScalarT::string(), new UnknownT('a schema document'))),
+                ]), new SourceLocation(''))]),
             ],
         );
     }
