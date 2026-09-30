@@ -25,6 +25,7 @@ use Docuccino\Laravel\Extensions\AttributeRequestBodyExtension;
 use Docuccino\Laravel\Extensions\AttributeResponsesExtension;
 use Docuccino\Laravel\Extensions\AttributeSecurityExtension;
 use Docuccino\Laravel\Extensions\DeclaredErrorComponentsExtension;
+use Docuccino\Laravel\Extensions\EnumerableTypeToSchema;
 use Docuccino\Laravel\Extensions\ErrorResponsesExtension;
 use Docuccino\Laravel\Extensions\FrameworkResponseTypeToSchema;
 use Docuccino\Laravel\Extensions\IgnoredParametersExtension;
@@ -147,10 +148,11 @@ final class DefaultExtensions
             ...$enabled('passport'),
             ...$enabled('permission'),
             // Ahead of the core mappers: a framework response object and a rendered view are transport,
-            // not bodies, so neither may reach the framework-agnostic class mapper and be reflected into
-            // a component.
+            // not bodies, and a collection is the array it holds, so none may reach the framework-agnostic
+            // class mapper and be reflected into a component.
             FrameworkResponseTypeToSchema::class,
             ViewTypeToSchema::class,
+            EnumerableTypeToSchema::class,
             ...DefaultTypeMappers::all(),
             // Collapses an error body repeated across operations into one shared component + $refs.
             // The only document transformer that moves a byte, so everything reading the finished

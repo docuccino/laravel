@@ -6,7 +6,7 @@ namespace Docuccino\Laravel\Integrations\Support;
 
 use Docuccino\Core\Extensions\Context\RepresentationPolicy;
 use Docuccino\Laravel\Integrations\ApiResources\ResourceReflector;
-use Docuccino\Laravel\Integrations\ApiResources\ResourceWrapDigestContributor;
+use Docuccino\Laravel\Integrations\ApiResources\ResourceStaticsDigestContributor;
 use ReflectionClass;
 use Throwable;
 
@@ -16,7 +16,7 @@ use Throwable;
  * resource's static `$wrap` property, default `'data'` — at the response root only; nested resources
  * (a resource inside another's `toArray`) are never wrapped. The statics are read off the booted app,
  * so `JsonResource::withoutWrapping()` in a service provider is seen — and keys the cache through
- * {@see ResourceWrapDigestContributor}; the per-document `integrations.api_resources.wrap` config
+ * {@see ResourceStaticsDigestContributor}; the per-document `integrations.api_resources.wrap` config
  * overrides both ({@see RepresentationPolicy::$resourceWrap}).
  *
  * Resolution order: config override wins (`disabled` → no wrapping, any other value → forced key),

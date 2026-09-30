@@ -16,7 +16,7 @@ use Docuccino\Laravel\Integrations\Support\JsonApiDocument;
 use Docuccino\Laravel\Integrations\Support\ResourceWrapping;
 
 /**
- * Maps a Laravel 13 first-party JSON:API resource
+ * Maps a Laravel first-party JSON:API resource
  * (`Illuminate\Http\Resources\JsonApi\JsonApiResource`, guarded by `class_exists`) to a JSON:API
  * document schema via the shared {@see JsonApiDocument} builder — `toAttributes`/`toRelationships`/
  * `toLinks`/`toMeta` become the resource-object members; `id`/`type` are always present strings.
@@ -48,13 +48,16 @@ final class JsonApiResourceSchema implements TypeToSchema
             return $document;
         }
 
-        // resolve() returns the document under its own `data` key, which a forced wrap wraps again.
+        // resolve() returns the document under its own `data` key, which a forced wrap wraps again — while
+        // the with() members still merge in at the top, beside the outer key.
         $context->dependsOn(...DeclarationFiles::of($type->fqcn));
-
-        return new SchemaResult([
+        $properties = is_array($document->schema['properties'] ?? null) ? $document->schema['properties'] : [];
+        $properties['data'] = [
             'type' => 'object',
-            'properties' => ['data' => $document->schema],
+            'properties' => ['data' => $properties['data'] ?? []],
             'required' => ['data'],
-        ], $document->confidence);
+        ];
+
+        return new SchemaResult([...$document->schema, 'properties' => $properties], $document->confidence);
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\Support;
 
 use Docuccino\Laravel\Integrations\ApiResources\CollectionKeys;
+use Docuccino\Laravel\Integrations\ApiResources\ToArrayObject;
 
 /**
  * The `{data, links, meta}` envelopes Laravel serialises around a page of items, shared by every
@@ -18,7 +19,10 @@ use Docuccino\Laravel\Integrations\ApiResources\CollectionKeys;
  * from {@see PageComponent}.
  *
  * This is Laravel's `AbstractPaginator` envelope. `spatie/laravel-data` has its own
- * ({@see SpatieDataEnvelope}); the two are NOT interchangeable.
+ * ({@see SpatieDataEnvelope}); the two are NOT interchangeable. A collection whose
+ * `paginationInformation()` drops the null page links — timacdonald/json-api's — sends the same envelope
+ * with only the links that exist, so it is built here too, with its own links part. Which of the two a
+ * page sends is a required argument of every builder ({@see PageLinks}).
  *
  * @phpstan-import-type Part from PaginationParts
  */
@@ -35,11 +39,11 @@ final class PaginationEnvelope
      * @param  array<array-key, mixed>  $items
      * @return array<string, mixed>
      */
-    public static function of(string $kind, array $items, bool $preservedKeys = false): array
+    public static function of(string $kind, array $items, PageLinks $links, bool $preservedKeys = false): array
     {
         $built = self::builds($kind);
 
-        return self::wrap(CollectionKeys::sent($items, $preservedKeys), self::parts($built), PageComponent::description($built));
+        return self::wrap(CollectionKeys::sent($items, $preservedKeys), self::parts($built, $links), PageComponent::description($built));
     }
 
     /**
@@ -63,10 +67,18 @@ final class PaginationEnvelope
      * - `cursorPaginate()` carries opaque tokens instead of page counters — but the same four links as
      *   the length-aware page, which is why both name that object `PaginationLinks`.
      *
+     * Where the null links are dropped, each link is sent only where there is such a page: the first and
+     * last of a counted result set always, the first of an uncounted one, and never a cursor page's first
+     * or last, which Laravel leaves null.
+     *
      * @return array<string, Part>
      */
-    public static function parts(string $kind): array
+    public static function parts(string $kind, PageLinks $links): array
     {
+        if ($links === PageLinks::Available) {
+            return ['links' => self::availableLinks(self::builds($kind)), 'meta' => self::parts($kind, PageLinks::Laravel)['meta']];
+        }
+
         $pageLinks = PaginationParts::part('PaginationLinks', 'URLs for the first, last, previous and next pages of this result set; null where there is no such page.', SchemaShorthand::object([
             'first' => SchemaShorthand::nullableString(),
             'last' => SchemaShorthand::nullableString(),
@@ -120,11 +132,11 @@ final class PaginationEnvelope
      *
      * @return array{links: array<string, array<string, mixed>>, meta: array<string, array<string, mixed>>}
      */
-    public static function sent(string $kind): array
+    public static function sent(string $kind, PageLinks $pageLinks): array
     {
         $built = self::builds($kind);
-        $parts = self::parts($built);
-        $named = static fn (string $part): array => is_array($parts[$part]['schema']['properties'] ?? null) ? $parts[$part]['schema']['properties'] : [];
+        $parts = self::parts($built, $pageLinks);
+        $named = static fn (string $part): array => self::named($parts[$part]['schema']);
 
         // What each kind sends beyond what its part names.
         [$links, $meta] = match ($built) {
@@ -134,11 +146,44 @@ final class PaginationEnvelope
         };
 
         /** @var array<string, array<string, mixed>> $links */
-        $links = [...$named('links'), ...$links];
+        $links = $pageLinks === PageLinks::Laravel ? [...$named('links'), ...$links] : $named('links');
         /** @var array<string, array<string, mixed>> $meta */
         $meta = [...$named('meta'), ...$meta];
 
         return ['links' => $links, 'meta' => $meta];
+    }
+
+    /**
+     * The keys of each part sent on every page of `$kind` — all of them where Laravel sends its links, and
+     * only the links there is always a page for where the null ones are dropped. A part with none may be
+     * sent as `[]`.
+     *
+     * @return array{links: list<string>, meta: list<string>}
+     */
+    public static function alwaysSent(string $kind, PageLinks $pageLinks): array
+    {
+        $sent = self::sent($kind, $pageLinks);
+        $links = self::parts($kind, $pageLinks)['links']['schema'];
+        $object = self::object($links);
+        $required = is_array($object['required'] ?? null) ? array_values(array_filter($object['required'], is_string(...))) : [];
+
+        return [
+            'links' => $pageLinks === PageLinks::Laravel ? array_keys($sent['links']) : $required,
+            'meta' => array_keys($sent['meta']),
+        ];
+    }
+
+    /**
+     * The properties a part names, read through the empty array it may also be sent as.
+     *
+     * @param  array<string, mixed>  $schema
+     * @return array<string, mixed>
+     */
+    public static function named(array $schema): array
+    {
+        $properties = self::object($schema)['properties'] ?? null;
+
+        return is_array($properties) ? array_filter($properties, is_string(...), ARRAY_FILTER_USE_KEY) : [];
     }
 
     /**
@@ -172,7 +217,9 @@ final class PaginationEnvelope
             $named = is_array($member['properties'] ?? null) ? $member['properties'] : [];
             $sent = [];
             foreach (['length', 'simple', 'cursor'] as $kind) {
-                $sent = [...$sent, ...self::sent($kind)[$part]];
+                foreach (PageLinks::cases() as $pageLinks) {
+                    $sent = [...$sent, ...self::sent($kind, $pageLinks)[$part]];
+                }
             }
             foreach (array_intersect_key($named, $sent) as $key => $schema) {
                 $named[$key] = ['anyOf' => [$schema, self::MERGED]];
@@ -184,6 +231,46 @@ final class PaginationEnvelope
         }
 
         return $properties;
+    }
+
+    /**
+     * The links part of a page that sends only the links there is a page for. A cursor page has no first
+     * or last link, so one with no page either side sends none — the empty array `[]`, not `{}`.
+     *
+     * @return Part
+     */
+    private static function availableLinks(string $built): array
+    {
+        $url = ['type' => 'string'];
+
+        return match ($built) {
+            'simple' => PaginationParts::part('AvailableSimplePaginationLinks', 'URLs for the first page of this result set, and for the previous and next pages where there is one; the result set is never counted, so there is no last page to link to.', [
+                ...SchemaShorthand::object(['first' => $url, 'prev' => $url, 'next' => $url]),
+                'required' => ['first'],
+            ]),
+            'cursor' => PaginationParts::part('AvailableCursorPaginationLinks', 'URLs for the previous and next pages of this result set, where there is one; an empty list where there is neither.', ToArrayObject::orEmpty(SchemaShorthand::object(['prev' => $url, 'next' => $url]))),
+            default => PaginationParts::part('AvailablePaginationLinks', 'URLs for the first and last pages of this result set, and for the previous and next pages where there is one.', [
+                ...SchemaShorthand::object(['first' => $url, 'last' => $url, 'prev' => $url, 'next' => $url]),
+                'required' => ['first', 'last'],
+            ]),
+        };
+    }
+
+    /**
+     * A part's object shape: itself, or the object alternative beside the empty array it may be sent as.
+     *
+     * @param  array<string, mixed>  $schema
+     * @return array<array-key, mixed>
+     */
+    private static function object(array $schema): array
+    {
+        foreach (is_array($schema['anyOf'] ?? null) ? $schema['anyOf'] : [] as $alternative) {
+            if (is_array($alternative) && ($alternative['type'] ?? null) === 'object') {
+                return $alternative;
+            }
+        }
+
+        return $schema;
     }
 
     /**

@@ -6,6 +6,7 @@ use Docuccino\Core\Extensions\Context\RepresentationPolicy;
 use Docuccino\Core\Extensions\Schema\ComponentRegistry;
 use Docuccino\Core\Extensions\Schema\SchemaConverter;
 use Docuccino\Core\Inference\NullTypeEngine;
+use Docuccino\Laravel\Integrations\Support\PageLinks;
 use Docuccino\Laravel\Integrations\Support\PaginationEnvelope;
 use Docuccino\Laravel\Integrations\Support\PaginationParts;
 use Docuccino\Laravel\Integrations\Support\PaginationTerminalVisitor;
@@ -76,11 +77,11 @@ $named = [
 ];
 
 $parts = static fn (string $producer, string $kind): array => $producer === 'laravel'
-    ? PaginationEnvelope::parts($kind)
+    ? PaginationEnvelope::parts($kind, PageLinks::Laravel)
     : SpatieDataEnvelope::parts($kind);
 
 $envelope = static fn (string $producer, string $kind, array $items): array => $producer === 'laravel'
-    ? PaginationEnvelope::of($kind, $items)
+    ? PaginationEnvelope::of($kind, $items, PageLinks::Laravel)
     : SpatieDataEnvelope::of($kind, $items);
 
 it('exercises every class in the tree that mints an envelope part', function () use ($builders): void {
@@ -286,8 +287,8 @@ it('refuses a member that is not the shape its part names, sentence included', f
     // Either way the member has stopped being the shared shape: pointing it at the component would
     // publish prose this operation never yields, or grant it prose it never stated.
     $context = $converter();
-    $parts = PaginationEnvelope::parts('length');
-    $envelope = PaginationEnvelope::of('length', $items);
+    $parts = PaginationEnvelope::parts('length', PageLinks::Laravel);
+    $envelope = PaginationEnvelope::of('length', $items, PageLinks::Laravel);
 
     if ($case === 'a sentence one operation reworded') {
         $envelope['properties']['meta']['description'] = 'Counters for this endpoint only.';
@@ -306,8 +307,8 @@ it('shares one links component between the length-aware and cursor pages', funct
 
     // Two kinds, one registry: the shape they agree on is registered once, and the shapes they don't
     // are two components rather than one that lies about the other.
-    $length = PaginationParts::hoist($context, PaginationEnvelope::of('length', $items), PaginationEnvelope::parts('length'));
-    $cursor = PaginationParts::hoist($context, PaginationEnvelope::of('cursor', $items), PaginationEnvelope::parts('cursor'));
+    $length = PaginationParts::hoist($context, PaginationEnvelope::of('length', $items, PageLinks::Laravel), PaginationEnvelope::parts('length', PageLinks::Laravel));
+    $cursor = PaginationParts::hoist($context, PaginationEnvelope::of('cursor', $items, PageLinks::Laravel), PaginationEnvelope::parts('cursor', PageLinks::Laravel));
 
     expect($length['properties']['links'])->toBe($cursor['properties']['links'])
         ->and($length['properties']['meta'])->not->toBe($cursor['properties']['meta'])
@@ -323,7 +324,7 @@ it('covers every paginator kind the terminal table can report', function () use 
     expect($kinds)->toHaveCount(3);
 
     foreach ($kinds as $kind) {
-        $hoisted = PaginationParts::hoist($converter(), $envelope('laravel', $kind, $items), PaginationEnvelope::parts($kind));
+        $hoisted = PaginationParts::hoist($converter(), $envelope('laravel', $kind, $items), PaginationEnvelope::parts($kind, PageLinks::Laravel));
 
         expect($hoisted['properties']['links'])->toHaveKey('$ref')
             ->and($hoisted['properties']['meta'])->toHaveKey('$ref');
@@ -332,8 +333,8 @@ it('covers every paginator kind the terminal table can report', function () use 
 
 it('leaves a member where it was when it is not the shape its part names', function (string $case) use ($converter, $items): void {
     $context = $converter();
-    $parts = PaginationEnvelope::parts('length');
-    $envelope = PaginationEnvelope::of('length', $items);
+    $parts = PaginationEnvelope::parts('length', PageLinks::Laravel);
+    $envelope = PaginationEnvelope::of('length', $items, PageLinks::Laravel);
 
     if ($case === 'a member some operation varied') {
         // A meta that gained a field for one endpoint is not the shared shape, and a `$ref` to it would

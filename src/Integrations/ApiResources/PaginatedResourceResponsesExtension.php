@@ -19,7 +19,7 @@ use Docuccino\Laravel\Integrations\Support\PaginationTerminalVisitor;
  * `UserResource::collection($query->paginate())`. Since the static return type is identical paginated or
  * not, it traces for a paginating terminal and rewraps the body in the envelope for whatever kind turns
  * up. Runs LATE so the inference-layer body already exists, and writes at integration precedence so it
- * overrides that body while docblocks/attributes still override this. JSON:API collections are excluded.
+ * overrides that body while docblocks/attributes still override this. A JSON:API collection is paged the same way.
  */
 #[ExtensionOrder(priority: Priorities::LATE)]
 final class PaginatedResourceResponsesExtension implements OperationExtension

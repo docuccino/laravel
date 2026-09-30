@@ -6,29 +6,36 @@ namespace Docuccino\Laravel\Integrations\Support;
 
 use Docuccino\Core\Extensions\Contracts\SchemaContext;
 use Docuccino\Core\Extensions\Schema\ComponentHoist;
+use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Docuccino\Core\Extensions\Schema\SchemaResult;
 use Docuccino\Core\Inference\DType\ClassT;
+use Docuccino\Laravel\Integrations\ApiResources\ResourceReflector;
 use Docuccino\Laravel\Integrations\ApiResources\ToArrayObject;
+use Docuccino\Laravel\Integrations\TimacdonaldJsonApi\TimacdonaldResourceReflector;
 use ReflectionMethod;
 use Throwable;
 
 /**
- * Builds a JSON:API `{data: {id, type, attributes?, links?, meta?}}` document, hoisting the resource
- * object to a reusable component via {@see ComponentHoist}. Laravel 13's first-party `JsonApiResource`
- * and the `timacdonald/json-api` base it was upstreamed from expose the same members, so both
- * integrations share this builder. Each mapper holds its own instance — the hoist carries per-mapper
+ * Builds a JSON:API `{data: {id, type, attributes?, links?, meta?}, included?, jsonapi?}` document,
+ * hoisting the resource object to a reusable component via {@see ComponentHoist}. Laravel's first-party
+ * `JsonApiResource` (12.45 and later) and the `timacdonald/json-api` base it was upstreamed from expose
+ * the same members, so both integrations share this builder. Each mapper holds its own instance — the hoist carries per-mapper
  * recursion state, so there's no shared mutable state between them.
  *
  * `id`/`type` are always `string` per the JSON:API contract rather than analysed; `attributes` and
  * `meta` are analysed from their `to*` methods.
  *
- * Two members are handled specially because a flat `toArray`-style analysis can't see their shapes:
- * - `links`: `toLinks` returns relation-keyed `Link` objects serialising to `{href, meta?}`, so the
- *   shape is emitted directly when the resource overrides the method.
- * - `relationships`, and the `included` compound-document member it drives, are OMITTED. Both packages
- *   express relationships as closures (`'author' => fn () => new AuthorResource(...)`) which the engine
- *   sees as `CallableT`, so nothing here can produce JSON:API's `{data: {type, id}}` linkage object —
- *   emitting either would document a shape the resource never yields.
+ * Two members are handled specially:
+ * - `links`: Laravel sends what `toLinks` returns, so it is analysed like `meta`; timacdonald's returns
+ *   `Link` objects it keys by relation, each serialising to `{href, meta?}`, so that shape is emitted.
+ *   Either only where the resource overrides the method.
+ * - `relationships` is OMITTED. Both packages express relationships as closures (`'author' => fn () =>
+ *   new AuthorResource(...)`) which the engine sees as `CallableT`, so nothing here can produce JSON:API's
+ *   `{data: {type, id}}` linkage object. The document's `included` member is any resource object, so it
+ *   is published with the other top-level members ({@see JsonApiTopLevel}).
+ *
+ * A timacdonald resource whose installed code does not send its resource object
+ * ({@see TimacdonaldResourceReflector::sentOtherwise()}) is published as an open object, with a diagnostic.
  */
 final class JsonApiDocument
 {
@@ -55,7 +62,14 @@ final class JsonApiDocument
     {
         // The component is the resource OBJECT, not the `{data: …}` envelope — that lets a collection
         // reference the bare object per item and wrap once, rather than `{data: [{data: {…}}]}`.
-        $object = $this->hoist->hoist($context, $type->fqcn, function () use ($type, $context): array {
+        $object = $this->hoist->hoist($context, $type->fqcn, function () use ($type, $context): ?array {
+            $sender = TimacdonaldResourceReflector::isResource($type->fqcn) ? TimacdonaldResourceReflector::sentOtherwise($type->fqcn) : null;
+            if ($sender !== null) {
+                $context->diagnostic(TimacdonaldResourceReflector::notSent($type->fqcn, $sender));
+
+                return null;
+            }
+
             $data = [
                 'type' => 'object',
                 'properties' => [
@@ -72,7 +86,7 @@ final class JsonApiDocument
                 }
             }
 
-            $links = self::linksSchema($type->fqcn);
+            $links = $this->linksSchema($type->fqcn, $context);
             if ($links !== null) {
                 $data['properties']['links'] = $links;
             }
@@ -86,23 +100,33 @@ final class JsonApiDocument
             return $object;
         }
 
+        // The members the family's `with()` adds beside `data`, which a static configured at boot decides.
+        $members = JsonApiTopLevel::members($type->fqcn, $context) ?? ['properties' => [], 'required' => []];
+        $context->dependsOn(...DeclarationFiles::of($type->fqcn));
+
         return new SchemaResult([
             'type' => 'object',
-            'properties' => ['data' => $object->schema],
-            'required' => ['data'],
+            'properties' => ['data' => $object->schema, ...$members['properties']],
+            'required' => ['data', ...$members['required']],
         ], $object->confidence);
     }
 
     /**
-     * An object of relation-keyed link objects, emitted only when the resource overrides `toLinks`. The
-     * relation keys (`self`, `related`, …) are runtime data, hence `additionalProperties`.
+     * The `links` member, only where the resource overrides `toLinks`: Laravel's as analysed, timacdonald's
+     * an object of relation-keyed link objects whose keys (`self`, `related`, …) are runtime data.
      *
      * @return array<string, mixed>|null
      */
-    private static function linksSchema(string $fqcn): ?array
+    private function linksSchema(string $fqcn, SchemaContext $context): ?array
     {
         if (! self::overridesLinks($fqcn)) {
             return null;
+        }
+
+        if (is_a($fqcn, ResourceReflector::JSON_API_RESOURCE, true)) {
+            $analyzed = $this->toArray->analyze($fqcn, 'toLinks', $context, false);
+
+            return $analyzed !== null && ($analyzed['properties'] ?? []) !== [] ? $analyzed : null;
         }
 
         return [

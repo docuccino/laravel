@@ -28,7 +28,7 @@ use Docuccino\Laravel\Tests\Fixtures\ApiResources\PersonaResource;
 /**
  * The API Resources integration: a JsonResource's toArray shape becomes a hoisted component with
  * whenLoaded/when fields optional and nested resources recursed, anonymous collections become arrays,
- * and Laravel 13 first-party JSON:API resources become JSON:API document schemas.
+ * and Laravel's first-party JSON:API resources become JSON:API document schemas.
  */
 function apiResourceEngine(): StubTypeEngine
 {
@@ -147,7 +147,10 @@ it('maps a first-party JSON:API resource to a JSON:API document schema', functio
     $response = resourceConverter($components)->toSchema(new ClassT(ArticleJsonApiResource::class))->schema;
     expect($response)->toBe([
         'type' => 'object',
-        'properties' => ['data' => ['$ref' => '#/components/schemas/ArticleJsonApiResource']],
+        'properties' => [
+            'data' => ['$ref' => '#/components/schemas/ArticleJsonApiResource'],
+            'included' => ['description' => 'Resource objects related to the primary data, sent as a compound document.', 'type' => 'array', 'items' => ['$ref' => '#/components/schemas/JsonApiResourceObject']],
+        ],
         'required' => ['data'],
     ]);
 
@@ -187,7 +190,10 @@ it('cycle-breaks a self-referential JSON:API resource via a $ref to its own comp
     // terminates — unbroken, it would recurse until the stack overflows.
     expect($response)->toBe([
         'type' => 'object',
-        'properties' => ['data' => ['$ref' => '#/components/schemas/CommentJsonApiResource']],
+        'properties' => [
+            'data' => ['$ref' => '#/components/schemas/CommentJsonApiResource'],
+            'included' => ['description' => 'Resource objects related to the primary data, sent as a compound document.', 'type' => 'array', 'items' => ['$ref' => '#/components/schemas/JsonApiResourceObject']],
+        ],
         'required' => ['data'],
     ]);
 

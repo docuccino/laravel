@@ -1932,6 +1932,13 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/ArticleJsonApiResource"
+                    },
+                    "included": {
+                      "description": "Resource objects related to the primary data, sent as a compound document.",
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/JsonApiResourceObject"
+                      }
                     }
                   },
                   "required": [
@@ -4308,20 +4315,14 @@
           },
           "links": {
             "type": "object",
-            "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string"
-                },
-                "meta": {
-                  "type": "object"
-                }
-              },
-              "required": [
-                "href"
-              ]
-            }
+            "properties": {
+              "self": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "self"
+            ]
           },
           "type": {
             "type": "string"
@@ -4560,6 +4561,37 @@
         },
         "required": [
           "id"
+        ]
+      },
+      "JsonApiResourceObject": {
+        "x-docuccino": {
+          "id": "sch:v1:wkpl2f4mclvd4hwl"
+        },
+        "description": "A JSON:API resource object.",
+        "type": "object",
+        "properties": {
+          "attributes": {
+            "type": "object"
+          },
+          "id": {
+            "type": "string"
+          },
+          "links": {
+            "type": "object"
+          },
+          "meta": {
+            "type": "object"
+          },
+          "relationships": {
+            "type": "object"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type"
         ]
       },
       "Merchant": {
@@ -4987,7 +5019,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "48ddc5d56508900ed302561994befac297bb8402be944adaef6f2752f3f24c42",
-      "contentHash": "ba9bfd94d4bb76dc6263f431672ea63b28d194f1f47b1d17a7dedad6ca8a4e32"
+      "contentHash": "e0a160bdd59cbaaed1f9aa2c7edb78766317d0f4d2bad977d3b6eef5a9c3fe25"
     },
     "generator": {
       "name": "docuccino/laravel",

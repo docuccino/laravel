@@ -170,7 +170,7 @@ final class DocumentGenerator
                 }
             }
         }
-        $bag->addAll($this->formDiagnostics($built));
+        $bag->addAll(self::routelessOnce($this->formDiagnostics($built)));
 
         // Webhooks are document-level — no route reaches them — but each one is still an operation, so
         // it travels as a fragment and is cached, restored and reported exactly like a route's.
@@ -233,13 +233,12 @@ final class DocumentGenerator
 
             return $route === null ? null : ServedForms::key($route).' '.$method;
         };
-        $finding = static fn (Diagnostic $diagnostic): string => serialize(DiagnosticCollector::finding($diagnostic));
 
         $said = [];
         foreach ($built as [$descriptor, $method, $fragment]) {
             $key = $descriptor->omitted === [] ? $route($descriptor, $method) : null;
             foreach ($key === null ? [] : $fragment->diagnostics as $diagnostic) {
-                $said[$key][$finding($diagnostic)] = true;
+                $said[$key][self::finding($diagnostic)] = true;
             }
         }
 
@@ -247,13 +246,49 @@ final class DocumentGenerator
         foreach ($built as [$descriptor, $method, $fragment]) {
             $key = $descriptor->omitted === [] ? null : $route($descriptor, $method);
             foreach ($fragment->diagnostics as $diagnostic) {
-                if ($key === null || ! isset($said[$key][$finding($diagnostic)])) {
+                if ($key === null || ! isset($said[$key][self::finding($diagnostic)])) {
                     $diagnostics[] = $diagnostic;
                 }
             }
         }
 
         return $diagnostics;
+    }
+
+    /**
+     * The route diagnostics with a finding that names no route kept once, however many routes raised it:
+     * it is about something the routes share — a request type, a property, an attribute on either — so
+     * every route that meets that thing says it word for word, and with no route to tell the copies apart
+     * the second locates nothing the first did not. Read off the fragments, so a warm build collapses
+     * exactly what a cold one does.
+     *
+     * @param  list<Diagnostic>  $diagnostics
+     * @return list<Diagnostic>
+     */
+    private static function routelessOnce(array $diagnostics): array
+    {
+        $kept = [];
+        $seen = [];
+        foreach ($diagnostics as $diagnostic) {
+            if ($diagnostic->routeSignature === null) {
+                $finding = self::finding($diagnostic);
+                if (isset($seen[$finding])) {
+                    continue;
+                }
+
+                $seen[$finding] = true;
+            }
+
+            $kept[] = $diagnostic;
+        }
+
+        return $kept;
+    }
+
+    /** A diagnostic's finding ({@see DiagnosticCollector::finding()}) as an array key. */
+    private static function finding(Diagnostic $diagnostic): string
+    {
+        return serialize(DiagnosticCollector::finding($diagnostic));
     }
 
     /**

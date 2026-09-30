@@ -13,8 +13,8 @@ use Throwable;
 /**
  * The one place that names Laravel's resource classes (by FQCN string — the integration is always-on
  * but must not hard-reference symbols that only exist on newer Laravel). Distinguishes a plain
- * `JsonResource`, an anonymous resource collection, and a Laravel 13 first-party JSON:API resource,
- * plus a helper to tell whether a return type ultimately involves JSON:API (for the query-param
+ * `JsonResource`, an anonymous resource collection, and a first-party JSON:API resource (Laravel 12.45
+ * and later), plus a helper to tell whether a return type ultimately involves JSON:API (for the query-param
  * extension).
  */
 final class ResourceReflector

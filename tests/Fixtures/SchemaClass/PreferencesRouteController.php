@@ -15,4 +15,6 @@ final class PreferencesRouteController
     public function list(SharedPreferencesRequest $request): void {}
 
     public function store(SharedPreferencesRequest $request): void {}
+
+    public function search(UnreadableFilterRequest $request): void {}
 }

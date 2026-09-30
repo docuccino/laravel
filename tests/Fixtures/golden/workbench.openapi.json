@@ -546,6 +546,13 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/ArticleJsonApiResource"
+                    },
+                    "included": {
+                      "description": "Resource objects related to the primary data, sent as a compound document.",
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/JsonApiResourceObject"
+                      }
                     }
                   },
                   "required": [
@@ -1338,20 +1345,14 @@
           },
           "links": {
             "type": "object",
-            "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "href": {
-                  "type": "string"
-                },
-                "meta": {
-                  "type": "object"
-                }
-              },
-              "required": [
-                "href"
-              ]
-            }
+            "properties": {
+              "self": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "self"
+            ]
           },
           "type": {
             "type": "string"
@@ -1558,6 +1559,34 @@
         },
         "required": [
           "id"
+        ]
+      },
+      "JsonApiResourceObject": {
+        "description": "A JSON:API resource object.",
+        "type": "object",
+        "properties": {
+          "attributes": {
+            "type": "object"
+          },
+          "id": {
+            "type": "string"
+          },
+          "links": {
+            "type": "object"
+          },
+          "meta": {
+            "type": "object"
+          },
+          "relationships": {
+            "type": "object"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type"
         ]
       },
       "Merchant": {

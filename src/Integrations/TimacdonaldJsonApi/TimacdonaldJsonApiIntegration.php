@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\TimacdonaldJsonApi;
 
 /**
- * Entry point for the `timacdonald/json-api` integration — the pre-13 JSON:API resource package Laravel
- * 13's first-party resources were upstreamed from. The provider spreads {@see extensions()} in only when
+ * Entry point for the `timacdonald/json-api` integration — the JSON:API resource package Laravel's
+ * first-party resources (12.45 and later) were upstreamed from. The provider spreads {@see extensions()} in only when
  * the package's base resource class exists, so docuccino/laravel never hard-requires it. The schema mapper
  * and parameters extension share the JSON:API infrastructure with the first-party `ApiResources`
  * integration.
@@ -34,6 +34,8 @@ final class TimacdonaldJsonApiIntegration
             TimacdonaldJsonApiResourceSchema::class,
             TimacdonaldJsonApiParametersExtension::class,
             TimacdonaldMediaType::class,
+            // A server implementation bound at boot adds `jsonapi` to every document, so it keys the cache.
+            ServerImplementationDigestContributor::class,
         ];
     }
 }

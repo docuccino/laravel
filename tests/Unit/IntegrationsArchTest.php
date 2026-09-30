@@ -195,6 +195,10 @@ function publicExtensionSurface(): array
         // the laravel-actions integration documents the rules they validate by — two readings of the gate
         // are how a header read in a hook that never runs gets published.
         'Docuccino\Laravel\Support\LaravelActionHooks',
+        // And again: the ONE schema for items whose keys may or may not run 0…n-1. A resource collection
+        // that keeps its keys (an integration) and a collection returned bare (an extension) are sent by
+        // the same `json_encode`, and two spellings of the shape are how one of them starts disagreeing.
+        'Docuccino\Laravel\Support\EitherKeyed',
     ];
 }
 

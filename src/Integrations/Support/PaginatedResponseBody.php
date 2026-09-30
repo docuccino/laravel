@@ -11,7 +11,7 @@ use Docuccino\Core\Patch\Contribution;
 use Docuccino\Laravel\Integrations\ApiResources\CollectionKeys;
 use Docuccino\Laravel\Integrations\ApiResources\PaginatedResourceResponsesExtension;
 use Docuccino\Laravel\Integrations\ApiResources\ResourceReflector;
-use Docuccino\Laravel\Integrations\TimacdonaldJsonApi\TimacdonaldResourceReflector;
+use Docuccino\Laravel\Integrations\ApiResources\ToArrayObject;
 use Docuccino\Laravel\Support\FrameworkClasses;
 use Docuccino\Laravel\Support\IgnoredResponses;
 
@@ -34,26 +34,17 @@ use Docuccino\Laravel\Support\IgnoredResponses;
 final class PaginatedResponseBody
 {
     /**
-     * The action's first plain `AnonymousResourceCollection<T>` return type, bare or rendered through the
+     * The action's first `AnonymousResourceCollection<T>` return type, bare or rendered through the
      * framework's `->response()` ({@see FrameworkClasses::selfRendered()}) — the same 200 body either way.
-     * JSON:API collections have their own envelope, so they're skipped.
+     * A JSON:API collection is one too: both families send Laravel's page envelope beside their own members.
      */
     public static function resourceCollectionReturn(RouteContext $context): ?ClassT
     {
         foreach ($context->analysis()->returns as $return) {
             $type = FrameworkClasses::selfRendered($return->type);
-            if (! ($type instanceof ClassT && ResourceReflector::isAnonymousCollection($type->fqcn))) {
-                continue;
+            if ($type instanceof ClassT && ResourceReflector::isAnonymousCollection($type->fqcn)) {
+                return $type;
             }
-
-            $item = $type->typeArgs[0] ?? null;
-            if ($item instanceof ClassT
-                && (ResourceReflector::isJsonApiResource($item->fqcn) || TimacdonaldResourceReflector::isResource($item->fqcn))
-            ) {
-                continue;
-            }
-
-            return $type;
         }
 
         return null;
@@ -76,10 +67,11 @@ final class PaginatedResponseBody
             return;
         }
 
+        $links = PageLinks::of($collection);
         $envelope = PaginationParts::hoist(
             $context->converter(),
-            PaginationEnvelope::of($kind, $items, CollectionKeys::preserved($collection)),
-            PaginationEnvelope::parts($kind),
+            PaginationEnvelope::of($kind, $items, $links, CollectionKeys::preserved($collection)),
+            PaginationEnvelope::parts($kind, $links),
         );
 
         $item = $collection->typeArgs[0] ?? null;
@@ -98,7 +90,7 @@ final class PaginatedResponseBody
         // Either form is the whole body, so it is declared as one shape: the keywords the inference-layer
         // `{data: […]}` — or a withoutWrapping bare array — left behind come off with the shape they
         // described, which is what leaves a bare `$ref` where the component publishes.
-        $content->declareShape(self::withMembers($reference ?? $envelope, $envelope, $kind, $result->schema), $by);
+        $content->declareShape(self::withMembers($reference ?? $envelope, $envelope, $kind, $links, $result->schema), $by);
     }
 
     /**
@@ -120,13 +112,15 @@ final class PaginatedResponseBody
      * @param  array<string, mixed>  $body
      * @return array<string, mixed>
      */
-    private static function withMembers(array $page, array $envelope, string $kind, array $body): array
+    private static function withMembers(array $page, array $envelope, string $kind, PageLinks $links, array $body): array
     {
         $properties = is_array($body['properties'] ?? null) ? $body['properties'] : [];
         $restated = self::itemsSchema($body) === null && is_array($properties['data'] ?? null) ? ['data' => $properties['data']] : [];
         unset($properties['data']);
-        $parts = PaginationEnvelope::parts($kind);
-        $sent = PaginationEnvelope::sent($kind);
+        $parts = PaginationEnvelope::parts($kind, $links);
+        $sent = PaginationEnvelope::sent($kind, $links);
+        $always = PaginationEnvelope::alwaysSent($kind, $links);
+        $stated = is_array($body['required'] ?? null) ? $body['required'] : [];
         foreach (['links', 'meta'] as $part) {
             if (! array_key_exists($part, $properties)) {
                 continue;
@@ -144,7 +138,7 @@ final class PaginatedResponseBody
                 continue;
             }
 
-            $restated[$part] = self::mergedPart($parts[$part]['schema'], $sent[$part], $member, $colliding);
+            $restated[$part] = self::mergedPart($parts[$part]['schema'], $sent[$part], $always[$part], $member, in_array($part, $stated, true), $colliding);
             unset($properties[$part]);
         }
 
@@ -158,7 +152,6 @@ final class PaginatedResponseBody
         }
 
         $members = ['type' => 'object', 'properties' => $properties];
-        $stated = is_array($body['required'] ?? null) ? $body['required'] : [];
         $required = array_values(array_filter($stated, static fn (mixed $member): bool => is_string($member) && array_key_exists($member, $properties)));
         if ($required !== []) {
             $members['required'] = $required;
@@ -192,34 +185,43 @@ final class PaginatedResponseBody
     /**
      * A part as `array_merge_recursive` sends it: the page's members and the `with()` part's side by side,
      * and a key both send as the array their two values are merged into — a list or an object, depending
-     * on the values, and never the type either states. Where `with()` may not return the key, the page's
+     * on the values, and never the type either states. Where either side may not send the key, the other's
      * own value may be sent instead, so either is published.
      *
      * @param  array<string, mixed>  $part
      * @param  array<string, array<string, mixed>>  $sent
+     * @param  list<string>  $always  the keys the page sends on every page
      * @param  array<array-key, mixed>  $member
+     * @param  bool  $memberAlways  whether `with()` returns the part on every page
      * @param  list<string>  $colliding
      * @return array<string, mixed>
      */
-    private static function mergedPart(array $part, array $sent, array $member, array $colliding): array
+    private static function mergedPart(array $part, array $sent, array $always, array $member, bool $memberAlways, array $colliding): array
     {
-        $own = is_array($part['properties'] ?? null) ? $part['properties'] : [];
+        $own = PaginationEnvelope::named($part);
         $named = is_array($member['properties'] ?? null) ? $member['properties'] : [];
-        $stated = array_values(array_filter(
+        // What `with()` sends on every page: nothing where it may not return the part at all.
+        $stated = $memberAlways ? array_values(array_filter(
             is_array($member['required'] ?? null) ? $member['required'] : [],
             static fn (mixed $key): bool => is_string($key) && array_key_exists($key, $named),
-        ));
+        )) : [];
 
         $properties = [...$own, ...$named];
         foreach ($colliding as $key) {
-            $merged = PaginationEnvelope::MERGED;
-            $properties[$key] = in_array($key, $stated, true) ? $merged : ['anyOf' => [$sent[$key], $merged]];
+            // Each side's own value where the other may not send the key, and the merge where both do.
+            $alone = [
+                ...in_array($key, $stated, true) ? [] : [$sent[$key]],
+                ...in_array($key, $always, true) || ! is_array($named[$key] ?? null) ? [] : [$named[$key]],
+            ];
+            $properties[$key] = $alone === [] ? PaginationEnvelope::MERGED : ['anyOf' => [...$alone, PaginationEnvelope::MERGED]];
         }
 
-        // The page sends every key it collides on, whatever `with()` returns.
-        $required = array_values(array_unique([...$stated, ...$colliding]));
+        // The page sends the keys it always sends whatever `with()` returns.
+        $required = array_values(array_unique([...$stated, ...array_intersect($colliding, $always)]));
+        $merged = ['type' => 'object', 'properties' => $properties, 'required' => $required];
 
-        return ['type' => 'object', 'properties' => $properties, 'required' => $required];
+        // A page part that may be `[]` stays so unless `with()` always adds a key to it.
+        return $required === [] ? ToArrayObject::orEmpty($merged) : $merged;
     }
 
     /**

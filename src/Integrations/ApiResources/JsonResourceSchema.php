@@ -17,8 +17,10 @@ use Docuccino\Core\Extensions\Schema\SchemaResult;
 use Docuccino\Core\Inference\ClassRef;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\DType\DType;
+use Docuccino\Laravel\Integrations\Support\JsonApiTopLevel;
 use Docuccino\Laravel\Integrations\Support\PaginationEnvelope;
 use Docuccino\Laravel\Integrations\Support\ResourceWrapping;
+use Docuccino\Laravel\Integrations\TimacdonaldJsonApi\TimacdonaldResourceReflector;
 use ReflectionClass;
 
 /**
@@ -37,9 +39,6 @@ use ReflectionClass;
 #[ExtensionOrder(priority: Priorities::EARLY)]
 final class JsonResourceSchema implements TypeToSchema
 {
-    /** The pre-13 timacdonald JSON:API base — a JsonResource subclass, hence the explicit exclusion. */
-    private const TIMACDONALD_JSON_API_RESOURCE = 'TiMacDonald\\JsonApi\\JsonApiResource';
-
     public function __construct(
         private readonly ToArrayObject $toArray = new ToArrayObject,
         private readonly ComponentHoist $hoist = new ComponentHoist,
@@ -50,8 +49,8 @@ final class JsonResourceSchema implements TypeToSchema
         return $type instanceof ClassT
             && ResourceReflector::isResource($type->fqcn)
             && ! ResourceReflector::isJsonApiResource($type->fqcn)
-            // is_a returns false when the package isn't installed, so this costs nothing there.
-            && ! is_a($type->fqcn, self::TIMACDONALD_JSON_API_RESOURCE, true);
+            // A JsonResource subclass too, which its own integration maps.
+            && ! TimacdonaldResourceReflector::isResource($type->fqcn);
     }
 
     public function toSchema(DType $type, SchemaContext $context): ?SchemaResult
@@ -289,6 +288,12 @@ final class JsonResourceSchema implements TypeToSchema
     {
         if (! class_exists($fqcn) || ! method_exists($fqcn, 'with')) {
             return null;
+        }
+
+        // A JSON:API collection's own with(), whose members are read from the boot state it reads.
+        $jsonApi = JsonApiTopLevel::members($fqcn, $context);
+        if ($jsonApi !== null) {
+            return $jsonApi;
         }
 
         $class = new ReflectionClass($fqcn);

@@ -19,14 +19,18 @@ use Docuccino\Laravel\Integrations\ApiResources\JsonResourceSchema;
 use Docuccino\Laravel\Integrations\Support\JsonApiDocument;
 use Docuccino\Laravel\Integrations\TimacdonaldJsonApi\TimacdonaldJsonApiResourceSchema;
 use Docuccino\Laravel\Integrations\TimacdonaldJsonApi\TimacdonaldResourceReflector;
+use Docuccino\Laravel\Tests\Fixtures\TimacdonaldJsonApi\FlatTimacdonaldResource;
 use Docuccino\Laravel\Tests\Fixtures\TimacdonaldJsonApi\TimacdonaldArticleResource;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Routing\Router;
 use TiMacDonald\JsonApi\JsonApiResourceCollection;
 use Workbench\App\Http\Controllers\FormController;
 
 /**
- * The timacdonald/json-api integration: the pre-13 JSON:API resource package Laravel 13's first-party
- * resources were upstreamed from. Its `to*()` surface is identical, so the shared JSON:API document +
+ * The timacdonald/json-api integration: the JSON:API resource package Laravel's first-party resources
+ * (12.45 and later) were upstreamed from. Its `to*()` surface is identical, so the shared JSON:API document +
  * params infra produces the same output behind a different class guard. The self-reference cycle-break is
  * proven once in the first-party ApiResources suite — same {@see JsonApiDocument} builder.
  */
@@ -54,13 +58,26 @@ it('maps a timacdonald JSON:API resource to a JSON:API document schema through t
         new RepresentationPolicy,
     );
 
-    // The response root wraps the document envelope around a $ref to the hoisted resource object.
+    // The response root wraps the document envelope around a $ref to the hoisted resource object — on a
+    // release that sends one. An older release under Laravel 12.45 or later sends a resource, and each one
+    // it includes, as its attributes alone, so the document claims only an object and says why.
+    $sends = timacdonaldSendsResourceObjects();
     $response = $converter->toSchema(new ClassT(TimacdonaldArticleResource::class))->schema;
     expect($response)->toBe([
         'type' => 'object',
-        'properties' => ['data' => ['$ref' => '#/components/schemas/TimacdonaldArticleResource']],
+        'properties' => [
+            'data' => $sends ? ['$ref' => '#/components/schemas/TimacdonaldArticleResource'] : ['type' => 'object'],
+            'included' => ['description' => 'Resource objects related to the primary data, sent as a compound document.', 'type' => 'array', 'items' => $sends ? ['$ref' => '#/components/schemas/JsonApiResourceObject'] : ['type' => 'object']],
+        ],
         'required' => ['data'],
-    ]);
+    ])->and(array_map(static fn ($d): string => $d->code, $components->diagnostics()))->toBe($sends ? [] : ['timacdonald-json-api.resource-object-not-sent']);
+
+    if (! $sends) {
+        expect($components->schemas())->not->toHaveKey('TimacdonaldArticleResource')
+            ->and($components->diagnostics()[0]->message)->toContain(TimacdonaldArticleResource::class.' is sent as its attributes alone');
+
+        return;
+    }
 
     // The hoisted component is the resource object itself (no `{data: …}` envelope).
     $object = $components->schemas()['TimacdonaldArticleResource'];
@@ -95,12 +112,57 @@ it('documents a timacdonald JSON:API collection as a single-wrapped array of res
     $collection = new ClassT(JsonApiResourceCollection::class, [new ClassT(TimacdonaldArticleResource::class)]);
     $schema = $converter->toSchema($collection)->schema;
 
-    // {data: [resource-object]} — each item is the bare object $ref, not a nested {data: {…}} document.
+    // {data: [resource-object]} — each item is the bare object $ref, not a nested {data: {…}} document;
+    // an open object where the installed release sends each item as its attributes.
+    $sends = timacdonaldSendsResourceObjects();
     expect($schema)->toBe([
         'type' => 'object',
-        'properties' => ['data' => ['type' => 'array', 'items' => ['$ref' => '#/components/schemas/TimacdonaldArticleResource']]],
+        'properties' => [
+            'data' => ['type' => 'array', 'items' => $sends ? ['$ref' => '#/components/schemas/TimacdonaldArticleResource'] : ['type' => 'object']],
+            'included' => ['description' => 'Resource objects related to the primary data, sent as a compound document.', 'type' => 'array', 'items' => $sends ? ['$ref' => '#/components/schemas/JsonApiResourceObject'] : ['type' => 'object']],
+        ],
         'required' => ['data'],
     ]);
+});
+
+it('publishes a timacdonald resource sending its own resolveResourceData() as an open object, on every release', function (): void {
+    $components = new ComponentRegistry;
+    $converter = new SchemaConverter(
+        [new TimacdonaldJsonApiResourceSchema, new JsonResourceSchema, ...DefaultTypeMappers::all()],
+        timacdonaldEngine(),
+        $components,
+        new RepresentationPolicy,
+    );
+    $schema = $converter->toSchema(new ClassT(FlatTimacdonaldResource::class))->schema;
+
+    // Laravel 12.45 and later send what the override returns — here no `type`, so no resource object.
+    $model = new class extends Model {};
+    $model->forceFill(['id' => 1, 'title' => 't']);
+    $sent = json_decode((string) (new FlatTimacdonaldResource($model))->toResponse(Request::create('/'))->getContent());
+    $diagnostics = $components->diagnostics();
+
+    expect($sent->data)->toEqual((object) ['id' => '1', 'title' => 't'])
+        ->and($schema['properties']['data'])->toBe(['type' => 'object'])
+        ->and(array_map(static fn ($d): string => $d->code, $diagnostics))->toBe(['timacdonald-json-api.resource-object-not-sent'])
+        ->and($diagnostics[0]->message)->toContain('resolveResourceData() declared on '.FlatTimacdonaldResource::class);
+});
+
+it('reads which class sends a timacdonald resource from the installed code', function (): void {
+    // The package's own resolveResourceData() sends the resource object; Laravel's base sends toAttributes().
+    expect(TimacdonaldResourceReflector::sentOtherwise(TimacdonaldArticleResource::class))->toBe(timacdonaldSendsResourceObjects() ? null : JsonResource::class)
+        ->and(TimacdonaldResourceReflector::sentOtherwise(FlatTimacdonaldResource::class))->toBe(FlatTimacdonaldResource::class)
+        ->and(TimacdonaldResourceReflector::sentOtherwise('App\\Missing'))->toBeNull();
+
+    // Each sender names its own remedy, whichever release is installed.
+    $base = TimacdonaldResourceReflector::notSent('App\\Article', JsonResource::class);
+    $override = TimacdonaldResourceReflector::notSent('App\\Article', 'App\\Base');
+
+    expect($base->code)->toBe('timacdonald-json-api.resource-object-not-sent')
+        ->and($base->message)->toContain('App\\Article is sent as its attributes alone')
+        ->and($base->help)->toContain('v1.0.0-beta.10')
+        ->and($override->code)->toBe('timacdonald-json-api.resource-object-not-sent')
+        ->and($override->message)->toContain('resolveResourceData() declared on App\\Base')
+        ->and($override->help)->toContain('Remove the override');
 });
 
 it('declines a timacdonald resource in the plain JsonResource mapper (symmetric exclusion)', function (): void {

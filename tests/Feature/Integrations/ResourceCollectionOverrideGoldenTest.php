@@ -12,6 +12,7 @@ use Docuccino\Core\Inference\ReturnSite;
 use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Laravel\Integrations\ApiResources\ResourceReflector;
+use Docuccino\Laravel\Integrations\Support\PageLinks;
 use Docuccino\Laravel\Integrations\Support\PaginationEnvelope;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\AppendedCollection;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\CatalogueResource;
@@ -223,7 +224,7 @@ it('names every key Laravel sends in a page\'s links and meta, as what it sends'
     // Read off the response Laravel builds, so a key a paginator gains is a collision this test catches.
     $sent = json_decode((string) (new AnonymousResourceCollection($paginator(), CatalogueResource::class))
         ->toResponse(Request::create('/'))->getContent(), true);
-    $stated = PaginationEnvelope::sent($kind);
+    $stated = PaginationEnvelope::sent($kind, PageLinks::Laravel);
 
     foreach (['links', 'meta'] as $part) {
         $keys = array_keys($sent[$part]);

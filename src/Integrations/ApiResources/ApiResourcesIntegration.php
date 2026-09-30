@@ -33,8 +33,8 @@ final class ApiResourcesIntegration
             // first-party JSON:API resource, but registering it here means a disabled api_resources
             // integration contributes no matcher, so its resources stay application/json.
             ResourceMediaType::class,
-            // The wrap statics a service provider may set at boot decide every resource body, so they key the cache.
-            ResourceWrapDigestContributor::class,
+            // The statics a service provider may set at boot decide every resource body, so they key the cache.
+            ResourceStaticsDigestContributor::class,
         ];
 
         if ($probe(ResourceReflector::JSON_API_RESOURCE)) {

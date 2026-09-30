@@ -7,6 +7,7 @@ use Docuccino\Core\Extensions\Schema\ComponentRegistry;
 use Docuccino\Core\Extensions\Schema\SchemaConverter;
 use Docuccino\Core\Inference\NullTypeEngine;
 use Docuccino\Laravel\Integrations\Support\PageComponent;
+use Docuccino\Laravel\Integrations\Support\PageLinks;
 use Docuccino\Laravel\Integrations\Support\PaginationEnvelope;
 use Docuccino\Laravel\Integrations\Support\PaginationTerminalVisitor;
 use Docuccino\Laravel\Integrations\Support\SpatieDataEnvelope;
@@ -37,16 +38,16 @@ $envelopes = [
 ];
 
 $parts = static fn (string $producer, string $kind): array => $producer === 'laravel'
-    ? PaginationEnvelope::parts($kind)
+    ? PaginationEnvelope::parts($kind, PageLinks::Laravel)
     : SpatieDataEnvelope::parts($kind);
 
 $envelope = static fn (string $producer, string $kind, array $items): array => $producer === 'laravel'
-    ? PaginationEnvelope::of($kind, $items)
+    ? PaginationEnvelope::of($kind, $items, PageLinks::Laravel)
     : SpatieDataEnvelope::of($kind, $items);
 
 it('names a page of an item type after the item and the kind', function (string $kind, string $expected) use ($converter, $items): void {
     $context = $converter();
-    $envelope = PaginationEnvelope::of($kind, $items);
+    $envelope = PaginationEnvelope::of($kind, $items, PageLinks::Laravel);
 
     // The item is a component of its own in any real build, so it is registered here too — the page
     // claims its name beside the item's, and may never be the thing that moves it.
@@ -76,13 +77,13 @@ it('covers every paginator kind the terminal table can report', function () use 
     expect($kinds)->toHaveCount(3);
 
     foreach ($kinds as $kind) {
-        expect(PageComponent::reference($converter(), $kind, ArticleResource::class, $items, PaginationEnvelope::of('length', $items)))
+        expect(PageComponent::reference($converter(), $kind, ArticleResource::class, $items, PaginationEnvelope::of('length', $items, PageLinks::Laravel)))
             ->not->toBeNull();
     }
 });
 
 it('leaves an envelope inline where it cannot name one', function (string $case) use ($converter, $items): void {
-    $envelope = PaginationEnvelope::of('length', $items);
+    $envelope = PaginationEnvelope::of('length', $items, PageLinks::Laravel);
 
     $reference = match ($case) {
         // A kind outside the table: better no component than one named after a guess.
@@ -105,8 +106,8 @@ it('describes a page by its paginator kind and nothing else', function (string $
     // A page has no class behind it, so the sentence is all a reader gets — and it is a fact about the
     // SHAPE, never about what was paginated. Two item types paginated the same way therefore read the
     // same, which is what keeps renaming one resource from rewriting prose on a page of another.
-    $articles = PaginationEnvelope::of($kind, $items);
-    $authors = PaginationEnvelope::of($kind, ['$ref' => '#/components/schemas/AuthorResource']);
+    $articles = PaginationEnvelope::of($kind, $items, PageLinks::Laravel);
+    $authors = PaginationEnvelope::of($kind, ['$ref' => '#/components/schemas/AuthorResource'], PageLinks::Laravel);
 
     expect($articles['description'] ?? null)->toBeString()->not->toBe('')
         ->and($authors['description'])->toBe($articles['description'])

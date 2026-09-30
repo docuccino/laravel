@@ -102,7 +102,7 @@ it('keeps the root envelope on every arm of a composite at the root', function (
     // The JSON:API document root.
     'nullable json:api resource' => [
         UnionT::of([new ClassT(ArticleJsonApiResource::class), new NullT]),
-        ['type' => ['object', 'null'], 'properties' => ['data' => ['$ref' => '#/components/schemas/ArticleJsonApiResource']], 'required' => ['data']],
+        ['type' => ['object', 'null'], 'properties' => ['data' => ['$ref' => '#/components/schemas/ArticleJsonApiResource'], 'included' => ['description' => 'Resource objects related to the primary data, sent as a compound document.', 'type' => 'array', 'items' => ['$ref' => '#/components/schemas/JsonApiResourceObject']]], 'required' => ['data']],
     ],
 
     // spatie's `data.wrap`.

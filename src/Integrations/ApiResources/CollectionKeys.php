@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\ApiResources;
 
 use Docuccino\Core\Inference\DType\ClassT;
+use Docuccino\Laravel\Support\EitherKeyed;
 use ReflectionClass;
 
 /**
@@ -43,7 +44,7 @@ final class CollectionKeys
     public static function sent(array $items, bool $preserved): array
     {
         return $preserved
-            ? ['type' => ['array', 'object'], 'items' => $items, 'additionalProperties' => $items]
+            ? EitherKeyed::schema($items)
             : ['type' => 'array', 'items' => $items];
     }
 

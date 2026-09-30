@@ -45,6 +45,9 @@ final class FrameworkClasses
     /** Symfony's streamed JSON response, which `response()->streamJson()` hands back. */
     public const STREAMED_JSON_RESPONSE = 'Symfony\\Component\\HttpFoundation\\StreamedJsonResponse';
 
+    /** The contract every Laravel collection implements — the base, Eloquent's and the lazy one. */
+    public const ENUMERABLE = 'Illuminate\\Support\\Enumerable';
+
     /** The view contract `view()` is declared as returning; Laravel's own view implements it. */
     public const VIEW_CONTRACT = 'Illuminate\\Contracts\\View\\View';
 
@@ -104,6 +107,12 @@ final class FrameworkClasses
     {
         return in_array($fqcn, self::VIEW_CLASSES, true)
             || is_subclass_of($fqcn, self::VIEW_CONTRACT, true);
+    }
+
+    /** Whether an FQCN names a Laravel collection: a body sent as the array it holds. */
+    public static function isCollection(string $fqcn): bool
+    {
+        return $fqcn === self::ENUMERABLE || is_subclass_of($fqcn, self::ENUMERABLE, true);
     }
 
     /**

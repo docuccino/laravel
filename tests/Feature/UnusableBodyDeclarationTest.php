@@ -11,9 +11,11 @@ use Docuccino\Core\Inference\DType\LiteralT;
 use Docuccino\Core\Inference\ReturnSite;
 use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Inference\TypeEngine;
+use Docuccino\Laravel\Tests\Fixtures\Attributes\MalformedClassAttributeController;
 use Docuccino\Laravel\Tests\Fixtures\SchemaClass\PreferencesRouteController;
 use Docuccino\Laravel\Tests\Fixtures\SchemaClass\ReadOnlyFilterRequest;
 use Docuccino\Laravel\Tests\Fixtures\SchemaClass\SharedPreferencesRequest;
+use Docuccino\Laravel\Tests\Fixtures\SchemaClass\UnreadableFilterRequest;
 use Docuccino\Laravel\Tests\Support\CountingTypeEngine;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Illuminate\Routing\Router;
@@ -39,6 +41,7 @@ function preferenceRouteEngine(): callable
     return static fn (): TypeEngine => WorkbenchEngine::make(analysisOverrides: [
         ReadOnlyFilterRequest::class.'::rules' => new ActionAnalysis(returns: [new ReturnSite($rules, $location)]),
         SharedPreferencesRequest::class.'::rules' => new ActionAnalysis(returns: [new ReturnSite($rules, $location)]),
+        UnreadableFilterRequest::class.'::rules' => new ActionAnalysis(returns: [new ReturnSite($rules, $location)]),
     ]);
 }
 
@@ -284,4 +287,61 @@ it('publishes the asked-for name where the type does mint a component', function
 
     expect(array_keys($result->document->toArray()['components']['schemas'] ?? []))
         ->toBe(['PreferenceFiltersRequest']);
+});
+
+/**
+ * The type's declaration PHP cannot construct is the other thing a read verb used to drop without a
+ * word: nothing writes it at any verb, so it is not "unusable" at the read one — it is broken, the same
+ * way at every verb. So it is one report, `attribute.unreadable`, however many routes of whichever verbs
+ * meet the type: the finding names the class rather than a route, and every route that meets the class
+ * says it word for word. (DELETE is a body verb here, so it is a write row.)
+ */
+it('reports a type-level declaration PHP cannot construct exactly once, whatever verbs meet the type', function (array $verbs): void {
+    $result = localityBuild(static function (Router $router) use ($verbs): void {
+        foreach ($verbs as $i => $verb) {
+            $router->{$verb}('api/preference-search/'.$i, [PreferencesRouteController::class, 'search']);
+        }
+    }, preferenceRouteEngine());
+
+    $reported = diagnosticsCoded($result->diagnostics, 'attribute.unreadable');
+
+    expect($reported)->toHaveCount(1)
+        ->and($reported[0]->message)->toBe('The #[BodyParameter] on '.UnreadableFilterRequest::class.' could not be instantiated and was ignored.')
+        ->and($reported[0]->routeSignature)->toBeNull()
+        // Not "unusable" as well: a declaration nothing can construct is not one a verb could have used.
+        ->and(diagnosticsCoded($result->diagnostics, 'attribute.schema-class-unusable'))->toBe([]);
+})->with([
+    'one read route' => [['get']],
+    'two read routes' => [['get', 'get']],
+    'a read route and a write route' => [['get', 'post']],
+    'two write routes' => [['post', 'put']],
+    'a DELETE route' => [['delete']],
+]);
+
+it('reports the unconstructable declaration warm exactly as cold', function (): void {
+    $routes = static function (Router $router): void {
+        $router->get('api/preference-search', [PreferencesRouteController::class, 'search']);
+        $router->get('api/preference-search/archive', [PreferencesRouteController::class, 'search']);
+    };
+
+    $warm = assertWarmEqualsCold($routes, $routes, preferenceRouteEngine());
+
+    // Equal-and-both-empty would prove nothing.
+    expect(diagnosticsCoded($warm->diagnostics, 'attribute.unreadable'))->toHaveCount(1);
+});
+
+/**
+ * The collapse is for a finding no route owns. One the route bag raises about a controller carries the
+ * route's signature, and two routes sharing the controller are two operations the author will read about
+ * — so both stay, and the rows above are the collapse rather than every repeat being thrown away.
+ */
+it('keeps a finding that names its route once per route', function (): void {
+    $result = localityBuild(static function (Router $router): void {
+        $router->get('api/malformed-one', [MalformedClassAttributeController::class, 'index']);
+        $router->get('api/malformed-two', [MalformedClassAttributeController::class, 'index']);
+    });
+
+    $signatures = array_map(static fn (Diagnostic $d): ?string => $d->routeSignature, diagnosticsCoded($result->diagnostics, 'attribute.unreadable'));
+
+    expect($signatures)->toBe(['GET /api/malformed-one', 'GET /api/malformed-two']);
 });
