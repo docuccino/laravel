@@ -383,6 +383,21 @@ function portalFactsAt(array $document, string $action): array
     return is_array($facts) ? $facts : [];
 }
 
+/**
+ * The stand-in members the shared 401 component records for the examples it publishes, keyed by example —
+ * the record lives with the example, so it lives on the component.
+ *
+ * @return array<string, mixed>
+ */
+function portalPlaceholdersAt(array $document, string $action): array
+{
+    $ref = $document['paths']['/api/portal-'.$action]['get']['responses']['401']['$ref'] ?? null;
+    $component = is_string($ref) ? ($document['components']['responses'][substr($ref, strlen('#/components/responses/'))] ?? []) : [];
+    $placeholders = is_array($component) ? ($component['x-docuccino']['facts']['examplePlaceholders'] ?? []) : [];
+
+    return is_array($placeholders) ? $placeholders : [];
+}
+
 it('publishes one illustration where two arms of an error differ only where one of them filled in', function (): void {
     // Both arms answer 401 with one carrier, one status, one media type and one title; one writes its
     // problem type and detail out and the other asks the exception, so the build reads them on one arm
@@ -400,10 +415,12 @@ it('publishes one illustration where two arms of an error differ only where one 
             'detail' => 'Sign in again to continue.',
         ])
         ->and(array_keys($document['components']['responses']))->toBe(['Error401'])
-        // The one channel that can carry the answer: the arm that filled says so on its own node, which
-        // is what survives a warm fragment-cache hit.
-        ->and(portalFactsAt($document, 'exports'))
-        ->toBe(['examplePlaceholders' => ['application/problem+json' => ['detail', 'type']]])
+        // The record belongs to the example that is PUBLISHED, and the one published is the body the
+        // dashboard arm read: the component records no stand-in in it, and neither use carries a record of
+        // an example it does not publish. (The arm that filled says so on its pre-hoist body, which is what
+        // a warm fragment-cache hit replays to the collapse.)
+        ->and(portalPlaceholdersAt($document, 'dashboard'))->toBe([])
+        ->and(portalFactsAt($document, 'exports'))->toBe([])
         ->and(portalFactsAt($document, 'dashboard'))->toBe([]);
 });
 
@@ -447,8 +464,9 @@ it('collapses to the same example, and the same bytes, on a warm fragment-cache 
     $document = $warm->document->toArray();
 
     expect(portalMediaAt($document, 'exports')['examples'])->toHaveCount(2)
-        ->and(portalFactsAt($document, 'exports'))
-        ->toBe(['examplePlaceholders' => ['application/problem+json' => ['detail', 'type']]]);
+        // Both published examples were read rather than filled, warm as cold.
+        ->and(portalPlaceholdersAt($document, 'exports'))->toBe([])
+        ->and(portalFactsAt($document, 'exports'))->toBe([]);
 
     // Byte-locked, because this population had no golden: every laravel golden's error examples folded
     // in full, so nothing in the corpus stood where an example has to be filled at all.
@@ -626,9 +644,13 @@ it('still records a schema-derived fill as a member nothing read', function (): 
     // rival illustration that had actually proved it.
     $document = exportDocument();
 
-    $facts = $document['paths']['/api/export-archive']['get']['responses']['409']['x-docuccino']['facts'] ?? [];
+    $use = $document['paths']['/api/export-archive']['get']['responses']['409'];
+    $component = $document['components']['responses'][substr((string) $use['$ref'], strlen('#/components/responses/'))];
 
-    expect($facts)->toBe(['examplePlaceholders' => ['application/problem+json' => ['context', 'failedAt', 'reason', 'retryable']]]);
+    // The record lives with the example it describes, which the shared component publishes.
+    expect($component['x-docuccino']['facts']['examplePlaceholders'])
+        ->toBe(['application/problem+json' => ['example' => ['context', 'failedAt', 'reason', 'retryable']]])
+        ->and($use['x-docuccino']['facts'] ?? [])->toBe([]);
 });
 
 it('publishes an error example no build-time lint can fault', function (): void {

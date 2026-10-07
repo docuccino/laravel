@@ -187,7 +187,8 @@ it('marks the stand-in and only the stand-in', function (): void {
             foreach ($responses as $status => $response) {
                 $statuses[] = $path.' '.$method.' '.$status;
 
-                $extension = $response['x-docuccino'] ?? null;
+                // A shared response publishes its use's extension on the operation, under `uses`.
+                $extension = $response['x-docuccino'] ?? ($operation['x-docuccino']['uses']['responses'][$status] ?? null);
                 $facts = is_array($extension) && is_array($extension['facts'] ?? null) ? $extension['facts'] : [];
 
                 if (($facts[ResponseDraft::STATUS_UNPLACED] ?? null) === true) {
@@ -217,10 +218,9 @@ it('marks the stand-in and only the stand-in', function (): void {
 it('names the exception and the throw site in the trail, not the action', function (): void {
     $document = emittedArray(localityBuild(ledgerRoutes(), ledgerEngine()));
 
-    /** @var array<string, mixed> $response */
-    $response = $document['paths']['/api/ledgers/{ledger}/review']['get']['responses']['500'];
+    // The 500 is a shared response, so its use's trail is published on the operation, under `uses`.
     /** @var array{provenance: list<array<string, mixed>>} $extension */
-    $extension = $response['x-docuccino'];
+    $extension = $document['paths']['/api/ledgers/{ledger}/review']['get']['x-docuccino']['uses']['responses']['500'];
 
     $sources = [];
     foreach ($extension['provenance'] as $record) {

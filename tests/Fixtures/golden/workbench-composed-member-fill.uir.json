@@ -30,7 +30,28 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:wvazka4vj7mdxksf",
+                "provenance": [
+                  {
+                    "producer": "integration:inferred-handler",
+                    "layer": "integration",
+                    "fields": [
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/SharedErrors/BatchController.php",
+                      "line": 17,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\BatchController::replay"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.batch-replay",
         "tags": [
@@ -82,30 +103,6 @@
             }
           },
           "422": {
-            "x-docuccino": {
-              "id": "res:v1:wvazka4vj7mdxksf",
-              "provenance": [
-                {
-                  "producer": "integration:inferred-handler",
-                  "layer": "integration",
-                  "fields": [
-                    "description"
-                  ],
-                  "source": {
-                    "file": "tests/Fixtures/SharedErrors/BatchController.php",
-                    "line": 17,
-                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\BatchController::replay"
-                  }
-                }
-              ],
-              "facts": {
-                "examplePlaceholders": {
-                  "application/problem+json": [
-                    "origin"
-                  ]
-                }
-              }
-            },
             "$ref": "#/components/responses/Error422"
           }
         }
@@ -135,7 +132,28 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:3cmpczncq5riljt6",
+                "provenance": [
+                  {
+                    "producer": "integration:inferred-handler",
+                    "layer": "integration",
+                    "fields": [
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/SharedErrors/BatchController.php",
+                      "line": 11,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\BatchController::submit"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.batch-submit",
         "tags": [
@@ -187,30 +205,6 @@
             }
           },
           "422": {
-            "x-docuccino": {
-              "id": "res:v1:3cmpczncq5riljt6",
-              "provenance": [
-                {
-                  "producer": "integration:inferred-handler",
-                  "layer": "integration",
-                  "fields": [
-                    "description"
-                  ],
-                  "source": {
-                    "file": "tests/Fixtures/SharedErrors/BatchController.php",
-                    "line": 11,
-                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\BatchController::submit"
-                  }
-                }
-              ],
-              "facts": {
-                "examplePlaceholders": {
-                  "application/problem+json": [
-                    "origin"
-                  ]
-                }
-              }
-            },
             "$ref": "#/components/responses/Error422"
           }
         }
@@ -273,6 +267,17 @@
     },
     "responses": {
       "Error422": {
+        "x-docuccino": {
+          "facts": {
+            "examplePlaceholders": {
+              "application/problem+json": {
+                "example": [
+                  "origin"
+                ]
+              }
+            }
+          }
+        },
         "description": "Unprocessable Entity",
         "content": {
           "application/problem+json": {
@@ -297,13 +302,13 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "3079e19313531dcf37d024c95e9502582ef7831a0de8050dfc2f5bff3ccf4810"
+      "contentHash": "8a9bcbf5fcaa7840259c83669d96657d7b2637c9561d824c96afb443eda0c779"
     },
     "generator": {
       "name": "docuccino/laravel",
       "version": "0.13.1",
-      "specVersion": "2.0.0",
-      "schema": "https://spec.docuccino.app/uir/2.0/schema.json"
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
     }
   }
 }

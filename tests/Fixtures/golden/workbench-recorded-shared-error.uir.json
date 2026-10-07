@@ -30,7 +30,35 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "403": {
+                "id": "res:v1:op6gk7jiowbnkc2r",
+                "provenance": [
+                  {
+                    "producer": "attribute",
+                    "layer": "attribute",
+                    "fields": [
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/SharedErrors/ErrorsController.php",
+                      "line": 17,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\ErrorsController::denied"
+                    },
+                    "overrode": [
+                      {
+                        "field": "description",
+                        "value": "Forbidden",
+                        "producer": "fallback"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.zz-denied",
         "tags": [
@@ -38,30 +66,6 @@
         ],
         "responses": {
           "403": {
-            "x-docuccino": {
-              "id": "res:v1:op6gk7jiowbnkc2r",
-              "provenance": [
-                {
-                  "producer": "attribute",
-                  "layer": "attribute",
-                  "fields": [
-                    "description"
-                  ],
-                  "source": {
-                    "file": "tests/Fixtures/SharedErrors/ErrorsController.php",
-                    "line": 17,
-                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\ErrorsController::denied"
-                  },
-                  "overrode": [
-                    {
-                      "field": "description",
-                      "value": "Forbidden",
-                      "producer": "fallback"
-                    }
-                  ]
-                }
-              ]
-            },
             "$ref": "#/components/responses/Error403"
           }
         }
@@ -98,7 +102,35 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "403": {
+                "id": "res:v1:ltqlgxz72ja5amtw",
+                "provenance": [
+                  {
+                    "producer": "attribute",
+                    "layer": "attribute",
+                    "fields": [
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/SharedErrors/ErrorsController.php",
+                      "line": 24,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\ErrorsController::deniedAgain"
+                    },
+                    "overrode": [
+                      {
+                        "field": "description",
+                        "value": "Forbidden",
+                        "producer": "fallback"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.zz-deniedagain",
         "summary": "The same body as, described differently — presentation, not contract.",
@@ -107,30 +139,6 @@
         ],
         "responses": {
           "403": {
-            "x-docuccino": {
-              "id": "res:v1:ltqlgxz72ja5amtw",
-              "provenance": [
-                {
-                  "producer": "attribute",
-                  "layer": "attribute",
-                  "fields": [
-                    "description"
-                  ],
-                  "source": {
-                    "file": "tests/Fixtures/SharedErrors/ErrorsController.php",
-                    "line": 24,
-                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\ErrorsController::deniedAgain"
-                  },
-                  "overrode": [
-                    {
-                      "field": "description",
-                      "value": "Forbidden",
-                      "producer": "fallback"
-                    }
-                  ]
-                }
-              ]
-            },
             "$ref": "#/components/responses/Error403",
             "description": "You may not do that"
           }
@@ -184,13 +192,13 @@
     "document": {
       "id": "doc:default",
       "configHash": "475ee8855167f04f15c984c46a77e63136bc0e3e4f1951f0705d0efe8ba76cac",
-      "contentHash": "b9df90da3c9f9efd85f43198307d3ca51137dfc9c021c341eb72fbe4b4f90f27"
+      "contentHash": "71d92613c017c9f6d1b192f049c490631332bb79719a1366cd6fb2e53de9a0bb"
     },
     "generator": {
       "name": "docuccino/laravel",
       "version": "0.14.0",
-      "specVersion": "2.0.0",
-      "schema": "https://spec.docuccino.app/uir/2.0/schema.json"
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
     }
   }
 }

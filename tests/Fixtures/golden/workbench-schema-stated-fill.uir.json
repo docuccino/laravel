@@ -30,7 +30,28 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "409": {
+                "id": "res:v1:xnvn7jucd6ijndi5",
+                "provenance": [
+                  {
+                    "producer": "integration:inferred-handler",
+                    "layer": "integration",
+                    "fields": [
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/SharedErrors/ExportController.php",
+                      "line": 11,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\ExportController::archive"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.export-archive",
         "tags": [
@@ -82,33 +103,6 @@
             }
           },
           "409": {
-            "x-docuccino": {
-              "id": "res:v1:xnvn7jucd6ijndi5",
-              "provenance": [
-                {
-                  "producer": "integration:inferred-handler",
-                  "layer": "integration",
-                  "fields": [
-                    "description"
-                  ],
-                  "source": {
-                    "file": "tests/Fixtures/SharedErrors/ExportController.php",
-                    "line": 11,
-                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\ExportController::archive"
-                  }
-                }
-              ],
-              "facts": {
-                "examplePlaceholders": {
-                  "application/problem+json": [
-                    "context",
-                    "failedAt",
-                    "reason",
-                    "retryable"
-                  ]
-                }
-              }
-            },
             "$ref": "#/components/responses/Error409"
           }
         }
@@ -138,7 +132,28 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "409": {
+                "id": "res:v1:73h2xoupabumpkuf",
+                "provenance": [
+                  {
+                    "producer": "integration:inferred-handler",
+                    "layer": "integration",
+                    "fields": [
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/SharedErrors/ExportController.php",
+                      "line": 17,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\ExportController::ledger"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.export-ledger",
         "tags": [
@@ -190,33 +205,6 @@
             }
           },
           "409": {
-            "x-docuccino": {
-              "id": "res:v1:73h2xoupabumpkuf",
-              "provenance": [
-                {
-                  "producer": "integration:inferred-handler",
-                  "layer": "integration",
-                  "fields": [
-                    "description"
-                  ],
-                  "source": {
-                    "file": "tests/Fixtures/SharedErrors/ExportController.php",
-                    "line": 17,
-                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\ExportController::ledger"
-                  }
-                }
-              ],
-              "facts": {
-                "examplePlaceholders": {
-                  "application/problem+json": [
-                    "context",
-                    "failedAt",
-                    "reason",
-                    "retryable"
-                  ]
-                }
-              }
-            },
             "$ref": "#/components/responses/Error409"
           }
         }
@@ -286,6 +274,20 @@
     },
     "responses": {
       "Error409": {
+        "x-docuccino": {
+          "facts": {
+            "examplePlaceholders": {
+              "application/problem+json": {
+                "example": [
+                  "context",
+                  "failedAt",
+                  "reason",
+                  "retryable"
+                ]
+              }
+            }
+          }
+        },
         "description": "Conflict",
         "content": {
           "application/problem+json": {
@@ -310,13 +312,13 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "227fea0552ab2c870a08cb881a8a96d0a21495afc1319be26fb1e0953f31ace6"
+      "contentHash": "8877524f9c752bc7935aa049afff482afa3787a625638b6599ae4b522e0a3d2a"
     },
     "generator": {
       "name": "docuccino/laravel",
       "version": "0.13.1",
-      "specVersion": "2.0.0",
-      "schema": "https://spec.docuccino.app/uir/2.0/schema.json"
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
     }
   }
 }

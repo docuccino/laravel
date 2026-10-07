@@ -37,7 +37,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:e6rekpkoixlwpqip",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/BindingController.php",
+                      "line": 55,
+                      "symbol": "implicit:route-model-binding"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.binding-almanacs.@almanac",
         "summary": "Show one almanac, found by the day it was recorded.",
@@ -132,27 +154,6 @@
             }
           },
           "404": {
-            "x-docuccino": {
-              "id": "res:v1:e6rekpkoixlwpqip",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/BindingController.php",
-                    "line": 55,
-                    "symbol": "implicit:route-model-binding"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "NotFound"
-              }
-            },
             "$ref": "#/components/responses/NotFound"
           }
         }
@@ -189,7 +190,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:iecaa5orrxnti6zc",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/BindingController.php",
+                      "line": 62,
+                      "symbol": "implicit:route-model-binding"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.binding-articles.@article",
         "summary": "Show an article.",
@@ -236,27 +259,6 @@
         ],
         "responses": {
           "404": {
-            "x-docuccino": {
-              "id": "res:v1:iecaa5orrxnti6zc",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/BindingController.php",
-                    "line": 62,
-                    "symbol": "implicit:route-model-binding"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "NotFound"
-              }
-            },
             "$ref": "#/components/responses/NotFound"
           }
         }
@@ -293,7 +295,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:f2bt4k2nnxwnzjyx",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/BindingController.php",
+                      "line": 76,
+                      "symbol": "implicit:route-model-binding"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.binding-custom.@custom",
         "summary": "Show a form the application resolves with a binder of its own.",
@@ -340,27 +364,6 @@
         ],
         "responses": {
           "404": {
-            "x-docuccino": {
-              "id": "res:v1:f2bt4k2nnxwnzjyx",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/BindingController.php",
-                    "line": 76,
-                    "symbol": "implicit:route-model-binding"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "NotFound"
-              }
-            },
             "$ref": "#/components/responses/NotFound"
           }
         }
@@ -397,7 +400,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:qjysqa2vrdsim3um",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/BindingController.php",
+                      "line": 48,
+                      "symbol": "implicit:route-model-binding"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.binding-journals.@journal",
         "summary": "Show one journal, found by the day it was filed.",
@@ -490,27 +515,6 @@
             }
           },
           "404": {
-            "x-docuccino": {
-              "id": "res:v1:qjysqa2vrdsim3um",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/BindingController.php",
-                    "line": 48,
-                    "symbol": "implicit:route-model-binding"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "NotFound"
-              }
-            },
             "$ref": "#/components/responses/NotFound"
           }
         }
@@ -547,7 +551,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:c52rzm2rvrf22cyc",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/BindingController.php",
+                      "line": 27,
+                      "symbol": "implicit:route-model-binding"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.binding-ledgers.@ledger",
         "summary": "Show a ledger by its human reference.",
@@ -606,27 +632,6 @@
         ],
         "responses": {
           "404": {
-            "x-docuccino": {
-              "id": "res:v1:c52rzm2rvrf22cyc",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/BindingController.php",
-                    "line": 27,
-                    "symbol": "implicit:route-model-binding"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "NotFound"
-              }
-            },
             "$ref": "#/components/responses/NotFound"
           }
         }
@@ -663,7 +668,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:4bzwwyjvnknqsdcz",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/BindingController.php",
+                      "line": 34,
+                      "symbol": "implicit:route-model-binding"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.binding-ledgers.@ledger.entries.@entry",
         "summary": "Show one entry filed against a ledger.",
@@ -771,27 +798,6 @@
         ],
         "responses": {
           "404": {
-            "x-docuccino": {
-              "id": "res:v1:4bzwwyjvnknqsdcz",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/BindingController.php",
-                    "line": 34,
-                    "symbol": "implicit:route-model-binding"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "NotFound"
-              }
-            },
             "$ref": "#/components/responses/NotFound"
           }
         }
@@ -828,7 +834,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:t6vii6pty5alg52n",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/BindingController.php",
+                      "line": 41,
+                      "symbol": "implicit:route-model-binding"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.binding-ledgers.@ledger.loose.@entry",
         "summary": "Show one entry of a ledger, found by its title.",
@@ -930,27 +958,6 @@
         ],
         "responses": {
           "404": {
-            "x-docuccino": {
-              "id": "res:v1:t6vii6pty5alg52n",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/BindingController.php",
-                    "line": 41,
-                    "symbol": "implicit:route-model-binding"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "NotFound"
-              }
-            },
             "$ref": "#/components/responses/NotFound"
           }
         }
@@ -987,7 +994,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:etsu4enwigzk2gu2",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/BindingController.php",
+                      "line": 41,
+                      "symbol": "implicit:route-model-binding"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.binding-ledgers.@ledger.titled.@entry",
         "summary": "Show one entry of a ledger, found by its title.",
@@ -1090,27 +1119,6 @@
         ],
         "responses": {
           "404": {
-            "x-docuccino": {
-              "id": "res:v1:etsu4enwigzk2gu2",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/BindingController.php",
-                    "line": 41,
-                    "symbol": "implicit:route-model-binding"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "NotFound"
-              }
-            },
             "$ref": "#/components/responses/NotFound"
           }
         }
@@ -1147,7 +1155,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:xjdwih5kvt346qk7",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/BindingController.php",
+                      "line": 55,
+                      "symbol": "implicit:route-model-binding"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.binding-observations.@almanac",
         "summary": "Show one almanac, found by the day it was recorded.",
@@ -1242,27 +1272,6 @@
             }
           },
           "404": {
-            "x-docuccino": {
-              "id": "res:v1:xjdwih5kvt346qk7",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/BindingController.php",
-                    "line": 55,
-                    "symbol": "implicit:route-model-binding"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "NotFound"
-              }
-            },
             "$ref": "#/components/responses/NotFound"
           }
         }
@@ -1299,7 +1308,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:vpy2pz76vg6yj5f6",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/BindingController.php",
+                      "line": 27,
+                      "symbol": "implicit:route-model-binding"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.binding-refs.@ledger",
         "summary": "Show a ledger by its human reference.",
@@ -1358,27 +1389,6 @@
         ],
         "responses": {
           "404": {
-            "x-docuccino": {
-              "id": "res:v1:vpy2pz76vg6yj5f6",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/BindingController.php",
-                    "line": 27,
-                    "symbol": "implicit:route-model-binding"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "NotFound"
-              }
-            },
             "$ref": "#/components/responses/NotFound"
           }
         }
@@ -1415,7 +1425,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:y54vgioqpoqg5sit",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/BindingController.php",
+                      "line": 69,
+                      "symbol": "implicit:route-model-binding"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.binding-seasons.@season",
         "summary": "Show the forms filed in one season.",
@@ -1467,27 +1499,6 @@
         ],
         "responses": {
           "404": {
-            "x-docuccino": {
-              "id": "res:v1:y54vgioqpoqg5sit",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/BindingController.php",
-                    "line": 69,
-                    "symbol": "implicit:route-model-binding"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "NotFound"
-              }
-            },
             "$ref": "#/components/responses/NotFound"
           }
         }
@@ -1636,13 +1647,13 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "032709d4c0eb3780c5e483c1e6ae7315cb142fe381cd901f702f0709ab4ca4e0"
+      "contentHash": "14602f120a3fc8fd7748f9fb52e3017e241aa3657f0bf2cd2dfa91d0b25b9584"
     },
     "generator": {
       "name": "docuccino/laravel",
       "version": "0.16.0",
-      "specVersion": "2.0.0",
-      "schema": "https://spec.docuccino.app/uir/2.0/schema.json"
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
     }
   }
 }

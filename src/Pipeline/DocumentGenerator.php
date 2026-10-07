@@ -35,7 +35,7 @@ use Docuccino\Core\Pipeline\OperationFragment;
 use Docuccino\Core\Pipeline\OperationPipeline;
 use Docuccino\Core\Provenance\MessagePaths;
 use Docuccino\Core\Provenance\RootRelativeSourcePathResolver;
-use Docuccino\Core\SpecValidation\ValidationError;
+use Docuccino\Core\SpecValidation\Finding;
 use Docuccino\Core\SpecValidation\Validator;
 use Docuccino\Core\Support\RouteOperationId;
 use Docuccino\Laravel\Engine\LazyTypeEngine;
@@ -260,7 +260,7 @@ final class DocumentGenerator
     private function schemaErrors(array $document, UirDocument $published, ?Closure $meanwhile): array
     {
         $check = fn (): array => array_map(
-            static fn (ValidationError $error): string => trim($error->pointer.' '.$error->message),
+            static fn (Finding $finding): string => (string) $finding,
             $this->validator->validate($document)->errors,
         );
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Workflows;
 
+use Docuccino\Core\Contract\Pointer;
 use Docuccino\Core\Document\DocumentGraph;
 use Docuccino\Core\Draft\SchemaKeywords;
 
@@ -52,7 +53,7 @@ final class ResponsePointer
         }
 
         $segments = array_map(
-            static fn (string $segment): string => str_replace(['~1', '~0'], ['/', '~'], $segment),
+            Pointer::unescape(...),
             array_slice(explode('/', $matches[1]), 1),
         );
 

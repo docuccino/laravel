@@ -37,7 +37,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:jds4ktiqi7wm4w2w",
+                "provenance": [
+                  {
+                    "producer": "integration:framework-errors",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FormController.php",
+                      "line": 35,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.archived-forms.@form",
         "summary": "Show a form.",
@@ -131,27 +153,6 @@
             }
           },
           "404": {
-            "x-docuccino": {
-              "id": "res:v1:jds4ktiqi7wm4w2w",
-              "provenance": [
-                {
-                  "producer": "integration:framework-errors",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/FormController.php",
-                    "line": 35,
-                    "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "NotFound"
-              }
-            },
             "$ref": "#/components/responses/NotFound"
           }
         }
@@ -408,7 +409,29 @@
                 "symbol": "Workbench\\App\\Http\\Controllers\\IntegrationsController::storeArticle"
               }
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:3uyjfa64rg6bficj",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/IntegrationsController.php",
+                      "line": 28,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "post.api.articles",
         "summary": "Spatie Data request (body from the Data class) + response, under a folded 201.",
@@ -518,27 +541,6 @@
             }
           },
           "422": {
-            "x-docuccino": {
-              "id": "res:v1:3uyjfa64rg6bficj",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/IntegrationsController.php",
-                    "line": 28,
-                    "symbol": "implicit:validated-request"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "UnprocessableEntity"
-              }
-            },
             "$ref": "#/components/responses/UnprocessableEntity"
           }
         }
@@ -692,7 +694,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "401": {
+                "id": "res:v1:lrmnlpvvzf7al3on",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FormController.php",
+                      "line": 25,
+                      "symbol": "implicit:auth-middleware"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.authenticated-forms",
         "summary": "List forms.",
@@ -740,27 +764,6 @@
             }
           },
           "401": {
-            "x-docuccino": {
-              "id": "res:v1:lrmnlpvvzf7al3on",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/FormController.php",
-                    "line": 25,
-                    "symbol": "implicit:auth-middleware"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "Unauthorized"
-              }
-            },
             "$ref": "#/components/responses/Unauthorized"
           }
         }
@@ -798,7 +801,47 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "401": {
+                "id": "res:v1:3ebqxcj6eb2q6w2y",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FormController.php",
+                      "line": 25,
+                      "symbol": "implicit:auth-middleware"
+                    }
+                  }
+                ]
+              },
+              "403": {
+                "id": "res:v1:pzsemf2jo6k2c67z",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FormController.php",
+                      "line": 25,
+                      "symbol": "implicit:can-middleware"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.authorized-forms",
         "summary": "List forms.",
@@ -846,51 +889,9 @@
             }
           },
           "401": {
-            "x-docuccino": {
-              "id": "res:v1:3ebqxcj6eb2q6w2y",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/FormController.php",
-                    "line": 25,
-                    "symbol": "implicit:auth-middleware"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "Unauthorized"
-              }
-            },
             "$ref": "#/components/responses/Unauthorized"
           },
           "403": {
-            "x-docuccino": {
-              "id": "res:v1:pzsemf2jo6k2c67z",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/FormController.php",
-                    "line": 25,
-                    "symbol": "implicit:can-middleware"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "Forbidden"
-              }
-            },
             "$ref": "#/components/responses/Forbidden"
           }
         }
@@ -1278,7 +1279,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:far53ijjlik5mgki",
+                "provenance": [
+                  {
+                    "producer": "integration:framework-errors",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FormController.php",
+                      "line": 35,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.forms.@form",
         "summary": "Show a form.",
@@ -1371,27 +1394,6 @@
             }
           },
           "404": {
-            "x-docuccino": {
-              "id": "res:v1:far53ijjlik5mgki",
-              "provenance": [
-                {
-                  "producer": "integration:framework-errors",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/FormController.php",
-                    "line": 35,
-                    "symbol": "Workbench\\App\\Http\\Controllers\\FormController::show"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "NotFound"
-              }
-            },
             "$ref": "#/components/responses/NotFound"
           }
         }
@@ -1429,7 +1431,47 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "401": {
+                "id": "res:v1:vcdabujepzgqbmfy",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FormController.php",
+                      "line": 25,
+                      "symbol": "implicit:auth-middleware"
+                    }
+                  }
+                ]
+              },
+              "403": {
+                "id": "res:v1:7gfzvqr4post5z7w",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FormController.php",
+                      "line": 25,
+                      "symbol": "implicit:can-middleware"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.guarded-forms",
         "summary": "List forms.",
@@ -1477,51 +1519,9 @@
             }
           },
           "401": {
-            "x-docuccino": {
-              "id": "res:v1:vcdabujepzgqbmfy",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/FormController.php",
-                    "line": 25,
-                    "symbol": "implicit:auth-middleware"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "Unauthorized"
-              }
-            },
             "$ref": "#/components/responses/Unauthorized"
           },
           "403": {
-            "x-docuccino": {
-              "id": "res:v1:7gfzvqr4post5z7w",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/FormController.php",
-                    "line": 25,
-                    "symbol": "implicit:can-middleware"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "Forbidden"
-              }
-            },
             "$ref": "#/components/responses/Forbidden"
           }
         }
@@ -1982,7 +1982,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "400": {
+                "id": "res:v1:mfomshlbtfehmzsc",
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/LedgerQueryController.php",
+                      "line": 28,
+                      "symbol": "query-builder:strict-mode"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.ledger-query",
         "summary": "List ledgers, with related resources and a sparse fieldset selectable via the query string.",
@@ -2283,27 +2305,6 @@
         ],
         "responses": {
           "400": {
-            "x-docuccino": {
-              "id": "res:v1:mfomshlbtfehmzsc",
-              "provenance": [
-                {
-                  "producer": "integration:query-builder",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/LedgerQueryController.php",
-                    "line": 28,
-                    "symbol": "query-builder:strict-mode"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "BadRequest"
-              }
-            },
             "$ref": "#/components/responses/BadRequest"
           }
         }
@@ -3229,7 +3230,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "403": {
+                "id": "res:v1:jp76d76l4j3duo63",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FormController.php",
+                      "line": 25,
+                      "symbol": "implicit:signed-middleware"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.signed-forms",
         "summary": "List forms.",
@@ -3365,27 +3388,6 @@
             }
           },
           "403": {
-            "x-docuccino": {
-              "id": "res:v1:jp76d76l4j3duo63",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/FormController.php",
-                    "line": 25,
-                    "symbol": "implicit:signed-middleware"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "Forbidden"
-              }
-            },
             "$ref": "#/components/responses/Forbidden"
           }
         }
@@ -3536,7 +3538,29 @@
                 "symbol": "Workbench\\App\\Http\\Controllers\\ValidationController::store"
               }
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:yntlnpioihrhe6oc",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/ValidationController.php",
+                      "line": 21,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "post.api.tickets",
         "tags": [
@@ -3604,27 +3628,6 @@
             }
           },
           "422": {
-            "x-docuccino": {
-              "id": "res:v1:yntlnpioihrhe6oc",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/ValidationController.php",
-                    "line": 21,
-                    "symbol": "implicit:validated-request"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "UnprocessableEntity"
-              }
-            },
             "$ref": "#/components/responses/UnprocessableEntity"
           }
         }
@@ -3744,7 +3747,47 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "401": {
+                "id": "res:v1:4hir764lbct77rov",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FormController.php",
+                      "line": 25,
+                      "symbol": "implicit:auth-middleware"
+                    }
+                  }
+                ]
+              },
+              "403": {
+                "id": "res:v1:zqntoi2vjvat7ynr",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FormController.php",
+                      "line": 25,
+                      "symbol": "implicit:verified-middleware"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.verified-forms",
         "summary": "List forms.",
@@ -3792,51 +3835,9 @@
             }
           },
           "401": {
-            "x-docuccino": {
-              "id": "res:v1:4hir764lbct77rov",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/FormController.php",
-                    "line": 25,
-                    "symbol": "implicit:auth-middleware"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "Unauthorized"
-              }
-            },
             "$ref": "#/components/responses/Unauthorized"
           },
           "403": {
-            "x-docuccino": {
-              "id": "res:v1:zqntoi2vjvat7ynr",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/FormController.php",
-                    "line": 25,
-                    "symbol": "implicit:verified-middleware"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "Forbidden"
-              }
-            },
             "$ref": "#/components/responses/Forbidden"
           }
         }
@@ -3873,7 +3874,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "400": {
+                "id": "res:v1:7zewfuo2r4z7g4ub",
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/WidgetQueryController.php",
+                      "line": 24,
+                      "symbol": "query-builder:strict-mode"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.widget-query",
         "summary": "List forms, filterable and sortable via the query string.",
@@ -4098,27 +4121,6 @@
         ],
         "responses": {
           "400": {
-            "x-docuccino": {
-              "id": "res:v1:7zewfuo2r4z7g4ub",
-              "provenance": [
-                {
-                  "producer": "integration:query-builder",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/WidgetQueryController.php",
-                    "line": 24,
-                    "symbol": "query-builder:strict-mode"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "BadRequest"
-              }
-            },
             "$ref": "#/components/responses/BadRequest"
           }
         }
@@ -5047,13 +5049,13 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "ca446b2e6c8463f88f955fedc535d2f30e2eab6ea58780664ad34c6904f74abd"
+      "contentHash": "42577c9c82dc8fba89329ec0ad043f4c6ea10cb05969cc094f33876e8279d0bc"
     },
     "generator": {
       "name": "docuccino/laravel",
       "version": "0.9.1",
-      "specVersion": "2.0.0",
-      "schema": "https://spec.docuccino.app/uir/2.0/schema.json"
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
     },
     "workflows": [
       {

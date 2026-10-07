@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Docuccino\Core\Spec\UirSpec;
+
 /**
  * Feature coverage for docuccino:validate — the workbench document validates against the bundled
  * UIR schema, an unknown document key fails, and the exit code honours the validation result.
@@ -10,7 +12,7 @@ it('validates the workbench document against the bundled UIR schema', function (
     bindStubEngine();
 
     $this->artisan('docuccino:validate')
-        ->expectsOutputToContain('default: valid against UIR 2.0.0.')
+        ->expectsOutputToContain('default: valid against UIR '.UirSpec::VERSION.'.')
         ->assertSuccessful();
 });
 

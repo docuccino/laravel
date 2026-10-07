@@ -45,7 +45,48 @@
                 "security"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "401": {
+                "id": "res:v1:gz5asbpp4cqk7lbp",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FormController.php",
+                      "line": 25,
+                      "symbol": "implicit:auth-middleware"
+                    }
+                  }
+                ]
+              },
+              "429": {
+                "id": "res:v1:wcx3xicsal2fipxt",
+                "provenance": [
+                  {
+                    "producer": "integration:rate-limit",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description",
+                      "headers"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FormController.php",
+                      "line": 25,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.inherited.from-group",
         "summary": "List forms.",
@@ -98,52 +139,9 @@
             }
           },
           "401": {
-            "x-docuccino": {
-              "id": "res:v1:gz5asbpp4cqk7lbp",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/FormController.php",
-                    "line": 25,
-                    "symbol": "implicit:auth-middleware"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "Unauthorized"
-              }
-            },
             "$ref": "#/components/responses/Unauthorized"
           },
           "429": {
-            "x-docuccino": {
-              "id": "res:v1:wcx3xicsal2fipxt",
-              "provenance": [
-                {
-                  "producer": "integration:rate-limit",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description",
-                    "headers"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/FormController.php",
-                    "line": 25,
-                    "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "TooManyRequests"
-              }
-            },
             "$ref": "#/components/responses/TooManyRequests"
           }
         }
@@ -270,7 +268,48 @@
                 "security"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "401": {
+                "id": "res:v1:mcg457lhpj7a523q",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FormController.php",
+                      "line": 25,
+                      "symbol": "implicit:auth-middleware"
+                    }
+                  }
+                ]
+              },
+              "429": {
+                "id": "res:v1:6w3tbmn7q6nucgbq",
+                "provenance": [
+                  {
+                    "producer": "integration:rate-limit",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description",
+                      "headers"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FormController.php",
+                      "line": 25,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.inherited.on-the-route",
         "summary": "List forms.",
@@ -323,52 +362,9 @@
             }
           },
           "401": {
-            "x-docuccino": {
-              "id": "res:v1:mcg457lhpj7a523q",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/FormController.php",
-                    "line": 25,
-                    "symbol": "implicit:auth-middleware"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "Unauthorized"
-              }
-            },
             "$ref": "#/components/responses/Unauthorized"
           },
           "429": {
-            "x-docuccino": {
-              "id": "res:v1:6w3tbmn7q6nucgbq",
-              "provenance": [
-                {
-                  "producer": "integration:rate-limit",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description",
-                    "headers"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/FormController.php",
-                    "line": 25,
-                    "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "TooManyRequests"
-              }
-            },
             "$ref": "#/components/responses/TooManyRequests"
           }
         }
@@ -493,13 +489,13 @@
     "document": {
       "id": "doc:inherited",
       "configHash": "cce2a42d4124cc46880ec88e69cec15582e42b7779214f12309684b594ce76a3",
-      "contentHash": "e15798163f4a2cbeedff9ae26ed77df889517f0aa808aca8a3b22a97bcbf8109"
+      "contentHash": "92dee87af8c9bca6c87db2acc8fef67260e2d40403d23ff4016f1a7fcec01543"
     },
     "generator": {
       "name": "docuccino/laravel",
       "version": "0.14.1",
-      "specVersion": "2.0.0",
-      "schema": "https://spec.docuccino.app/uir/2.0/schema.json"
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
     },
     "workflows": [
       {

@@ -37,7 +37,47 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "400": {
+                "id": "res:v1:et6tijovjgzmazto",
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                      "line": 33,
+                      "symbol": "query-builder:strict-mode"
+                    }
+                  }
+                ]
+              },
+              "422": {
+                "id": "res:v1:swsajczucqdqirq4",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                      "line": 33,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.deep-required.contested",
         "summary": "List gadgets. `status` is required by the declaration and `min_days` by the application's own\nrules — two producers, two layers, one list.",
@@ -250,51 +290,9 @@
         ],
         "responses": {
           "400": {
-            "x-docuccino": {
-              "id": "res:v1:et6tijovjgzmazto",
-              "provenance": [
-                {
-                  "producer": "integration:query-builder",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
-                    "line": 33,
-                    "symbol": "query-builder:strict-mode"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "BadRequest"
-              }
-            },
             "$ref": "#/components/responses/BadRequest"
           },
           "422": {
-            "x-docuccino": {
-              "id": "res:v1:swsajczucqdqirq4",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
-                    "line": 33,
-                    "symbol": "implicit:validated-request"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "UnprocessableEntity"
-              }
-            },
             "$ref": "#/components/responses/UnprocessableEntity"
           }
         }
@@ -331,7 +329,47 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "400": {
+                "id": "res:v1:h5qment22tymnuoq",
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                      "line": 43,
+                      "symbol": "query-builder:strict-mode"
+                    }
+                  }
+                ]
+              },
+              "422": {
+                "id": "res:v1:qm3rzzcm2b7uwe3p",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                      "line": 43,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.deep-required.nested",
         "summary": "The same surface whose only requirement is the start of the window — a member of a member.",
@@ -577,51 +615,9 @@
         ],
         "responses": {
           "400": {
-            "x-docuccino": {
-              "id": "res:v1:h5qment22tymnuoq",
-              "provenance": [
-                {
-                  "producer": "integration:query-builder",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
-                    "line": 43,
-                    "symbol": "query-builder:strict-mode"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "BadRequest"
-              }
-            },
             "$ref": "#/components/responses/BadRequest"
           },
           "422": {
-            "x-docuccino": {
-              "id": "res:v1:qm3rzzcm2b7uwe3p",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
-                    "line": 43,
-                    "symbol": "implicit:validated-request"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "UnprocessableEntity"
-              }
-            },
             "$ref": "#/components/responses/UnprocessableEntity"
           }
         }
@@ -658,7 +654,47 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "400": {
+                "id": "res:v1:hii66rpoxx5fzccv",
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                      "line": 55,
+                      "symbol": "query-builder:strict-mode"
+                    }
+                  }
+                ]
+              },
+              "422": {
+                "id": "res:v1:yjyqbtmgrkd5k5m6",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
+                      "line": 55,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.deep-required.optional",
         "summary": "The same required member, under an author who states the container itself optional: send no\nfilter at all and the server is content, send one and it must carry `min_days`.",
@@ -877,51 +913,9 @@
         ],
         "responses": {
           "400": {
-            "x-docuccino": {
-              "id": "res:v1:hii66rpoxx5fzccv",
-              "provenance": [
-                {
-                  "producer": "integration:query-builder",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
-                    "line": 55,
-                    "symbol": "query-builder:strict-mode"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "BadRequest"
-              }
-            },
             "$ref": "#/components/responses/BadRequest"
           },
           "422": {
-            "x-docuccino": {
-              "id": "res:v1:yjyqbtmgrkd5k5m6",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/DeepObjectRequiredController.php",
-                    "line": 55,
-                    "symbol": "implicit:validated-request"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "UnprocessableEntity"
-              }
-            },
             "$ref": "#/components/responses/UnprocessableEntity"
           }
         }
@@ -1023,13 +1017,13 @@
     "document": {
       "id": "doc:default",
       "configHash": "1f83564a5bc7b01f951172a9dde37d44bfa50dd0535b39dab4cbe32db6e172d9",
-      "contentHash": "7aca3f3e4cc1bd6f972ab2a418eb49bb21c57113f7b96a2f4267fcba08bbd194"
+      "contentHash": "647d733157d0a2d5767716b3e6d27324553efa3efea5568bfefb3e25fe884638"
     },
     "generator": {
       "name": "docuccino/laravel",
       "version": "0.18.0",
-      "specVersion": "2.0.0",
-      "schema": "https://spec.docuccino.app/uir/2.0/schema.json"
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
     }
   }
 }

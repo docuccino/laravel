@@ -234,8 +234,9 @@ final readonly class ApiVersionHeader
      * Points one operation at the shared declaration, unless the application documents the header
      * itself. The `$ref` carries the operation's OWN parameter identity, exactly as a hoisted error
      * response keeps its use site's: `x-docuccino` never reaches an emitted OpenAPI document, so the
-     * artifact a consumer reads is a bare `$ref`, while the UIR, {@see ContractIndex} and per-operation
-     * provenance keep an addressable node per operation and lose nothing to the hoist.
+     * artifact a consumer reads is a bare `$ref`, while the full artifact (on the operation, under
+     * `x-docuccino.uses`), {@see ContractIndex} and per-operation provenance keep an addressable node per
+     * operation and lose nothing to the hoist.
      *
      * @param  array<array-key, mixed>  $operation
      * @return array<array-key, mixed>

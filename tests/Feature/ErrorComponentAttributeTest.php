@@ -47,6 +47,22 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Workbench\App\Http\Controllers\FormController;
 
 /**
+ * The component name a response's producer declared, read the way the document states it: an inline
+ * response carries its claim as `facts.component`; a shared one's `$ref` names the component its claim
+ * landed on, and `facts.claimedComponent` says what it asked for where the claim did not land.
+ *
+ * @param  array<array-key, mixed>  $response
+ */
+function declaredComponentOf(array $response): ?string
+{
+    $facts = $response['x-docuccino']['facts'] ?? [];
+    $ref = $response['$ref'] ?? null;
+
+    return $facts['claimedComponent'] ?? $facts['component']
+        ?? (is_string($ref) ? substr($ref, (int) strrpos($ref, '/') + 1) : null);
+}
+
+/**
  * `#[ErrorComponent]`, through the whole adapter.
  *
  * The name a shared error component publishes under is the name a generated client's type ends up with,
@@ -268,7 +284,7 @@ it('takes the nearest name when two #[Response] declarations name one status dif
         }
     }
 
-    expect($response['x-docuccino']['facts']['component'])->toBe('DeclaredGone')
+    expect(declaredComponentOf($response))->toBe('DeclaredGone')
         ->and($shadowed)->toBe(['SecondName']);
 });
 
@@ -329,7 +345,7 @@ it('lets an action\'s component: beat the one its base controller declares', fun
     $result = generateDocument();
     $document = $result->document->toArray();
 
-    $facts = static fn (string $uri): mixed => $document['paths'][$uri]['get']['responses']['410']['x-docuccino']['facts']['component'] ?? null;
+    $facts = static fn (string $uri): ?string => declaredComponentOf($document['paths'][$uri]['get']['responses']['410']);
 
     expect($facts('/api/zz-inheriting-overrides'))->toBe('ActionGone')
         ->and($facts('/api/zz-inheriting-inherits'))->toBe('BaseGone')
@@ -900,7 +916,7 @@ it('invalidates a fragment when the BASE class that declares the name is edited'
 
         // The base really is what named this response, so the file edited below is really the one the
         // answer came from.
-        expect($document['paths']['/api/zz-declared-first']['get']['responses']['409']['x-docuccino']['facts']['component'])
+        expect(declaredComponentOf($document['paths']['/api/zz-declared-first']['get']['responses']['409']))
             ->toBe('TempFailure');
 
         generateDocument();

@@ -113,8 +113,9 @@ it('reports a config default requirement naming a scheme the catalogue is short 
  * The one malformed shape an author actually writes by hand: `security: [["bearer"]]` puts the scheme
  * where the scopes go, so the entry states no scheme name at all. The audit says nothing about it — a
  * positional key is not a scheme name, and reading it as one invented the scheme "0" and failed the
- * build over a typo nobody had made. The mistake is still reported, once, by the check positioned to
- * locate it: the schema validation, at the pointer.
+ * build over a typo nobody had made. The mistake is still reported by the check positioned to locate
+ * it — the schema validation, at the pointer — and at every operation the default reaches, not only the
+ * first one validation happened to meet.
  */
 it('leaves a list-shaped requirement to the schema check rather than inventing a scheme from its position', function (): void {
     // The workbench already routes an auth-guarded action, so `security.default` reaches an operation.
@@ -131,11 +132,19 @@ it('leaves a list-shaped requirement to the schema check rather than inventing a
 
     expect(diagnosticsCoded($result->diagnostics, 'security.undefined-scheme'))->toBe([])
         ->and(diagnosticsCoded($result->diagnostics, 'security.undeclared-scope'))->toBe([])
-        // ...and the author is told, at error severity, exactly where the malformed entry sits.
-        ->and($invalid)->not->toBeEmpty()
-        ->and($invalid[0]->severity->value)->toBe('error')
-        ->and(implode("\n", array_map(static fn ($d): string => $d->message, $invalid)))
-        ->toContain('/get/security/0 The data (array) must match the type: object');
+        // ...and the author is told, at error severity, exactly where each malformed entry sits.
+        ->and(count($invalid))->toBeGreaterThan(1);
+
+    $pointers = [];
+    foreach ($invalid as $diagnostic) {
+        expect($diagnostic->severity->value)->toBe('error')
+            ->and($diagnostic->message)->toMatch('~(/paths/[^ ]+/get/security/0) type: The data \\(array\\) must match the type: object~');
+        preg_match('~(/paths/[^ ]+/get/security/0) type:~', $diagnostic->message, $match);
+        $pointers[] = $match[1] ?? '';
+    }
+
+    // One diagnostic per operation the default reaches, never two for one place.
+    expect(array_unique($pointers))->toHaveCount(count($invalid));
 });
 
 it('says nothing about the workbench document as it stands', function (): void {

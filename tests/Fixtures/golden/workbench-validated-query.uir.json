@@ -37,7 +37,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:os3hmso35b2mgime",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/LaravelActions/PublishArticleAction.php",
+                      "line": 39,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.validated-query.action",
         "summary": "Publish an article.",
@@ -235,27 +257,6 @@
             }
           },
           "422": {
-            "x-docuccino": {
-              "id": "res:v1:os3hmso35b2mgime",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "tests/Fixtures/LaravelActions/PublishArticleAction.php",
-                    "line": 39,
-                    "symbol": "implicit:validated-request"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "UnprocessableEntity"
-              }
-            },
             "$ref": "#/components/responses/UnprocessableEntity"
           }
         }
@@ -285,7 +286,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:vfjj5skrruwtpfpe",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/SpatieData/MergedRulesController.php",
+                      "line": 9,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.validated-query.data",
         "tags": [
@@ -340,27 +363,6 @@
         ],
         "responses": {
           "422": {
-            "x-docuccino": {
-              "id": "res:v1:vfjj5skrruwtpfpe",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "tests/Fixtures/SpatieData/MergedRulesController.php",
-                    "line": 9,
-                    "symbol": "implicit:validated-request"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "UnprocessableEntity"
-              }
-            },
             "$ref": "#/components/responses/UnprocessableEntity"
           }
         }
@@ -526,7 +528,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:eqjlv65stchqh7ig",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
+                      "line": 23,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.validated-query.form-request",
         "summary": "A FormRequest validates the query.",
@@ -622,27 +646,6 @@
             }
           },
           "422": {
-            "x-docuccino": {
-              "id": "res:v1:eqjlv65stchqh7ig",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
-                    "line": 23,
-                    "symbol": "implicit:validated-request"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "UnprocessableEntity"
-              }
-            },
             "$ref": "#/components/responses/UnprocessableEntity"
           }
         }
@@ -689,7 +692,29 @@
                 "symbol": "Workbench\\App\\Http\\Controllers\\ValidatedQueryController::formRequest"
               }
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:7xdf3sxhj6s2cpco",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
+                      "line": 23,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "post.api.validated-query.form-request",
         "summary": "A FormRequest validates the query.",
@@ -751,27 +776,6 @@
             }
           },
           "422": {
-            "x-docuccino": {
-              "id": "res:v1:7xdf3sxhj6s2cpco",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
-                    "line": 23,
-                    "symbol": "implicit:validated-request"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "UnprocessableEntity"
-              }
-            },
             "$ref": "#/components/responses/UnprocessableEntity"
           }
         }
@@ -808,7 +812,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:qwp54gom3kixhudu",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
+                      "line": 29,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.validated-query.inline",
         "summary": "An inline validate() on the request validates the query.",
@@ -904,27 +930,6 @@
             }
           },
           "422": {
-            "x-docuccino": {
-              "id": "res:v1:qwp54gom3kixhudu",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
-                    "line": 29,
-                    "symbol": "implicit:validated-request"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "UnprocessableEntity"
-              }
-            },
             "$ref": "#/components/responses/UnprocessableEntity"
           }
         }
@@ -961,7 +966,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:y25iumqz265glo7k",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
+                      "line": 39,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.validated-query.validator",
         "summary": "A validator built from the query and asked to validate it.",
@@ -1057,27 +1084,6 @@
             }
           },
           "422": {
-            "x-docuccino": {
-              "id": "res:v1:y25iumqz265glo7k",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/ValidatedQueryController.php",
-                    "line": 39,
-                    "symbol": "implicit:validated-request"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "UnprocessableEntity"
-              }
-            },
             "$ref": "#/components/responses/UnprocessableEntity"
           }
         }
@@ -1166,13 +1172,13 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "4231e50b129cda2ac096abab1a67194cd4f355a57d1c67e999aebecd48521680"
+      "contentHash": "5bae7d567cbf1912932291fb3aaf4c2f850293dcb98ad3c372a7477f311e1dff"
     },
     "generator": {
       "name": "docuccino/laravel",
       "version": "0.20.2",
-      "specVersion": "2.0.0",
-      "schema": "https://spec.docuccino.app/uir/2.0/schema.json"
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
     }
   }
 }

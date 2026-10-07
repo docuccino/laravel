@@ -373,8 +373,8 @@
     "generator": {
       "name": "docuccino/laravel",
       "version": "0.8.3",
-      "specVersion": "2.0.0",
-      "schema": "https://spec.docuccino.app/uir/2.0/schema.json"
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
     },
     "workflows": [
       {

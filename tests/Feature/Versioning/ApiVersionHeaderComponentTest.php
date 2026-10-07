@@ -239,6 +239,28 @@ it('keeps every operation its own parameter identity beside the $ref', function 
         ->and(versionHeaderComponent($document)['x-docuccino']['id'])->not->toBe($id('/api/versioned-forms'));
 });
 
+/*
+ * Where that identity is PUBLISHED. In the full artifact OpenAPI does not allow an extension beside a
+ * `$ref`, so each operation's own parameter node goes onto the operation, under `uses`, keyed by the
+ * header's `in` and `name` — and the `$ref` stands alone. Read back, it is the same node again.
+ */
+it('publishes every operation its own parameter identity on the operation, and the $ref alone', function (): void {
+    $uir = generateDocument(twoOperationVersion(...), 'v2026-06-01')->document;
+    $model = $uir->toArray();
+    $published = json_decode((new UirEmitter)->emit($uir), true, flags: JSON_THROW_ON_ERROR);
+    $name = versionHeaderComponent($model)['name'];
+
+    foreach (['/api/versioned-forms', '/api/versioned-forms/archived'] as $path) {
+        $operation = $published['paths'][$path]['get'];
+
+        expect($operation['parameters'][0])->toBe(['$ref' => $model['paths'][$path]['get']['parameters'][0]['$ref']])
+            ->and($operation['x-docuccino']['uses']['parameters']['header'][$name])
+            ->toBe($model['paths'][$path]['get']['parameters'][0]['x-docuccino']);
+    }
+
+    expect(UirDocument::fromArray($published)->toArray()['paths'])->toEqual($model['paths']);
+});
+
 it('gives two version documents two component identities, and one document one', function (): void {
     $older = generateDocument(key: 'v2026-06-01')->document->toArray();
     $head = generateDocument(key: 'v2026-09-01')->document->toArray();

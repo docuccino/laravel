@@ -203,9 +203,13 @@ it('still records a composed fill as a member nothing read', function (): void {
     // merely READS like one the server sends must not start counting as one the build proved, or the
     // collapse would drop a rival illustration that had actually proved it.
     $document = composedResult()->document->toArray();
-    $facts = $document['paths']['/api/batch-submit']['get']['responses']['422']['x-docuccino']['facts'] ?? [];
+    $use = $document['paths']['/api/batch-submit']['get']['responses']['422'];
+    $component = $document['components']['responses'][substr((string) $use['$ref'], strlen('#/components/responses/'))];
 
-    expect($facts)->toBe(['examplePlaceholders' => ['application/problem+json' => ['origin']]]);
+    // The record lives with the example it describes, which the shared component publishes.
+    expect($component['x-docuccino']['facts']['examplePlaceholders'])
+        ->toBe(['application/problem+json' => ['example' => ['origin']]])
+        ->and($use['x-docuccino']['facts'] ?? [])->toBe([]);
 });
 
 it('publishes a composed example no build-time lint can fault', function (): void {

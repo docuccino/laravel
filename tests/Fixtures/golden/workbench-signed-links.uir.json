@@ -37,7 +37,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "403": {
+                "id": "res:v1:dh6ntoo5ibbrlcel",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 22,
+                      "symbol": "implicit:signed-middleware"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.signed-links.by-alias-relative.@token",
         "summary": "Confirm a subscription.",
@@ -209,27 +231,6 @@
             }
           },
           "403": {
-            "x-docuccino": {
-              "id": "res:v1:dh6ntoo5ibbrlcel",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
-                    "line": 22,
-                    "symbol": "implicit:signed-middleware"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "Forbidden"
-              }
-            },
             "$ref": "#/components/responses/Forbidden"
           }
         }
@@ -266,7 +267,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "403": {
+                "id": "res:v1:xoafjgd54kc7wsg4",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 22,
+                      "symbol": "implicit:signed-middleware"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.signed-links.by-alias.@token",
         "summary": "Confirm a subscription.",
@@ -438,27 +461,6 @@
             }
           },
           "403": {
-            "x-docuccino": {
-              "id": "res:v1:xoafjgd54kc7wsg4",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
-                    "line": 22,
-                    "symbol": "implicit:signed-middleware"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "Forbidden"
-              }
-            },
             "$ref": "#/components/responses/Forbidden"
           }
         }
@@ -495,7 +497,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "403": {
+                "id": "res:v1:2e4pl25acgh3x6fy",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 22,
+                      "symbol": "implicit:signed-middleware"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.signed-links.by-class-absolute.@token",
         "summary": "Confirm a subscription.",
@@ -667,27 +691,6 @@
             }
           },
           "403": {
-            "x-docuccino": {
-              "id": "res:v1:2e4pl25acgh3x6fy",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
-                    "line": 22,
-                    "symbol": "implicit:signed-middleware"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "Forbidden"
-              }
-            },
             "$ref": "#/components/responses/Forbidden"
           }
         }
@@ -724,7 +727,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "403": {
+                "id": "res:v1:gvt43ah5qmffwpo3",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 22,
+                      "symbol": "implicit:signed-middleware"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.signed-links.by-class-relative.@token",
         "summary": "Confirm a subscription.",
@@ -896,27 +921,6 @@
             }
           },
           "403": {
-            "x-docuccino": {
-              "id": "res:v1:gvt43ah5qmffwpo3",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
-                    "line": 22,
-                    "symbol": "implicit:signed-middleware"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "Forbidden"
-              }
-            },
             "$ref": "#/components/responses/Forbidden"
           }
         }
@@ -953,7 +957,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "403": {
+                "id": "res:v1:q3ruz35s4ctvjgb3",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 22,
+                      "symbol": "implicit:signed-middleware"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.signed-links.by-custom-alias-to-subclass.@token",
         "summary": "Confirm a subscription.",
@@ -1125,27 +1151,6 @@
             }
           },
           "403": {
-            "x-docuccino": {
-              "id": "res:v1:q3ruz35s4ctvjgb3",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
-                    "line": 22,
-                    "symbol": "implicit:signed-middleware"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "Forbidden"
-              }
-            },
             "$ref": "#/components/responses/Forbidden"
           }
         }
@@ -1182,7 +1187,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "403": {
+                "id": "res:v1:u3smpadbwrqbxvoh",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 22,
+                      "symbol": "implicit:signed-middleware"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.signed-links.by-custom-alias.@token",
         "summary": "Confirm a subscription.",
@@ -1354,27 +1381,6 @@
             }
           },
           "403": {
-            "x-docuccino": {
-              "id": "res:v1:u3smpadbwrqbxvoh",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
-                    "line": 22,
-                    "symbol": "implicit:signed-middleware"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "Forbidden"
-              }
-            },
             "$ref": "#/components/responses/Forbidden"
           }
         }
@@ -1411,7 +1417,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "403": {
+                "id": "res:v1:rgzmmhyi47fw7fs2",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 22,
+                      "symbol": "implicit:signed-middleware"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.signed-links.by-subclass.@token",
         "summary": "Confirm a subscription.",
@@ -1583,27 +1611,6 @@
             }
           },
           "403": {
-            "x-docuccino": {
-              "id": "res:v1:rgzmmhyi47fw7fs2",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
-                    "line": 22,
-                    "symbol": "implicit:signed-middleware"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "Forbidden"
-              }
-            },
             "$ref": "#/components/responses/Forbidden"
           }
         }
@@ -1640,7 +1647,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "403": {
+                "id": "res:v1:thwsez5g73bvq7xz",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 32,
+                      "symbol": "implicit:signed-middleware"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.signed-links.expiring.@token",
         "summary": "Confirm a subscription from a link that always expires.",
@@ -1830,27 +1859,6 @@
             }
           },
           "403": {
-            "x-docuccino": {
-              "id": "res:v1:thwsez5g73bvq7xz",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
-                    "line": 32,
-                    "symbol": "implicit:signed-middleware"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "Forbidden"
-              }
-            },
             "$ref": "#/components/responses/Forbidden"
           }
         }
@@ -1887,7 +1895,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "403": {
+                "id": "res:v1:z4wq7o7cf6fq3uas",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 22,
+                      "symbol": "implicit:signed-middleware"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.signed-links.from-group.@token",
         "summary": "Confirm a subscription.",
@@ -2059,27 +2089,6 @@
             }
           },
           "403": {
-            "x-docuccino": {
-              "id": "res:v1:z4wq7o7cf6fq3uas",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
-                    "line": 22,
-                    "symbol": "implicit:signed-middleware"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "Forbidden"
-              }
-            },
             "$ref": "#/components/responses/Forbidden"
           }
         }
@@ -2235,7 +2244,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "403": {
+                "id": "res:v1:qegls6276bntgbkz",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/SignedLinkController.php",
+                      "line": 42,
+                      "symbol": "implicit:signed-middleware"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.signed-links.without-expiry.@token",
         "summary": "Confirm a subscription, without documenting the link's expiry.",
@@ -2364,27 +2395,6 @@
             }
           },
           "403": {
-            "x-docuccino": {
-              "id": "res:v1:qegls6276bntgbkz",
-              "provenance": [
-                {
-                  "producer": "integration:implicit-response",
-                  "layer": "integration",
-                  "fields": [
-                    "component",
-                    "description"
-                  ],
-                  "source": {
-                    "file": "workbench/app/Http/Controllers/SignedLinkController.php",
-                    "line": 42,
-                    "symbol": "implicit:signed-middleware"
-                  }
-                }
-              ],
-              "facts": {
-                "component": "Forbidden"
-              }
-            },
             "$ref": "#/components/responses/Forbidden"
           }
         }
@@ -2425,13 +2435,13 @@
     "document": {
       "id": "doc:signed",
       "configHash": "0bf7778c7517ee69f127464e0d1e2cd803ad6b6180720b3f67557497ae839e7b",
-      "contentHash": "4fa4aa615683b4f9fa35307588cf74c588ccb81b2f2965b58f87fbfa51bd4272"
+      "contentHash": "dd4913f5f4d3107106e23fef443aa7d087639c5c603cee8c32d73b5c40bc6ca1"
     },
     "generator": {
       "name": "docuccino/laravel",
       "version": "0.20.2",
-      "specVersion": "2.0.0",
-      "schema": "https://spec.docuccino.app/uir/2.0/schema.json"
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
     }
   }
 }

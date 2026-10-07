@@ -30,7 +30,28 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "401": {
+                "id": "res:v1:7urj5wsidyuui767",
+                "provenance": [
+                  {
+                    "producer": "integration:inferred-handler",
+                    "layer": "integration",
+                    "fields": [
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/SharedErrors/PortalController.php",
+                      "line": 16,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\PortalController::dashboard"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.portal-dashboard",
         "tags": [
@@ -82,23 +103,6 @@
             }
           },
           "401": {
-            "x-docuccino": {
-              "id": "res:v1:7urj5wsidyuui767",
-              "provenance": [
-                {
-                  "producer": "integration:inferred-handler",
-                  "layer": "integration",
-                  "fields": [
-                    "description"
-                  ],
-                  "source": {
-                    "file": "tests/Fixtures/SharedErrors/PortalController.php",
-                    "line": 16,
-                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\PortalController::dashboard"
-                  }
-                }
-              ]
-            },
             "$ref": "#/components/responses/Error401"
           }
         }
@@ -128,7 +132,28 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "401": {
+                "id": "res:v1:qka4w2hqywdglfbn",
+                "provenance": [
+                  {
+                    "producer": "integration:inferred-handler",
+                    "layer": "integration",
+                    "fields": [
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/SharedErrors/PortalController.php",
+                      "line": 22,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\PortalController::exports"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.portal-exports",
         "tags": [
@@ -180,31 +205,6 @@
             }
           },
           "401": {
-            "x-docuccino": {
-              "id": "res:v1:qka4w2hqywdglfbn",
-              "provenance": [
-                {
-                  "producer": "integration:inferred-handler",
-                  "layer": "integration",
-                  "fields": [
-                    "description"
-                  ],
-                  "source": {
-                    "file": "tests/Fixtures/SharedErrors/PortalController.php",
-                    "line": 22,
-                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\PortalController::exports"
-                  }
-                }
-              ],
-              "facts": {
-                "examplePlaceholders": {
-                  "application/problem+json": [
-                    "detail",
-                    "type"
-                  ]
-                }
-              }
-            },
             "$ref": "#/components/responses/Error401"
           }
         }
@@ -234,7 +234,28 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "401": {
+                "id": "res:v1:2jiqtrobqaop7sdz",
+                "provenance": [
+                  {
+                    "producer": "integration:inferred-handler",
+                    "layer": "integration",
+                    "fields": [
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/SharedErrors/PortalController.php",
+                      "line": 38,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\PortalController::reports"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.portal-reports",
         "tags": [
@@ -286,23 +307,6 @@
             }
           },
           "401": {
-            "x-docuccino": {
-              "id": "res:v1:2jiqtrobqaop7sdz",
-              "provenance": [
-                {
-                  "producer": "integration:inferred-handler",
-                  "layer": "integration",
-                  "fields": [
-                    "description"
-                  ],
-                  "source": {
-                    "file": "tests/Fixtures/SharedErrors/PortalController.php",
-                    "line": 38,
-                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SharedErrors\\PortalController::reports"
-                  }
-                }
-              ]
-            },
             "$ref": "#/components/responses/Error401"
           }
         }
@@ -373,13 +377,13 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "84d72d689a23369c0bcda1088eab58ac6541284239462d74712d2d7f15610fd3"
+      "contentHash": "2b3967533e983273122b404b212c113d7584875ccc1630a8dafcfd8689feb3ae"
     },
     "generator": {
       "name": "docuccino/laravel",
       "version": "0.13.1",
-      "specVersion": "2.0.0",
-      "schema": "https://spec.docuccino.app/uir/2.0/schema.json"
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
     }
   }
 }
