@@ -7,6 +7,14 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.21.0
+
+### Bug fixes
+
+- read a collection's with() for the envelope it is sent in ([#629](https://github.com/docuccino/docuccino/pull/629))
+- illustrate a status-text member with the reason phrase its status is sent with ([#628](https://github.com/docuccino/docuccino/pull/628))
+- settle a respond() guard on the rendered response's class ([#626](https://github.com/docuccino/docuccino/pull/626))
+
 ## v0.20.4
 
 ### Features
