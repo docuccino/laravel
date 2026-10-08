@@ -11,20 +11,14 @@ use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Extensions\Schema\ComponentRegistry;
 use Docuccino\Core\Extensions\Schema\DeclarationFiles;
-use Docuccino\Core\Inference\CallableRef;
 use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Patch\Contribution;
 use Docuccino\Laravel\Integrations\Support\AppRenderedErrors;
-use ReflectionMethod;
-use Throwable;
 
 /**
  * The flagship tier of the error-response chain (design §6): documents the app's real error shapes by
  * analysing the code that actually renders each exception. Resolution order per thrown exception is
- * `Handler::render()`'s — the exception's own `render()`, looked past where it only returns null; then a
- * `Responsable`'s `toResponse()`; then the first render callback (`$exceptions->render(fn (T $e) => …)`)
- * whose first-parameter type the exception it is HANDED `is_a` ({@see ReceivedException}), with the
- * parameter narrowed to that class so a catch-all `fn (Throwable $e)` resolves the one reachable branch.
+ * `Handler::render()`'s ({@see ExceptionRenderers}), a renderer that only returns null looked past.
  *
  * The recovered `JsonResponse<payload, status>` becomes the documented response, under the name the
  * render path declared with `#[ErrorComponent]` where one did. A body too dynamic to fold raises one
@@ -36,21 +30,18 @@ use Throwable;
 #[ExtensionOrder(priority: Priorities::FIRST)]
 final class InferredHandlerExceptionToResponse implements ExceptionToResponse
 {
-    private const RESPONSABLE = 'Illuminate\\Contracts\\Support\\Responsable';
+    public const PRODUCER = 'integration:inferred-handler';
 
-    /** @var array<string, list<CallableRef>> memoised candidates per exception FQCN */
-    private array $candidates = [];
-
-    public function __construct(private readonly HandlerReflector $reflector) {}
+    public function __construct(private readonly ExceptionRenderers $renderers) {}
 
     public function supports(ThrownException $exception, RouteContext $context): bool
     {
-        return $this->candidates($exception->exceptionFqcn) !== [];
+        return $this->renderers->of($exception->exceptionFqcn) !== [];
     }
 
     public function producer(): string
     {
-        return 'integration:inferred-handler';
+        return self::PRODUCER;
     }
 
     public function toResponse(
@@ -62,7 +53,7 @@ final class InferredHandlerExceptionToResponse implements ExceptionToResponse
         // this tier claims the exception. Recorded before the decline, so "no handler" goes stale too.
         $context->recordDependencyFiles(DeclarationFiles::of($exception->exceptionFqcn));
 
-        $candidates = $this->candidates($exception->exceptionFqcn);
+        $candidates = $this->renderers->of($exception->exceptionFqcn);
         foreach ($candidates as $index => $callable) {
             $analysis = $context->engine->analyzeCallable($callable);
             // Cache soundness (design §10): editing the handler, or any helper its response is built through,
@@ -110,71 +101,5 @@ final class InferredHandlerExceptionToResponse implements ExceptionToResponse
         }
 
         return null;
-    }
-
-    /**
-     * @return list<CallableRef> in the order `Handler::render()` tries them
-     */
-    private function candidates(string $fqcn): array
-    {
-        return $this->candidates[$fqcn] ??= $this->resolve($fqcn);
-    }
-
-    /**
-     * @return list<CallableRef>
-     */
-    private function resolve(string $fqcn): array
-    {
-        $candidates = [];
-        $own = $this->renderableMethod($fqcn, 'render');
-        if ($own !== null) {
-            $candidates[] = $own;
-        }
-
-        // A `Responsable` is always answered by its own `toResponse()`: no render callback is asked.
-        if ($this->isResponsable($fqcn)) {
-            $toResponse = $this->renderableMethod($fqcn, 'toResponse');
-
-            return $toResponse === null ? $candidates : [...$candidates, $toResponse];
-        }
-
-        $received = ReceivedException::byRenderCallbacks($fqcn);
-        foreach ($this->reflector->renderCallbacks() as $callback) {
-            if ($received === $callback->exceptionType || is_a($received, $callback->exceptionType, true)) {
-                // Narrowing the parameter to the received type is a no-op for an exactly-typed callback and
-                // branch selection for a catch-all.
-                $candidates[] = $callback->at->ref($callback->parameterName, $received);
-
-                break;
-            }
-        }
-
-        return $candidates;
-    }
-
-    /** A ref to a `render()`/`toResponse()` the exception declares itself, if it has a reflectable one. */
-    private function renderableMethod(string $fqcn, string $method): ?CallableRef
-    {
-        try {
-            if (! class_exists($fqcn) || ! method_exists($fqcn, $method)) {
-                return null;
-            }
-
-            $reflection = new ReflectionMethod($fqcn, $method);
-            $file = $reflection->getFileName();
-            if ($file === false) {
-                return null;
-            }
-
-            // Analyse the method on the class that declares it — its real source location.
-            return new CallableRef($file, $reflection->getDeclaringClass()->getName(), $method);
-        } catch (Throwable) {
-            return null;
-        }
-    }
-
-    private function isResponsable(string $fqcn): bool
-    {
-        return interface_exists(self::RESPONSABLE) && is_a($fqcn, self::RESPONSABLE, true);
     }
 }

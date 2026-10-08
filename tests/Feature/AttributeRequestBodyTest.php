@@ -570,3 +570,38 @@ it('empties a required list a declaration takes the last name off', function ():
     expect($schema)->not->toHaveKey('required')
         ->and($body)->not->toHaveKey('required');
 });
+
+/**
+ * A declaration over a field the rules already published is written OVER it by the rule every declared
+ * shape follows: what it states wins, the recovered shape it replaces goes, and what is true of values of
+ * the declared type stays. Rows state the rule's answer, not the code's — a bound of the declared type is
+ * still a bound the server enforces, and one of another type describes nothing the declaration admits.
+ */
+it('writes a declaration over the field the rules published, keeping what is still true of it', function (string $name, array $recovered, BodyParameter $declaration, array $expected): void {
+    $seed = function (OperationDraft $operation) use ($name, $recovered): void {
+        $operation->set('requestBody', [
+            'content' => ['application/json' => ['schema' => ['type' => 'object', 'properties' => [$name => $recovered]]]],
+        ], Contribution::integration('form-request'));
+    };
+
+    $diagnostics = [];
+    $schema = runBodyParameters([$declaration], $seed, $diagnostics)['content']['application/json']['schema'];
+
+    expect($schema['properties'][$name])->toEqual($expected)
+        ->and($diagnostics)->toBe([]);
+})->with([
+    'a bound of the declared type' => ['name', ['type' => 'string', 'maxLength' => 100, 'format' => 'email'], new BodyParameter(name: 'name', type: 'string', description: 'Who.'), ['type' => 'string', 'maxLength' => 100, 'format' => 'email', 'description' => 'Who.']],
+    'a bound of another type' => ['count', ['type' => 'string', 'maxLength' => 3], new BodyParameter(name: 'count', type: 'int'), ['type' => 'integer']],
+    'values the declared type holds' => ['level', ['type' => ['string', 'null'], 'enum' => ['low', 'high', null]], new BodyParameter(name: 'level', type: 'string'), ['type' => 'string', 'enum' => ['low', 'high']]],
+    'values it cannot hold' => ['level', ['type' => 'string', 'enum' => ['1', '2']], new BodyParameter(name: 'level', type: 'int'), ['type' => 'integer']],
+    'the recovered shape a declared object replaces' => ['meta', ['type' => ['array', 'object'], 'items' => ['type' => 'string'], 'maxProperties' => 3, 'description' => 'Rules.'], new BodyParameter(name: 'meta', type: 'object'), ['type' => 'object', 'additionalProperties' => [], 'maxProperties' => 3, 'description' => 'Rules.']],
+    // A declaration stating no type states no shape: it adds what it says and changes nothing else.
+    'no type' => ['meta', ['type' => ['array', 'object'], 'maxItems' => 2], new BodyParameter(name: 'meta', description: 'Anything.'), ['type' => ['array', 'object'], 'maxItems' => 2, 'description' => 'Anything.']],
+    'an element' => ['tags', ['type' => 'array', 'items' => ['type' => 'string', 'maxLength' => 8]], new BodyParameter(name: 'tags.*', type: 'string'), ['type' => 'array', 'items' => ['type' => 'string', 'maxLength' => 8]]],
+]);
+
+it('documents a field the rules did not publish as the declaration states it, a string where it states no type', function (): void {
+    $schema = runBodyParameters([new BodyParameter(name: 'nickname', description: 'Shown to others.')])['content']['application/json']['schema'];
+
+    expect($schema['properties']['nickname'])->toBe(['type' => 'string', 'description' => 'Shown to others.']);
+});

@@ -119,9 +119,9 @@ it('emits tagged unions of plain classes byte-identical to their committed golde
     expect($downlevel['components']['schemas']['ImageAttachment']['properties']['kind'])->toEqual(['type' => 'string', 'enum' => ['image']])
         ->and($downlevel['components']['schemas']['Attachment']['discriminator']['propertyName'])->toBe('kind');
 
-    // 3.0 has no null type either: the null branch becomes `nullable` on the node, beside the tagged
-    // oneOf — the closest 3.0 spelling, but 3.0.3's `nullable` adds null only beside a `type`, so a 3.0
-    // reader may take it as the oneOf alone. That loose reading is named, as it is for any composition.
+    // 3.0 has no null type either. The null branch moves onto the tagged oneOf as `nullable: true`, which
+    // keeps the discriminator where a generator reads polymorphism from; a strict 3.0.3 validator, whose
+    // `nullable` takes effect only beside a `type`, refuses the null — the trade the emitter states.
     $maybe = $downlevel['paths']['/api/zz-attachments/maybe']['get']['responses']['200']['content']['application/json']['schema'];
     $report = (new OpenApi30DownlevelEmitter)->emitWithReport($result->document)->report;
     expect($maybe['nullable'])->toBeTrue()
@@ -129,7 +129,7 @@ it('emits tagged unions of plain classes byte-identical to their committed golde
         ->and($maybe['oneOf'])->toHaveCount(2)
         ->and($maybe)->not->toHaveKey('anyOf')
         ->and(array_map(static fn ($d): string => $d->message, diagnosticsCoded($report->diagnostics, 'downlevel.nullable-composition')))
-        ->toBe(['Moved the `{type: null}` branch at #/paths/~1api~1zz-attachments~1maybe/get/responses/200/content/application~1json/schema/anyOf onto the parent as `nullable: true`, which OpenAPI 3.0 reads loosely beside a composition.']);
+        ->toBe(['Moved the `{type: null}` branch at #/paths/~1api~1zz-attachments~1maybe/get/responses/200/content/application~1json/schema/anyOf onto the parent as `nullable: true`, the spelling OpenAPI 3.0 code generators read as nullable; a strict 3.0.3 validator, which honours `nullable` only beside a `type`, refuses null there.']);
 });
 
 it('publishes the sealed parent the same whether or not a route reaches its member first', function (): void {

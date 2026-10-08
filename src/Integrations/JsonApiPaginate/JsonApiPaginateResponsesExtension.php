@@ -54,6 +54,8 @@ final class JsonApiPaginateResponsesExtension implements OperationExtension
             $collection,
             $visitor->kind,
             Contribution::integration('json-api-paginate', $context->actionSource()),
+            // The macro pages through Laravel's own terminal for the configured mode.
+            builtByLaravel: true,
         );
     }
 }

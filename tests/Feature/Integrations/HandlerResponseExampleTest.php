@@ -21,6 +21,7 @@ use Docuccino\Core\Inference\DType\LiteralT;
 use Docuccino\Core\Inference\DType\NullT;
 use Docuccino\Core\Inference\DType\ScalarT;
 use Docuccino\Core\Inference\DType\StatusMarkerT;
+use Docuccino\Core\Inference\DType\StatusTextMarkerT;
 use Docuccino\Core\Inference\DType\UnionT;
 use Docuccino\Core\Inference\DType\UnknownT;
 use Docuccino\Core\Inference\NullTypeEngine;
@@ -35,6 +36,7 @@ use Docuccino\Core\Patch\Contribution;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Laravel\Integrations\InferredHandler\HandlerResponseBuilder;
 use Docuccino\Laravel\Tests\Fixtures\SharedErrors\ExportFailure;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
  * The example an inferred handler response carries has to be a valid instance of the schema beside it. Only
@@ -594,4 +596,94 @@ it('falls back to the required members when no construction was seen at all', fu
         'detail' => 'string',
     ])
         ->and($content['schema']['$ref'] ?? null)->toBe('#/components/schemas/ProblemDocument');
+});
+
+/**
+ * The draft for a problem body whose `title` is the reason phrase of the response's own status
+ * (`Response::$statusTexts[$status] ?? $fallback`), documented under `$status`.
+ *
+ * @return array<string, mixed> the `application/problem+json` content
+ */
+function statusTextContent(int $status, ?LiteralT $fallback): array
+{
+    $payload = new ArrayShapeT([
+        new ArrayShapeField('type', new LiteralT('about:blank')),
+        new ArrayShapeField('title', new StatusTextMarkerT(ScalarT::string(), $fallback)),
+        new ArrayShapeField('status', new StatusMarkerT),
+    ]);
+
+    $draft = HandlerResponseBuilder::build(
+        handlerAnalysis($payload, new UnknownT('status not folded')),
+        handlerContext(),
+        Contribution::integration('inferred-handler'),
+        handlerThrow($status),
+        'App\\Exceptions\\Handler::render',
+    );
+
+    return $draft?->freeze()->toArray()['content']['application/problem+json'] ?? [];
+}
+
+it('illustrates a reason-phrase member with the phrase its status is sent with', function (int $status, ?LiteralT $fallback, string $title): void {
+    $content = statusTextContent($status, $fallback);
+
+    expect($content['example'] ?? null)->toBe(['type' => 'about:blank', 'title' => $title, 'status' => $status])
+        // The phrase is a fact of this status alone, so it is illustrated and never claimed: the schema
+        // says what the member was read as, exactly as it did before the phrase was known.
+        ->and($content['schema']['properties']['title'] ?? null)->toBe(['type' => 'string']);
+})->with([
+    'a status the table names' => [404, new LiteralT('Error'), 'Not Found'],
+    'a status the table names, with no fallback written' => [409, null, 'Conflict'],
+    'a status the table lacks takes the `??` fallback' => [599, new LiteralT('Error'), 'Error'],
+    // No `??`: PHP reads an absent key as null with a warning, which is no phrase to show — the member
+    // is filled from its schema like any member nothing folded.
+    'a status the table lacks, with no fallback' => [599, null, 'string'],
+]);
+
+it('reads the phrase from the table the response is sent with, not from the words describing it', function (): void {
+    // What the server sends for a 422 is whatever the INSTALLED Symfony's table says — "Unprocessable
+    // Content" since RFC 9110, "Unprocessable Entity" before — read here from Symfony itself.
+    $sent = SymfonyResponse::$statusTexts[422];
+
+    expect(statusTextContent(422, new LiteralT('Error'))['example']['title'] ?? null)->toBe($sent);
+});
+
+it('illustrates the status and its phrase an object body echoes, through its hoisted $ref', function (int $status, string $title): void {
+    // The map the engine channels an object body built in place through, keyed by the member: its
+    // constructor read both off the response the status is sent with.
+    $members = new ArrayShapeT([
+        new ArrayShapeField('status', new StatusMarkerT),
+        new ArrayShapeField('title', new StatusTextMarkerT(ScalarT::string(), new LiteralT('Error'))),
+    ]);
+    $draft = HandlerResponseBuilder::build(
+        handlerAnalysis(new ClassT('App\\Data\\ProblemDocument'), new UnknownT('status not folded'), $members),
+        problemDocumentContext(),
+        Contribution::integration('inferred-handler'),
+        handlerThrow($status),
+        'App\\Exceptions\\Handler::render',
+    );
+
+    $content = $draft?->freeze()->toArray()['content']['application/problem+json'] ?? [];
+
+    expect($content['example'] ?? null)->toBe(['type' => 'string', 'title' => $title, 'status' => $status, 'detail' => 'string'])
+        ->and($content['schema']['$ref'] ?? null)->toBe('#/components/schemas/ProblemDocument');
+})->with([
+    'a status the table names' => [404, 'Not Found'],
+    'a status it lacks' => [599, 'Error'],
+]);
+
+it('keeps a title the code wrote as a literal', function (): void {
+    $payload = new ArrayShapeT([
+        new ArrayShapeField('title', new LiteralT('Error')),
+        new ArrayShapeField('status', new StatusMarkerT),
+    ]);
+
+    $draft = HandlerResponseBuilder::build(
+        handlerAnalysis($payload, 404),
+        handlerContext(),
+        Contribution::integration('inferred-handler'),
+        handlerThrow(404),
+        'App\\Exceptions\\Handler::render',
+    );
+
+    expect($draft?->freeze()->toArray()['content']['application/problem+json']['example'] ?? null)->toBe(['title' => 'Error', 'status' => 404]);
 });

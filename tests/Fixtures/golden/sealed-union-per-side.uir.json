@@ -1,0 +1,559 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-notes": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:6ok4z3jjxyy3z7wn",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "requestBody",
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/TaggedUnion/NoteController.php",
+                "line": 15,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\TaggedUnion\\NoteController::store"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.zz-notes",
+        "tags": [
+          "Note"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "attachment": {
+                    "$ref": "#/components/schemas/AttachmentRequest"
+                  },
+                  "note": {
+                    "$ref": "#/components/schemas/NoteRequest"
+                  },
+                  "pinned": {
+                    "$ref": "#/components/schemas/PinnedLinkDataRequest"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-notes/attachment": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:fkvcsw4bi2kcm6wu",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/TaggedUnion/NoteController.php",
+                "line": 17,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\TaggedUnion\\NoteController::attachment"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-notes.attachment",
+        "tags": [
+          "Note"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:5negnn7ujw4bflki",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/Attachment"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-notes/note": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:ghrr5f7k7wvstsl2",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/TaggedUnion/NoteController.php",
+                "line": 22,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\TaggedUnion\\NoteController::note"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-notes.note",
+        "tags": [
+          "Note"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:7slj5cowr6jpvhf4",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/Note"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-notes/pinned": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:vkoukswn6gf5toto",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/TaggedUnion/NoteController.php",
+                "line": 27,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\TaggedUnion\\NoteController::pinned"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-notes.pinned",
+        "tags": [
+          "Note"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:irj6tobekikmg3ce",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/PinnedLinkData"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Attachment": {
+        "x-docuccino": {
+          "id": "sch:v1:qsx3htkvqwcqhhoj"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/FileAttachment"
+          },
+          {
+            "$ref": "#/components/schemas/ForwardedAttachment"
+          },
+          {
+            "$ref": "#/components/schemas/ImageAttachment"
+          },
+          {
+            "$ref": "#/components/schemas/LinkAttachment"
+          }
+        ],
+        "discriminator": {
+          "mapping": {
+            "file": "#/components/schemas/FileAttachment",
+            "forwarded": "#/components/schemas/ForwardedAttachment",
+            "image": "#/components/schemas/ImageAttachment",
+            "link": "#/components/schemas/LinkAttachment"
+          },
+          "propertyName": "kind"
+        }
+      },
+      "AttachmentRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:nccdsbp642hy4tqw"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/FileAttachment"
+          },
+          {
+            "$ref": "#/components/schemas/ForwardedAttachmentRequest"
+          },
+          {
+            "$ref": "#/components/schemas/ImageAttachment"
+          },
+          {
+            "$ref": "#/components/schemas/LinkAttachmentRequest"
+          }
+        ],
+        "discriminator": {
+          "mapping": {
+            "file": "#/components/schemas/FileAttachment",
+            "forwarded": "#/components/schemas/ForwardedAttachmentRequest",
+            "image": "#/components/schemas/ImageAttachment",
+            "link": "#/components/schemas/LinkAttachmentRequest"
+          },
+          "propertyName": "kind"
+        }
+      },
+      "FileAttachment": {
+        "x-docuccino": {
+          "id": "sch:v1:biuthjypt74k337n"
+        },
+        "type": "object",
+        "properties": {
+          "bytes": {
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string",
+            "const": "file"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "bytes"
+        ]
+      },
+      "ForwardedAttachment": {
+        "x-docuccino": {
+          "id": "sch:v1:io4v6ipkbslkfkcb"
+        },
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "const": "forwarded"
+          },
+          "original": {
+            "$ref": "#/components/schemas/Attachment"
+          }
+        },
+        "required": [
+          "kind",
+          "original",
+          "from"
+        ]
+      },
+      "ForwardedAttachmentRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:ogxxvqlejvifxhjz"
+        },
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "const": "forwarded"
+          },
+          "original": {
+            "$ref": "#/components/schemas/AttachmentRequest"
+          }
+        },
+        "required": [
+          "kind",
+          "original",
+          "from"
+        ]
+      },
+      "ImageAttachment": {
+        "x-docuccino": {
+          "id": "sch:v1:6ugmhpqvr53uz4rp"
+        },
+        "type": "object",
+        "properties": {
+          "height": {
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string",
+            "const": "image"
+          },
+          "url": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "url",
+          "width",
+          "height"
+        ]
+      },
+      "LinkAttachment": {
+        "x-docuccino": {
+          "id": "sch:v1:p6nvaatg2g5n264p"
+        },
+        "type": "object",
+        "properties": {
+          "href": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "const": "link"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "href",
+          "title"
+        ]
+      },
+      "LinkAttachmentRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:abipq72xv4mx53yj"
+        },
+        "type": "object",
+        "properties": {
+          "href": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "const": "link"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "href"
+        ]
+      },
+      "Note": {
+        "x-docuccino": {
+          "id": "sch:v1:qeqpsfgqnzg2bez3"
+        },
+        "type": "object",
+        "properties": {
+          "link": {
+            "$ref": "#/components/schemas/LinkAttachment"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "link"
+        ]
+      },
+      "NoteRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:ryr7qsxrhnpxtiqm"
+        },
+        "type": "object",
+        "properties": {
+          "link": {
+            "$ref": "#/components/schemas/LinkAttachmentRequest"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "link"
+        ]
+      },
+      "PinnedLinkData": {
+        "x-docuccino": {
+          "id": "sch:v1:wpuhryaailvxvuxu"
+        },
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "link": {
+            "$ref": "#/components/schemas/LinkAttachment"
+          }
+        },
+        "required": [
+          "label",
+          "link"
+        ]
+      },
+      "PinnedLinkDataRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:towpmqcpdeyiomi5"
+        },
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "link": {
+            "$ref": "#/components/schemas/LinkAttachmentRequest"
+          }
+        },
+        "required": [
+          "label",
+          "link"
+        ]
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "f1ac2d066a841075ef274f7edbd61a6fc84f6533a0d81c357b0bce401be63792"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.20.4",
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
+    }
+  }
+}

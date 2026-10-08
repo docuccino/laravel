@@ -15,6 +15,7 @@ use Docuccino\Core\Inference\DType\UnknownT;
 use Docuccino\Core\Inference\PropertyMetadata;
 use Docuccino\Core\Inference\ReturnSite;
 use Docuccino\Core\Inference\SourceLocation;
+use Docuccino\Core\Inference\TypeCondition;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Laravel\Integrations\InferredHandler\RenderCallbackDigestContributor;
 use Docuccino\Laravel\Tests\Fixtures\InferredHandler\ProbeFailureBody;
@@ -318,3 +319,81 @@ it('keys every fragment on the respond() callback, so registering or moving one 
     expect($one)->not->toBe($none)
         ->and($other)->not->toBe($one);
 });
+
+/**
+ * `if (! $response instanceof $class) { return $response; } return <problem+json>;` as the engine reads it:
+ * the pass-through reached where the rendered response is not one, the rewrite where it is.
+ *
+ * @return list<ReturnSite>
+ */
+function respondClassGuard(string $class): array
+{
+    return [
+        new ReturnSite(new ClassT(Response::class), new SourceLocation(''), returnsParameter: 'response', typeConditions: [new TypeCondition('response', $class, false)]),
+        new ReturnSite(respondProblem(), new SourceLocation(''), typeConditions: [new TypeCondition('response', $class, true)]),
+    ];
+}
+
+it('settles a guard on the rendered response class against the JsonResponse the framework renders', function (string $class, array $media): void {
+    $out = respondedFormErrors(respondClassGuard($class));
+
+    // The framework renders this 404 with `response()->json()`, which builds exactly an
+    // `Illuminate\Http\JsonResponse`: an instance of it and of every class above it, and of nothing else.
+    expect(array_keys(resolveResponse($out['document'], $out['responses']['404'])['content'] ?? []))->toBe($media)
+        ->and($out['deferred'])->toBeFalse();
+})->with([
+    'the JsonResponse it is' => ['Illuminate\\Http\\JsonResponse', ['application/problem+json']],
+    'the Symfony JsonResponse above it' => ['Symfony\\Component\\HttpFoundation\\JsonResponse', ['application/problem+json']],
+    'the base Response above both' => [Response::class, ['application/problem+json']],
+    'a redirect' => ['Illuminate\\Http\\RedirectResponse', ['application/json']],
+    'the Symfony redirect' => ['Symfony\\Component\\HttpFoundation\\RedirectResponse', ['application/json']],
+    'a streamed response' => ['Symfony\\Component\\HttpFoundation\\StreamedResponse', ['application/json']],
+    'a file download' => ['Symfony\\Component\\HttpFoundation\\BinaryFileResponse', ['application/json']],
+    'the plain Illuminate Response, a sibling and not an ancestor' => ['Illuminate\\Http\\Response', ['application/json']],
+    // A class this build cannot load proves nothing about the response: both answers stand.
+    'a class nothing declares' => ['App\\Http\\Responses\\Missing', ['application/json', 'application/problem+json']],
+]);
+
+it('leaves a guard on another parameter to the facts that answer it', function (): void {
+    $out = respondedFormErrors([
+        new ReturnSite(new ClassT(Response::class), new SourceLocation(''), returnsParameter: 'response', typeConditions: [new TypeCondition('request', 'Illuminate\\Http\\Request', false)]),
+        new ReturnSite(respondProblem(), new SourceLocation(''), typeConditions: [new TypeCondition('request', 'Illuminate\\Http\\Request', true)]),
+    ]);
+
+    expect(array_keys(resolveResponse($out['document'], $out['responses']['404'])['content'] ?? []))
+        ->toBe(['application/json', 'application/problem+json']);
+});
+
+it('reads a guard against the JsonResponse an application render callback returns, and no further', function (string $class, array $media): void {
+    $render = registerRenderCallback(
+        static fn (NotFoundHttpException $e) => response()->json(new ProbeFailureBody('gone', 1), 404),
+        RESPOND_NOT_FOUND,
+    );
+    $respond = registerRespondCallback(
+        static fn (Response $response, Throwable $e, Request $request): Response => $response,
+        RESPOND_NOT_FOUND,
+    );
+    app()->instance(TypeEngine::class, WorkbenchEngine::make(
+        [
+            $render => new ActionAnalysis(returns: [new ReturnSite(
+                new ClassT('Illuminate\\Http\\JsonResponse', [new ClassT(ProbeFailureBody::class), new LiteralT(404)]),
+                new SourceLocation(''),
+            )]),
+            $respond => new ActionAnalysis(returns: respondClassGuard($class)),
+        ],
+        classOverrides: [ProbeFailureBody::class => new ClassMetadata(ProbeFailureBody::class, [
+            new PropertyMetadata('reason', ScalarT::string()),
+            new PropertyMetadata('attempt', ScalarT::int()),
+        ])],
+    ));
+
+    $document = generateDocument()->document->toArray();
+
+    // A value typed `JsonResponse` is one, though it may be a subclass: whether it is also a redirect is not
+    // something the type says, so that guard stays open both ways.
+    expect(array_keys(resolveResponse($document, $document['paths']['/api/forms/{form}']['get']['responses']['404'])['content'] ?? []))
+        ->toBe($media);
+})->with([
+    'the JsonResponse it returns' => ['Illuminate\\Http\\JsonResponse', ['application/problem+json']],
+    'a class it is not known not to be' => ['Illuminate\\Http\\RedirectResponse', ['application/json', 'application/problem+json']],
+]);

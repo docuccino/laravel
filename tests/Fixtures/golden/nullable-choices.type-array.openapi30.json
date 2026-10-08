@@ -93,9 +93,15 @@
                 "enum": [
                   "open"
                 ]
+              },
+              {
+                "type": "object",
+                "enum": [
+                  null
+                ],
+                "nullable": true
               }
-            ],
-            "nullable": true
+            ]
           }
         },
         "required": [

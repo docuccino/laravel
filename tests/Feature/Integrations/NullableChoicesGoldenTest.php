@@ -72,6 +72,11 @@ it('accepts null in each nullable closed set, as the server does, and refuses a 
     $schema = $side === 'request' ? $schemas->UpdateTicketRequest->properties->{$field} : $schemas->TicketSummary->properties->{$field};
 
     expect((new SchemaValidator)->validate(json_decode((string) json_encode($value)), $schema)->isValid())->toBe($accepted);
+
+    // The 3.0 document owes the same answer, read as 3.0 reads it.
+    $pointer = $side === 'request' ? '/components/schemas/UpdateTicketRequest/properties/'.$field : '/components/schemas/TicketSummary/properties/'.$field;
+    $downlevel = (new OpenApi30DownlevelEmitter)->emit(nullableChoicesBuild($policy)->document);
+    expect(openApi30Admits($downlevel, $pointer, $value))->toBe($accepted);
 })->with(['type-array', 'anyof'])->with([
     'a nullable in: rule, null' => ['request', 'status', null, true],
     'a nullable in: rule, a member' => ['request', 'status', 'closed', true],

@@ -116,6 +116,15 @@ final class PaginationTerminalVisitor implements TraceVisitor
         return $terminals;
     }
 
+    /**
+     * Whether the outermost terminal is one of Laravel's own, so the page is the paginator class its kind
+     * names; a configured terminal is the application's, and may build any class.
+     */
+    public function builtByLaravel(): bool
+    {
+        return $this->terminal !== null && isset(self::PAGINATOR_TERMINALS[$this->terminal]);
+    }
+
     /** The folded argument at $key — a 0-based position or a parameter name — when it folded to an int. */
     public function intArg(string|int $key): ?int
     {

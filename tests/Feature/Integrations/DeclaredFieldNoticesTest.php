@@ -45,17 +45,17 @@ it('names the field a declaration does not answer for, and only that field', fun
         expect($messages[$index])->toContain('"'.$field.'"')->toContain('omitted from '.$location);
     }
 })->with([
-    // A declaration naming the field is written OVER the property, so what is published there is the
-    // author's whole and no recovered rule would have survived beside it.
+    // A declaration naming the field publishes it, whatever the recovery made of it — and a field the
+    // rules could not read has nothing recovered for it to be written over.
     'at the field' => [[new BodyParameter(name: 'file', type: 'object')], SuppressibleRulesData::class, UNREADABLE_RULES_PAIR, 'POST', 'the request schema', ['secret']],
 
     // One naming a key INSIDE it publishes the field as that container — the dotted spelling, which is
     // the branch that separates the path reading from a plain name comparison.
     'inside the field' => [[new BodyParameter(name: 'file.name', type: 'string')], SuppressibleRulesData::class, UNREADABLE_RULES_PAIR, 'POST', 'the request schema', ['secret']],
 
-    // And one naming a container ABOVE it decides the field too, in the other direction: the declared
-    // node goes in whole, so `meta.tags` is gone whatever rules the author writes and the note's own
-    // remedy cannot clear it.
+    // And one naming a container ABOVE it decides the field too, in the other direction: a declared shape
+    // replaces the container's, so `meta.tags` is gone whatever rules the author writes and the note's
+    // own remedy cannot clear it.
     'above the field' => [
         [new BodyParameter(name: 'meta', type: 'object')],
         SuppressibleRulesData::class,
@@ -63,6 +63,17 @@ it('names the field a declaration does not answer for, and only that field', fun
         'POST',
         'the request schema',
         ['secret'],
+    ],
+
+    // …but only by stating one: a declaration with no type is written over the container without
+    // replacing it, so the field it could not read is as omitted as before.
+    'above the field, stating no shape' => [
+        [new BodyParameter(name: 'meta', description: 'Order metadata.')],
+        SuppressibleRulesData::class,
+        "return ['meta' => ['array'], 'meta.tags' => [fn () => true], 'secret' => [fn () => true]];",
+        'POST',
+        'the request schema',
+        ['meta.tags', 'secret'],
     ],
 
     // A declaration on another branch answers for nothing here.

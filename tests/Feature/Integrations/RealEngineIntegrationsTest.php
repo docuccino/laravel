@@ -9,6 +9,7 @@ use Docuccino\Core\Extensions\Schema\SchemaConverter;
 use Docuccino\Core\Extensions\Validation\RuleSet;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 use Docuccino\Core\Inference\ActionAnalysis;
+use Docuccino\Core\Inference\CallableRef;
 use Docuccino\Core\Inference\ClassMetadata;
 use Docuccino\Core\Inference\DType\ArrayShapeT;
 use Docuccino\Core\Inference\DType\ClassT;
@@ -22,12 +23,17 @@ use Docuccino\Core\Inference\PropertyMetadata;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Inference\PhpStan\Tests\Support\FixtureRunner;
 use Docuccino\Laravel\Integrations\ApiResources\JsonResourceSchema;
+use Docuccino\Laravel\Integrations\ApiResources\WrappedResource;
 use Docuccino\Laravel\Integrations\FormRequest\ShapeToRuleSet;
 use Docuccino\Laravel\Integrations\JsonApiPaginate\JsonApiPaginateConfig;
 use Docuccino\Laravel\Integrations\JsonApiPaginate\JsonApiPaginateFacts;
 use Docuccino\Laravel\Integrations\JsonApiPaginate\JsonApiPaginateParameters;
 use Docuccino\Laravel\Integrations\SpatieData\DataValidationRules;
 use Docuccino\Laravel\Integrations\TimacdonaldJsonApi\TimacdonaldJsonApiResourceSchema;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\DigestCollection as DigestFixtureCollection;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\DigestResource as DigestFixtureResource;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\GazetteCollection as GazetteFixtureCollection;
+use Docuccino\Laravel\Tests\Fixtures\ApiResources\GazetteResource as GazetteFixtureResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ListedCollection as ListedFixtureCollection;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\MultiShapeResource;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\PartlyDynamicMetaResource;
@@ -1044,4 +1050,65 @@ it('publishes the with() members of the collection a newCollection() override bu
         ->and(array_keys($schema['properties']))->toBe(['data', 'meta', 'api_version'])
         ->and($schema['required'])->toBe(['data', 'meta', 'api_version'])
         ->and(array_keys($schema['properties']['meta']['properties']))->toBe(['listed_at']);
+})->group('fixture');
+
+it('proves a collection wraps a plain list only where every construction of it is handed one, through the real engine', function (string $method, string $collection, bool $plain): void {
+    $trace = FixtureRunner::traceWrappedCollection(
+        'app/Http/Controllers/ListedCollectionController.php',
+        'App\\Http\\Controllers\\ListedCollectionController',
+        $method,
+        'App\\Http\\Resources\\'.$collection,
+    );
+
+    expect($trace['plain'])->toBe($plain);
+})->with([
+    'an Eloquent collection' => ['gazette', 'GazetteCollection', true],
+    'an Eloquent collection transformed' => ['gazetteListed', 'GazetteCollection', true],
+    'an array' => ['gazetteArray', 'GazetteCollection', true],
+    'the base collection' => ['brief', 'BriefCollection', true],
+    'a length-aware page' => ['gazettePages', 'GazetteCollection', false],
+    'a cursor page' => ['digestPages', 'DigestCollection', false],
+    'a simple page' => ['briefPages', 'BriefCollection', false],
+    'a page built by hand, which no terminal names' => ['gazetteBuilt', 'GazetteCollection', false],
+    'a collection the action never builds' => ['gazette', 'DigestCollection', false],
+])->group('fixture');
+
+it('publishes the with() members of the envelope a collection is sent in, through the real engine', function (): void {
+    // The fixture app's classes stand in by name for their mirrors here, which this process can load.
+    $analyse = static fn (string $collection, ?string $resource): ActionAnalysis => ActionAnalysis::fromArray($resource === null
+        ? FixtureRunner::analyze('app/Http/Resources/'.$collection.'.php', 'App\\Http\\Resources\\'.$collection, 'with')
+        : FixtureRunner::analyzeCallable('app/Http/Resources/'.$collection.'.php', 'App\\Http\\Resources\\'.$collection, 'with', param: '$this->resource', narrowType: $resource, every: true));
+    $narrowed = static fn (string $mirror, string $resource): string => (new CallableRef('', $mirror, 'with', narrowType: $resource, narrowToEvery: true, narrowProperty: 'resource'))->symbol();
+    $page = WrappedResource::PAGINATORS['length'];
+
+    $engine = new StubTypeEngine(
+        analyses: [
+            GazetteFixtureCollection::class.'::with' => $analyse('GazetteCollection', null),
+            DigestFixtureCollection::class.'::with' => $analyse('DigestCollection', null),
+        ],
+        callables: [
+            $narrowed(GazetteFixtureCollection::class, WrappedResource::PLAIN) => $analyse('GazetteCollection', WrappedResource::PLAIN),
+            $narrowed(GazetteFixtureCollection::class, $page) => $analyse('GazetteCollection', $page),
+            $narrowed(DigestFixtureCollection::class, WrappedResource::PLAIN) => $analyse('DigestCollection', WrappedResource::PLAIN),
+            $narrowed(DigestFixtureCollection::class, $page) => $analyse('DigestCollection', $page),
+        ],
+    );
+    $convert = static function (string $collection, string $item, ?string $wraps) use ($engine): array {
+        $converter = new SchemaConverter([new JsonResourceSchema, ...DefaultTypeMappers::all()], $engine, new ComponentRegistry);
+        $type = new ClassT($collection, [new ClassT($item)]);
+
+        return $wraps === null ? $converter->toSchema($type)->schema : WrappedResource::during($converter, $wraps, static fn () => $converter->toSchema($type))->schema;
+    };
+
+    // Unknown, both branches count; a plain list takes the branch adding meta on every request; a page,
+    // the one handing back the framework's members, which adds none the analyser can read.
+    expect($convert(GazetteFixtureCollection::class, GazetteFixtureResource::class, null)['required'])->toBe(['data'])
+        ->and($convert(GazetteFixtureCollection::class, GazetteFixtureResource::class, WrappedResource::PLAIN)['required'])->toBe(['data', 'meta'])
+        ->and(array_keys($convert(GazetteFixtureCollection::class, GazetteFixtureResource::class, $page)['properties']))->toBe(['data']);
+
+    // A plain branch that sends meta on some requests only still publishes it optional, with its own keys.
+    $digest = $convert(DigestFixtureCollection::class, DigestFixtureResource::class, WrappedResource::PLAIN);
+    expect($digest['required'])->toBe(['data'])
+        ->and(array_keys($digest['properties']['meta']['properties']))->toBe(['count'])
+        ->and($convert(DigestFixtureCollection::class, DigestFixtureResource::class, $page)['required'])->toBe(['data', 'meta']);
 })->group('fixture');

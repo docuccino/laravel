@@ -1,0 +1,672 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-answers/last": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:e3ybnkvvy4neasro",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/AdoptedUnion/AnswerController.php",
+                "line": 24,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\AdoptedUnion\\AnswerController::last"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-answers.last",
+        "tags": [
+          "Answer"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:qple7f4ovju33nrb",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/LastAnswer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-answers/storeDeclared": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:cfxp5mg76h6upxqm",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "requestBody",
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/AdoptedUnion/AnswerController.php",
+                "line": 17,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\AdoptedUnion\\AnswerController::storeDeclared"
+              },
+              "overrode": [
+                {
+                  "field": "requestBody",
+                  "value": {
+                    "content": {
+                      "application/json": {
+                        "schema": {
+                          "properties": {
+                            "answer": {
+                              "anyOf": [
+                                {
+                                  "properties": {
+                                    "kind": {
+                                      "$ref": "#/components/schemas/ShapeKind",
+                                      "const": "count"
+                                    },
+                                    "value": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "value"
+                                  ],
+                                  "type": "object"
+                                },
+                                {
+                                  "properties": {
+                                    "kind": {
+                                      "$ref": "#/components/schemas/ShapeKind",
+                                      "const": "measure"
+                                    },
+                                    "steps": {
+                                      "items": {
+                                        "type": "integer"
+                                      },
+                                      "maxItems": 20,
+                                      "type": "array"
+                                    },
+                                    "value": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "value",
+                                    "steps"
+                                  ],
+                                  "type": "object"
+                                },
+                                {
+                                  "properties": {
+                                    "kind": {
+                                      "$ref": "#/components/schemas/ShapeKind",
+                                      "const": "letters"
+                                    },
+                                    "letters": {
+                                      "items": {
+                                        "example": "example",
+                                        "maxLength": 8,
+                                        "type": "string"
+                                      },
+                                      "maxItems": 20,
+                                      "minItems": 1,
+                                      "type": "array"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "letters"
+                                  ],
+                                  "type": "object"
+                                },
+                                {
+                                  "maxProperties": 0,
+                                  "type": "object"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "x-docuccino": {
+                                "facts": {
+                                  "blankAsNull": "^[\\x00\\t-\\r  ­͏؜ᅟᅠ ឴឵᠎           ​‌‍‎‏\u2028\u2029  ⁠⁡⁢⁣⁤⁥⁪⁫⁬⁭⁮⁯⠀　ㅤ﻿ﾠ𝅙𝅳𝅴𝅵𝅶𝅷𝅸𝅹𝅺󠀠]*$"
+                                }
+                              }
+                            },
+                            "note": {
+                              "example": "example",
+                              "maxLength": 200,
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "x-docuccino": {
+                                "facts": {
+                                  "blankAsNull": "^[\\x00\\t-\\r  ­͏؜ᅟᅠ ឴឵᠎           ​‌‍‎‏\u2028\u2029  ⁠⁡⁢⁣⁤⁥⁪⁫⁬⁭⁮⁯⠀　ㅤ﻿ﾠ𝅙𝅳𝅴𝅵𝅶𝅷𝅸𝅹𝅺󠀠]*$"
+                                }
+                              }
+                            }
+                          },
+                          "required": [
+                            "answer"
+                          ],
+                          "type": "object"
+                        }
+                      }
+                    },
+                    "required": true
+                  },
+                  "producer": "integration:form-request"
+                }
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:jvlpwk3cimq7li5u",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/AdoptedUnion/AnswerController.php",
+                      "line": 17,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.zz-answers.storeDeclared",
+        "tags": [
+          "Answer"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "answer": {
+                    "x-docuccino": {
+                      "facts": {
+                        "blankAsNull": "^[\\x00\\t-\\r  ­͏؜ᅟᅠ ឴឵᠎           ​‌‍‎‏\u2028\u2029  ⁠⁡⁢⁣⁤⁥⁪⁫⁬⁭⁮⁯⠀　ㅤ﻿ﾠ𝅙𝅳𝅴𝅵𝅶𝅷𝅸𝅹𝅺󠀠]*$"
+                      }
+                    },
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/Answer",
+                        "anyOf": [
+                          {
+                            "properties": {
+                              "kind": {
+                                "const": "count"
+                              }
+                            }
+                          },
+                          {
+                            "properties": {
+                              "kind": {
+                                "const": "measure"
+                              },
+                              "steps": {
+                                "maxItems": 20
+                              }
+                            }
+                          },
+                          {
+                            "properties": {
+                              "kind": {
+                                "const": "letters"
+                              },
+                              "letters": {
+                                "items": {
+                                  "maxLength": 8
+                                },
+                                "maxItems": 20,
+                                "minItems": 1
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "maxProperties": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "note": {
+                    "x-docuccino": {
+                      "facts": {
+                        "blankAsNull": "^[\\x00\\t-\\r  ­͏؜ᅟᅠ ឴឵᠎           ​‌‍‎‏\u2028\u2029  ⁠⁡⁢⁣⁤⁥⁪⁫⁬⁭⁮⁯⠀　ㅤ﻿ﾠ𝅙𝅳𝅴𝅵𝅶𝅷𝅸𝅹𝅺󠀠]*$"
+                      }
+                    },
+                    "description": "Shown beside the answer.",
+                    "type": "string",
+                    "maxLength": 200,
+                    "example": "example"
+                  }
+                },
+                "required": [
+                  "answer"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/api/zz-answers/storeTyped": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:kotquwk432v5gcve",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/AdoptedUnion/AnswerController.php",
+                "line": 19,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\AdoptedUnion\\AnswerController::storeTyped"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:form-request",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "tests/Fixtures/AdoptedUnion/AnswerController.php",
+                "line": 19,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\AdoptedUnion\\AnswerController::storeTyped"
+              }
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:nbwwyb47ix72ro2x",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/AdoptedUnion/AnswerController.php",
+                      "line": 19,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.zz-answers.storeTyped",
+        "tags": [
+          "Answer"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeclaredAnswerRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Answer": {
+        "x-docuccino": {
+          "id": "sch:v1:ujxj7hnoxjxjrhna"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/CountAnswer"
+          },
+          {
+            "$ref": "#/components/schemas/LettersAnswer"
+          },
+          {
+            "$ref": "#/components/schemas/MeasureAnswer"
+          }
+        ],
+        "discriminator": {
+          "mapping": {
+            "count": "#/components/schemas/CountAnswer",
+            "letters": "#/components/schemas/LettersAnswer",
+            "measure": "#/components/schemas/MeasureAnswer"
+          },
+          "propertyName": "kind"
+        }
+      },
+      "CountAnswer": {
+        "x-docuccino": {
+          "id": "sch:v1:7ir36lg64q45kgy7"
+        },
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "count"
+          },
+          "value": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "value"
+        ]
+      },
+      "DeclaredAnswerRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:4bt4h7umtfk6clrl"
+        },
+        "type": "object",
+        "properties": {
+          "answer": {
+            "x-docuccino": {
+              "facts": {
+                "blankAsNull": "^[\\x00\\t-\\r  ­͏؜ᅟᅠ ឴឵᠎           ​‌‍‎‏\u2028\u2029  ⁠⁡⁢⁣⁤⁥⁪⁫⁬⁭⁮⁯⠀　ㅤ﻿ﾠ𝅙𝅳𝅴𝅵𝅶𝅷𝅸𝅹𝅺󠀠]*$"
+              }
+            },
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Answer",
+                "anyOf": [
+                  {
+                    "properties": {
+                      "kind": {
+                        "const": "count"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "kind": {
+                        "const": "measure"
+                      },
+                      "steps": {
+                        "maxItems": 20
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "kind": {
+                        "const": "letters"
+                      },
+                      "letters": {
+                        "items": {
+                          "maxLength": 8
+                        },
+                        "maxItems": 20,
+                        "minItems": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "object",
+                "maxProperties": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "x-docuccino": {
+              "facts": {
+                "blankAsNull": "^[\\x00\\t-\\r  ­͏؜ᅟᅠ ឴឵᠎           ​‌‍‎‏\u2028\u2029  ⁠⁡⁢⁣⁤⁥⁪⁫⁬⁭⁮⁯⠀　ㅤ﻿ﾠ𝅙𝅳𝅴𝅵𝅶𝅷𝅸𝅹𝅺󠀠]*$"
+              }
+            },
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200,
+            "example": "example"
+          }
+        },
+        "required": [
+          "answer"
+        ]
+      },
+      "LastAnswer": {
+        "x-docuccino": {
+          "id": "sch:v1:zt2njsk7tdxjeyk7"
+        },
+        "type": "object",
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Answer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "answer"
+        ]
+      },
+      "LettersAnswer": {
+        "x-docuccino": {
+          "id": "sch:v1:muwk27wabjrwsvvs"
+        },
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "letters"
+          },
+          "letters": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "letters"
+        ]
+      },
+      "MeasureAnswer": {
+        "x-docuccino": {
+          "id": "sch:v1:fua2zjp54ulkafu5"
+        },
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "measure"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "value": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "kind",
+          "value",
+          "steps"
+        ]
+      },
+      "ShapeKind": {
+        "x-docuccino": {
+          "id": "sch:v1:z7yammb7oi433but"
+        },
+        "type": "string",
+        "enum": [
+          "count",
+          "measure",
+          "letters"
+        ],
+        "x-enum-varnames": [
+          "Count",
+          "Measure",
+          "Letters"
+        ],
+        "x-enumNames": [
+          "Count",
+          "Measure",
+          "Letters"
+        ]
+      },
+      "UnprocessableEntity": {
+        "x-docuccino": {
+          "id": "sch:v1:f3tcwvg2vhs255gy"
+        },
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "errors"
+        ]
+      }
+    },
+    "responses": {
+      "UnprocessableEntity": {
+        "description": "Unprocessable Entity",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/UnprocessableEntity"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "1a97bcf413eb52b5ae8654a6a555f0a5e5f48961dc29f4ea54ba8bd44c8c76e8"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.20.4",
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
+    }
+  }
+}

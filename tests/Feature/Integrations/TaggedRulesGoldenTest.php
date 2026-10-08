@@ -115,11 +115,13 @@ it('builds the same union warm as cold', function () use ($engine, $routes): voi
 });
 
 it('publishes the union to OpenAPI 3.0 with the discriminator and the tag as a one-value enum', function () use ($engine, $routes): void {
-    $document = json_decode((new OpenApi30DownlevelEmitter)->emit(localityBuild($routes, $engine)->document), true, flags: JSON_THROW_ON_ERROR);
-    $schemas = $document['components']['schemas'];
+    $emitted = (new OpenApi30DownlevelEmitter)->emit(localityBuild($routes, $engine)->document);
+    $schemas = json_decode($emitted, true, flags: JSON_THROW_ON_ERROR)['components']['schemas'];
 
+    // A nullable delivery keeps null beside the union, spelled with a `type` for 3.0's `nullable` to widen.
     expect($schemas['StoreShipmentRequestDeliveryPickup']['properties']['method'])->toEqual(['allOf' => [['$ref' => '#/components/schemas/DeliveryMethod']], 'enum' => ['pickup']])
-        ->and($schemas['StoreShipmentRequest']['properties']['delivery'])->toHaveKey('nullable', true);
+        ->and($schemas['StoreShipmentRequest']['properties']['delivery'])->not->toHaveKey('nullable')
+        ->and(openApi30Admits($emitted, '/components/schemas/StoreShipmentRequest/properties/delivery', null))->toBeTrue();
 });
 
 it('keeps the merged object where a second field gates members of it too', function () use ($engine): void {

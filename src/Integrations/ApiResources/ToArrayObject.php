@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\ApiResources;
 
 use Docuccino\Core\Extensions\Contracts\SchemaContext;
+use Docuccino\Core\Inference\ActionAnalysis;
 use Docuccino\Core\Inference\ActionRef;
+use Docuccino\Core\Inference\CallableRef;
 use Docuccino\Core\Inference\DType\ArrayShapeT;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\DType\DType;
@@ -47,11 +49,14 @@ final class ToArrayObject
      * the caller then degrades to a bare `{type: object}`. Filtered as Laravel filters it unless
      * `$filtered` is false, and the whole array's own emptiness is the caller's to publish.
      *
+     * `$resource` is the class `$this->resource` is known to be an instance of, where the caller knows it:
+     * only the returns reachable for that class are read ({@see self::analysis()}).
+     *
      * @return array<string, mixed>|null
      */
-    public function analyze(string $fqcn, string $method, SchemaContext $context, bool $filtered = true): ?array
+    public function analyze(string $fqcn, string $method, SchemaContext $context, bool $filtered = true, ?string $resource = null): ?array
     {
-        return $this->read($fqcn, $method, $context, $filtered)['object'] ?? null;
+        return $this->read($fqcn, $method, $context, $filtered, $resource)['object'] ?? null;
     }
 
     /**
@@ -80,7 +85,7 @@ final class ToArrayObject
     /**
      * @return array{object: array<string, mixed>, mayBeEmpty: bool}|null
      */
-    private function read(string $fqcn, string $method, SchemaContext $context, bool $filtered): ?array
+    private function read(string $fqcn, string $method, SchemaContext $context, bool $filtered, ?string $resource = null): ?array
     {
         try {
             $reflection = new ReflectionMethod($fqcn, $method);
@@ -92,16 +97,7 @@ final class ToArrayObject
             return null;
         }
 
-        $line = $reflection->getStartLine();
-        $analysis = $context->engine()->analyzeAction(new ActionRef(
-            (string) $reflection->getFileName(),
-            $fqcn,
-            $method,
-            $line > 0 ? $line : 0,
-        ));
-
-        // Editing toArray, or any file its return shape traced, must invalidate the warm fragment.
-        $context->dependsOn(...$analysis->dependencyFiles);
+        $analysis = $this->analysis($reflection, $fqcn, $method, $context, $resource);
 
         // Merge every return site — a `toArray` with request-dependent branches has several, and
         // first-shape-wins would drop the other branches' keys. A site with no readable shape still
@@ -128,6 +124,39 @@ final class ToArrayObject
         }
 
         return self::mergeSites($sites, count($sites) + $unread);
+    }
+
+    /**
+     * The method's returns — with `$resource`, only those reachable while `$this->resource` is an instance
+     * of that class, as the engine narrows a property its `instanceof` tests read. A narrowing no return
+     * survives proves nothing about the method, so the whole of it is read instead.
+     */
+    private function analysis(ReflectionMethod $reflection, string $fqcn, string $method, SchemaContext $context, ?string $resource): ActionAnalysis
+    {
+        $file = (string) $reflection->getFileName();
+        $line = max(0, (int) $reflection->getStartLine());
+
+        if ($resource !== null) {
+            $narrowed = $context->engine()->analyzeCallable(new CallableRef(
+                $file,
+                $fqcn,
+                $method,
+                $line,
+                narrowType: $resource,
+                narrowToEvery: true,
+                narrowProperty: 'resource',
+            ));
+            // Editing the method, or any file its return shape traced, must invalidate the warm fragment.
+            $context->dependsOn(...$narrowed->dependencyFiles);
+            if ($narrowed->returns !== []) {
+                return $narrowed;
+            }
+        }
+
+        $analysis = $context->engine()->analyzeAction(new ActionRef($file, $fqcn, $method, $line));
+        $context->dependsOn(...$analysis->dependencyFiles);
+
+        return $analysis;
     }
 
     /**

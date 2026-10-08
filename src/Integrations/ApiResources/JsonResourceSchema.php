@@ -280,7 +280,8 @@ final class JsonResourceSchema implements TypeToSchema
      * Laravel merges it as returned. Laravel's own returns the `$with` property: none when it defaults to
      * empty, and unread when the class gives it a default, whose value is data rather than a shape this
      * reads. A caller assigning the property, like one calling `additional()`, is not traced. Null when
-     * no shape can be read.
+     * no shape can be read. A collection's is read for what it wraps where that is known
+     * ({@see WrappedResource}): the envelope it is sent in is the one its `instanceof` tests choose.
      *
      * @return array{properties: array<string, mixed>, required: list<string>}|null
      */
@@ -304,7 +305,8 @@ final class JsonResourceSchema implements TypeToSchema
             return ['properties' => [], 'required' => []];
         }
 
-        $object = $declaring === ResourceReflector::JSON_RESOURCE ? null : $this->toArray->analyze($fqcn, 'with', $context, false);
+        $wraps = ResourceReflector::isCollection($fqcn) ? WrappedResource::of($context) : null;
+        $object = $declaring === ResourceReflector::JSON_RESOURCE ? null : $this->toArray->analyze($fqcn, 'with', $context, false, $wraps);
         if ($object === null) {
             $context->lowerConfidence(0.8);
 

@@ -1,0 +1,331 @@
+{
+  "openapi": "3.1.1",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.1/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-answers/last": {
+      "get": {
+        "operationId": "get.api.zz-answers.last",
+        "tags": [
+          "Answer"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LastAnswer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-answers/storeDeclared": {
+      "post": {
+        "operationId": "post.api.zz-answers.storeDeclared",
+        "tags": [
+          "Answer"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "answer": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/Answer",
+                        "anyOf": [
+                          {
+                            "properties": {
+                              "kind": {
+                                "const": "count"
+                              }
+                            }
+                          },
+                          {
+                            "properties": {
+                              "kind": {
+                                "const": "measure"
+                              },
+                              "steps": {
+                                "maxItems": 20
+                              }
+                            }
+                          },
+                          {
+                            "properties": {
+                              "kind": {
+                                "const": "letters"
+                              },
+                              "letters": {
+                                "items": {
+                                  "maxLength": 8
+                                },
+                                "maxItems": 20,
+                                "minItems": 1
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "maxProperties": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "note": {
+                    "description": "Shown beside the answer.",
+                    "type": "string",
+                    "maxLength": 200,
+                    "example": "example"
+                  }
+                },
+                "required": [
+                  "answer"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/api/zz-answers/storeTyped": {
+      "post": {
+        "operationId": "post.api.zz-answers.storeTyped",
+        "tags": [
+          "Answer"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeclaredAnswerRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Answer": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/CountAnswer"
+          },
+          {
+            "$ref": "#/components/schemas/LettersAnswer"
+          },
+          {
+            "$ref": "#/components/schemas/MeasureAnswer"
+          }
+        ],
+        "discriminator": {
+          "mapping": {
+            "count": "#/components/schemas/CountAnswer",
+            "letters": "#/components/schemas/LettersAnswer",
+            "measure": "#/components/schemas/MeasureAnswer"
+          },
+          "propertyName": "kind"
+        }
+      },
+      "CountAnswer": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "count"
+          },
+          "value": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "value"
+        ]
+      },
+      "DeclaredAnswerRequest": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Answer",
+                "anyOf": [
+                  {
+                    "properties": {
+                      "kind": {
+                        "const": "count"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "kind": {
+                        "const": "measure"
+                      },
+                      "steps": {
+                        "maxItems": 20
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "kind": {
+                        "const": "letters"
+                      },
+                      "letters": {
+                        "items": {
+                          "maxLength": 8
+                        },
+                        "maxItems": 20,
+                        "minItems": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "object",
+                "maxProperties": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200,
+            "example": "example"
+          }
+        },
+        "required": [
+          "answer"
+        ]
+      },
+      "LastAnswer": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Answer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "answer"
+        ]
+      },
+      "LettersAnswer": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "letters"
+          },
+          "letters": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "letters"
+        ]
+      },
+      "MeasureAnswer": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "measure"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "value": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "kind",
+          "value",
+          "steps"
+        ]
+      },
+      "UnprocessableEntity": {
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "errors"
+        ]
+      }
+    },
+    "responses": {
+      "UnprocessableEntity": {
+        "description": "Unprocessable Entity",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/UnprocessableEntity"
+            }
+          }
+        }
+      }
+    }
+  }
+}

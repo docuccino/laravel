@@ -48,6 +48,25 @@ it('knows which collections keep Laravel\'s own list body', function (string $fq
     'a class that does not exist' => ['App\\Http\\Resources\\MissingCollection', false],
 ]);
 
+it('knows a resource collection of either kind', function (string $fqcn, bool $collection): void {
+    expect(ResourceReflector::isCollection($fqcn))->toBe($collection);
+})->with([
+    'a named collection' => [ReleaseCollection::class, true],
+    'an anonymous collection' => [ResourceReflector::ANONYMOUS_COLLECTION, true],
+    'a JSON:API collection' => [ResourceReflector::JSON_API_COLLECTION, true],
+    'a single resource' => [ReleaseResource::class, false],
+    'a class that does not exist' => ['App\\Http\\Resources\\MissingCollection', false],
+]);
+
+it('names the class a method is declared on, as a resource inherits it', function (string $fqcn, string $method, ?string $declaring): void {
+    expect(ResourceReflector::declaringClass($fqcn, $method))->toBe($declaring);
+})->with([
+    'its own' => [LinkedReleaseCollection::class, 'toArray', LinkedReleaseCollection::class],
+    'inherited' => [ReleaseCollection::class, 'toArray', ResourceReflector::RESOURCE_COLLECTION],
+    'a method nothing declares' => [ReleaseCollection::class, 'missing', null],
+    'a class that does not exist' => ['App\\Http\\Resources\\MissingCollection', 'with', null],
+]);
+
 it('knows which collections keep the keys of what they hold', function (ClassT $collection, bool $preserved): void {
     expect(CollectionKeys::preserved($collection))->toBe($preserved);
 })->with(function (): array {

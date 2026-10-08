@@ -78,3 +78,22 @@ it('answers nothing at all when the call carried a spread', function (string|int
     'by position' => [0],
     'by name' => ['pageName'],
 ]);
+
+it('says the page is Laravel\'s own paginator only where the terminal is one of Laravel\'s', function (string $chain, bool $expected): void {
+    $visitor = new PaginationTerminalVisitor([...PaginationTerminalVisitor::PAGINATOR_TERMINALS, 'paginateList' => 'length']);
+    TraceScript::forChain($chain, 'Illuminate\\Database\\Eloquent\\Builder')($visitor);
+
+    expect($visitor->builtByLaravel())->toBe($expected);
+})->with([
+    'paginate' => ['$q->paginate(15)', true],
+    'simplePaginate' => ['$q->simplePaginate(15)', true],
+    'cursorPaginate' => ['$q->cursorPaginate(15)', true],
+    // A configured terminal is the application's, and may build any class.
+    'a configured terminal' => ['$q->paginateList(15)', false],
+    'no terminal' => ['$q->get()', false],
+]);
+
+it('lists a row above for every terminal Laravel names', function (): void {
+    // The dataset above proves only the rows it lists.
+    expect(array_keys(PaginationTerminalVisitor::PAGINATOR_TERMINALS))->toBe(['paginate', 'simplePaginate', 'cursorPaginate']);
+});

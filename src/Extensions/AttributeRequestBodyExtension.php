@@ -17,9 +17,9 @@ use Docuccino\Core\Patch\Contribution;
 
 /**
  * Applies the `#[BodyParameter]` declarations in the route's attribute bag to the request body (design
- * §Attribute set). Each one patches a single property of the recovered body — adding or overriding just
- * that property, keeping every recovered sibling — and creates a body outright when nothing was
- * recovered. The merge is re-applied at the attribute layer, so the attribute wins for the property it
+ * §Attribute set). Each one patches a single property of the recovered body — adding it, or writing over
+ * just that property by the declared-shape rule, keeping every recovered sibling — and creates a body
+ * outright when nothing was recovered. The merge is re-applied at the attribute layer, so the attribute wins for the property it
  * names while a recovered body's media type (multipart, say) survives.
  *
  * The write itself is {@see DeclaredBodyFields}, shared with the TYPE-level declaration site: the same
@@ -67,6 +67,7 @@ final class AttributeRequestBodyExtension implements OperationExtension
             null,
             $context->actionSource(),
             $context->route->signature(),
+            $context->components,
         );
 
         foreach ($diagnostics as $diagnostic) {

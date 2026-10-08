@@ -293,9 +293,9 @@ it('asks only where a declaration has not already decided the container', functi
     // The BODY layer at a body verb: a declaration anywhere on the field's branch decides it.
     'a body declaration typed as a free-form map' => [[new BodyParameter(name: 'meta', type: 'object')], 'POST', ['other']],
     'a body declaration typed with a shape' => [[new BodyParameter(name: 'meta', type: 'list<string>')], 'POST', ['other']],
-    // The body writes the attribute's own default of `string` for a declaration with no type, which is
-    // an answer — not the shape the rules left open, but not "either" either.
-    'a body declaration with no type' => [[new BodyParameter(name: 'meta')], 'POST', ['other']],
+    // A declaration with no type states no shape, so it is written over the field without replacing it:
+    // the rules' "either" is what the document still says, and the question stands.
+    'a body declaration with no type' => [[new BodyParameter(name: 'meta')], 'POST', ['meta', 'other']],
     'a body declaration naming a key inside' => [[new BodyParameter(name: 'meta.scoring')], 'POST', ['other']],
     'a body declaration naming a key deep inside' => [[new BodyParameter(name: 'meta.scoring.scores')], 'POST', ['other']],
     'a body declaration naming a wildcard element' => [[new BodyParameter(name: 'meta.*')], 'POST', ['other']],
@@ -348,6 +348,14 @@ it('says nothing about a field a declaration above it replaces', function (): vo
         [new BodyParameter(name: 'meta', type: 'object')],
     ))->toBe([]);
 });
+
+it('still asks about a field under a declaration that states no shape, which replaces nothing', function (?string $type): void {
+    // Written over `meta` rather than in its place, so `meta.tags` is published as the rules left it.
+    expect(undecidedMessages(
+        ['meta.tags' => ['array'], 'meta.name' => ['string']],
+        [new BodyParameter(name: 'meta', type: $type, description: 'Order metadata.')],
+    ))->toHaveCount(1);
+})->with(['no type' => [null], 'the word the question is about' => ['array'], 'mixed' => ['mixed']]);
 
 /*
  * Exclude rules. Laravel runs a field's rules in the order written and, the moment an exclude rule fires,

@@ -66,4 +66,15 @@ it('publishes a declared body as the shape the author declared', function (strin
         'string',
         ['type' => 'string'],
     ],
+    // A union is spelled as a composition, and a composition states a shape like a `type` does: left
+    // standing beside it, the map's `type: object` would refuse the list the author declared.
+    'a union over the map it replaced' => [
+        'array{a: string}|list<int>',
+        [
+            'anyOf' => [
+                ['type' => 'array', 'items' => ['type' => 'integer']],
+                ['type' => 'object', 'properties' => ['a' => ['type' => 'string']], 'required' => ['a']],
+            ],
+        ],
+    ],
 ]);

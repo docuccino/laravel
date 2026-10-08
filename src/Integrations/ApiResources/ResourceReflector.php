@@ -52,17 +52,25 @@ final class ResourceReflector
         return is_a($fqcn, self::RESOURCE_COLLECTION, true) && ! self::isAnonymousCollection($fqcn);
     }
 
+    /** Whether an FQCN is any resource collection, anonymous or one of the application's own. */
+    public static function isCollection(string $fqcn): bool
+    {
+        return self::isAnonymousCollection($fqcn) || self::isNamedCollection($fqcn);
+    }
+
     /** Whether a named `ResourceCollection` subclass keeps Laravel's `toArray`, a list of what it collects. */
     public static function inheritsCollectionBody(string $fqcn): bool
     {
-        if (! self::isNamedCollection($fqcn)) {
-            return false;
-        }
+        return self::isNamedCollection($fqcn) && self::declaringClass($fqcn, 'toArray') === self::RESOURCE_COLLECTION;
+    }
 
+    /** The class that declares `$method` as `$fqcn` inherits it, or null where neither can be reflected. */
+    public static function declaringClass(string $fqcn, string $method): ?string
+    {
         try {
-            return (new ReflectionMethod($fqcn, 'toArray'))->getDeclaringClass()->getName() === self::RESOURCE_COLLECTION;
+            return (new ReflectionMethod($fqcn, $method))->getDeclaringClass()->getName();
         } catch (Throwable) {
-            return false;
+            return null;
         }
     }
 
