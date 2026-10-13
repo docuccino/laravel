@@ -25,10 +25,16 @@ use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
  */
 final class ConstValueToRules
 {
-    /** Framework rule objects that exclude the field, by the rule name each stands for. */
+    /** Framework rule objects that exclude the field when a condition holds, by the rule name each stands for. */
     private const EXCLUDE_OBJECTS = [
         'Illuminate\\Validation\\Rules\\ExcludeIf' => 'exclude_if',
         'Illuminate\\Validation\\Rules\\ExcludeUnless' => 'exclude_unless',
+    ];
+
+    /** Framework rule objects that exclude the field when other fields are sent or missing. */
+    private const EXCLUDE_FIELD_OBJECTS = [
+        'Illuminate\\Validation\\Rules\\ExcludeWith' => 'exclude_with',
+        'Illuminate\\Validation\\Rules\\ExcludeWithout' => 'exclude_without',
     ];
 
     private readonly DependencyFileSet $dependencyFiles;
@@ -123,6 +129,10 @@ final class ConstValueToRules
             return $rule === null ? [] : [$rule];
         }
 
+        if (isset(self::EXCLUDE_FIELD_OBJECTS[$class])) {
+            return [self::excludeByFields(self::EXCLUDE_FIELD_OBJECTS[$class], $value->args)];
+        }
+
         $facts = $this->customRules->read($class);
 
         $this->dependencyFiles->add($facts->file);
@@ -147,6 +157,9 @@ final class ConstValueToRules
             $method === 'unique' => ValidationRule::of('unique'),
             $method === 'excludeif' => self::exclude('exclude_if', $descriptor->args[0] ?? null),
             $method === 'excludeunless' => self::exclude('exclude_unless', $descriptor->args[0] ?? null),
+            $method === 'exclude' => ValidationRule::of('exclude'),
+            $method === 'excludewith' => self::excludeByFields('exclude_with', $descriptor->args),
+            $method === 'excludewithout' => self::excludeByFields('exclude_without', $descriptor->args),
             default => null,
         };
     }
@@ -164,6 +177,29 @@ final class ConstValueToRules
         }
 
         return $condition->scalar === ($name === 'exclude_if') ? ValidationRule::of('exclude') : null;
+    }
+
+    /**
+     * `Rule::excludeWith(…)`/`Rule::excludeWithout(…)` and their `new` forms, named by the other fields
+     * whose presence decides it: one name, a list of them, or the names as separate arguments. A name
+     * nothing here can read leaves the rule with no parameters, an exclude whose condition is unknown.
+     *
+     * @param  list<ConstValue>  $args
+     */
+    private static function excludeByFields(string $name, array $args): ValidationRule
+    {
+        $source = count($args) === 1 && $args[0]->isArray() ? $args[0]->items : $args;
+
+        $fields = [];
+        foreach ($source as $arg) {
+            if (! $arg->isScalar() || ! is_string($arg->scalar)) {
+                return ValidationRule::of($name);
+            }
+
+            $fields[] = $arg->scalar;
+        }
+
+        return ValidationRule::of($name, $fields);
     }
 
     private function enum(ConstValue $descriptor): ?ValidationRule

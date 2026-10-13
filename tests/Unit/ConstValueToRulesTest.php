@@ -324,6 +324,13 @@ it('folds every exclude descriptor and rule object to the exclude rule it stands
     'new ExcludeUnless(callback)' => [ConstValue::instance('\\Illuminate\\Validation\\Rules\\ExcludeUnless', [ConstValue::unknown('closure')]), [['exclude_unless', []]]],
     'new ExcludeIf(true)' => [ConstValue::instance('Illuminate\\Validation\\Rules\\ExcludeIf', [ConstValue::scalar(true)]), [['exclude', []]]],
     'new ExcludeUnless(true)' => [ConstValue::instance('Illuminate\\Validation\\Rules\\ExcludeUnless', [ConstValue::scalar(true)]), []],
+    'Rule::exclude()' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::exclude', []), [['exclude', []]]],
+    'Rule::excludeWith(field)' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::excludeWith', [ConstValue::scalar('card')]), [['exclude_with', ['card']]]],
+    'Rule::excludeWithout(fields)' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::excludeWithout', [ConstValue::scalar('card'), ConstValue::scalar('iban')]), [['exclude_without', ['card', 'iban']]]],
+    'Rule::excludeWithout([fields])' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::excludeWithout', [ConstValue::array([ConstValue::scalar('card'), ConstValue::scalar('iban')])]), [['exclude_without', ['card', 'iban']]]],
+    'Rule::excludeWith with a field nothing can read' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::excludeWith', [ConstValue::unknown('variable')]), [['exclude_with', []]]],
+    'new ExcludeWith(field)' => [ConstValue::instance('Illuminate\\Validation\\Rules\\ExcludeWith', [ConstValue::scalar('card')]), [['exclude_with', ['card']]]],
+    'new ExcludeWithout([fields])' => [ConstValue::instance('\\Illuminate\\Validation\\Rules\\ExcludeWithout', [ConstValue::array([ConstValue::scalar('card')])]), [['exclude_without', ['card']]]],
     'beside the rules written after it' => [ConstValue::array([
         ConstValue::descriptor('Illuminate\\Validation\\Rule::excludeIf', [ConstValue::unknown('closure')]),
         ConstValue::scalar('required'),
