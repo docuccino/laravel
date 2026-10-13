@@ -7,6 +7,12 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.21.1
+
+### Bug fixes
+
+- fold Laravel's new exclude, excludeWith and excludeWithout rules ([#657](https://github.com/docuccino/docuccino/pull/657))
+
 ## v0.21.0
 
 ### Bug fixes
