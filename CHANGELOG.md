@@ -7,6 +7,12 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.23.3
+
+### Bug fixes
+
+- work with phpstan/phpdoc-parser 2.4, symfony/yaml 7.4.22 and Laravel 13.39 ([#695](https://github.com/docuccino/docuccino/pull/695))
+
 ## v0.21.1
 
 ### Bug fixes
