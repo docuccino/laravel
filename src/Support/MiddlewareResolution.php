@@ -21,12 +21,16 @@ final class MiddlewareResolution
 {
     /**
      * The gathered entries an exclusion does not remove, mirroring `Router::resolveMiddleware()`: an
-     * entry is dropped when its resolved name matches an excluded resolved name exactly, or — for a
-     * name that is a class with no arguments — when it is a subclass of one. Both lists must already
-     * have their groups expanded, as the framework's do by this point. That stays a caller's contract
-     * rather than a check because it cannot be one: without the groups map a group name is
-     * indistinguishable from an alias, and taking the map would give this the expansion job the route
-     * resolver already owns.
+     * entry is dropped when its resolved name or its class is an excluded resolved name, or when its
+     * class is a subclass of an excluded bare class. Both lists must already have their groups
+     * expanded, as the framework's do by this point. That stays a caller's contract rather than a check
+     * because it cannot be one: without the groups map a group name is indistinguishable from an alias,
+     * and taking the map would give this the expansion job the route resolver already owns.
+     *
+     * What "its class" is changed in Laravel 13.39. Before, it is the whole resolved name, so an entry
+     * with arguments is only removed by the same arguments. From 13.39 it is the name without its
+     * arguments, so an exclusion naming a middleware bare removes it whatever arguments it carries.
+     * `$bareCoversArguments` says which of the two the installed framework does.
      *
      * Matching in the framework's resolved-class space rather than on the literal strings is what makes
      * `withoutMiddleware(Authorize::using('view'))` remove a group's `can:view`, and what keeps
@@ -35,9 +39,10 @@ final class MiddlewareResolution
      * @param  list<string>  $gathered
      * @param  list<string>  $excluded
      * @param  array<string, string>  $aliases  the router's alias map, alias → class
+     * @param  bool  $bareCoversArguments  whether an exclusion with no arguments removes an entry with them
      * @return list<string>
      */
-    public static function subtract(array $gathered, array $excluded, array $aliases): array
+    public static function subtract(array $gathered, array $excluded, array $aliases, bool $bareCoversArguments): array
     {
         if ($excluded === []) {
             return $gathered;
@@ -51,8 +56,9 @@ final class MiddlewareResolution
         $kept = [];
         foreach ($gathered as $entry) {
             $resolved = self::resolve($entry, $aliases);
+            $class = $bareCoversArguments ? explode(':', $resolved, 2)[0] : $resolved;
 
-            if (in_array($resolved, $resolvedExcluded, true) || self::subclassOfAny($resolved, $resolvedExcluded)) {
+            if (in_array($resolved, $resolvedExcluded, true) || in_array($class, $resolvedExcluded, true) || self::subclassOfAny($class, $resolvedExcluded)) {
                 continue;
             }
 
@@ -75,9 +81,10 @@ final class MiddlewareResolution
      * @param  list<string>  $gathered
      * @param  list<string>  $excluded
      * @param  array<string, string>  $aliases
+     * @param  bool  $bareCoversArguments  {@see subtract()}
      * @return list<string>
      */
-    public static function unmatchedExclusions(array $gathered, array $excluded, array $aliases): array
+    public static function unmatchedExclusions(array $gathered, array $excluded, array $aliases, bool $bareCoversArguments): array
     {
         $unmatched = [];
         foreach ($excluded as $entry) {
@@ -87,7 +94,7 @@ final class MiddlewareResolution
                 continue;
             }
 
-            if (self::subtract($gathered, [$entry], $aliases) === $gathered && ! in_array($entry, $unmatched, true)) {
+            if (self::subtract($gathered, [$entry], $aliases, $bareCoversArguments) === $gathered && ! in_array($entry, $unmatched, true)) {
                 $unmatched[] = $entry;
             }
         }
@@ -137,20 +144,19 @@ final class MiddlewareResolution
     }
 
     /**
-     * The framework's subclass fallback, gate included: it asks `class_exists()` first, so a resolved
-     * name carrying arguments never reaches it — which is why `withoutMiddleware(Authenticate::class)`
-     * drops a bare subclass entry and leaves an `auth:web` one alone.
+     * The framework's subclass fallback, gate included: it asks `class_exists()` of both sides first,
+     * so neither an excluded name with arguments nor, before 13.39, a gathered one ever reaches it.
      *
      * @param  list<string>  $excluded
      */
-    private static function subclassOfAny(string $resolved, array $excluded): bool
+    private static function subclassOfAny(string $class, array $excluded): bool
     {
-        if (! class_exists($resolved)) {
+        if (! class_exists($class)) {
             return false;
         }
 
         foreach ($excluded as $entry) {
-            if (class_exists($entry) && is_subclass_of($resolved, $entry)) {
+            if (class_exists($entry) && is_subclass_of($class, $entry)) {
                 return true;
             }
         }

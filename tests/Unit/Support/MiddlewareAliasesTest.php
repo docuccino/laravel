@@ -36,7 +36,7 @@ it('answers the framework\'s own default aliases for a router nothing has synced
         // And what the fallback is FOR: without it the subtraction stops equating the two spellings of
         // one middleware wherever the map could not be filled, so a route that opts out of its
         // authenticator keeps a 401 it does not enforce.
-        ->and(MiddlewareResolution::subtract(['auth:web'], [Authenticate::using('web')], $aliases))->toBe([]);
+        ->and(MiddlewareResolution::subtract(['auth:web'], [Authenticate::using('web')], $aliases, false))->toBe([]);
 });
 
 it('lets an alias the application registered win over the default it replaces', function (): void {

@@ -54,16 +54,27 @@ beforeEach(function (): void {
     $router->get('api/opt-out-can-by-class', [FormController::class, 'index'])
         ->middleware(['auth:web', 'can:view'])
         ->withoutMiddleware(Authorize::using('view'));
-    // And the two the framework does NOT equate: it compares its resolved names with the arguments
-    // still attached, so `Authenticate` and `Authenticate:` are two middleware to it and neither of
-    // these routes loses its authenticator. Reading both as "no arguments" dropped a 401 the server
-    // does enforce.
+    // And a pair the framework does NOT equate: it compares its resolved names with the arguments
+    // still attached, so an exclusion of `Authenticate:` leaves a bare `Authenticate` running. Reading
+    // both as "no arguments" dropped a 401 the server does enforce.
     $router->get('api/opt-out-auth-empty-args', [FormController::class, 'index'])
         ->middleware('auth')
         ->withoutMiddleware('auth:');
+    // The other way round, an exclusion naming the middleware bare, is the framework's version to
+    // answer: before 13.39 it compares only the whole name and keeps each of these, and from 13.39 it
+    // also compares the gathered name without its arguments and removes them all.
     $router->get('api/opt-out-auth-bare', [FormController::class, 'index'])
         ->middleware('auth:')
         ->withoutMiddleware('auth');
+    $router->get('api/opt-out-auth-bare-alias', [FormController::class, 'index'])
+        ->middleware('auth:web')
+        ->withoutMiddleware('auth');
+    $router->get('api/opt-out-throttle-bare-class', [FormController::class, 'index'])
+        ->middleware('throttle:60,1')
+        ->withoutMiddleware(ThrottleRequests::class);
+    $router->get('api/opt-out-subclass-with-arguments-by-parent', [FormController::class, 'index'])
+        ->middleware(ApplicationAuthenticate::class.':web')
+        ->withoutMiddleware(Authenticate::class);
     // A middleware that reaches the route through a GROUP, which reattaches its members' parameters on
     // truthiness where a route does it on `! is_null()`. So the two falsy parameter strings name a BARE
     // middleware inside a group and an argumented one on a route, and all three of these disagree with
@@ -85,6 +96,10 @@ beforeEach(function (): void {
     $router->get('api/opt-out-group-throttle', [FormController::class, 'index'])
         ->middleware('docuccino-throttled')
         ->withoutMiddleware(ThrottleRequests::class.':60,1');
+    // And by its bare alias, which only 13.39 and later remove it by.
+    $router->get('api/opt-out-group-throttle-bare', [FormController::class, 'index'])
+        ->middleware('docuccino-throttled')
+        ->withoutMiddleware('throttle');
     // The subclass fallback against the real Router rather than by hand: two BARE class names, the
     // excluded one a parent of the gathered one.
     $router->get('api/opt-out-subclass-by-parent', [FormController::class, 'index'])
@@ -94,6 +109,8 @@ beforeEach(function (): void {
 });
 
 it('drops excluded middleware from the resolved route descriptor', function (): void {
+    // laravel/framework#62166, released in 13.39: a bare exclusion removes the middleware whatever its arguments.
+    $bareCoversArguments = version_compare(app()->version(), '13.39.0', '>=');
     $document = app(DocumentConfigFactory::class)
         ->make('default', documentSettings(), 'skeleton');
 
@@ -110,9 +127,14 @@ it('drops excluded middleware from the resolved route descriptor', function (): 
         // The survivor, named: an exclusion removes the middleware it names and nothing else.
         ->and($middlewareByUri['/api/opt-out-one-of-two'] ?? null)->toBe(['auth:web'])
         ->and($middlewareByUri['/api/opt-out-can-by-class'] ?? null)->toBe(['auth:web'])
-        // And the two the framework keeps.
+        // And the one the framework keeps.
         ->and($middlewareByUri['/api/opt-out-auth-empty-args'] ?? null)->toBe(['auth'])
-        ->and($middlewareByUri['/api/opt-out-auth-bare'] ?? null)->toBe(['auth:'])
+        // The bare exclusions, each kept or removed by the framework's version.
+        ->and($middlewareByUri['/api/opt-out-auth-bare'] ?? null)->toBe($bareCoversArguments ? [] : ['auth:'])
+        ->and($middlewareByUri['/api/opt-out-auth-bare-alias'] ?? null)->toBe($bareCoversArguments ? [] : ['auth:web'])
+        ->and($middlewareByUri['/api/opt-out-throttle-bare-class'] ?? null)->toBe($bareCoversArguments ? [] : ['throttle:60,1'])
+        ->and($middlewareByUri['/api/opt-out-subclass-with-arguments-by-parent'] ?? null)->toBe($bareCoversArguments ? [] : [ApplicationAuthenticate::class.':web'])
+        ->and($middlewareByUri['/api/opt-out-group-throttle-bare'] ?? null)->toBe($bareCoversArguments ? [] : ['throttle:60,1'])
         // The group rows: a falsy parameter list inside a group is not part of the member's name, so
         // `auth` removes it — and `auth:`, which is not the same middleware, does not.
         ->and($middlewareByUri['/api/opt-out-group-zero-argument'] ?? null)->toBe([])
@@ -128,7 +150,7 @@ it('drops excluded middleware from the resolved route descriptor', function (): 
  * are made comparable).
  */
 it('keeps exactly what the framework\'s own router keeps', function (): void {
-    assertMiddlewareAgreesWithRouter('/api/opt-out-', 14);
+    assertMiddlewareAgreesWithRouter('/api/opt-out-', 18);
 });
 
 it('documents no 429 for a route that excludes its throttle middleware', function (string $uri): void {
@@ -175,14 +197,42 @@ it('publishes the 401 and the security requirement for exactly the routes that s
         // The exclusion named the throttle, so the authenticator is untouched.
         '/api/opt-out-one-of-two',
         '/api/opt-out-can-by-class',
-        // And the two spellings the framework does not equate.
+        // And the spelling the framework does not equate.
         '/api/opt-out-auth-empty-args',
-        '/api/opt-out-auth-bare',
     ];
     foreach ($authenticated as $uri) {
         $operation = $document['paths'][$uri]['get'];
         expect($operation['responses'])->toHaveKey('401')
             ->and($operation['security'])->toBe([['bearer' => []]]);
+    }
+});
+
+/**
+ * A bare exclusion of a middleware written with arguments, published as the installed framework runs
+ * it: Laravel 13.39 removes the middleware (laravel/framework#62166), so the document publishes no 401,
+ * security requirement or 429 it would not enforce; earlier releases keep it running, so the document
+ * keeps them.
+ */
+it('publishes a bare exclusion of a middleware with arguments as the installed framework runs it', function (): void {
+    $bareCoversArguments = version_compare(app()->version(), '13.39.0', '>=');
+    $document = generateDocument(static function (array $raw): array {
+        $raw['security'] = [
+            'schemes' => ['bearer' => ['type' => 'http', 'scheme' => 'bearer']],
+            'auth_middleware' => 'auth*',
+            'default' => [['bearer' => []]],
+        ];
+
+        return $raw;
+    })->document->toArray();
+
+    foreach (['/api/opt-out-auth-bare', '/api/opt-out-auth-bare-alias'] as $uri) {
+        $operation = $document['paths'][$uri]['get'];
+        expect(array_key_exists('401', $operation['responses']))->toBe(! $bareCoversArguments, $uri)
+            ->and($operation['security'] ?? null)->toBe($bareCoversArguments ? null : [['bearer' => []]], $uri);
+    }
+
+    foreach (['/api/opt-out-throttle-bare-class', '/api/opt-out-group-throttle-bare'] as $uri) {
+        expect(array_key_exists('429', $document['paths'][$uri]['get']['responses']))->toBe(! $bareCoversArguments, $uri);
     }
 });
 

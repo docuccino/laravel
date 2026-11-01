@@ -17,14 +17,19 @@ use Workbench\App\Http\Middleware\ValidateLinkSignature;
  * gate) rather than from this package's answer; `WithoutMiddlewareTest` holds the same claim against the
  * real Router, so a row here that agrees with the code and not with the framework fails there.
  *
+ * Each row is held to both of the framework's rules. Laravel 13.39 also compares the gathered entry's
+ * name without its arguments, so a bare exclusion removes the middleware whatever arguments it carries;
+ * where that changes the answer, the row's last column is what 13.39 keeps.
+ *
  * The two maps are the two an application really has: the framework's default, and the ≤10 skeleton's
  * `auth` bound to the application's own `Authenticate` subclass.
  */
 $framework = ['auth' => Authenticate::class, 'can' => Authorize::class, 'throttle' => ThrottleRequests::class];
 $skeleton = ['auth' => ApplicationAuthenticate::class, 'can' => Authorize::class];
 
-it('keeps what the framework keeps and drops what it drops', function (array $gathered, array $excluded, array $aliases, array $kept): void {
-    expect(MiddlewareResolution::subtract($gathered, $excluded, $aliases))->toBe($kept);
+it('keeps what the framework keeps and drops what it drops', function (array $gathered, array $excluded, array $aliases, array $kept, ?array $keptFrom1339 = null): void {
+    expect(MiddlewareResolution::subtract($gathered, $excluded, $aliases, false))->toBe($kept)
+        ->and(MiddlewareResolution::subtract($gathered, $excluded, $aliases, true))->toBe($keptFrom1339 ?? $kept);
 })->with([
     'nothing excluded keeps everything' => [['auth:web', 'throttle:60,1'], [], $framework, ['auth:web', 'throttle:60,1']],
     'the same spelling both sides' => [['auth:web'], ['auth:web'], $framework, []],
@@ -37,19 +42,25 @@ it('keeps what the framework keeps and drops what it drops', function (array $ga
     'one exclusion out of two middleware' => [['auth:web', 'throttle:60,1'], ['throttle:60,1'], $framework, ['auth:web']],
     'an exclusion that names nothing on the route' => [['auth:web'], ['throttle:60,1'], $framework, ['auth:web']],
     // Arguments are part of the resolved name, so these pairs are two middleware to the framework.
+    // From 13.39 a gathered entry also answers to its name alone, so a bare exclusion removes it.
     'a bare name is not an empty argument list' => [['auth'], ['auth:'], $framework, ['auth']],
-    'an empty argument list is not a bare name' => [['auth:'], ['auth'], $framework, ['auth:']],
+    'an empty argument list is not a bare name' => [['auth:'], ['auth'], $framework, ['auth:'], []],
     'different arguments are different middleware' => [['auth:web'], ['auth:api'], $framework, ['auth:web']],
-    // The subclass fallback, and its `class_exists` gate: it can only ever fire for two BARE class
-    // names, which is why the framework keeps the argumented pair below.
+    'arguments excluded by the bare alias' => [['auth:web'], ['auth'], $framework, ['auth:web'], []],
+    'arguments excluded by the bare class name' => [['throttle:60,1'], [ThrottleRequests::class], $framework, ['throttle:60,1'], []],
+    'arguments excluded by the bare class name, one of two' => [['auth:web', 'throttle:60,1'], [ThrottleRequests::class], $framework, ['auth:web', 'throttle:60,1'], ['auth:web']],
+    // The subclass fallback, and its `class_exists` gate on both sides: an excluded name with arguments
+    // never reaches it, and before 13.39 nor does a gathered one.
     'a bare subclass excluded by its bare parent' => [[ApplicationAuthenticate::class], [Authenticate::class], $framework, []],
     'an argumented subclass is not reached by the fallback' => [[ApplicationAuthenticate::class.':web'], [Authenticate::class.':web'], $framework, [ApplicationAuthenticate::class.':web']],
+    'an argumented subclass excluded by its bare parent' => [[ApplicationAuthenticate::class.':web'], [Authenticate::class], $framework, [ApplicationAuthenticate::class.':web'], []],
     'a parent is not a subclass of its own child' => [[Authenticate::class], [ApplicationAuthenticate::class], $framework, [Authenticate::class]],
     // And the map that decides all of it. Under the skeleton's alias, `auth:web` IS the application's
     // subclass and is NOT the framework's authenticator — both directions, and the second is the one
     // that drops a 401 the server enforces.
     'the skeleton alias, excluded by the class it points at' => [['auth:web'], [ApplicationAuthenticate::class.':web'], $skeleton, []],
     'the skeleton alias, excluded by the framework class it does not point at' => [['auth:web'], [Authenticate::class.':web'], $skeleton, ['auth:web']],
+    'the skeleton alias, excluded by the bare framework class it extends' => [['auth:web'], [Authenticate::class], $skeleton, ['auth:web'], []],
 ]);
 
 /**

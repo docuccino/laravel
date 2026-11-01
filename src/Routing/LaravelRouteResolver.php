@@ -41,6 +41,8 @@ final class LaravelRouteResolver implements RouteResolver
 
     private readonly MiddlewareRegistrations $registrations;
 
+    private ?bool $bareCoversArguments = null;
+
     public function __construct(
         private readonly Router $router,
         private readonly RouteReflector $reflector = new RouteReflector,
@@ -216,7 +218,8 @@ final class LaravelRouteResolver implements RouteResolver
         $gathered = $this->expandAll(self::strings($route->gatherMiddleware()), $groups);
         $excluded = $this->expandAll(self::strings($route->excludedMiddleware()), $groups);
 
-        $middleware = self::middleware($gathered, $excluded, $aliases);
+        $bareCoversArguments = $this->bareCoversArguments();
+        $middleware = self::middleware($gathered, $excluded, $aliases, $bareCoversArguments);
 
         $descriptor = new RouteDescriptor(
             methods: self::strings($route->methods()),
@@ -243,7 +246,7 @@ final class LaravelRouteResolver implements RouteResolver
             fallback: $route->isFallback,
         );
 
-        $unmatched = MiddlewareResolution::unmatchedExclusions($gathered, $excluded, $aliases);
+        $unmatched = MiddlewareResolution::unmatchedExclusions($gathered, $excluded, $aliases, $bareCoversArguments);
         if ($unmatched !== []) {
             $this->record(MiddlewareAliases::unmatchedExclusion($descriptor->signature(), $unmatched));
         }
@@ -271,14 +274,24 @@ final class LaravelRouteResolver implements RouteResolver
      * @param  array<string, string>  $aliases
      * @return list<string>
      */
-    private static function middleware(array $gathered, array $excluded, array $aliases): array
+    private static function middleware(array $gathered, array $excluded, array $aliases, bool $bareCoversArguments): array
     {
         $kept = array_map(
             MiddlewareName::normalize(...),
-            MiddlewareResolution::subtract($gathered, $excluded, $aliases),
+            MiddlewareResolution::subtract($gathered, $excluded, $aliases, $bareCoversArguments),
         );
 
         return array_values(array_unique($kept));
+    }
+
+    /**
+     * Whether the installed framework's `withoutMiddleware('x')` removes an `x:argument`, as Laravel 13.39
+     * began to ({@see MiddlewareResolution::subtract()}). Asked of the router's own subtraction rather
+     * than of a version, so a backport or a fork answers for itself.
+     */
+    private function bareCoversArguments(): bool
+    {
+        return $this->bareCoversArguments ??= $this->router->resolveMiddleware(['docuccino-exclusion-probe:argument'], ['docuccino-exclusion-probe']) === [];
     }
 
     /**
