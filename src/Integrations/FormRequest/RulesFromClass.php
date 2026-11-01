@@ -23,9 +23,11 @@ use ReflectionClass;
  *
  * A field present in the array but recovered by neither path raises a `validation.rule-unrecoverable` info
  * diagnostic, so a closure or an undocumented custom rule object never vanishes silently — worded for
- * whether the field is omitted outright or kept by another producer minus its constraints. A field that
- * recovered SOME of its rules and widened past values it could not read raises
- * `validation.rule-values-unread` instead: what it publishes is true, and quieter than the code.
+ * whether the field is omitted outright or kept by another producer minus its constraints. So does one
+ * documented without a rule it could not read, and one the trace gave up because a rule's content is
+ * unknown, which the literal path may not then restate. A field that recovered SOME of its rules and
+ * widened past values it could not read raises `validation.rule-values-unread` instead: what it publishes
+ * is true, and quieter than the code.
  *
  * Neither fires for a field a declaration already publishes ({@see UnrecoveredRules}).
  */
@@ -69,8 +71,15 @@ final class RulesFromClass
         $analysis = $context->engine->analyzeAction($ref);
         $context->recordDependencyFiles($analysis->dependencyFiles);
         $shapeFields = [];
+        $shapeUnread = [];
+        $shapeOpaque = [];
+        $shapeUnrecoverable = [];
         foreach ($analysis->returns as $return) {
             $shapeFields = $this->shapes->convert($return->type)->fields;
+            $shapeUnread = $this->shapes->unread();
+            $shapeOpaque = $this->shapes->opaque();
+            $shapeUnrecoverable = $this->shapes->unrecoverable();
+            $context->recordDependencyFiles($this->shapes->dependencyFiles());
             break;
         }
 
@@ -80,10 +89,41 @@ final class RulesFromClass
         $context->recordDependencyFiles([...$report->dependencyFiles, ...$visitor->dependencyFiles()]);
         $traceFields = $visitor->ruleSet()->fields;
 
+        // The trace answers for every field it read; the literal path for the rest, losses included.
+        $traceOpaque = $visitor->opaqueFields();
+        $traced = static fn (string $field): bool => isset($traceFields[$field]) || isset($traceOpaque[$field]);
+        $opaque = [...array_filter($shapeOpaque, static fn (string $field): bool => ! $traced($field), ARRAY_FILTER_USE_KEY), ...$traceOpaque];
+        $unread = [...array_filter($shapeUnread, static fn (string $field): bool => ! $traced($field), ARRAY_FILTER_USE_KEY), ...$visitor->unreadRules()];
+        $unrecoverable = [...$visitor->unrecoverableFields(), ...array_filter($shapeUnrecoverable, static fn (string $field): bool => ! $traced($field))];
+
         $notes = new UnrecoveredRules(RecoveredRequest::declaredFields($context, $class));
 
-        foreach ($visitor->unrecoverableFields() as $field) {
-            if (isset($shapeFields[$field]) || isset($traceFields[$field])) {
+        // The literal path reads the string rules of a list and skips the rest, so it would publish the
+        // very rules the trace found untrue on their own. The field itself stays, with none.
+        foreach ($opaque as $field => $rule) {
+            $field = (string) $field;
+
+            // Another producer documenting the field from its type answers for it instead.
+            if (in_array($field, $documentedElsewhere, true)) {
+                unset($shapeFields[$field], $traceFields[$field]);
+                $notes->opaque($context, $field, sprintf('Validation field "%s" on %s has a rule whose content this build cannot read (%s), which can make the field optional, nullable or excluded; it is documented from its type alone, without the constraints its rules state.', $field, $class, $rule));
+
+                continue;
+            }
+
+            if (isset($shapeFields[$field]) || ! isset($traceFields[$field])) {
+                $shapeFields[$field] = [];
+            }
+
+            $notes->opaque($context, $field, sprintf('Validation field "%s" on %s has a rule whose content this build cannot read (%s), which can make the field optional, nullable or excluded; none of its rules are documented, so it is published in %s, optional and unconstrained.', $field, $class, $rule, RecoveredRequest::destination($context)));
+        }
+
+        foreach ($unread as $field => $rules) {
+            $notes->unread($context, (string) $field, sprintf('Validation field "%s" on %s has a rule this build cannot read (%s), so that rule is left off %s; the rest of its rules are documented.', $field, $class, implode(', ', $rules), RecoveredRequest::destination($context)));
+        }
+
+        foreach (array_values(array_unique($unrecoverable)) as $field) {
+            if (isset($shapeFields[$field]) || isset($traceFields[$field]) || isset($opaque[$field])) {
                 continue;
             }
 

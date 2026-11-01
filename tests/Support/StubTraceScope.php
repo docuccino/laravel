@@ -12,6 +12,7 @@ use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Inference\TraceVisitor;
 use Docuccino\Core\Inference\TypeScope;
 use PhpParser\Node;
+use UnitEnum;
 
 /**
  * An in-process {@see TypeScope} for driving a {@see TraceVisitor} over
@@ -135,20 +136,21 @@ final class StubTraceScope implements FoldsCallReturns, TypeScope
         }
 
         // A non-`::class` class constant, and the real engine answers two different things for it: an
-        // enum case folds to the case NAME (`FilterOperator::EQUAL` → `'EQUAL'`, which the QB operator
-        // filter keys on), and anything else falls through to PHPStan, which folds it to its VALUE
-        // (`Response::HTTP_CREATED` → `201`). A stub answering the name for both would prove readers
-        // against a shape they never see. A constant the snippet's class doesn't really declare keeps the
-        // name, since there is no value to read.
+        // enum case folds to the CASE, with its enum (`FilterOperator::EQUAL`, which the QB operator filter
+        // keys on), and anything else to its VALUE (`Response::HTTP_CREATED` → `201`). A stub answering one
+        // for both would prove readers against a shape they never see. A constant the snippet's class
+        // doesn't really declare keeps the name, since there is no value to read.
         if ($expr instanceof Node\Expr\ClassConstFetch
             && $expr->class instanceof Node\Name
             && $expr->name instanceof Node\Identifier
         ) {
             $class = ltrim($expr->class->toString(), '\\');
             $name = $expr->name->toString();
-            $value = ! enum_exists($class) && defined($class.'::'.$name) ? constant($class.'::'.$name) : null;
+            $value = defined($class.'::'.$name) ? constant($class.'::'.$name) : null;
 
-            return ConstValue::scalar(is_scalar($value) ? $value : $name);
+            return $value instanceof UnitEnum
+                ? ConstValue::enumCase($value::class, $value->name)
+                : ConstValue::scalar(is_scalar($value) ? $value : $name);
         }
 
         if ($expr instanceof Node\Expr\StaticCall && $expr->class instanceof Node\Name && $expr->name instanceof Node\Identifier) {
@@ -157,7 +159,7 @@ final class StubTraceScope implements FoldsCallReturns, TypeScope
             return ConstValue::descriptor($factory, $this->foldArgs($expr->getArgs()));
         }
 
-        // A fluent call over a descriptor receiver appends to its chain, as the real engine does, so
+        // A fluent call over a descriptor or `new` receiver appends to its chain, as the real engine does, so
         // `AllowedFilter::partial('email')->nullable()` keeps both halves. A first-class callable carries no
         // args (and `getArgs()` asserts on one), so it declines.
         if ($expr instanceof Node\Expr\MethodCall
@@ -165,7 +167,7 @@ final class StubTraceScope implements FoldsCallReturns, TypeScope
             && ! $expr->isFirstClassCallable()
         ) {
             $receiver = $this->fold($expr->var);
-            if ($receiver !== null && $receiver->isDescriptor()) {
+            if ($receiver !== null && ($receiver->isDescriptor() || $receiver->isInstance())) {
                 return $receiver->withChainedCall($expr->name->toString(), $this->foldArgs($expr->getArgs()));
             }
         }

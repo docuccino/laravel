@@ -36,12 +36,17 @@ use Docuccino\Laravel\Tests\Fixtures\SpatieData\AddressData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\BaseApiData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\CustomMappedController;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\CustomMappedData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\EnumCaseChoicesData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ImmutableNodeData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\InheritedMergeRulesData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\MergedRulesController;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\MergedRulesData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ReversedNameMapper;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ValidatedData;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationRuleParser;
+use Spatie\LaravelData\Support\Validation\ValidationPath;
+use Workbench\App\Enums\WidgetStatus;
 
 /**
  * Exhaustive coverage of the spatie validation-attribute → Laravel rule-token map ({@see
@@ -93,6 +98,46 @@ it('recovers the right Laravel rule token from every supported spatie validation
     // recovery under test here is unchanged).
     'Accepted (not in the reflector map)' => ['accepted', 'accepted'],
 ]);
+
+it('reads an enum case in #[In] and #[NotIn] as the value Laravel compares, never dropping it', function (string $property, string $expected): void {
+    $reflected = (new ReflectionProperty(EnumCaseChoicesData::class, $property))->getAttributes()[0];
+
+    // spatie/laravel-data takes a case in these attributes from 4.21; before it, PHP refuses one, so no
+    // application on that version can write what this reads.
+    $takes = (new ReflectionParameter([$reflected->getName(), '__construct'], 0))->getType();
+    $types = $takes instanceof ReflectionUnionType ? $takes->getTypes() : [$takes];
+
+    if (! in_array(UnitEnum::class, array_map(static fn ($type): string => $type instanceof ReflectionNamedType ? $type->getName() : '', $types), true)) {
+        $this->markTestSkipped('The installed spatie/laravel-data takes no enum case in #['.class_basename($reflected->getName()).'].');
+    }
+
+    // Spatie hands the cases to Laravel's In/NotIn, which cast a backed case to its backing value and a pure
+    // one to its name. The rule Laravel's parser reads off the rule Spatie builds is the one owed.
+    $attribute = $reflected->newInstance();
+    [$name, $parameters] = ValidationRuleParser::parse((string) $attribute->getRule(ValidationPath::create()));
+
+    expect((new DataClassReflector)->validationTokens(EnumCaseChoicesData::class, $property))->toBe([$expected])
+        ->and(Str::snake($name).':'.implode(',', $parameters))->toBe($expected);
+})->with([
+    'a case beside a value' => ['schedule', 'in:draft,scheduled'],
+    'int-backed cases' => ['priority', 'in:1,10'],
+    'a pure case' => ['channel', 'in:Email'],
+    'an excluded case' => ['phase', 'not_in:archived'],
+]);
+
+it('records the enum a validation attribute quotes values from, so editing it re-documents the rule', function (): void {
+    $metadata = new ClassMetadata(EnumCaseChoicesData::class, [
+        new PropertyMetadata('schedule', ScalarT::string()),
+        new PropertyMetadata('status', ScalarT::string()),
+    ]);
+
+    $rules = new DataValidationRules;
+    $rules->build(EnumCaseChoicesData::class, $metadata, new NullTypeEngine);
+
+    expect($rules->dependencyFiles())->toContain((string) (new ReflectionEnum(WidgetStatus::class))->getFileName())
+        ->and((new DataClassReflector)->validationEnumFiles(EnumCaseChoicesData::class, 'status'))
+        ->toBe([(string) (new ReflectionEnum(WidgetStatus::class))->getFileName()]);
+});
 
 it('drives the supported tokens through the shared chain to the expected schema', function (): void {
     $result = buildValidatedSchema([

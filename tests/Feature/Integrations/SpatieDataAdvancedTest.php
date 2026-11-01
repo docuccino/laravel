@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Draft\OperationDraft;
 use Docuccino\Core\Extensions\BuiltIn\DefaultTypeMappers;
+use Docuccino\Core\Extensions\BuiltIn\EnumSchema;
 use Docuccino\Core\Extensions\Context\AttributeSet;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Context\RouteContext;
@@ -350,6 +351,7 @@ function exampleTypesEngine(): StubTypeEngine
             new PropertyMetadata('permissions', new ListT(ScalarT::string()), null, '["listing.view", "listing.create"]'),
             new PropertyMetadata('slug', ScalarT::string(), null, 'acme'),
             new PropertyMetadata('retention_days', new UnionT([ScalarT::int(), new NullT]), null, 'null'),
+            new PropertyMetadata('standing', new UnionT([new EnumT(AccountStatus::class, ['Active', 'Suspended']), new NullT]), null, 'null'),
             new PropertyMetadata('renewal_seats', ScalarT::int(), null, 'n/a'),
         ]),
     ]);
@@ -359,7 +361,7 @@ function exampleTypesEngine(): StubTypeEngine
 function exampleTypesComponent(): array
 {
     $components = new ComponentRegistry;
-    $converter = new SchemaConverter([new DataSchema, ...DefaultTypeMappers::all()], exampleTypesEngine(), $components);
+    $converter = new SchemaConverter([new DataSchema, new EnumSchema, ...DefaultTypeMappers::all()], exampleTypesEngine(), $components);
     $converter->toSchema(new ClassT(ExampleTypesData::class));
 
     /** @var array<string, mixed> $properties */
@@ -389,6 +391,9 @@ it('publishes a docblock example as the JSON type the schema beside it declares'
     'a string' => ['slug', 'acme'],
     // `integer|null`: the union is read most specific first, so `null` is the null and not the word.
     'a nullable integer' => ['retention_days', null],
+    // A nullable enum is `anyOf: [{$ref}, {type: null}]`, with no `type` of its own; read against the
+    // branches, `null` is the null the second one admits, where the word `null` is no case of the enum.
+    'a nullable backed enum' => ['standing', null],
 ]);
 
 it('makes a property carrying both a default and an example agree with itself', function (): void {

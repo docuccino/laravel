@@ -14,6 +14,7 @@ use Docuccino\Core\Inference\DType\ListT;
 use Docuccino\Core\Inference\DType\MapT;
 use Docuccino\Core\Inference\DType\UnionT;
 use Docuccino\Core\Support\Fqcn;
+use Docuccino\Laravel\Integrations\Support\EnumCaseValue;
 use Illuminate\Support\Str;
 use ReflectionAttribute;
 use ReflectionClass;
@@ -21,6 +22,7 @@ use ReflectionIntersectionType;
 use ReflectionNamedType;
 use ReflectionProperty;
 use ReflectionUnionType;
+use UnitEnum;
 
 /**
  * Reflects a `spatie/laravel-data` Data class into the facts the schema/request mappers need, and is
@@ -357,6 +359,43 @@ final class DataClassReflector
     }
 
     /**
+     * The files of the enums a property's validation attributes quote values from — a case passed as a
+     * parameter, or the class an `#[Enum]` lists — which key every rule built from them.
+     *
+     * @return list<string>
+     */
+    public function validationEnumFiles(string $fqcn, string $property): array
+    {
+        $reflection = $this->property($fqcn, $property);
+        if ($reflection === null) {
+            return [];
+        }
+
+        $files = [];
+        foreach ($reflection->getAttributes() as $attribute) {
+            if (! str_starts_with($attribute->getName(), self::VALIDATION_NS)) {
+                continue;
+            }
+
+            $enum = $attribute->getName() === self::ENUM_ATTRIBUTE;
+            $arguments = $attribute->getArguments();
+            array_walk_recursive($arguments, static function (mixed $value) use (&$files, $enum): void {
+                $class = match (true) {
+                    $value instanceof UnitEnum => $value::class,
+                    $enum && is_string($value) => ltrim($value, '\\'),
+                    default => null,
+                };
+                $file = $class === null ? null : EnumReflection::file($class);
+                if ($file !== null) {
+                    $files[] = $file;
+                }
+            });
+        }
+
+        return array_values(array_unique($files));
+    }
+
+    /**
      * The classes of any rule OBJECTS a property's `#[Rule(new Iban)]` attributes carry — spatie's one
      * attribute that takes one. Only the class is used; its `#[RuleSchema]` is the documented contract.
      *
@@ -612,7 +651,8 @@ final class DataClassReflector
 
     /**
      * Attribute arguments as a comma-joined rule parameter string: `Between(1, 10)` → `"1,10"`,
-     * `In(['a','b'])` → `"a,b"`. Non-scalars are dropped.
+     * `In(['a','b'])` → `"a,b"`. An enum case is the value Laravel casts it to, so `In(Status::Open)` is
+     * `"open"` ({@see EnumCaseValue}). Other non-scalars are dropped.
      *
      * @param  array<array-key, mixed>  $arguments
      */
@@ -620,6 +660,10 @@ final class DataClassReflector
     {
         $flat = [];
         array_walk_recursive($arguments, static function (mixed $value) use (&$flat): void {
+            if ($value instanceof UnitEnum) {
+                $value = EnumCaseValue::ofLive($value);
+            }
+
             if (is_scalar($value)) {
                 $flat[] = is_bool($value) ? ($value ? 'true' : 'false') : (string) $value;
             }

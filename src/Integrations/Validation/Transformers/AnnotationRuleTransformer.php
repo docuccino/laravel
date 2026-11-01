@@ -49,24 +49,43 @@ final class AnnotationRuleTransformer implements RuleTransformer
     }
 
     /**
-     * A stated example, read as the type the constraint rules settled — {@see RuleOrdering} puts the
-     * annotations last so that type is final by the time this runs. Every word of that type: a field the
-     * rules left as either container carries several, and reading against one of them would drop an
-     * example the other accepts. One that does not read as any publishes nothing and says so, rather
-     * than a coercion's `0` for `n/a`.
+     * A stated example, read as a value the field accepts — {@see RuleOrdering} puts the annotations last,
+     * so its type, value list and nullability are final by the time this runs. Every word of that type:
+     * a field the rules left as either container carries several, and reading against one of them would
+     * drop an example the other accepts. One that reads as nothing the field accepts is not published,
+     * and says so, rather than a coercion's `0` for `n/a`.
      */
     private function exemplify(ValidationField $field, string $value, SchemaContext $context): void
     {
-        $types = $field->types();
-        $example = TypedExample::of($value, $types);
+        $schema = self::accepted($field);
+        $example = TypedExample::against($value, $schema);
 
         if ($example === null) {
-            $context->diagnostic(TypedExample::untypable('field "'.$field->path().'"', $value, $types));
+            $context->diagnostic(TypedExample::unreadableOnField($field->path(), $value, $schema));
 
             return;
         }
 
         $field->set('example', $example[0]);
+    }
+
+    /**
+     * What the field accepts, as far as an example is concerned: its type words and value list, and the
+     * null beside them where it is nullable — which no value list refuses, since the null is a branch of
+     * its own once the field is built.
+     *
+     * @return array<string, mixed>
+     */
+    private static function accepted(ValidationField $field): array
+    {
+        $branch = ['type' => $field->types()];
+        foreach (['enum', 'const'] as $keyword) {
+            if ($field->has($keyword)) {
+                $branch[$keyword] = $field->get($keyword);
+            }
+        }
+
+        return $field->isNullable() ? ['anyOf' => [$branch, ['type' => 'null']]] : $branch;
     }
 
     private function describe(ValidationField $field, string $description): void

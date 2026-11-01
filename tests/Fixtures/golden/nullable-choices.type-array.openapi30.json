@@ -66,6 +66,21 @@
   },
   "components": {
     "schemas": {
+      "TicketQueue": {
+        "type": "string",
+        "enum": [
+          "support",
+          "billing"
+        ],
+        "x-enum-varnames": [
+          "Support",
+          "Billing"
+        ],
+        "x-enumNames": [
+          "Support",
+          "Billing"
+        ]
+      },
       "TicketSummary": {
         "type": "object",
         "properties": {
@@ -79,6 +94,22 @@
           },
           "id": {
             "type": "integer"
+          },
+          "queue": {
+            "description": "The queue the ticket waits in, until it is triaged.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TicketQueue"
+              }
+            ],
+            "example": null,
+            "nullable": true
+          },
+          "replies": {
+            "description": "How many replies the customer has sent, where they have.",
+            "type": "integer",
+            "example": 3,
+            "nullable": true
           },
           "state": {
             "anyOf": [
@@ -107,7 +138,9 @@
         "required": [
           "flag",
           "state",
-          "id"
+          "id",
+          "queue",
+          "replies"
         ]
       },
       "UpdateTicketRequest": {

@@ -338,11 +338,12 @@ it('picks the best servable target whatever order the list is written in', funct
     $dir = sys_get_temp_dir().'/docuccino-viewer-'.uniqid('', true);
     @mkdir($dir, 0777, true);
 
-    // Each target gets a body naming itself, so the served bytes say which one was chosen.
+    // Each target gets a title naming itself, so the served bytes say which one was chosen. Not the
+    // `openapi` member: the viewer re-emits the file, and that writes the version it serves.
     $configured = [];
     foreach ($targets as $format) {
         $path = $dir.'/'.$format.'.json';
-        file_put_contents($path, sprintf('{"openapi":"served-%s"}', $format));
+        file_put_contents($path, sprintf('{"openapi":"3.2.0","info":{"title":"served-%s","version":"1.0.0"}}', $format));
         $configured[] = ['format' => $format, 'path' => $path];
     }
     setBuild('documents.default.export', ['targets' => $configured]);

@@ -868,6 +868,143 @@ it('widens a rule whose values come from a call, in the shape an app reaches for
         ->and($trace['unrecoverable'])->toBe([]);
 })->group('fixture');
 
+it('reads every spelling of an excluded value set as the not_in rule Laravel validates', function (): void {
+    // `Rule::notIn(...)` builds a NotIn, which Laravel validates as the `not_in:` string it casts to, so all
+    // four spellings exclude the same values. Values known only at runtime leave the exclusion off, which is
+    // wider than the endpoint and true, and say so. `Rule::array([...])` is `array:...` the same way.
+    $trace = FixtureRunner::traceRules(
+        'app/Http/Requests/ExcludedValuesRequest.php',
+        'App\\Http\\Requests\\ExcludedValuesRequest',
+        'rules',
+    );
+
+    $rules = static fn (string $field): array => array_map(
+        static fn (array $rule): array => [$rule['name'], $rule['parameters']],
+        $trace['fields'][$field],
+    );
+
+    foreach (['handle', 'username', 'alias', 'nickname'] as $field) {
+        expect($rules($field))->toBe([['required', []], ['string', []], ['not_in', ['admin', 'root']]], $field);
+    }
+
+    expect($rules('status'))->toBe([['required', []], ['string', []]])
+        ->and($rules('team'))->toBe([['required', []], ['string', []]])
+        ->and($rules('settings'))->toBe([['required', []], ['array', ['theme']]])
+        ->and($rules('limits'))->toBe([['required', []], ['array', ['daily']]])
+        ->and($trace['widened'])->toBe(['status', 'team'])
+        ->and($trace['unread'])->toBe([])
+        ->and($trace['opaque'])->toBe([])
+        ->and($trace['unrecoverable'])->toBe([]);
+})->group('fixture');
+
+it('reads an enum case in a choice rule as the value Laravel compares, through the real engine', function (): void {
+    // Laravel casts a case in In/NotIn with `enum_value()`: a backed case is its backing value, a pure one its
+    // name. The engine keeps the case with its enum, read off PHPStan's type, so a constant aliasing a case is
+    // that case and a plain constant on an enum is its value.
+    $trace = FixtureRunner::traceRules(
+        'app/Http/Requests/EnumCaseValuesRequest.php',
+        'App\\Http\\Requests\\EnumCaseValuesRequest',
+        'rules',
+    );
+
+    $choice = static function (string $field) use ($trace): array {
+        $rule = $trace['fields'][$field][array_key_last($trace['fields'][$field])];
+
+        return [$rule['name'], $rule['parameters'], $rule['note']];
+    };
+
+    expect($choice('status'))->toBe(['in', ['open', 'draft'], 'App\\Enums\\ListingStatus'])
+        ->and($choice('state'))->toBe(['in', ['open', 'closed'], 'App\\Enums\\ListingStatus'])
+        ->and($choice('stage'))->toBe(['in', ['open', 'closed'], 'App\\Enums\\ListingStatus'])
+        ->and($choice('phase'))->toBe(['not_in', ['draft'], null])
+        ->and($choice('step'))->toBe(['not_in', ['draft'], null])
+        ->and($choice('any'))->toBe(['in', ['open', 'closed', 'draft'], 'App\\Enums\\ListingStatus'])
+        ->and($choice('written'))->toBe(['in', ['open', 'closed'], null])
+        ->and($choice('priority'))->toBe(['in', ['1', '3'], 'App\\Enums\\ListingPriority'])
+        ->and($choice('fallback'))->toBe(['in', ['2'], 'App\\Enums\\ListingPriority'])
+        ->and($choice('label'))->toBe(['in', ['priority'], null])
+        ->and($choice('visibility'))->toBe(['in', ['Public'], 'App\\Enums\\ListingVisibility'])
+        ->and($choice('mixed'))->toBe(['in', ['open', 'archived'], null])
+        ->and($choice('only'))->toBe(['enum', ['open', 'draft'], 'App\\Enums\\ListingStatus'])
+        ->and($choice('except'))->toBe(['enum', ['2', '3'], 'App\\Enums\\ListingPriority'])
+        ->and($trace['widened'])->toBe([])
+        ->and($trace['unread'])->toBe([])
+        ->and($trace['opaque'])->toBe([]);
+})->group('fixture');
+
+it('reads an enum case default as the value the query binds, and an operator filter by its FilterOperator case', function (): void {
+    // Spatie filters on a default as if it had been sent, and the query binds a case as its backing value.
+    // A case bound to a helper's parameter default reaches the same reading through the return fold.
+    $trace = FixtureRunner::traceQbEnrich(
+        'app/Http/Controllers/ListingDefaultFilterController.php',
+        'App\\Http\\Controllers\\ListingDefaultFilterController',
+        'index',
+    );
+
+    $filters = array_map(
+        static fn (array $filter): array => [$filter['name'], $filter['kind'], $filter['typeColumn'], $filter['hasDefault'], $filter['default']],
+        $trace['filters'],
+    );
+
+    expect($filters)->toBe([
+        ['status', 'exact', 'status', true, 'open'],
+        ['previous_status', 'exact', 'previous_status', true, 'closed'],
+        ['active', 'operator', 'active', false, null],
+        ['title', 'operator', null, false, null],
+    ])
+        ->and($trace['unresolved'])->toBe([])
+        ->and($trace['visitorDependencyBasenames'])->toBe(['ListingStatus.php']);
+})->group('fixture');
+
+it('leaves out a rule it cannot read that only refuses values, and gives up a field whose rule could loosen the rest', function (): void {
+    // A custom rule object and a closure are run as checks, so without them `title` and `slug` are wider
+    // than the endpoint and still true. `Rule::when(…, ['nullable'])` and a rule chosen by a ternary can be
+    // `nullable` or `sometimes`, so the `string` beside them is not true on its own and the field is left
+    // with no rules at all. `status` is
+    // `(new Enum(…))->only([…])`, which reads as the factory chain that builds it.
+    $trace = FixtureRunner::traceRules(
+        'app/Http/Requests/UnreadRulesRequest.php',
+        'App\\Http\\Requests\\UnreadRulesRequest',
+        'rules',
+    );
+
+    $names = static fn (string $field): array => array_map(
+        static fn (array $rule): string => $rule['name'],
+        $trace['fields'][$field],
+    );
+
+    // The given-up fields keep their names with no rules, so they publish optional and unconstrained.
+    expect(array_keys($trace['fields']))->toBe(['title', 'slug', 'status', 'summary', 'tier'])
+        ->and($trace['fields']['summary'])->toBe([])
+        ->and($trace['fields']['tier'])->toBe([])
+        ->and($names('title'))->toBe(['required', 'string', 'max'])
+        ->and($names('slug'))->toBe(['required', 'string'])
+        ->and($names('status'))->toBe(['required', 'enum'])
+        ->and($trace['fields']['status'][1]['parameters'])->toBe(['open', 'closed'])
+        ->and($trace['unread'])->toBe(['title' => ['new App\\Rules\\NoProfanity'], 'slug' => ['a closure']])
+        ->and($trace['opaque'])->toBe(['summary' => 'Rule::when(…)', 'tier' => 'a value this build cannot read'])
+        ->and($trace['unrecoverable'])->toBe([])
+        ->and($trace['widened'])->toBe([]);
+})->group('fixture');
+
+it('reads rules assembled in a variable with the same grammar, from the constant shape alone', function (): void {
+    // The trace sees no returned array here, so the literal reading answers alone: the rule object is a
+    // bare class and the conditional a ConditionalRules, and each is taken as the trace takes it.
+    $analysis = ActionAnalysis::fromArray(FixtureRunner::analyze(
+        'app/Http/Requests/AssembledRulesRequest.php',
+        'App\\Http\\Requests\\AssembledRulesRequest',
+        'rules',
+    ));
+
+    $shapes = new ShapeToRuleSet;
+    $rules = $shapes->convert($analysis->returns[0]->type);
+
+    expect(array_map(static fn (array $field): array => array_map(static fn ($rule): string => $rule->name, $field), $rules->fields))
+        ->toBe(['title' => ['required', 'string', 'max']])
+        ->and($shapes->unread())->toBe(['title' => ['new App\\Rules\\NoProfanity']])
+        ->and($shapes->opaque())->toBe(['summary' => 'new Illuminate\\Validation\\ConditionalRules']);
+})->group('fixture');
+
 it('leaves a soft-delete filter unresolved when its key is not written at the call', function (): void {
     // Spatie documents `AllowedFilter::trashed()` as filtering on `trashed`, which is true of a call that
     // passed NO name. This one passes one it reads from config, so the endpoint accepts some other key and

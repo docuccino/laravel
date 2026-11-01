@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Docuccino\Core\Extensions\BuiltIn\DefaultTypeMappers;
+use Docuccino\Core\Extensions\BuiltIn\EnumSchema;
 use Docuccino\Core\Extensions\Schema\ComponentRegistry;
 use Docuccino\Core\Extensions\Schema\SchemaConverter;
 use Docuccino\Core\Extensions\Validation\RuleSet;
@@ -15,6 +16,7 @@ use Docuccino\Inference\PhpStan\Tests\Support\FixtureRunner;
 use Docuccino\Laravel\Integrations\SpatieData\DataSchema;
 use Docuccino\Laravel\Integrations\SpatieData\DataValidationRules;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ActionPreviewData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\ListingStatus;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\MergedRulesData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\MfaChallengeData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\MockedSnapshotData;
@@ -47,25 +49,43 @@ function realMetadataAs(string $fixtureFqcn, string $twinFqcn): ClassMetadata
 /**
  * `[all hoisted components, the twin's own]` from the Data mapper, over the real engine's types. A nested
  * class the recovered types reference keeps its fixture-app FQCN — nothing in-process can load it — so its
- * real metadata is seeded under that name, which is what lets it hoist as a component of its own.
+ * real metadata is seeded under that name, which is what lets it hoist as a component of its own. An enum
+ * is re-keyed onto its loadable twin, so its cases are reflected as they are in the app.
  *
- * @return array{0: array<string, mixed>, 1: array<string, mixed>}
+ * The third member is the codes of the diagnostics the conversion raised.
+ *
+ * @return array{0: array<string, mixed>, 1: array<string, mixed>, 2: list<string>}
  */
 function realDataComponent(string $fixtureFqcn, string $twinFqcn, string ...$nested): array
 {
+    $twinEnums = static function (mixed $node) use (&$twinEnums): mixed {
+        if (! is_array($node)) {
+            return $node;
+        }
+        if (($node['kind'] ?? null) === 'enum' && $node['fqcn'] === 'App\\Enums\\ListingStatus') {
+            expect($node['cases'])->toBe(array_column(ListingStatus::cases(), 'name'));
+            $node['fqcn'] = ListingStatus::class;
+        }
+
+        return array_map($twinEnums, $node);
+    };
     $classes = [$twinFqcn => realMetadataAs($fixtureFqcn, $twinFqcn)];
     foreach ($nested as $nestedFqcn) {
-        $classes[$nestedFqcn] = ClassMetadata::fromArray(FixtureRunner::classMetadata($nestedFqcn));
+        $classes[$nestedFqcn] = ClassMetadata::fromArray($twinEnums(FixtureRunner::classMetadata($nestedFqcn)));
     }
 
     $engine = new StubTypeEngine(classes: $classes);
     $components = new ComponentRegistry;
-    $converter = new SchemaConverter([new DataSchema, ...DefaultTypeMappers::all()], $engine, $components);
+    $converter = new SchemaConverter([new DataSchema, new EnumSchema, ...DefaultTypeMappers::all()], $engine, $components);
     $converter->toSchema(new ClassT($twinFqcn));
 
     $schemas = $components->schemas();
 
-    return [$schemas, $schemas[substr((string) strrchr($twinFqcn, '\\'), 1)]];
+    return [
+        $schemas,
+        $schemas[substr((string) strrchr($twinFqcn, '\\'), 1)],
+        array_map(static fn ($d): string => $d->code, $components->diagnostics()),
+    ];
 }
 
 /**
@@ -157,30 +177,21 @@ it('hoists the item class a recovered list names into components', function (): 
     // The knock-on that makes reading the tag worth it: `forms` is a `list<SnapshotFormData>`, so its type
     // is the only reference to that Data class in the whole document. It hoists with its own members,
     // enum column included.
-    [$schemas] = realDataComponent('App\\Data\\SnapshotData', SnapshotData::class, 'App\\Data\\SnapshotFormData');
+    [$schemas, , $codes] = realDataComponent('App\\Data\\SnapshotData', SnapshotData::class, 'App\\Data\\SnapshotFormData');
 
-    // The `enum` below is CASE NAMES, which is a harness artifact: this converter has no EnumSchema and
-    // `App\Enums\ListingStatus` isn't autoloadable in-process, so neither route to reflection is open and
-    // the DType's case names show through. The product emits the backing values (`open`/`closed`/`draft`)
-    // plus x-enumDescriptions — pinned on the real engine in QueryBuilderRealEngineTest. What this
-    // assertion is for is the HOIST: that the item class becomes a component of its own at all.
-    // The nested class is mapped by the GENERIC class mapper here, for the same reason the enum shows
-    // case names: `App\Data\SnapshotFormData` isn't autoloadable in-process, so `isData()` says no and
-    // DataSchema declines it. That makes this the real-metadata proof that the fallback mapper now reads
-    // a property's `@example` — the tag was recovered all along and only the Data mapper published it.
-    // `open` is the enum's BACKING value, so the pair agrees wherever the product emits backing values;
-    // the case names beside it are the harness artifact named above, and an example that really did
-    // violate its schema is caught by the document-level example audit, which validates against the
-    // whole schema rather than its `type` alone.
-    expect(array_keys($schemas))->toBe(['SnapshotFormData', 'SnapshotData'])
+    // The nested class is mapped by the GENERIC class mapper: `App\Data\SnapshotFormData` isn't autoloadable
+    // in-process, so `isData()` says no and DataSchema declines it. That makes this the real-metadata proof
+    // that the fallback mapper reads a property's `@example`. The authored `open` is the enum's backing
+    // value, which is what Laravel compares and a client sends, so it is a member of the enum the
+    // component lists and is published beside the pointer, with nothing reported.
+    expect(array_keys($schemas))->toBe(['ListingStatus', 'SnapshotFormData', 'SnapshotData'])
+        ->and($schemas['ListingStatus']['enum'])->toBe(['open', 'closed', 'draft'])
         ->and($schemas['SnapshotFormData']['properties']['status'])->toBe([
-            'type' => 'string',
-            'enum' => ['Open', 'Closed', 'Draft'],
-            'x-enum-varnames' => ['Open', 'Closed', 'Draft'],
-            'x-enumNames' => ['Open', 'Closed', 'Draft'],
+            '$ref' => '#/components/schemas/ListingStatus',
             'description' => 'Publication status frozen at submit.',
             'example' => 'open',
-        ]);
+        ])
+        ->and($codes)->not->toContain('docblock.example-untypable');
 })->group('fixture');
 
 it('emits a referenced item for a DataCollection whose generic only the docblock states', function (): void {
@@ -193,7 +204,7 @@ it('emits a referenced item for a DataCollection whose generic only the docblock
         'items' => ['$ref' => '#/components/schemas/SnapshotFormData'],
         'description' => 'The factors the user can complete the challenge with.',
     ])
-        ->and(array_keys($schemas))->toBe(['SnapshotFormData', 'MfaChallengeData']);
+        ->and(array_keys($schemas))->toBe(['ListingStatus', 'SnapshotFormData', 'MfaChallengeData']);
 })->group('fixture');
 
 it('carries a recovered map and list through the rule vocabulary intact', function (): void {

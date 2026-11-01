@@ -15,6 +15,8 @@ use Docuccino\Core\Inference\TraceVisitor;
 use Docuccino\Core\Inference\TypeScope;
 use Docuccino\Core\Provenance\SourcePathResolver;
 use Docuccino\Laravel\Integrations\Eloquent\EloquentModelReflector;
+use Docuccino\Laravel\Integrations\Support\DependencyFileSet;
+use Docuccino\Laravel\Integrations\Support\EnumCaseValue;
 use Docuccino\Laravel\Integrations\Support\FoldedArguments;
 use Docuccino\Laravel\Integrations\Support\PaginationTerminalVisitor;
 use Docuccino\Laravel\Integrations\Support\RequestPageSizeReader;
@@ -52,6 +54,8 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
     private const QUERY_BUILDER = 'Spatie\\QueryBuilder\\QueryBuilder';
 
     private const ALLOWED_FILTER = 'Spatie\\QueryBuilder\\AllowedFilter';
+
+    private const FILTER_OPERATOR = 'Spatie\\QueryBuilder\\Enums\\FilterOperator';
 
     /**
      * Return types worth following out of the configured project paths: the builder itself (the
@@ -119,6 +123,9 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
     /** @var array<string, true> call sites already diagnosed — see {@see recordUnresolved()} */
     private array $diagnosed = [];
 
+    /** Enums whose cases were read as default values. */
+    private readonly DependencyFileSet $enumFiles;
+
     /**
      * @param  list<string>  $customTerminals  extra paginating terminals (length-aware), e.g. `paginateList`
      * @param  ?SourcePathResolver  $paths  relativises a diagnostic's file; without one it degrades to the
@@ -136,6 +143,7 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
             $terminals[$terminal] ??= 'length';
         }
         $this->terminals = $terminals;
+        $this->enumFiles = new DependencyFileSet;
     }
 
     public function enterNode(Node $node, TypeScope $scope): bool
@@ -167,13 +175,17 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
     }
 
     /**
-     * Files the page-size recovery consulted by reflection, which the trace's own file set does not cover.
+     * Files the page-size recovery and a default's enum case were read from by reflection, which the
+     * trace's own file set does not cover.
      *
      * @return list<string>
      */
     public function dependencyFiles(): array
     {
-        return $this->pageSize->dependencyFiles();
+        $files = new DependencyFileSet;
+        $files->add(...$this->pageSize->dependencyFiles(), ...$this->enumFiles->all());
+
+        return $files->all();
     }
 
     /**
@@ -499,7 +511,7 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
 
         return $entry === null
             ? null
-            : $this->entryWithContext($entry, $value, $slot, $valueNode, null, $itemNode, self::chainModifiers($value));
+            : $this->entryWithContext($entry, $value, $slot, $valueNode, null, $itemNode, $this->chainModifiers($value));
     }
 
     /**
@@ -543,7 +555,7 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
      * `->nullable()` / `->default(<const>)` a folded descriptor carries in its chain: the modifiers the
      * helper applied in its own body, where the call site has no AST to peel.
      */
-    private static function chainModifiers(ConstValue $value): QbModifiers
+    private function chainModifiers(ConstValue $value): QbModifiers
     {
         $modifiers = new QbModifiers;
         foreach ($value->chain as $call) {
@@ -553,9 +565,9 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
                 continue;
             }
 
-            $first = $call['args'][0] ?? null;
-            if ($call['method'] === 'default' && $first !== null && $first->isScalar()) {
-                $modifiers = $modifiers->merge(new QbModifiers(true, $first->scalar));
+            $default = $call['method'] === 'default' && isset($call['args'][0]) ? $this->defaultValue($call['args'][0]) : null;
+            if ($default !== null) {
+                $modifiers = $modifiers->merge(new QbModifiers(true, $default[0]));
             }
         }
 
@@ -701,13 +713,27 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
     private function foldDefault(Node\Expr\MethodCall $node, TypeScope $scope): ?array
     {
         $arg = $node->getArgs()[0] ?? null;
-        if ($arg === null) {
-            return null;
+        $value = $arg === null ? null : $scope->constantValueOf($arg->value);
+
+        return $value === null ? null : $this->defaultValue($value);
+    }
+
+    /**
+     * A default as a request would send it. Spatie filters on the default as if it had been sent, and the
+     * query binds an enum case as its value ({@see EnumCaseValue}), so a case is the value it stands for.
+     *
+     * @return array{0: string|int|float|bool|null}|null
+     */
+    private function defaultValue(ConstValue $value): ?array
+    {
+        if ($value->isCase()) {
+            $case = EnumCaseValue::of($value);
+            $this->enumFiles->add(EnumCaseValue::file($value));
+
+            return $case === null ? null : [$case];
         }
 
-        $value = $scope->constantValueOf($arg->value);
-
-        return $value !== null && $value->isScalar() ? [$value->scalar] : null;
+        return $value->isScalar() ? [$value->scalar] : null;
     }
 
     private function entryFor(ConstValue $value, string $defaultKind): ?QbEntry
@@ -826,8 +852,8 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
     {
         $operator = $value->args[1] ?? null;
 
-        return $operator instanceof ConstValue && $operator->isScalar() && is_string($operator->scalar)
-            && in_array($operator->scalar, self::STATIC_OPERATORS, true);
+        return $operator instanceof ConstValue && ltrim((string) $operator->class, '\\') === self::FILTER_OPERATOR
+            && in_array($operator->caseName(), self::STATIC_OPERATORS, true);
     }
 
     /** The column a callback filter's inline closure filters on. */
@@ -858,7 +884,7 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
             return $second->scalar;
         }
 
-        if ($second instanceof ConstValue && $second->isInstance() && is_string($second->class) && $second->class !== '') {
+        if ($second instanceof ConstValue && $second->isInstance() && $second->chain === [] && is_string($second->class) && $second->class !== '') {
             return $second->class;
         }
 

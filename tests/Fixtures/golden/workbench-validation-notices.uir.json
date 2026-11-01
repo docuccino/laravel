@@ -144,6 +144,47 @@
           },
           {
             "x-docuccino": {
+              "id": "par:v1:gltw45xtpw2tnyar",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/NoticeFieldsController.php",
+                    "line": 25,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\NoticeFieldsController::index"
+                  }
+                }
+              ]
+            },
+            "name": "term",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/NoticeFieldsController.php",
+                      "line": 25,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\NoticeFieldsController::index"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
               "id": "par:v1:y2o2d7x3xtaxoqid",
               "provenance": [
                 {
@@ -291,7 +332,7 @@
               ],
               "source": {
                 "file": "workbench/app/Http/Controllers/InlineValidationController.php",
-                "line": 18,
+                "line": 20,
                 "symbol": "Workbench\\App\\Http\\Controllers\\InlineValidationController::store"
               },
               "overrode": [
@@ -302,6 +343,9 @@
                       "application/json": {
                         "schema": {
                           "properties": {
+                            "summary": {
+                              "type": "string"
+                            },
                             "title": {
                               "type": "string"
                             }
@@ -341,7 +385,7 @@
                     ],
                     "source": {
                       "file": "workbench/app/Http/Controllers/InlineValidationController.php",
-                      "line": 18,
+                      "line": 20,
                       "symbol": "implicit:validated-request"
                     }
                   }
@@ -365,6 +409,9 @@
                     "description": "Whatever the callback accepts.",
                     "type": "object",
                     "additionalProperties": {}
+                  },
+                  "summary": {
+                    "type": "string"
                   },
                   "title": {
                     "type": "string"
@@ -397,11 +444,24 @@
             "type": "object",
             "additionalProperties": {}
           },
+          "audience": {},
+          "author": {
+            "type": "integer"
+          },
+          "body": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "string"
+          },
           "meta": {
             "type": [
               "array",
               "object"
             ]
+          },
+          "reference": {
+            "type": "string"
           },
           "status": {
             "type": "string"
@@ -461,7 +521,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "4dfecd3f23f0d8847d42fd75b305ad8f1d57ab50c812af54900ba06613622f83"
+      "contentHash": "face20b297dd0746e40a616c013041fc5e98095aac4004e245a900d69f14dd41"
     },
     "generator": {
       "name": "docuccino/laravel",

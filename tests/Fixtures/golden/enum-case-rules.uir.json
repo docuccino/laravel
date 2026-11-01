@@ -1,0 +1,314 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-posts": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:lc47sdahuxjejf7z",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/EnumCaseRules/PostController.php",
+                "line": 12,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\EnumCaseRules\\PostController::store"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:form-request",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "tests/Fixtures/EnumCaseRules/PostController.php",
+                "line": 12,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\EnumCaseRules\\PostController::store"
+              }
+            }
+          ]
+        },
+        "operationId": "post.api.zz-posts",
+        "tags": [
+          "Post"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StorePostRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:rggo2eoe7ukwnyfq",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "x-docuccino": {
+              "id": "res:v1:t3ourhmkowxngtc4",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/EnumCaseRules/PostController.php",
+                    "line": 12,
+                    "symbol": "implicit:validated-request"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "UnprocessableEntity"
+              }
+            },
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:implicit-response",
+                        "layer": "integration",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "tests/Fixtures/EnumCaseRules/PostController.php",
+                          "line": 12,
+                          "symbol": "implicit:validated-request"
+                        }
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "errors": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PostStatus": {
+        "x-docuccino": {
+          "id": "sch:v1:uothjjknxlz7egnt"
+        },
+        "type": "string",
+        "enum": [
+          "draft",
+          "published",
+          "archived"
+        ],
+        "x-enum-varnames": [
+          "Draft",
+          "Published",
+          "Archived"
+        ],
+        "x-enumNames": [
+          "Draft",
+          "Published",
+          "Archived"
+        ]
+      },
+      "StorePostRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:bck56x2rtqhetuim"
+        },
+        "type": "object",
+        "properties": {
+          "phase": {
+            "type": "string",
+            "not": {
+              "enum": [
+                "archived"
+              ]
+            }
+          },
+          "priority": {
+            "type": "integer",
+            "enum": [
+              1,
+              3
+            ],
+            "example": 1,
+            "x-enum-varnames": [
+              "Low",
+              "High"
+            ],
+            "x-enumNames": [
+              "Low",
+              "High"
+            ]
+          },
+          "review": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published"
+            ],
+            "example": "draft",
+            "x-enum-varnames": [
+              "Draft",
+              "Published"
+            ],
+            "x-enumNames": [
+              "Draft",
+              "Published"
+            ]
+          },
+          "schedule": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "scheduled"
+            ],
+            "example": "draft",
+            "x-enum-varnames": [
+              "Draft",
+              "Scheduled"
+            ],
+            "x-enumNames": [
+              "Draft",
+              "Scheduled"
+            ]
+          },
+          "stage": {
+            "type": "string",
+            "not": {
+              "enum": [
+                "archived"
+              ]
+            }
+          },
+          "state": {
+            "$ref": "#/components/schemas/PostStatus"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published"
+            ],
+            "example": "draft",
+            "x-enum-varnames": [
+              "Draft",
+              "Published"
+            ],
+            "x-enumNames": [
+              "Draft",
+              "Published"
+            ]
+          },
+          "urgency": {
+            "type": "integer",
+            "enum": [
+              2,
+              3
+            ],
+            "example": 2,
+            "x-enum-varnames": [
+              "Normal",
+              "High"
+            ],
+            "x-enumNames": [
+              "Normal",
+              "High"
+            ]
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "Public"
+            ],
+            "example": "Public",
+            "x-enum-varnames": [
+              "Public"
+            ],
+            "x-enumNames": [
+              "Public"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "b8906688385f441d788d81ce30d8ebd392a19c41cbbb36b58629d742723aa748"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.23.3",
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
+    }
+  }
+}

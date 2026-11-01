@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Docuccino\Core\Contract\ContractIndex;
+use Docuccino\Core\Contract\SchemaCheck;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Extensions\BuiltIn\DefaultTypeMappers;
 use Docuccino\Core\Extensions\Context\RepresentationPolicy;
@@ -256,9 +258,10 @@ it('maps every schema-producing string rule to its fragment', function (array $r
     'lt (numeric literal)' => [[['lt', ['100']]], ['exclusiveMaximum' => 100, 'type' => 'number', 'example' => 1]],
     'lte (numeric literal)' => [[['lte', ['99']]], ['maximum' => 99, 'type' => 'number', 'example' => 1]],
 
-    // ArrayShapeRuleTransformer — list → array; distinct → uniqueItems.
+    // ArrayShapeRuleTransformer — list → array; distinct speaks about the list a `*` item is in, so on a
+    // named field it publishes nothing (its `*` positions are asserted on separately).
     'list' => [[['list']], ['type' => 'array']],
-    'distinct' => [[['distinct']], ['type' => 'array', 'uniqueItems' => true]],
+    'distinct (a named field, which Laravel compares only with itself)' => [[['string'], ['distinct']], ['type' => 'string']],
 
     // AdditionalPropertiesRuleTransformer — the words the Laravel vocabulary has none of. `object`
     // says a JSON object; `additional_properties` says the same and states the value schema, which
@@ -614,6 +617,55 @@ it('applies size rules type-aware and independent of author order', function ():
         ->and($int['properties']['age'])->toBe(['type' => 'integer', 'minimum' => 1, 'maximum' => 120, 'example' => 1]);
 });
 
+/*
+ * `distinct` on `tags.*` refuses a body whose `tags` repeat a value, so the repeat is the LIST's to refuse:
+ * `uniqueItems` on `tags`. Each row states the server's answer, read from Laravel itself, and the document
+ * must never refuse a body the server takes. Where `exact`, it refuses the body too; elsewhere the server
+ * refuses more than any keyword can say, and the document is the wider, true answer.
+ */
+it('publishes distinct as the uniqueness of the list its items are in, never refusing what the server takes', function (array $rules, array $body, bool $accepted, bool $exact): void {
+    expect(Validator::make($body, $rules)->passes())->toBe($accepted);
+
+    $schema = json_decode((string) json_encode(convertLaravelRules($rules)->schema), flags: JSON_THROW_ON_ERROR);
+    $published = (new Opis\JsonSchema\Validator)->validate(json_decode((string) json_encode($body), flags: JSON_THROW_ON_ERROR), $schema)->isValid();
+
+    expect($published)->toBe($accepted || ! $exact);
+})->with([
+    'a repeated item' => [['tags.*' => 'string|distinct'], ['tags' => ['a', 'a']], false, true],
+    'items that differ' => [['tags.*' => 'string|distinct'], ['tags' => ['a', 'b']], true, true],
+    'a repeated enum case' => [['tags.*' => 'distinct|in:read,write'], ['tags' => ['read', 'read']], false, true],
+    'a repeated boolean' => [['tags.*' => 'boolean|distinct'], ['tags' => [true, true]], false, true],
+    'a repeat under strict' => [['tags.*' => 'string|distinct:strict'], ['tags' => ['a', 'a']], false, true],
+    'a repeat under ignore_case' => [['tags.*' => 'string|distinct:ignore_case'], ['tags' => ['a', 'a']], false, true],
+    // Stricter than any keyword: the document takes it.
+    'another case under ignore_case' => [['tags.*' => 'string|distinct:ignore_case'], ['tags' => ['a', 'A']], false, false],
+    // The body itself is the list.
+    'a repeat in a top-level list' => [['*' => 'integer|distinct'], [1, 1], false, true],
+    'a repeat inside one row of a matrix' => [['m.*.*' => 'integer|distinct'], ['m' => [[1, 1]]], false, true],
+    // Laravel compares every cell, across rows too: each row is unique, and that is all a keyword says.
+    'a repeat across rows of a matrix' => [['m.*.*' => 'integer|distinct'], ['m' => [[1], [1]]], false, false],
+    'a repeat across lists in objects' => [['a.*.b.*' => 'integer|distinct'], ['a' => [['b' => [1]], ['b' => [1]]]], false, false],
+    // Laravel skips a null on a nullable item, and never compares an array item, so neither is a repeat.
+    'repeated nulls on nullable items' => [['tags.*' => 'nullable|string|distinct'], ['tags' => [null, null]], true, true],
+    'repeated arrays on array items' => [['tags.*' => 'array|distinct'], ['tags' => [[1], [1]]], true, true],
+    // Strict comparison tells an int from a float of the same value; JSON does not.
+    'one and one point nought under strict' => [['tags.*' => 'integer|distinct:strict'], ['tags' => [1, 1.0]], true, true],
+    // A named field's pattern matches only itself, so there is nothing to compare it with.
+    'a repeat in a list whose own key is distinct' => [['tags' => 'array|distinct'], ['tags' => [1, 1]], true, true],
+    // `lines.*.sku` compares skus across objects. Two equal objects without one repeat nothing.
+    'equal objects with no value to compare' => [['lines.*.sku' => 'string|distinct'], ['lines' => [['note' => 'x'], ['note' => 'x']]], true, true],
+    'a value repeated across objects' => [['lines.*.sku' => 'string|distinct'], ['lines' => [['sku' => 'a'], ['sku' => 'a']]], false, false],
+]);
+
+it('states no uniqueness where no keyword says what distinct does', function (array $rules, string $field, array $expected): void {
+    expect(convertLaravelRules($rules)->schema['properties'][$field])->toBe($expected);
+})->with([
+    // Laravel compares an object's values, and `uniqueItems` speaks only about an array's.
+    'the values of an object' => [['meta' => 'additional_properties:{"type":"string"}', 'meta.*' => 'string|distinct'], 'meta', ['type' => 'object', 'additionalProperties' => ['type' => 'string']]],
+    // Nothing says the items are scalars, and an array item is never compared.
+    'untyped items' => [['tags.*' => 'distinct'], 'tags', ['type' => 'array', 'items' => []]],
+]);
+
 it('maps type + format + choice + regex + date_format rules', function (): void {
     $schema = convertLaravelRules([
         'email' => 'required|email',
@@ -706,6 +758,59 @@ it('refuses an authored example that reads as neither container', function (): v
     expect($result->schema['properties']['f'])->toBe(['type' => ['array', 'object']])
         ->and(array_map(static fn ($d): string => $d->code, $diagnostics))->toBe(['docblock.example-untypable'])
         ->and($diagnostics[0]->message)->toContain('does not read as array/object');
+});
+
+/*
+ * A stated example is a value for the field as a whole, and `nullable` is part of the field: it admits the
+ * null beside whatever else the rules settled. Read against the type words alone — which never carry the
+ * null, since nullability is a flag — `example:null` on a nullable integer was refused as not an integer,
+ * and on a nullable value list was published as the string `"null"`, which no member of the list is.
+ */
+it('reads a stated example against the null a nullable field admits', function (string $rules, RepresentationPolicy $policy, mixed $expected): void {
+    $context = vocabularyContext($policy);
+    $ordered = (new RuleOrdering)->order(new RuleSet(['f' => RuleParsing::tokens($rules)]));
+    $field = (new DefaultValidationRulesToSchema(ValidationIntegration::transformers()))->convert($ordered, $context)->schema['properties']['f'];
+
+    expect(array_key_exists('example', $field))->toBeTrue()
+        ->and($field['example'])->toBe($expected)
+        ->and($context->components()->diagnostics())->toBe([]);
+
+    // Held to the field's own published schema by the validator the example audit runs.
+    $document = ContractIndex::fromArray([
+        'openapi' => '3.2.0',
+        'info' => ['title' => 't', 'version' => '1'],
+        'paths' => [],
+        'components' => ['schemas' => ['Field' => $field]],
+    ]);
+
+    expect((new SchemaCheck($document))->check($field['example'], ['components', 'schemas', 'Field'], 'the example'))->toBe([]);
+})->with([
+    'null on a nullable integer' => ['nullable|integer|example:null', new RepresentationPolicy, null],
+    'null on a nullable integer, as an anyOf' => ['nullable|integer|example:null', new RepresentationPolicy(nullable: 'anyof'), null],
+    'a number on a nullable integer, as an anyOf' => ['nullable|integer|example:7', new RepresentationPolicy(nullable: 'anyof'), 7],
+    'null on a nullable value list' => ['nullable|in:draft,published|example:null', new RepresentationPolicy, null],
+    'a member of a nullable value list' => ['nullable|in:draft,published|example:draft', new RepresentationPolicy, 'draft'],
+    'a number in a nullable numeric list' => ['nullable|in:1,2|example:2', new RepresentationPolicy, 2],
+]);
+
+it('refuses a stated example the field\'s value list does not hold', function (): void {
+    // The value list is part of what the field accepts, so a word outside it is no reading of it — and
+    // `null` on a list that is NOT nullable is the same refusal, rather than the string `"null"`. The list
+    // still pins a value, so the field earns the example its rules generate, and the warning says that
+    // one stands in for the refused one rather than that the field has none.
+    $context = vocabularyContext();
+    $ordered = (new RuleOrdering)->order(new RuleSet([
+        'f' => RuleParsing::tokens('in:draft,published|example:active'),
+        'g' => RuleParsing::tokens('in:draft,published|example:null'),
+    ]));
+    $properties = (new DefaultValidationRulesToSchema(ValidationIntegration::transformers()))->convert($ordered, $context)->schema['properties'];
+
+    expect($properties['f']['example'] ?? 'none')->toBe('draft')
+        ->and($properties['g']['example'] ?? 'none')->toBe('draft')
+        ->and(array_map(static fn ($d): string => $d->message, $context->components()->diagnostics()))->toBe([
+            'The example on field "f" ("active") does not read as "draft"/"published", so it is not published; where the field\'s rules pin a value, an example generated from them is published instead.',
+            'The example on field "g" ("null") does not read as "draft"/"published", so it is not published; where the field\'s rules pin a value, an example generated from them is published instead.',
+        ]);
 });
 
 it('raises an info diagnostic for a rule no transformer handles', function (): void {

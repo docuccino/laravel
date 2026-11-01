@@ -89,3 +89,37 @@ it('accepts null in each nullable closed set, as the server does, and refuses a 
     'two literals or null, null' => ['response', 'state', null, true],
     'two literals or null, an outsider' => ['response', 'state', 'pending', false],
 ]);
+
+/*
+ * An authored example beside a nullable union is a value for the union as a whole. Where the null is an
+ * `anyOf` branch the member states no `type` of its own, and reading the text against that absent `type`
+ * published `@example null` as the string "null" and `@example 3` as the string "3" — neither of them a
+ * value the member accepts, in either OpenAPI version.
+ */
+it('publishes each authored example as a value its member accepts, in 3.0 as in 3.1', function (string $policy, string $field, mixed $expected, bool $strict30): void {
+    $result = nullableChoicesBuild($policy);
+    $pointer = '/components/schemas/TicketSummary/properties/'.$field;
+
+    $document = json_decode((new UirEmitter)->emit($result->document), flags: JSON_THROW_ON_ERROR);
+    $member = $document->components->schemas->TicketSummary->properties->{$field};
+
+    expect(property_exists($member, 'example'))->toBeTrue()
+        ->and($member->example)->toBe($expected);
+
+    // Held to the member by a validator, `$ref` resolved through the document it stands in.
+    $document->{'$ref'} = '#'.$pointer;
+    expect((new SchemaValidator)->validate(json_decode((string) json_encode($expected)), $document)->isValid())->toBeTrue();
+
+    $downlevel = (new OpenApi30DownlevelEmitter)->emit($result->document);
+    $member30 = json_decode($downlevel, true)['components']['schemas']['TicketSummary']['properties'][$field];
+
+    expect($member30['example'])->toBe($expected)
+        ->and($member30['nullable'] ?? false)->toBeTrue()
+        // A nullable reference downlevels to `allOf: [$ref]` beside `nullable: true`, which 3.0 generators
+        // read as nullable and a strict 3.0.3 validator does not — the emitter's own trade-off, which it
+        // reports as `downlevel.nullable-composition`. Everywhere else 3.0 admits the example outright.
+        ->and(openApi30Admits($downlevel, $pointer, $expected))->toBe($strict30);
+})->with(['type-array', 'anyof'])->with([
+    'null beside a nullable enum' => ['queue', null, false],
+    'a number beside a nullable integer' => ['replies', 3, true],
+]);

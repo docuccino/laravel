@@ -32,6 +32,7 @@ use Docuccino\Laravel\Integrations\Validation\RuleOrdering;
 use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
 use Docuccino\Laravel\Integrations\Validation\Transformers\AdditionalPropertiesRuleTransformer;
 use Docuccino\Laravel\Integrations\Validation\Transformers\DateWireRuleTransformer;
+use Docuccino\Laravel\Integrations\Validation\UnreadRule;
 
 /**
  * Derives a request {@see RuleSet} from a Data class so the shared validation chain documents the
@@ -81,6 +82,13 @@ final class DataValidationRules
 
     private readonly DependencyFileSet $dependencyFiles;
 
+    /**
+     * The `#[Rule(new X)]` objects the last rule set could not read ({@see unreadRuleObjects()}).
+     *
+     * @var list<array{key: ?string, class: string, property: string, rule: string, narrows: bool}>
+     */
+    private array $unread = [];
+
     /** The collaborators one build runs against, set at the entry points below alongside them. */
     private ?TypeEngine $engine = null;
 
@@ -120,6 +128,21 @@ final class DataValidationRules
     }
 
     /**
+     * The `#[Rule(new X)]` objects the last {@see build()} saw and could not read, each with the request
+     * key it was found at — null inside a map's value, which has no key of its own — the Data class and
+     * property that carry it, and whether it can only refuse values. One that can is left out and the
+     * property's other rules stand; one that cannot ({@see UnreadRule}) takes the property's stated rules
+     * with it, leaving what its type says. A key a `rules()` override replaced was never enforced, so it
+     * is not reported.
+     *
+     * @return list<array{key: ?string, class: string, property: string, rule: string, narrows: bool}>
+     */
+    public function unreadRuleObjects(): array
+    {
+        return $this->unread;
+    }
+
+    /**
      * The field keys from the class's properties alone, before any rules() override. Lets a caller tell
      * what property inference already documents — e.g. to suppress a `validation.rule-unrecoverable` for
      * a field whose rules() is dynamic but whose `UploadedFile` type documents it anyway.
@@ -152,6 +175,13 @@ final class DataValidationRules
         // no property inferred at all. `#[MergeValidationRules]` is the class-level opt-out spatie's own
         // resolver reads, and appends instead.
         $merging = $this->reflector->mergesValidationRules($fqcn);
+        if (! $merging) {
+            $this->unread = array_values(array_filter(
+                $this->unread,
+                static fn (array $unread): bool => $unread['key'] === null || ! isset($overrides->fields[$unread['key']]),
+            ));
+        }
+
         $fields = $inferred;
         // An override adds keys and replaces values, never removes one, so the sibling keys the carrier
         // consults are the same before the loop as after it.
@@ -341,6 +371,7 @@ final class DataValidationRules
     private function begin(TypeEngine $engine, ?SchemaContext $schema, ?ValidationRulesToSchema $validation): void
     {
         $this->dependencyFiles->clear();
+        $this->unread = [];
         $this->engine = $engine;
         $this->schema = $schema;
         $this->validation = $validation;
@@ -374,9 +405,11 @@ final class DataValidationRules
             }
 
             $tokens = $this->reflector->validationTokens($fqcn, $property->name);
-            $stated = [
+            $this->dependencyFiles->add(...$this->reflector->validationEnumFiles($fqcn, $property->name));
+            [$objectRules, $opaque] = $this->ruleObjectRules($fqcn, $property->name, $key);
+            $stated = $opaque ? [] : [
                 ...array_map(RuleParsing::token(...), $tokens),
-                ...$this->ruleObjectRules($fqcn, $property->name),
+                ...$objectRules,
             ];
             $attributeRules = [
                 ...$stated,
@@ -574,7 +607,12 @@ final class DataValidationRules
         // was recovered from are as much a dependency.
         $this->dependencyFiles->add(...$metadata->dependencyFiles);
 
+        $before = count($this->unread);
         $fields = $this->fieldsFor($type->fqcn, $metadata, '', [...$visiting, $type->fqcn]);
+        // A map's values have no key of their own, so what was found inside one is addressed by class alone.
+        for ($index = $before; $index < count($this->unread); $index++) {
+            $this->unread[$index]['key'] = null;
+        }
 
         return $validation->convert(
             $this->ordering->order($this->normalizer->normalize(new RuleSet($fields))),
@@ -614,22 +652,30 @@ final class DataValidationRules
     }
 
     /**
-     * Rules from a `#[Rule(new Iban)]` object's `#[RuleSchema]`, alongside the string tokens. An
-     * unannotated rule object contributes nothing.
+     * Rules from a `#[Rule(new Iban)]` object's `#[RuleSchema]`, alongside the string tokens, and whether
+     * one of the objects has content nothing can read that could loosen the rules beside it. An
+     * unannotated rule object contributes nothing and is recorded ({@see unreadRuleObjects()}).
      *
-     * @return list<ValidationRule>
+     * @return array{0: list<ValidationRule>, 1: bool}
      */
-    private function ruleObjectRules(string $fqcn, string $property): array
+    private function ruleObjectRules(string $fqcn, string $property, string $key): array
     {
         $rules = [];
+        $opaque = false;
         foreach ($this->reflector->ruleObjectClasses($fqcn, $property) as $ruleClass) {
             $facts = $this->customRules->read($ruleClass);
             $this->dependencyFiles->add($facts->file);
 
+            if (! $facts->annotated) {
+                $unread = UnreadRule::classify($ruleClass);
+                $opaque = $opaque || ! $unread['narrows'];
+                $this->unread[] = ['key' => $key, 'class' => $fqcn, 'property' => $property, 'rule' => $unread['label'], 'narrows' => $unread['narrows']];
+            }
+
             $rules = [...$rules, ...$facts->rules];
         }
 
-        return $rules;
+        return [$rules, $opaque];
     }
 
     /**

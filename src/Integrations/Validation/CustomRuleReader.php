@@ -33,6 +33,7 @@ final class CustomRuleReader
             return new CustomRuleFacts(
                 rules: $attributes === [] ? [] : RuleSchemaRules::of($attributes[0]->newInstance()),
                 file: $file === false ? null : $file,
+                annotated: $attributes !== [],
             );
         } catch (Throwable) {
             return new CustomRuleFacts;

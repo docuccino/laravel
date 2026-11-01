@@ -10,7 +10,7 @@ use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Validation\DeclaredFields;
 
 /**
- * The two notes a rules recovery owes for a field it could not fully read, and the stand-down both take:
+ * The notes a rules recovery owes for a field it could not fully read, and the stand-down both take:
  * a field a declaration already publishes is written from a layer above the recovery, so what became of
  * it is not the recovery's claim to make ({@see DeclaredFields}).
  *
@@ -32,6 +32,22 @@ final class UnrecoveredRules
         $this->report($context, $field, Severity::Info, 'validation.rule-unrecoverable', $message, RulesHarvestingVisitor::UNRECOVERABLE_HELP);
     }
 
+    /**
+     * A field given up because one of its rules has unknown content, which could loosen the rest. Null
+     * where the rule sits in no field a request key names — inside a map's values — so nothing declared
+     * can have published it.
+     */
+    public function opaque(RouteContext $context, ?string $field, string $message): void
+    {
+        $this->report($context, $field, Severity::Info, 'validation.rule-unrecoverable', $message, RulesHarvestingVisitor::OPAQUE_HELP);
+    }
+
+    /** A field documented without a rule it could not read, one that can only refuse values; null as above. */
+    public function unread(RouteContext $context, ?string $field, string $message): void
+    {
+        $this->report($context, $field, Severity::Info, 'validation.rule-unrecoverable', $message, RulesHarvestingVisitor::UNREAD_HELP);
+    }
+
     /** A field that recovered some of its rules and widened past values it could not read. */
     public function widened(RouteContext $context, string $field, string $message): void
     {
@@ -42,9 +58,9 @@ final class UnrecoveredRules
      * The severity and the code travel from the callers above rather than being chosen here, so the
      * diagnostics-reference scanner reads both off a literal argument list ({@see tools/diagnostic-codes.php}).
      */
-    private function report(RouteContext $context, string $field, Severity $severity, string $code, string $message, string $help): void
+    private function report(RouteContext $context, ?string $field, Severity $severity, string $code, string $message, string $help): void
     {
-        if ($this->declared->publishes($field)) {
+        if ($field !== null && $this->declared->publishes($field)) {
             return;
         }
 

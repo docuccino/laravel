@@ -13,7 +13,8 @@ use Spatie\LaravelData\Data;
  *
  * The `@example` tags here are what the real engine reads off these docblocks; a stub engine mirrors
  * them as the strings the docblock reader hands over, which is the whole point — text is all a tag can
- * hold. `n/a` on an `int` is the shape that has no reading at all. Only ever reflected.
+ * hold. `standing` is a nullable backed enum, which publishes as a `$ref` inside an `anyOf` and so states
+ * no `type` of its own. `n/a` on an `int` is the shape that has no reading at all. Only ever reflected.
  */
 final class ExampleTypesData extends Data
 {
@@ -56,6 +57,12 @@ final class ExampleTypesData extends Data
          * @example null
          */
         public readonly ?int $retention_days = null,
+        /**
+         * The account's standing, where it has one yet.
+         *
+         * @example null
+         */
+        public readonly ?AccountStatus $standing = null,
         /**
          * The seat count at last renewal.
          *

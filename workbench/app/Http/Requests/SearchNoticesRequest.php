@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Workbench\App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Workbench\App\Rules\NoticeFilter;
 
 /**
  * The same unreadable rules on a READ verb, where they become query parameters — so the declaration that
@@ -29,6 +30,7 @@ final class SearchNoticesRequest extends FormRequest
             'secret' => [static fn (): bool => true],
             'scope' => ['array'],
             'window' => ['array'],
+            'term' => ['string', new NoticeFilter],
         ];
     }
 }

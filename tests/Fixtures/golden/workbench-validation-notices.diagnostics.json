@@ -15,10 +15,38 @@
     },
     {
         "severity": "info",
+        "code": "validation.rule-unrecoverable",
+        "message": "Validation field \"term\" on Workbench\\App\\Http\\Requests\\SearchNoticesRequest has a rule this build cannot read (new Workbench\\App\\Rules\\NoticeFilter), so that rule is left off the query parameters; the rest of its rules are documented.",
+        "routeSignature": "GET /api/field-notices",
+        "help": "The rule is a closure, a custom Rule object with no #[RuleSchema], or a framework rule this build does not read, and it can only refuse values, so the field is documented without it: wider than the endpoint, and true. Annotate the rule class with #[RuleSchema] to document what it accepts (an empty #[RuleSchema] says it states nothing a schema can), or write the rule as one the build reads (string rules, Rule::enum(), Rule::in(), \u2026)."
+    },
+    {
+        "severity": "info",
         "code": "validation.container-undecided",
         "message": "Validation field \"meta\" is an array rule with no item or key rules, so a JSON array and a JSON object both satisfy it; it is documented as either.",
         "routeSignature": "POST /api/field-notices",
         "help": "Add \"meta.*\" rules for a list, or dotted \"meta.<key>\" rules for an object, and the document states the one the endpoint means. A #[BodyParameter] naming a key inside \"meta\", or naming it with a type of its own, answers it too \u2014 the one for a free-form map with no keys to enumerate."
+    },
+    {
+        "severity": "info",
+        "code": "validation.rule-unrecoverable",
+        "message": "Validation field \"audience\" on Workbench\\App\\Http\\Requests\\StoreNoticeRequest has a rule whose content this build cannot read (Rule::when(\u2026)), which can make the field optional, nullable or excluded; none of its rules are documented, so it is published in the request schema, optional and unconstrained.",
+        "routeSignature": "POST /api/field-notices",
+        "help": "A rule whose content is unknown (Rule::when(), Rule::forEach(), a spread, or a value from a call or a variable) can make the field optional, nullable or excluded, so none of the rules beside it are true on their own and the field is published with no constraints. Write the rules out where they apply, or declare the field with #[BodyParameter] or #[QueryParameter]."
+    },
+    {
+        "severity": "info",
+        "code": "validation.rule-unrecoverable",
+        "message": "Validation field \"body\" on Workbench\\App\\Http\\Requests\\StoreNoticeRequest has a rule this build cannot read (a closure), so that rule is left off the request schema; the rest of its rules are documented.",
+        "routeSignature": "POST /api/field-notices",
+        "help": "The rule is a closure, a custom Rule object with no #[RuleSchema], or a framework rule this build does not read, and it can only refuse values, so the field is documented without it: wider than the endpoint, and true. Annotate the rule class with #[RuleSchema] to document what it accepts (an empty #[RuleSchema] says it states nothing a schema can), or write the rule as one the build reads (string rules, Rule::enum(), Rule::in(), \u2026)."
+    },
+    {
+        "severity": "info",
+        "code": "validation.rule-unrecoverable",
+        "message": "Validation field \"reference\" on Workbench\\App\\Http\\Requests\\StoreNoticeRequest has a rule this build cannot read (new Workbench\\App\\Rules\\NoticeFilter), so that rule is left off the request schema; the rest of its rules are documented.",
+        "routeSignature": "POST /api/field-notices",
+        "help": "The rule is a closure, a custom Rule object with no #[RuleSchema], or a framework rule this build does not read, and it can only refuse values, so the field is documented without it: wider than the endpoint, and true. Annotate the rule class with #[RuleSchema] to document what it accepts (an empty #[RuleSchema] says it states nothing a schema can), or write the rule as one the build reads (string rules, Rule::enum(), Rule::in(), \u2026)."
     },
     {
         "severity": "info",
@@ -40,5 +68,12 @@
         "message": "Inline validation field \"secret\" has no statically recoverable rules; it is omitted from the request schema.",
         "routeSignature": "POST /api/field-notices/inline",
         "help": "Its rules are a closure, a custom Rule object with no #[RuleSchema], or a Rule::when()/conditional descriptor. Express the field with recoverable rules (string/array rules, Rule::enum(), Rule::in(), \u2026), or annotate the rule class with #[RuleSchema], so it is documented."
+    },
+    {
+        "severity": "info",
+        "code": "validation.rule-unrecoverable",
+        "message": "Inline validation field \"summary\" has a rule this build cannot read (new Workbench\\App\\Rules\\NoticeFilter), so that rule is left off the request schema; the rest of its rules are documented.",
+        "routeSignature": "POST /api/field-notices/inline",
+        "help": "The rule is a closure, a custom Rule object with no #[RuleSchema], or a framework rule this build does not read, and it can only refuse values, so the field is documented without it: wider than the endpoint, and true. Annotate the rule class with #[RuleSchema] to document what it accepts (an empty #[RuleSchema] says it states nothing a schema can), or write the rule as one the build reads (string rules, Rule::enum(), Rule::in(), \u2026)."
     }
 ]

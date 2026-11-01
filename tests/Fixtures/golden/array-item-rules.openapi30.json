@@ -1,0 +1,233 @@
+{
+  "openapi": "3.0.4",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-tokens": {
+      "post": {
+        "operationId": "post.api.zz-tokens",
+        "tags": [
+          "Token"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueTokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "errors": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "IssueTokenRequest": {
+        "type": "object",
+        "properties": {
+          "abilities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TokenAbility"
+            },
+            "uniqueItems": true
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "nullable": true
+            }
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "email",
+                "sms"
+              ],
+              "example": "email",
+              "x-enum-varnames": [
+                "Email",
+                "Sms"
+              ],
+              "x-enumNames": [
+                "Email",
+                "Sms"
+              ]
+            }
+          },
+          "default_ability": {
+            "$ref": "#/components/schemas/TokenAbility"
+          },
+          "grants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "ability": {
+                  "$ref": "#/components/schemas/TokenAbility"
+                },
+                "note": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "ability"
+              ]
+            }
+          },
+          "handles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "not": {
+                "enum": [
+                  "root",
+                  "admin"
+                ]
+              }
+            }
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 20,
+              "example": "example"
+            },
+            "uniqueItems": true
+          },
+          "matrix": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "uniqueItems": true
+            }
+          },
+          "nicknames": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "not": {
+                "enum": [
+                  "root",
+                  "admin"
+                ]
+              }
+            }
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TokenAbility"
+            },
+            "uniqueItems": true
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "profile",
+                "email"
+              ],
+              "example": "profile",
+              "x-enum-varnames": [
+                "Profile",
+                "Email"
+              ],
+              "x-enumNames": [
+                "Profile",
+                "Email"
+              ]
+            }
+          },
+          "settings": {
+            "anyOf": [
+              {
+                "type": "array"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "abilities"
+        ]
+      },
+      "TokenAbility": {
+        "type": "string",
+        "enum": [
+          "read",
+          "write",
+          "admin"
+        ],
+        "x-enum-varnames": [
+          "Read",
+          "Write",
+          "Admin"
+        ],
+        "x-enumNames": [
+          "Read",
+          "Write",
+          "Admin"
+        ]
+      }
+    }
+  }
+}

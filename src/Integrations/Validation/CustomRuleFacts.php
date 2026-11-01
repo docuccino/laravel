@@ -7,9 +7,9 @@ namespace Docuccino\Laravel\Integrations\Validation;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
- * What a custom rule class contributes: the rules its `#[RuleSchema]` maps to (empty when it carries
- * none) and its declaring file. The file comes back either way — adding the attribute later has to
- * invalidate the fragment too.
+ * What a custom rule class contributes: the rules its `#[RuleSchema]` maps to, whether it carries one at
+ * all — an empty one is the author saying the rule has nothing a schema can state — and its declaring
+ * file. The file comes back either way — adding the attribute later has to invalidate the fragment too.
  */
 final readonly class CustomRuleFacts
 {
@@ -19,5 +19,6 @@ final readonly class CustomRuleFacts
     public function __construct(
         public array $rules = [],
         public ?string $file = null,
+        public bool $annotated = false,
     ) {}
 }

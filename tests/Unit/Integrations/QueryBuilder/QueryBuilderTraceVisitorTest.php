@@ -238,6 +238,34 @@ it('recovers a constant ->default() modifier and a ->nullable() modifier', funct
         ->and($filter->nullable)->toBeTrue();
 });
 
+it('reads an enum case default as the value its query binds, at the call site and in a helper\'s body', function (string $default, string|int $value): void {
+    // Spatie filters on the default as if it had been sent, and the query binds a case through
+    // `enum_value()`: a backed case is its backing value and a pure one its name. A backed case's NAME is
+    // a value the column never holds, which no request could send to mean the same thing.
+    $called = traceQbSnippet(
+        "QueryBuilder::for(App\\Models\\User::class)->allowedFilters([AllowedFilter::exact('status')->default({$default})])"
+    );
+    $folded = traceQbSnippet(
+        'QueryBuilder::for(App\\Models\\User::class)->allowedFilters([$this->statusFilter()])',
+        foldedReturns: ['statusFilter' => TraceScript::foldOf("AllowedFilter::exact('status')->default({$default})")],
+    );
+
+    foreach ([$called, $folded] as $visitor) {
+        $filter = $visitor->facts->filters[0];
+        $enum = substr($default, 1, (int) strrpos($default, '::') - 1);
+
+        expect($filter->hasDefault)->toBeTrue()
+            ->and($filter->default)->toBe($value)
+            ->and($filter->default)->toBe(Illuminate\Support\enum_value(constant(substr($default, 1))))
+            // The value is written in the enum's file, so editing it re-documents the filter.
+            ->and($visitor->dependencyFiles())->toBe([(new ReflectionEnum($enum))->getFileName()]);
+    }
+})->with([
+    'string-backed' => ['\\Workbench\\App\\Enums\\WidgetStatus::Published', 'published'],
+    'int-backed' => ['\\Workbench\\App\\Enums\\WidgetPriority::High', 10],
+    'pure' => ['\\Workbench\\App\\Enums\\FormChannel::Post', 'Post'],
+]);
+
 it('degrades a non-constant ->default() to no default without dropping the entry', function (): void {
     $facts = traceQbSnippet(
         "QueryBuilder::for(App\\Models\\User::class)->allowedFilters([AllowedFilter::exact('status')->default(\$dynamic)])"
@@ -281,14 +309,14 @@ it('marks a static operator filter to type off its internal column, and leaves a
     expect($facts->filters[0]->kind)->toBe('operator')
         ->and($facts->filters[0]->typeColumn)->toBe($typeColumn);
 })->with([
-    'EQUAL is static → typed off the name' => ["QueryBuilder::for(App\\Models\\User::class)->allowedFilters([AllowedFilter::operator('score', FilterOperator::EQUAL)])", 'score'],
-    'DYNAMIC is static → typed' => ["QueryBuilder::for(App\\Models\\User::class)->allowedFilters([AllowedFilter::operator('score', FilterOperator::DYNAMIC)])", 'score'],
-    'GREATER_THAN is not static → string' => ["QueryBuilder::for(App\\Models\\User::class)->allowedFilters([AllowedFilter::operator('score', FilterOperator::GREATER_THAN)])", null],
+    'EQUAL is static → typed off the name' => ["QueryBuilder::for(App\\Models\\User::class)->allowedFilters([AllowedFilter::operator('score', \\Spatie\\QueryBuilder\\Enums\\FilterOperator::EQUAL)])", 'score'],
+    'DYNAMIC is static → typed' => ["QueryBuilder::for(App\\Models\\User::class)->allowedFilters([AllowedFilter::operator('score', \\Spatie\\QueryBuilder\\Enums\\FilterOperator::DYNAMIC)])", 'score'],
+    'GREATER_THAN is not static → string' => ["QueryBuilder::for(App\\Models\\User::class)->allowedFilters([AllowedFilter::operator('score', \\Spatie\\QueryBuilder\\Enums\\FilterOperator::GREATER_THAN)])", null],
 ]);
 
 it('reads the operator internal-column name from the fourth factory argument', function (): void {
     $facts = traceQbSnippet(
-        "QueryBuilder::for(App\\Models\\User::class)->allowedFilters([AllowedFilter::operator('score', FilterOperator::EQUAL, 'and', 'score_cents')])"
+        "QueryBuilder::for(App\\Models\\User::class)->allowedFilters([AllowedFilter::operator('score', \\Spatie\\QueryBuilder\\Enums\\FilterOperator::EQUAL, 'and', 'score_cents')])"
     )->facts;
 
     expect($facts->filters[0]->internal)->toBe('score_cents')
@@ -565,6 +593,8 @@ it('leaves a named factory entry untouched when its body fold answers with anyth
     'fold declined' => ['allowed', []],
     // Folded to a non-custom factory — call-site typing already answers those.
     'fold non-custom' => ['allowed', ['allowed' => TraceScript::foldOf("\\Spatie\\QueryBuilder\\AllowedFilter::exact('legacy_id')")]],
+    // A call on the `new` object may return something else, so the class it was built from names nothing.
+    'fold chained instance' => ['allowed', ['allowed' => TraceScript::foldOf("\\Spatie\\QueryBuilder\\AllowedFilter::custom('legacy_id', (new \\Workbench\\App\\Filters\\PublicIdFilter)->decorated())")]],
 ]);
 
 it('does not upgrade a factory entry that types off a backed-enum class-string argument', function (): void {

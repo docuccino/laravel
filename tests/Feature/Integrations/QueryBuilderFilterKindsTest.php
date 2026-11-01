@@ -61,7 +61,7 @@ $chain = 'QueryBuilder::for(\\Workbench\\App\\Models\\Gadget::class)->allowedFil
     ."'status', "                                                                            // bare, enum-cast → partial-on-enum nudge
     ."AllowedFilter::scope('minScore'), "                                                    // scope int value
     ."AllowedFilter::callback('active', function (\$q, \$value) { \$q->where('active', \$value); }), " // callback bool column
-    ."AllowedFilter::operator('score', FilterOperator::EQUAL), "                             // static operator int
+    ."AllowedFilter::operator('score', \\Spatie\\QueryBuilder\\Enums\\FilterOperator::EQUAL), "                             // static operator int
     ."AllowedFilter::custom('flag', \\Workbench\\App\\Filters\\DocumentedFilter::class), "   // custom attribute (int, example 42)
     ."AllowedFilter::custom('sc', \\Workbench\\App\\Filters\\ScoreFilter::class), "          // custom __invoke body (score int)
     ."AllowedFilter::custom('from', \\Workbench\\App\\Filters\\DateFilter::class, 'starts_at'), " // generic custom, declared internal name → datetime cast

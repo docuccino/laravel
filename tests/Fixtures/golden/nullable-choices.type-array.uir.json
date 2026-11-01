@@ -166,6 +166,24 @@
   },
   "components": {
     "schemas": {
+      "TicketQueue": {
+        "x-docuccino": {
+          "id": "sch:v1:hov6rypy624f75x6"
+        },
+        "type": "string",
+        "enum": [
+          "support",
+          "billing"
+        ],
+        "x-enum-varnames": [
+          "Support",
+          "Billing"
+        ],
+        "x-enumNames": [
+          "Support",
+          "Billing"
+        ]
+      },
       "TicketSummary": {
         "x-docuccino": {
           "id": "sch:v1:2shn3obqprcl2pzd"
@@ -186,6 +204,26 @@
           "id": {
             "type": "integer"
           },
+          "queue": {
+            "description": "The queue the ticket waits in, until it is triaged.",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TicketQueue"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "example": null
+          },
+          "replies": {
+            "description": "How many replies the customer has sent, where they have.",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 3
+          },
           "state": {
             "anyOf": [
               {
@@ -205,7 +243,9 @@
         "required": [
           "flag",
           "state",
-          "id"
+          "id",
+          "queue",
+          "replies"
         ]
       },
       "UpdateTicketRequest": {
@@ -297,7 +337,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "20588664c0496a6809b2bf7bfbece3079e981ba930db9675f82767abdf234261"
+      "contentHash": "7a8d5ed0814048e2fb5e251079e6846ffaadfc79112eb41e453e6a87037e0eab"
     },
     "generator": {
       "name": "docuccino/laravel",

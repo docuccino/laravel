@@ -8,17 +8,26 @@ use Docuccino\Core\Extensions\Schema\EnumReflection;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 use Docuccino\Core\Inference\ArgumentSlots;
 use Docuccino\Core\Inference\ConstValue;
+use Docuccino\Core\Support\Fqcn;
 use Docuccino\Laravel\Integrations\Support\DependencyFileSet;
+use Docuccino\Laravel\Integrations\Support\EnumCaseValue;
 use Docuccino\Laravel\Integrations\Support\RuleParsing;
 use Docuccino\Laravel\Integrations\Validation\CustomRuleReader;
+use Docuccino\Laravel\Integrations\Validation\RuleFactories;
+use Docuccino\Laravel\Integrations\Validation\RuleLosses;
 use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
+use Docuccino\Laravel\Integrations\Validation\UnreadRule;
 
 /**
  * Folds one field's statically-recovered rules — from an inline `validate([...])` or
  * `Validator::make(...)` — into {@see ValidationRule}s: pipe strings, array-of-rule forms, `Rule::*`
- * factory descriptors, and `new` rule objects whose class carries a `#[RuleSchema]`. Descriptors are why
- * folding happens at the AST level: `Rule::enum(Status::class)` has to be caught as a call, before
- * PHPStan collapses it to a bare object.
+ * factory descriptors, the framework rule objects those factories build, and `new` rule objects whose
+ * class carries a `#[RuleSchema]`. Descriptors are why folding happens at the AST level:
+ * `Rule::enum(Status::class)` has to be caught as a call, before PHPStan collapses it to a bare object.
+ *
+ * A rule it can see but not read is never dropped quietly ({@see UnreadRule}): one that can only refuse
+ * values is left out and named in {@see unread()}, and one whose content is unknown gives up the whole
+ * field, named in {@see opaque()}, because the rules beside it may not hold.
  *
  * The rule classes it read come back as {@see dependencyFiles()} for the caller to record — editing an
  * annotated rule has to re-document every field using it. One folder per recovery, never shared.
@@ -37,14 +46,30 @@ final class ConstValueToRules
         'Illuminate\\Validation\\Rules\\ExcludeWithout' => 'exclude_without',
     ];
 
+    /**
+     * Framework rule objects a `Rule::` factory constructs, by that factory: `new Enum(X::class)` is the
+     * object `Rule::enum(X::class)` returns, with the same arguments, so it reads as the same rule.
+     */
+    private const FACTORY_OBJECTS = [
+        'Illuminate\\Validation\\Rules\\Enum' => 'enum',
+        'Illuminate\\Validation\\Rules\\In' => 'in',
+        'Illuminate\\Validation\\Rules\\NotIn' => 'notIn',
+        'Illuminate\\Validation\\Rules\\ArrayRule' => 'array',
+        'Illuminate\\Validation\\Rules\\Exists' => 'exists',
+        'Illuminate\\Validation\\Rules\\Unique' => 'unique',
+    ];
+
     private readonly DependencyFileSet $dependencyFiles;
 
     private bool $widened = false;
+
+    private RuleLosses $losses;
 
     public function __construct(
         private readonly CustomRuleReader $customRules = new CustomRuleReader,
     ) {
         $this->dependencyFiles = new DependencyFileSet;
+        $this->losses = new RuleLosses;
     }
 
     /**
@@ -53,44 +78,18 @@ final class ConstValueToRules
     public function fold(ConstValue $value): array
     {
         $this->widened = false;
+        $this->losses = new RuleLosses;
 
         if ($value->isScalar() && is_string($value->scalar)) {
             return RuleParsing::tokens($value->scalar);
         }
 
-        if ($value->isDescriptor()) {
-            $rule = $this->descriptor($value);
-
-            return $rule === null ? [] : [$rule];
+        $out = [];
+        foreach ($value->isArray() ? $value->items : [$value] as $item) {
+            $out = [...$out, ...$this->item($item)];
         }
 
-        if ($value->isInstance()) {
-            return $this->instance($value);
-        }
-
-        if ($value->isArray()) {
-            $out = [];
-            foreach ($value->items as $item) {
-                if ($item->isScalar() && is_string($item->scalar)) {
-                    $out[] = RuleParsing::token($item->scalar);
-                } elseif ($item->isDescriptor()) {
-                    $rule = $this->descriptor($item);
-                    if ($rule !== null) {
-                        $out[] = $rule;
-                    }
-                } elseif ($item->isInstance()) {
-                    $out = [...$out, ...$this->instance($item)];
-                } elseif ($item->isSpread()) {
-                    // Rules the call site spread in from somewhere unreadable: the ones written beside
-                    // them still hold, so they stand, and the caller is told what went missing.
-                    $this->widened = true;
-                }
-            }
-
-            return $out;
-        }
-
-        return [];
+        return $this->losses->opaque() === null ? $out : [];
     }
 
     /**
@@ -105,6 +104,26 @@ final class ConstValueToRules
     }
 
     /**
+     * The rules the last {@see fold()} saw and left out, each of which can only refuse values: the field's
+     * other rules are documented, wider than the endpoint and still true.
+     *
+     * @return list<string>
+     */
+    public function unread(): array
+    {
+        return $this->losses->unread();
+    }
+
+    /**
+     * The rule that made the last {@see fold()} give up the field — one whose content is unknown, which
+     * could make it optional, nullable or excluded — or null when there was none.
+     */
+    public function opaque(): ?string
+    {
+        return $this->losses->opaque();
+    }
+
+    /**
      * Whether the last {@see fold()} could SEE a constraint it could not read — a value that comes from a
      * call, a variable or a spread — and widened the field rather than publishing a partial one.
      * Its rules are still true; they just say less than the code does, which is a thing to report.
@@ -115,8 +134,28 @@ final class ConstValueToRules
     }
 
     /**
-     * A `new X(...)` rule object documents as whatever its class declares. An unannotated class
-     * contributes nothing, leaving the field unrecoverable and diagnosed.
+     * One entry of a rule list; records what it could not read.
+     *
+     * @phpstan-impure
+     *
+     * @return list<ValidationRule>
+     */
+    private function item(ConstValue $item): array
+    {
+        return match (true) {
+            $item->isScalar() => is_string($item->scalar) ? [RuleParsing::token($item->scalar)] : [],
+            $item->isDescriptor() => $this->descriptorItem($item),
+            $item->isInstance() => $this->instance($item),
+            // A spread, a value from a call or a variable, a nested array: any of them could be `nullable`
+            // or `sometimes`, so nothing written beside it is true on its own.
+            default => $this->leaveOut(self::label($item), false),
+        };
+    }
+
+    /**
+     * A `new X(...)` rule object documents as whatever its class declares, and a framework object as the
+     * `Rule::` factory that builds it, chained calls included. An unannotated class contributes nothing
+     * and is named for the caller ({@see UnreadRule}).
      *
      * @return list<ValidationRule>
      */
@@ -133,26 +172,105 @@ final class ConstValueToRules
             return [self::excludeByFields(self::EXCLUDE_FIELD_OBJECTS[$class], $value->args)];
         }
 
+        if (isset(self::FACTORY_OBJECTS[$class])) {
+            $descriptor = ConstValue::descriptor(self::FACTORY_OBJECTS[$class], $value->args);
+            foreach ($value->chain as $call) {
+                $descriptor = $descriptor->withChainedCall($call['method'], $call['args']);
+            }
+
+            return $this->descriptorItem($descriptor);
+        }
+
         $facts = $this->customRules->read($class);
 
         $this->dependencyFiles->add($facts->file);
 
-        return $facts->rules;
+        if ($facts->annotated) {
+            return $facts->rules;
+        }
+
+        $unread = UnreadRule::classify($class);
+
+        return $this->leaveOut($unread['label'], $unread['narrows']);
     }
 
-    private function descriptor(ConstValue $descriptor): ?ValidationRule
+    /**
+     * A factory call in the rules list, or a framework object read as one. A `Rule::` static that returns
+     * a rule string reads as that string, so `Rule::nullable()` is `'nullable'`. A descriptor that does not
+     * read is left out like any other unread rule.
+     *
+     * @return list<ValidationRule>
+     */
+    private function descriptorItem(ConstValue $descriptor): array
+    {
+        $rule = $this->descriptor($descriptor);
+
+        if ($rule !== false) {
+            // One that reads to nothing has either said why ({@see $widened}) or excludes nothing.
+            return $rule === null ? [] : [$rule];
+        }
+
+        $string = $descriptor->chain === [] ? RuleFactories::ruleString((string) $descriptor->factory, $descriptor->args) : null;
+
+        return $string !== null
+            ? RuleParsing::tokens($string)
+            : $this->leaveOut(self::label($descriptor), UnreadRule::factoryNarrows((string) $descriptor->factory));
+    }
+
+    /**
+     * Records a rule the fold saw and could not read, by what leaving it out costs, and contributes no rule.
+     *
+     * @return list<ValidationRule>
+     */
+    private function leaveOut(string $label, bool $narrows): array
+    {
+        $this->losses->add($label, $narrows);
+
+        return [];
+    }
+
+    /** How a diagnostic names a rule that is no object: the call as written, without its arguments. */
+    private static function label(ConstValue $rule): string
+    {
+        return match (true) {
+            $rule->isDescriptor() => self::shortFactory((string) $rule->factory).'(…)',
+            $rule->isSpread() => 'a spread',
+            $rule->isArray() => 'a nested array',
+            default => 'a value this build cannot read',
+        };
+    }
+
+    /** `Illuminate\\Validation\\Rule::when` → `Rule::when`. */
+    private static function shortFactory(string $factory): string
+    {
+        $separator = strrpos($factory, '::');
+
+        return $separator === false ? Fqcn::short($factory) : Fqcn::short(substr($factory, 0, $separator)).substr($factory, $separator);
+    }
+
+    private static function method(ConstValue $descriptor): string
     {
         $factory = strtolower($descriptor->factory ?? '');
-        $method = str_contains($factory, '::') ? substr($factory, strrpos($factory, '::') + 2) : $factory;
+
+        return str_contains($factory, '::') ? substr($factory, strrpos($factory, '::') + 2) : $factory;
+    }
+
+    /** The rule a `Rule::` factory this reads builds, null where it builds none, or false where this reads no such factory. */
+    private function descriptor(ConstValue $descriptor): ValidationRule|false|null
+    {
+        $method = self::method($descriptor);
 
         // A choice descriptor whose values didn't fold is worth LESS than nothing: it would win the merge
         // and then contribute no keyword, so it stays unrecovered for the caller to diagnose.
         // `exists`/`unique` legitimately carry no values.
-        $choices = $method === 'in' ? $this->scalarValues($descriptor->args) : [];
+        $choices = $method === 'in' || $method === 'notin' ? $this->scalarValues($descriptor->args) : [];
 
         return match (true) {
             $method === 'enum' => $this->enum($descriptor),
-            $method === 'in' => $choices === null || $choices === [] ? null : ValidationRule::of('in', $choices),
+            $method === 'in' => $choices === null || $choices === [] ? null : ValidationRule::of('in', $choices, self::caseEnum($descriptor->args)),
+            $method === 'notin' => $choices === null || $choices === [] ? null : ValidationRule::of('not_in', $choices),
+            // The keys `array:a,b` names only refuse other keys, so an unread one leaves plain `array`.
+            $method === 'array' => ValidationRule::of('array', $this->values($descriptor->args) ?? []),
             $method === 'exists' => ValidationRule::of('exists'),
             $method === 'unique' => ValidationRule::of('unique'),
             $method === 'excludeif' => self::exclude('exclude_if', $descriptor->args[0] ?? null),
@@ -160,7 +278,7 @@ final class ConstValueToRules
             $method === 'exclude' => ValidationRule::of('exclude'),
             $method === 'excludewith' => self::excludeByFields('exclude_with', $descriptor->args),
             $method === 'excludewithout' => self::excludeByFields('exclude_without', $descriptor->args),
-            default => null,
+            default => false,
         };
     }
 
@@ -205,22 +323,21 @@ final class ConstValueToRules
     private function enum(ConstValue $descriptor): ?ValidationRule
     {
         $class = $descriptor->args[0] ?? null;
-        if ($class !== null && $class->isSpread()) {
-            // The enum class is somewhere in there and nothing names it, so no case list can be published.
+        $fqcn = $class !== null && $class->isScalar() && is_string($class->scalar) ? ltrim($class->scalar, '\\') : '';
+        if ($fqcn === '') {
+            // The enum class comes from somewhere nothing names, so no case list can be published.
             $this->widened = true;
 
             return null;
         }
 
-        $fqcn = $class !== null && $class->isScalar() && is_string($class->scalar) ? ltrim($class->scalar, '\\') : '';
-
         // The backing VALUES go into the rule, so adding a case rewrites it while the request class the
         // rule was read from hasn't moved.
-        $this->dependencyFiles->add($fqcn === '' ? null : EnumReflection::file($fqcn));
+        $this->dependencyFiles->add(EnumReflection::file($fqcn));
 
-        $values = $fqcn === '' ? [] : array_map(strval(...), EnumReflection::values($fqcn));
+        $values = array_map(strval(...), EnumReflection::values($fqcn));
 
-        if ($fqcn !== '' && $descriptor->chain !== []) {
+        if ($descriptor->chain !== []) {
             $values = $this->narrowEnum($fqcn, $values, $descriptor->chain);
         }
 
@@ -228,11 +345,11 @@ final class ConstValueToRules
     }
 
     /**
-     * Applies a `Rule::enum(…)->only([…])/->except([…])` chain to the recovered backing values. The chained
-     * args fold to case *names* (that's what the engine folds an enum-case constant to), so pair each name
-     * with its backing value — {@see EnumReflection::names()} runs parallel to
-     * {@see EnumReflection::values()} — and keep/drop by name, preserving order. An unknown chain method is
-     * ignored and the full case list stands.
+     * Applies a `Rule::enum(…)->only([…])/->except([…])` chain to the recovered backing values. Laravel
+     * keeps or drops a case by comparing it strictly with the cases listed, so a selector selects only a
+     * case of this enum, matched by name — {@see EnumReflection::names()} runs parallel to
+     * {@see EnumReflection::values()} — and order is preserved. An unknown chain method is ignored and the
+     * full case list stands.
      *
      * @param  list<string>  $values
      * @param  list<array{method: string, args: list<ConstValue>}>  $chain
@@ -249,8 +366,9 @@ final class ConstValueToRules
         foreach ($chain as $call) {
             // Selectors that would not read are the one place narrowing must NOT happen: a half-read
             // `only([...])` would drop cases the endpoint accepts. The full list stands instead.
-            $selected = $this->scalarValues($call['args']);
-            if ($selected === null || $selected === []) {
+            // An empty list narrows nothing in Laravel either.
+            $selected = self::entries($call['args']) === [] ? null : $this->selection($call['args'], $fqcn);
+            if ($selected === null) {
                 continue;
             }
 
@@ -285,20 +403,94 @@ final class ConstValueToRules
      */
     private function scalarValues(array $args): ?array
     {
-        // `Rule::in(['a', 'b'])` folds arg 0 to an array; `Rule::in('a', 'b')` to a list of args.
-        $source = count($args) === 1 && $args[0]->isArray() ? $args[0]->items : $args;
+        $values = $this->values($args);
+        if ($values === null) {
+            $this->widened = true;
+        }
 
+        return $values;
+    }
+
+    /**
+     * The values an argument list states, or null unless every entry named one ({@see scalarValues()}). An
+     * enum case is the value Laravel casts it to ({@see EnumCaseValue}), so `Rule::in([Status::Draft])`
+     * states `draft` and never `Draft`.
+     *
+     * @param  list<ConstValue>  $args
+     * @return list<string>|null
+     */
+    private function values(array $args): ?array
+    {
         $out = [];
-        foreach ($source as $arg) {
-            if (! $arg->isScalar() || $arg->scalar === null) {
+        foreach (self::entries($args) as $arg) {
+            $value = $arg->isCase() ? EnumCaseValue::of($arg) : ($arg->isScalar() ? $arg->scalar : null);
+            if ($value === null) {
+                return null;
+            }
+
+            $this->dependencyFiles->add(EnumCaseValue::file($arg));
+            $out[] = is_bool($value) ? ($value ? '1' : '0') : (string) $value;
+        }
+
+        return $out;
+    }
+
+    /**
+     * The case names of `$fqcn` an `->only()`/`->except()` argument list selects, or null when an entry
+     * would not read. A value that is not a case of this enum — a string, another enum's case — is never
+     * strictly equal to one, so it selects nothing.
+     *
+     * @param  list<ConstValue>  $args
+     * @return list<string>|null
+     */
+    private function selection(array $args, string $fqcn): ?array
+    {
+        $names = [];
+        foreach (self::entries($args) as $arg) {
+            $name = $arg->caseName();
+            if ($name === null && (! $arg->isScalar() || $arg->scalar === null)) {
                 $this->widened = true;
 
                 return null;
             }
 
-            $out[] = is_bool($arg->scalar) ? ($arg->scalar ? '1' : '0') : (string) $arg->scalar;
+            if ($name !== null && ltrim((string) $arg->class, '\\') === $fqcn) {
+                $names[] = $name;
+            }
         }
 
-        return $out;
+        return $names;
+    }
+
+    /**
+     * The enum every entry of a choice list is a case of, or null where any entry is something else. A rule
+     * listing one enum's cases is a choice from that enum, so it is named, described and referenced as one.
+     *
+     * @param  list<ConstValue>  $args
+     */
+    private static function caseEnum(array $args): ?string
+    {
+        $classes = [];
+        foreach (self::entries($args) as $arg) {
+            if (! $arg->isCase()) {
+                return null;
+            }
+
+            $classes[ltrim((string) $arg->class, '\\')] = true;
+        }
+
+        return count($classes) === 1 ? (string) array_key_first($classes) : null;
+    }
+
+    /**
+     * An argument list's entries: `Rule::in(['a', 'b'])` folds arg 0 to an array, `Rule::in('a', 'b')` to a
+     * list of args.
+     *
+     * @param  list<ConstValue>  $args
+     * @return list<ConstValue>
+     */
+    private static function entries(array $args): array
+    {
+        return count($args) === 1 && $args[0]->isArray() ? $args[0]->items : $args;
     }
 }

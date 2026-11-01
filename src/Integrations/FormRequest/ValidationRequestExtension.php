@@ -96,6 +96,14 @@ final class ValidationRequestExtension implements OperationExtension
             $notes->unrecoverable($context, $field, sprintf('Inline validation field "%s" has no statically recoverable rules; it is omitted from %s.', $field, RecoveredRequest::destination($context)));
         }
 
+        foreach ($visitor->opaqueFields() as $field => $rule) {
+            $notes->opaque($context, $field, sprintf('Inline validation field "%s" has a rule whose content this build cannot read (%s), which can make the field optional, nullable or excluded; none of its rules are documented, so it is published in %s, optional and unconstrained.', $field, $rule, RecoveredRequest::destination($context)));
+        }
+
+        foreach ($visitor->unreadRules() as $field => $rules) {
+            $notes->unread($context, $field, sprintf('Inline validation field "%s" has a rule this build cannot read (%s), so that rule is left off %s; the rest of its rules are documented.', $field, implode(', ', $rules), RecoveredRequest::destination($context)));
+        }
+
         foreach ($visitor->widenedFields() as $field) {
             $notes->widened($context, $field, sprintf('Inline validation field "%s" states values this build cannot read, so that constraint is left off %s; the rest of its rules are documented.', $field, RecoveredRequest::destination($context)));
         }

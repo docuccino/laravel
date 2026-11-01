@@ -15,6 +15,7 @@ use Docuccino\Core\Extensions\Validation\RecoveredRequest;
 use Docuccino\Core\Inference\ClassMetadata;
 use Docuccino\Core\Inference\ClassRef;
 use Docuccino\Laravel\Integrations\FormRequest\RulesFromClass;
+use Docuccino\Laravel\Integrations\FormRequest\UnrecoveredRules;
 use Docuccino\Laravel\Integrations\Validation\RuleOrdering;
 use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
 use ReflectionMethod;
@@ -65,6 +66,7 @@ final class DataRequestExtension implements OperationExtension
         $validation = $context->validation();
         $ruleSet = $this->normalizer->normalize($this->rules->build($fqcn, $metadata, $context->engine, $overrides, $converter, $validation));
         $context->recordDependencyFiles($this->rules->dependencyFiles());
+        $this->reportUnreadRuleObjects($fqcn, $context);
         if ($ruleSet->isEmpty()) {
             return;
         }
@@ -131,6 +133,22 @@ final class DataRequestExtension implements OperationExtension
         }
 
         return null;
+    }
+
+    /** The `#[Rule(new X)]` objects the rule set was built without ({@see DataValidationRules::unreadRuleObjects()}). */
+    private function reportUnreadRuleObjects(string $fqcn, RouteContext $context): void
+    {
+        $notes = new UnrecoveredRules(RecoveredRequest::declaredFields($context, $fqcn));
+
+        foreach ($this->rules->unreadRuleObjects() as $unread) {
+            if ($unread['narrows']) {
+                $notes->unread($context, $unread['key'], sprintf('Data property %s::$%s has a rule this build cannot read (%s), so that rule is left off %s; the rest of its rules are documented.', $unread['class'], $unread['property'], $unread['rule'], RecoveredRequest::destination($context)));
+
+                continue;
+            }
+
+            $notes->opaque($context, $unread['key'], sprintf('Data property %s::$%s has a rule whose content this build cannot read (%s), which can make the field optional, nullable or excluded; it is documented from its type alone, without the constraints its attributes state.', $unread['class'], $unread['property'], $unread['rule']));
+        }
     }
 
     private function reportUnrecognisedMappers(string $fqcn, RouteContext $context): void

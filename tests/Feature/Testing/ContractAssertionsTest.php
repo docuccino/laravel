@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Docuccino\Core\Emit\EmitOptions;
+use Docuccino\Core\Emit\Formats;
 use Docuccino\Laravel\Testing\ApiContract;
 use Docuccino\Laravel\Testing\Contracts\ContractObserver;
 use Docuccino\Laravel\Testing\ObservedExchange;
@@ -266,6 +268,28 @@ it('falls back to whatever the document does write when it writes no uir', funct
 
     expect(ApiContract::artifactPath())->toEndWith('/docs/openapi-3.1.json');
 });
+
+/*
+ * One build's artifacts are one contract, so a response gets one verdict whichever of them the suite
+ * reads. A 3.0 artifact spells a nullable reference as an `allOf` beside `nullable: true`, which JSON
+ * Schema 2020-12 does not read as admitting null.
+ */
+it('gives a response the same verdict from a 3.0 artifact as from the full one', function (string $format, string $body, bool $passes): void {
+    $path = workbenchContract();
+
+    if ($format !== 'full') {
+        file_put_contents($path, Formats::emit($format, generateDocument()->document, new EmitOptions)->output);
+        ApiContract::using($path);
+    }
+
+    $check = fn () => ApiContract::assertions()->assertValidResponse(contractResponse('POST', '/api/articles', 201, $body));
+
+    $passes ? expect($check())->toBeInstanceOf(TestResponse::class) : expect($check)->toThrow(AssertionFailedError::class);
+})->with(['full', 'openapi-3.2', 'openapi-3.0'])->with([
+    'no author' => ['{"id":1,"headline":"h","body":"b","metadata":{},"overrides":{},"author":null}', true],
+    'an author' => ['{"id":1,"headline":"h","body":"b","metadata":{},"overrides":{},"author":{"name":"n","email":"e"}}', true],
+    'an author missing a name' => ['{"id":1,"headline":"h","body":"b","metadata":{},"overrides":{},"author":{"email":"e"}}', false],
+]);
 
 /*
  * The rate-limit integration documents a `429` with `Retry-After` and the `X-RateLimit-*` trio. Those
