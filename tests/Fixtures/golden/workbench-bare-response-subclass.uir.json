@@ -1,0 +1,559 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/memberships/activity": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:24dtsfnrunpxwqvb",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/MembershipController.php",
+                "line": 56,
+                "symbol": "Workbench\\App\\Http\\Controllers\\MembershipController::activity"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.memberships.activity",
+        "summary": "Stream a membership's activity.",
+        "tags": [
+          "Membership"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:5blfcjhoqupa7lo5",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "format",
+                          "type"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/memberships/archive": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:sw3243giunvemh4w",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/MembershipController.php",
+                "line": 50,
+                "symbol": "Workbench\\App\\Http\\Controllers\\MembershipController::archive"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.memberships.archive",
+        "summary": "Download a membership's archive.",
+        "tags": [
+          "Membership"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:za4aeixovadpfp24",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "format",
+                          "type"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/memberships/legacy": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:foxssbpdtun74ap6",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/MembershipController.php",
+                "line": 32,
+                "symbol": "Workbench\\App\\Http\\Controllers\\MembershipController::legacy"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.memberships.legacy",
+        "summary": "Fetch a membership from the legacy store.",
+        "tags": [
+          "Membership"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:rwaug7jw4gy4djfn",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/memberships/notice": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:yjyf73m6cu6fpvsv",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/MembershipController.php",
+                "line": 70,
+                "symbol": "Workbench\\App\\Http\\Controllers\\MembershipController::notice"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.memberships.notice",
+        "summary": "Fetch a membership's welcome notice.",
+        "tags": [
+          "Membership"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/memberships/portal": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:6xkc7drh3hcitzcg",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/MembershipController.php",
+                "line": 44,
+                "symbol": "Workbench\\App\\Http\\Controllers\\MembershipController::portal"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.memberships.portal",
+        "summary": "Follow a membership to its portal.",
+        "tags": [
+          "Membership"
+        ],
+        "responses": {
+          "3XX": {
+            "x-docuccino": {
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                },
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "headers"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/MembershipController.php",
+                    "line": 44,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\MembershipController::portal"
+                  }
+                }
+              ]
+            },
+            "description": "Redirect",
+            "headers": {
+              "Location": {
+                "description": "The URL to follow.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/memberships/queue": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:mhtcrmx45ucx2xar",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/MembershipController.php",
+                "line": 38,
+                "symbol": "Workbench\\App\\Http\\Controllers\\MembershipController::queue"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.memberships.queue",
+        "summary": "Queue a membership for review.",
+        "tags": [
+          "Membership"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:tpx2tlygvhlhnbgk",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/memberships/renewals": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:dfu7gefzkqobfsiy",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/MembershipController.php",
+                "line": 64,
+                "symbol": "Workbench\\App\\Http\\Controllers\\MembershipController::renewals"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.memberships.renewals",
+        "summary": "Stream a membership's renewals.",
+        "tags": [
+          "Membership"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:wur3665th43hdu3p",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/memberships/show": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:jzaivtlrhawocnqs",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/MembershipController.php",
+                "line": 26,
+                "symbol": "Workbench\\App\\Http\\Controllers\\MembershipController::show"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.memberships.show",
+        "summary": "Fetch a membership.",
+        "tags": [
+          "Membership"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:yb6xgdvkkklbjcj7",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "b9f5ca82c6b8cf6ac7dfcb1d5008769a9f8ede262508347cb1c9ce3116f605b8"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.23.4",
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
+    }
+  }
+}

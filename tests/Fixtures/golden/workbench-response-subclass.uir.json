@@ -1,0 +1,998 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/subscriptions/archived": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:wditgqbh77u7z4y4",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/SubscriptionController.php",
+                "line": 93,
+                "symbol": "Workbench\\App\\Http\\Controllers\\SubscriptionController::archived"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.subscriptions.archived",
+        "summary": "Fetch a subscription's archived plan.",
+        "tags": [
+          "Subscription"
+        ],
+        "responses": {
+          "410": {
+            "x-docuccino": {
+              "id": "res:v1:kzjcszfhj3ew3oze",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Gone",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "const": "This resource is gone."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subscriptions/cancelled": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:r3rkrp4pwx5ckmsu",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/SubscriptionController.php",
+                "line": 29,
+                "symbol": "Workbench\\App\\Http\\Controllers\\SubscriptionController::cancelled"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.subscriptions.cancelled",
+        "summary": "Fetch a subscription that has been cancelled.",
+        "tags": [
+          "Subscription"
+        ],
+        "responses": {
+          "410": {
+            "x-docuccino": {
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Gone"
+          }
+        }
+      }
+    },
+    "/api/subscriptions/contract": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:qfdstwsbys4tifgl",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/SubscriptionController.php",
+                "line": 69,
+                "symbol": "Workbench\\App\\Http\\Controllers\\SubscriptionController::contract"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.subscriptions.contract",
+        "summary": "Fetch part of a subscription's contract.",
+        "tags": [
+          "Subscription"
+        ],
+        "responses": {
+          "206": {
+            "x-docuccino": {
+              "id": "res:v1:ns5jfxqoqc5vve2g",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Partial Content",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "format",
+                          "type"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subscriptions/handle": {
+      "put": {
+        "x-docuccino": {
+          "id": "op:v1:vxo25wz7lfz32pww",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/SubscriptionController.php",
+                "line": 87,
+                "symbol": "Workbench\\App\\Http\\Controllers\\SubscriptionController::handle"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "put.api.subscriptions.handle",
+        "summary": "Claim a subscription's handle.",
+        "tags": [
+          "Subscription"
+        ],
+        "responses": {
+          "409": {
+            "x-docuccino": {
+              "id": "res:v1:5xzmimtsht5tzwbb",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "detail": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string",
+                      "const": "Conflict"
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "detail"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subscriptions/invoices": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:vgm4ifnflwkcywi6",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/SubscriptionController.php",
+                "line": 53,
+                "symbol": "Workbench\\App\\Http\\Controllers\\SubscriptionController::invoices"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.subscriptions.invoices",
+        "summary": "Stream the invoices of a subscription that has lapsed.",
+        "tags": [
+          "Subscription"
+        ],
+        "responses": {
+          "410": {
+            "x-docuccino": {
+              "id": "res:v1:ofzqdsh3bmjoasgp",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Gone",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "format",
+                          "type"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subscriptions/ledger": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:wt73fpjw3binmydo",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/SubscriptionController.php",
+                "line": 61,
+                "symbol": "Workbench\\App\\Http\\Controllers\\SubscriptionController::ledger"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.subscriptions.ledger",
+        "summary": "Stream the invoices of a subscription, locked or lapsed.",
+        "tags": [
+          "Subscription"
+        ],
+        "responses": {
+          "default": {
+            "x-docuccino": {
+              "id": "res:v1:k7bkugri3bdjyr6v",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ],
+              "facts": {
+                "statusUnplaced": true
+              }
+            },
+            "description": "Any status",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "format",
+                          "type"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subscriptions/moved": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:23vn66zobwjratkz",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/SubscriptionController.php",
+                "line": 47,
+                "symbol": "Workbench\\App\\Http\\Controllers\\SubscriptionController::moved"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.subscriptions.moved",
+        "summary": "Follow a subscription to its new plan.",
+        "tags": [
+          "Subscription"
+        ],
+        "responses": {
+          "301": {
+            "x-docuccino": {
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                },
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "headers"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/SubscriptionController.php",
+                    "line": 47,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\SubscriptionController::moved"
+                  }
+                }
+              ]
+            },
+            "description": "Moved Permanently",
+            "headers": {
+              "Location": {
+                "description": "The URL to follow.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subscriptions/notes": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:dtbgwtqwmsb6h353",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/SubscriptionController.php",
+                "line": 105,
+                "symbol": "Workbench\\App\\Http\\Controllers\\SubscriptionController::notes"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.subscriptions.notes",
+        "summary": "Fetch a subscription's notes.",
+        "tags": [
+          "Subscription"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/subscriptions/pause": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:v73ar3hm443kmp2a",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/SubscriptionController.php",
+                "line": 75,
+                "symbol": "Workbench\\App\\Http\\Controllers\\SubscriptionController::pause"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.subscriptions.pause",
+        "summary": "Pause a subscription.",
+        "tags": [
+          "Subscription"
+        ],
+        "responses": {
+          "202": {
+            "x-docuccino": {
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Accepted"
+          }
+        }
+      }
+    },
+    "/api/subscriptions/renew": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:n7mm5lqrxes2ujpe",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/SubscriptionController.php",
+                "line": 35,
+                "symbol": "Workbench\\App\\Http\\Controllers\\SubscriptionController::renew"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.subscriptions.renew",
+        "summary": "Renew a subscription later.",
+        "tags": [
+          "Subscription"
+        ],
+        "responses": {
+          "503": {
+            "x-docuccino": {
+              "id": "res:v1:pprb4wow6zc6or4k",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "retry": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "retry"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subscriptions/throttled": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:vklq4gd4k5umv7gr",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/SubscriptionController.php",
+                "line": 41,
+                "symbol": "Workbench\\App\\Http\\Controllers\\SubscriptionController::throttled"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.subscriptions.throttled",
+        "summary": "Renew a subscription too soon.",
+        "tags": [
+          "Subscription"
+        ],
+        "responses": {
+          "429": {
+            "x-docuccino": {
+              "id": "res:v1:dhjhp6t6gqril6uj",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "retry": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "retry"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subscriptions/trial": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:gkp33tto5fzaszpg",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/SubscriptionController.php",
+                "line": 81,
+                "symbol": "Workbench\\App\\Http\\Controllers\\SubscriptionController::trial"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.subscriptions.trial",
+        "summary": "Fetch a subscription whose trial has expired.",
+        "tags": [
+          "Subscription"
+        ],
+        "responses": {
+          "410": {
+            "x-docuccino": {
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Gone"
+          }
+        }
+      }
+    },
+    "/api/subscriptions/upgrade": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:c2sbdkvppjbvisvm",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/SubscriptionController.php",
+                "line": 99,
+                "symbol": "Workbench\\App\\Http\\Controllers\\SubscriptionController::upgrade"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.subscriptions.upgrade",
+        "summary": "Upgrade a subscription past its quota.",
+        "tags": [
+          "Subscription"
+        ],
+        "responses": {
+          "429": {
+            "x-docuccino": {
+              "id": "res:v1:shmpfh2utvqdxq2u",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "const": "quota_exceeded"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "a710790d416906c51dc06ad24e1c0dc76606827fccffc62c0e0f078b28a3c005"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.23.4",
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
+    }
+  }
+}

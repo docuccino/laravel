@@ -229,12 +229,16 @@ final class DeclaredSettings
             }
         }
 
+        // Re-opened before marking: a `[]` with commented entries under it is a list the file shows
+        // entries for, not an empty one, and marking it first would close it over its own entries.
+        $kept = self::reopened($kept);
+
         if ($markEmptyLists) {
             $kept = self::marks($kept);
         }
 
         /** @var mixed $parsed */
-        $parsed = Yaml::parse(implode("\n", self::reopened($kept)));
+        $parsed = Yaml::parse(implode("\n", $kept));
 
         return is_array($parsed) ? $parsed : [];
     }

@@ -104,8 +104,9 @@ it('warns about a query parameter whose name matches a heuristic', function (): 
     $messages = implode("\n", array_map(static fn ($d): string => $d->message, $diagnostics));
     expect($messages)->toContain('The query parameter "dry_run"')
         ->and($messages)->toContain('a dry-run flag')
-        // The pointer is a pointer into the emitted document, at the member the author changes.
-        ->and($messages)->toContain('/paths//api/widgets/post/parameters/')
+        // The pointer is into the emitted document, at the member the author changes: the path template
+        // escaped, and the parameter named by `in:name` rather than by where the list happens to put it.
+        ->and($messages)->toContain('(/paths/~1api~1widgets/post/parameters/query:dry_run/name)')
         // And the parameter half honours the same safelist the property half does.
         ->and(implode("\n", array_map(static fn ($d): string => $d->message, leakageDiagnostics(function (array $raw): array {
             setBuild('lint.leakage.patterns', ['dryrun' => 'a dry-run flag']);

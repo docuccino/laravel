@@ -172,6 +172,24 @@ it('writes no docuccino.yaml over settings an application already has, and names
     }
 });
 
+it('publishes docuccino.yaml beside an application\'s own keys in config/docuccino.php', function (): void {
+    // Keys that name no build setting are the application's, not settings waiting to move, so they
+    // stand in the way of nothing.
+    [$settings, $root] = unmigratedInstallRoot();
+    config()->set('docuccino', ['enabled' => true, 'links' => ['github' => 'https://example.test']]);
+    $this->withoutMockingConsoleOutput();
+
+    try {
+        expect($this->artisan('docuccino:install', ['--no-export' => true]))->toBe(0)
+            ->and(is_file($settings))->toBeTrue();
+    } finally {
+        @unlink($settings);
+        @unlink($root.'/config/docuccino.php');
+        @rmdir($root.'/config');
+        @rmdir($root);
+    }
+});
+
 it('does not offer a first export it knows would be refused', function (): void {
     // The export would stop on `config.not-migrated` after a prompt whose only answer is a failure.
     [$settings, $root] = unmigratedInstallRoot();

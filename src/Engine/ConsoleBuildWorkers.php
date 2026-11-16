@@ -37,9 +37,10 @@ final class ConsoleBuildWorkers
     }
 
     /**
-     * Keep a worker's failures out of the application's error reporting. One that dies of a fatal error runs
-     * the shutdown work it inherited, and the framework's hands the error to the exception handler — logs,
-     * error trackers, the console the worker shares — for a failure the build then recovers from.
+     * Keep a worker's failures out of the application's error reporting — logs, error trackers, the console
+     * the worker shares — for a failure the build then recovers from. A worker that dies of a fatal error ends
+     * before the framework's shutdown handler can report it ({@see BuildWorkers}); this covers what a job hands
+     * the handler while the worker is still running.
      *
      * The application's handler is wrapped rather than replaced: a build reads it (its render callbacks
      * document error responses), and a reader walks a decorator to the handler it holds, as it does

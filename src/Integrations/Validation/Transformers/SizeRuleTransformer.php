@@ -24,7 +24,7 @@ use Docuccino\Core\Extensions\Validation\ValidationRule;
  * the request turns out to carry, the count is bounded.
  *
  * On a file field these bounds are kilobytes, not string length, so `file|max:2048` must not become
- * `maxLength: 2048`. OpenAPI has no file-size keyword, so it becomes a description note instead.
+ * `maxLength: 2048`. OpenAPI has no file-size keyword, so it becomes a note instead.
  */
 final class SizeRuleTransformer implements RuleTransformer
 {
@@ -58,7 +58,7 @@ final class SizeRuleTransformer implements RuleTransformer
         }
     }
 
-    /** A description note in KB rather than a wrong length keyword. Non-numeric parameters are skipped. */
+    /** A note in KB rather than a wrong length keyword. Non-numeric parameters are skipped. */
     private function fileSize(ValidationField $field, ValidationRule $rule): void
     {
         $note = match ($rule->name) {
@@ -74,8 +74,7 @@ final class SizeRuleTransformer implements RuleTransformer
             return;
         }
 
-        $existing = $field->get('description');
-        $field->set('description', is_string($existing) && $existing !== '' ? $existing.' '.$note : $note);
+        $field->note($note);
     }
 
     /**

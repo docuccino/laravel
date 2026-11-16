@@ -135,7 +135,7 @@ final class MiddlewareResolution
      *
      * @param  array<string, string>  $aliases
      */
-    private static function resolve(string $entry, array $aliases): string
+    public static function resolve(string $entry, array $aliases): string
     {
         $parts = explode(':', $entry, 2);
         $arguments = $parts[1] ?? null;

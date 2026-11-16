@@ -36,6 +36,8 @@ final class QueryBuilderConfigDigestContributor implements EnvironmentDigestCont
             $this->config->existsSuffix,
             // The delimiter decides whether lists carry the comma-array contract at all.
             $this->config->delimiter,
+            // Turning filter splitting off reshapes every filter without a delimiter of its own.
+            $this->config->filterSplitting ? 'split' : 'whole',
             // Whether the bag was there at all, which is a fact of its own and not a value: publishing
             // the package's config file writes its DEFAULTS, so every value above can stay identical
             // while the per-route "config was not readable" diagnostic stops being raised. Without this

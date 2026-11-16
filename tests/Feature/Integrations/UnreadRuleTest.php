@@ -11,6 +11,7 @@ use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Extensions\ResolvedExtensions;
 use Docuccino\Core\Extensions\Validation\RuleSet;
+use Docuccino\Core\Extensions\Validation\ValidationRule;
 use Docuccino\Core\Inference\ActionAnalysis;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Inference\ClassMetadata;
@@ -32,6 +33,7 @@ use Docuccino\Laravel\Integrations\SpatieData\DataValidationRules;
 use Docuccino\Laravel\Integrations\Validation\ValidationIntegration;
 use Docuccino\Laravel\Tests\Fixtures\FormRequest\CustomRuleRequest;
 use Docuccino\Laravel\Tests\Fixtures\Rules\OpaqueCheck;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\UnreadChoiceObjectData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\UnreadRuleData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\UnreadRuleDataController;
 use Docuccino\Laravel\Tests\Support\RulesTraceScript;
@@ -123,7 +125,9 @@ it('documents a FormRequest field without the rule it cannot read, and names the
         'token' => ['required', 'string'],
         'slug' => ['required', 'string'],
         'member' => ['required', 'integer'],
-        'password' => ['required', 'string'],
+        // Laravel validates a password with `string` and its minimum before its checks of its own, so those
+        // are documented beside the written `string`, and only the mixed-case check is named.
+        'password' => ['required', 'string', 'string', 'min'],
     ]);
 
     $notes = unreadRuleNotes($context);
@@ -324,6 +328,28 @@ it('names a closure in a spatie #[Rule] as the other rule readers do', function 
     // Laravel runs a closure as a check, so it is left off and the field's other rules stand.
     expect($rules->unreadRuleObjects())->toBe([['key' => 'slug', 'class' => $class, 'property' => 'slug', 'rule' => 'a closure', 'narrows' => true]]);
 })->skip(PHP_VERSION_ID < 80500, 'A closure in an attribute argument needs PHP 8.5.');
+
+it('names a spatie rule object whose choices it cannot read, and keeps the rules beside it', function (): void {
+    $rules = new DataValidationRules;
+    $set = $rules->build(UnreadChoiceObjectData::class, new ClassMetadata(UnreadChoiceObjectData::class, [
+        new PropertyMetadata('shade', ScalarT::string()),
+        new PropertyMetadata('kind', ScalarT::string()),
+        new PropertyMetadata('tint', ScalarT::string()),
+    ]), new NullTypeEngine, null, schemaConverter());
+
+    // A choice list missing a value would refuse what the server takes, so none of it is published; the
+    // list can only refuse values, so `max:20` beside it still holds.
+    expect(array_map(static fn (ValidationRule $rule): string => $rule->name, $set->fields['shade']))->toBe(['required', 'string', 'max'])
+        ->and($rules->unreadRuleObjects())->toBe([
+            ['key' => 'shade', 'class' => UnreadChoiceObjectData::class, 'property' => 'shade', 'rule' => 'new Illuminate\\Validation\\Rules\\In', 'narrows' => true],
+            ['key' => 'tint', 'class' => UnreadChoiceObjectData::class, 'property' => 'tint', 'rule' => 'new Illuminate\\Validation\\Rules\\In', 'narrows' => true],
+        ])
+        // laravel-data cannot build this `#[Enum]` either, so it fails every request and the field says no more
+        // than its type.
+        ->and(array_map(static fn (ValidationRule $rule): string => $rule->name, $set->fields['kind']))->toBe(['required', 'string'])
+        // The `#[In]` takes the route's `palette` as well as `red`, so publishing `red` alone would refuse it.
+        ->and(array_map(static fn (ValidationRule $rule): string => $rule->name, $set->fields['tint']))->toBe(['required', 'string']);
+});
 
 it('is right to read a Rule static that returns a rule string as that string, by Laravel', function (string $static, array $written, array $body, Closure $admits): void {
     // Laravel runs the string the static returns. Each body passes with it and fails on the rules beside it

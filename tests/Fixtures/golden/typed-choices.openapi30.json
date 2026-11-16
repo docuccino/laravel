@@ -1,0 +1,251 @@
+{
+  "openapi": "3.0.4",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-choices": {
+      "post": {
+        "operationId": "post.api.zz-choices",
+        "tags": [
+          "Choice"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreChoiceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "errors": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Grade": {
+        "type": "integer",
+        "enum": [
+          1,
+          2,
+          3
+        ],
+        "x-enum-varnames": [
+          "Pass",
+          "Merit",
+          "Distinction"
+        ],
+        "x-enumNames": [
+          "Pass",
+          "Merit",
+          "Distinction"
+        ]
+      },
+      "StoreChoiceRequest": {
+        "type": "object",
+        "properties": {
+          "blocked": {
+            "type": "string",
+            "not": {
+              "enum": [
+                "1",
+                "2"
+              ]
+            }
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2"
+            ],
+            "example": "1",
+            "x-enum-varnames": [
+              "_1",
+              "_2"
+            ],
+            "x-enumNames": [
+              "_1",
+              "_2"
+            ]
+          },
+          "consent": {
+            "type": "boolean",
+            "enum": [
+              true,
+              false
+            ],
+            "example": true,
+            "x-enum-varnames": [
+              "True",
+              "False"
+            ],
+            "x-enumNames": [
+              "True",
+              "False"
+            ]
+          },
+          "count": {
+            "type": "integer",
+            "enum": [
+              1,
+              2
+            ],
+            "example": 1,
+            "x-enum-varnames": [
+              "_1",
+              "_2"
+            ],
+            "x-enumNames": [
+              "_1",
+              "_2"
+            ]
+          },
+          "either": {
+            "type": "boolean",
+            "enum": [
+              true,
+              false
+            ],
+            "example": true,
+            "x-enum-varnames": [
+              "True",
+              "False"
+            ],
+            "x-enumNames": [
+              "True",
+              "False"
+            ]
+          },
+          "grade": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2",
+              "3"
+            ],
+            "example": "1",
+            "x-enum-varnames": [
+              "Pass",
+              "Merit",
+              "Distinction"
+            ],
+            "x-enumNames": [
+              "Pass",
+              "Merit",
+              "Distinction"
+            ]
+          },
+          "none": {
+            "type": "integer",
+            "not": {}
+          },
+          "opt_in": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "example": true,
+            "x-enum-varnames": [
+              "True"
+            ],
+            "x-enumNames": [
+              "True"
+            ]
+          },
+          "quoted": {
+            "type": "string",
+            "enum": [
+              "x,y",
+              "z"
+            ],
+            "example": "x,y",
+            "x-enum-varnames": [
+              "XY",
+              "Z"
+            ],
+            "x-enumNames": [
+              "XY",
+              "Z"
+            ]
+          },
+          "rank": {
+            "$ref": "#/components/schemas/Grade"
+          },
+          "ratio": {
+            "type": "number",
+            "enum": [
+              0.5,
+              1
+            ],
+            "example": 0.5,
+            "x-enum-varnames": [
+              "_05",
+              "_1"
+            ],
+            "x-enumNames": [
+              "_05",
+              "_1"
+            ]
+          },
+          "tier": {
+            "type": "integer",
+            "enum": [
+              1,
+              2
+            ],
+            "example": 1,
+            "x-enum-varnames": [
+              "_1",
+              "_2"
+            ],
+            "x-enumNames": [
+              "_1",
+              "_2"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

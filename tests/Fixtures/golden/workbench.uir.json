@@ -2529,13 +2529,6 @@
               "fields": [
                 "description",
                 "summary"
-              ],
-              "overrode": [
-                {
-                  "field": "description",
-                  "value": "Requires permission: moderate forms",
-                  "producer": "integration:permission"
-                }
               ]
             },
             {
@@ -2549,6 +2542,7 @@
               "producer": "integration:permission",
               "layer": "integration",
               "fields": [
+                "description",
                 "x-permissions"
               ],
               "source": {
@@ -2561,7 +2555,7 @@
         },
         "operationId": "get.api.moderated-forms",
         "summary": "List forms.",
-        "description": "Returns the collection of forms visible to the caller.",
+        "description": "Returns the collection of forms visible to the caller.\n\nRequires permission: moderate forms",
         "tags": [
           "Forms"
         ],
@@ -5049,7 +5043,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "42577c9c82dc8fba89329ec0ad043f4c6ea10cb05969cc094f33876e8279d0bc"
+      "contentHash": "b0c3a390e092011fe39f453d53fb01f7ca83450b76b101759cce0366ce637b57"
     },
     "generator": {
       "name": "docuccino/laravel",

@@ -17,7 +17,11 @@ namespace Docuccino\Laravel\Integrations\SpatieData;
  */
 enum WrapReason
 {
-    /** `$this->…->withoutWrapping()` — a chain of method hops off the object, so the receiver is the object. */
+    /**
+     * `$this->…->withoutWrapping()` — a chain of method hops off the object, so the receiver is the object.
+     * Or a chain off an instance the class builds of itself and returns, a named constructor's
+     * `(new self(…))->withoutWrapping()`, whose receiver is the object the class hands out.
+     */
     case SelfWithoutWrapping;
 
     /** A `WrapExecutionType::Disabled` handed to a transformation whose receiver is `$this`. */
@@ -25,8 +29,8 @@ enum WrapReason
 
     /**
      * The vocabulary is here and the receiver could not be named — a context built into a local, a
-     * `static::from(…)->withoutWrapping()`, a hop through a helper. It might be the root and it might
-     * be a property, which is exactly why it settles nothing.
+     * `static::from(…)->withoutWrapping()` the method does not return, a hop through a helper. It might
+     * be the root and it might be a property, which is exactly why it settles nothing.
      */
     case UnattributedDisabling;
 

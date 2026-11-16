@@ -4,14 +4,20 @@ declare(strict_types=1);
 
 use Docuccino\Laravel\Integrations\SpatieData\WrapResolver;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\AuthorData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\AuthorPageData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ComputedWrapData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\DeferredContextProblemData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\FromBuiltPageData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\HelperContextProblemData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\NamedBuiltPageData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\NestedTransformDisabledData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\OwnResponseProblemData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\PageMetaData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ProblemDocumentData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\RowsWrapData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\SiblingWrapData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\StaticBuiltPageData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\ThreadData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\WrappedData;
 
 /*
@@ -48,6 +54,32 @@ it('publishes the envelope the server really sends', function (string $case, cal
         DeferredContextProblemData::class,
         fn (): array => (new DeferredContextProblemData('about:blank', 404))->toResponse(request())->getData(true),
         ['type', 'status'],
+        null,
+    ],
+    // A page that is its own envelope, handed out by a named constructor that takes spatie's wrap off
+    // the instance it builds of itself and returns — in each spelling of the construction.
+    'a named constructor returning itself unwrapped' => [
+        AuthorPageData::class,
+        fn (): array => AuthorPageData::page([new AuthorData('a', 'a@example.com')], new PageMetaData(1, 1))->toResponse(request())->getData(true),
+        ['data', 'meta'],
+        null,
+    ],
+    'the same, built with new static and hopping on' => [
+        StaticBuiltPageData::class,
+        fn (): array => StaticBuiltPageData::page(['a'])->toResponse(request())->getData(true),
+        ['items', 'total'],
+        null,
+    ],
+    'the same, built by the class\'s own name' => [
+        NamedBuiltPageData::class,
+        fn (): array => NamedBuiltPageData::page(['a'])->toResponse(request())->getData(true),
+        ['items', 'total'],
+        null,
+    ],
+    'the same, built by from()' => [
+        FromBuiltPageData::class,
+        fn (): array => FromBuiltPageData::page(['a'])->toResponse(request())->getData(true),
+        ['items', 'total'],
         null,
     ],
     // Wrapped on the wire, and the document says so. This is the row a bare `WrapExecutionType`
@@ -106,6 +138,21 @@ it('pins the two answers it degrades, and the diagnostic that carries each', fun
         HelperContextProblemData::class,
         fn (): array => (new HelperContextProblemData('about:blank', 404))->toResponse(request())->getData(true),
         ['type', 'status'],
+        'data',
+    ],
+    // The wire is wrapped and so is the document, but the read cannot say so with confidence: the
+    // instances built unwrapped are held replies, one passed straight in and one returned by a closure
+    // rather than by the method, and neither names a receiver.
+    'a class that unwraps instances of itself it holds' => [
+        ThreadData::class,
+        fn (): array => ThreadData::answered('q', 'a')->toResponse(request())->getData(true),
+        ['data'],
+        'data',
+    ],
+    'the same, through a closure' => [
+        ThreadData::class,
+        fn (): array => ThreadData::thread('q', ['a'])->toResponse(request())->getData(true),
+        ['data'],
         'data',
     ],
     // The wire carries the class's own key and the document publishes the global one, because the

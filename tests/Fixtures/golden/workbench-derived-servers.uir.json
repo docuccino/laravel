@@ -107,7 +107,7 @@
               "source": {
                 "file": "workbench/app/Http/Controllers/FormController.php",
                 "line": 25,
-                "symbol": "\\Workbench\\App\\Http\\Controllers\\FormController::index"
+                "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
               }
             },
             {
@@ -138,7 +138,47 @@
           {
             "url": "https://admin.acme.com"
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:5w4bc32ypa6ekzbd",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "items",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FormData"
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }
   },
@@ -174,7 +214,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "be100d884f7aa05fdedcf7f53fafca95aa5a662f7528a4c7b682bb50209792f4",
-      "contentHash": "4c2e62124df83f55d09e5c9b1a16e42be15514ae8b23832d0b2a707b1c7a6674"
+      "contentHash": "a956232107c48585d915c6806287b85908d24876310a03b132a15dc3bf454885"
     },
     "generator": {
       "name": "docuccino/laravel",

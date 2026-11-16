@@ -6,14 +6,17 @@ use Docuccino\Core\Emit\UirEmitter;
 use Docuccino\Core\Inference\ActionAnalysis;
 use Docuccino\Core\Inference\ClassMetadata;
 use Docuccino\Core\Inference\DType\ClassT;
+use Docuccino\Core\Inference\DType\ListT;
 use Docuccino\Core\Inference\DType\ScalarT;
 use Docuccino\Core\Inference\PropertyMetadata;
 use Docuccino\Core\Inference\ReturnSite;
 use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\AuthorData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\AuthorPageData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\HelperContextProblemData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\NestedTransformDisabledData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\PageMetaData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\RootWrapController;
 use Docuccino\Laravel\Tests\Support\CountingTypeEngine;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
@@ -68,6 +71,29 @@ it('emits a spatie Data root envelope byte-identical to its committed golden', f
 
     expect(array_keys($schema['properties']))->toBe(['data'])
         ->and($schema['required'])->toBe(['data']);
+});
+
+it('emits a page that unwraps itself through its named constructor byte-identical to its committed golden', function (): void {
+    bootLaravelData('data');
+
+    // A page that is its own envelope, returned by an action and named by `#[Response]`: the population
+    // a read of how a class hands ITSELF out acts on, which the golden above does not stand in.
+    $result = selfUnwrappedPageBuild([
+        AuthorPageData::class => new ClassMetadata(AuthorPageData::class, [
+            new PropertyMetadata('data', new ListT(new ClassT(AuthorData::class)), 'The authors on this page.'),
+            new PropertyMetadata('meta', new ClassT(PageMetaData::class), 'Where this page sits in the whole list.'),
+        ]),
+        PageMetaData::class => new ClassMetadata(PageMetaData::class, [
+            new PropertyMetadata('current_page', ScalarT::int(), 'The page this is, counting from 1.'),
+            new PropertyMetadata('total', ScalarT::int(), 'How many items there are across every page.'),
+        ]),
+        AuthorData::class => new ClassMetadata(AuthorData::class, [
+            new PropertyMetadata('name', ScalarT::string()),
+            new PropertyMetadata('email', ScalarT::string()),
+        ]),
+    ], [new ReturnSite(new ClassT(AuthorPageData::class), new SourceLocation(''))]);
+
+    assertGolden('spatie-self-unwrapped-page.uir.json', (new UirEmitter)->emit($result->document));
 });
 
 afterEach(fn () => removeFragmentCacheDirs('spatie-wrap'));

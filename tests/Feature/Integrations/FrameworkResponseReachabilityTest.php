@@ -62,10 +62,12 @@ it('recovers each guarded framework response class from an idiomatic action', fu
         'export',
         'Symfony\\Component\\HttpFoundation\\StreamedResponse',
     ],
+    // Content handed to `response()` is always read, if only as any media type; a response relayed from a
+    // contract is not.
     'plain' => [
         'app/Http/Controllers/FileDeliveryController.php',
         'App\\Http\\Controllers\\FileDeliveryController',
-        'health',
+        'relayed',
         'Illuminate\\Http\\Response',
     ],
 ])->group('fixture');

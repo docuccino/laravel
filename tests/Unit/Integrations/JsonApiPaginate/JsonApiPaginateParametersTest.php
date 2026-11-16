@@ -66,3 +66,18 @@ it('lets call-site jsonPaginate($max, $default) arguments override the config si
 
     expect($byName['page[size]']->schema)->toBe(['type' => 'integer', 'default' => 10, 'minimum' => 1, 'maximum' => 100]);
 });
+
+it('publishes a default above the maximum as the maximum, the size the package pages by', function (?int $max, ?int $default, int $pagesBy): void {
+    // jsonPaginate() reads the size with the default as its fallback and clamps the result to the maximum,
+    // so a request that sends no size is served the maximum. OAS also requires a default to conform to
+    // its schema: an unclamped one is a value the published maximum calls invalid.
+    $config = new JsonApiPaginateConfig(defaultSize: 30, maxResults: 30);
+
+    $byName = specsByName((new JsonApiPaginateParameters)->build($config, paginateFacts(max: $max, default: $default)));
+
+    expect($byName['page[size]']->schema)->toBe(['type' => 'integer', 'default' => $pagesBy, 'minimum' => 1, 'maximum' => $max]);
+})->with([
+    'a call-site maximum below the configured default' => [10, null, 10],
+    'a call-site default above the call-site maximum' => [50, 80, 50],
+    'a call-site default equal to the call-site maximum' => [50, 50, 50],
+]);

@@ -153,7 +153,7 @@ final class WrapResolver
         }
 
         $file = (new ReflectionClass($fqcn))->getFileName();
-        $standing = $this->standing[$fqcn] = WrapSightings::standing($file === false ? [] : $this->methodsOf($file, $fqcn));
+        $standing = $this->standing[$fqcn] = WrapSightings::standing($file === false ? [] : $this->methodsOf($file, $fqcn), $fqcn);
 
         if (self::dropsEnvelope($standing)) {
             $this->keys[$fqcn] = null;

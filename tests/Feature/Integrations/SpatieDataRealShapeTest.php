@@ -411,7 +411,8 @@ it('reads a date property\'s wire shape off the type the real engine recovered',
         // A nullable date-time with no date rule at all: the request used to say nothing here.
         ->and($properties['publishedAt']['type'])->toBe(['string', 'null'])
         ->and($properties['publishedAt']['format'])->toBe('date-time')
-        // The `format: 'U'` cast is an integer on both sides, and the note says so once.
+        // The `format: 'U'` cast parses input as an epoch, so the request takes an integer. The response
+        // is written by the transformer, which never reads the cast (asserted below).
         ->and($properties['expiresAt']['type'])->toBe(['integer', 'null'])
         ->and($properties['expiresAt'])->not->toHaveKey('format')
         ->and($properties['createdAt']['format'])->toBe('date-time');
@@ -432,9 +433,12 @@ it('keeps the null on a nullable timestamp the real engine reports as a union', 
         // published the four characters instead, which the document's own example lint then reported.
         'example' => null,
     ])
-        // The `format: 'U'` cast changes the wire TYPE, and had the same hole.
+        // The `format: 'U'` cast only reads input: laravel-data writes the value with its date transformer,
+        // which formats with `data.date_format` and never consults the cast, so it is a date-time string
+        // like its neighbours, keeping the null all the same.
         ->and($component['properties']['expiresAt'])->toBe([
-            'type' => ['integer', 'null'],
+            'type' => ['string', 'null'],
+            'format' => 'date-time',
             'description' => 'When the listing stops accepting applications, or null if it never does.',
         ])
         // The non-null control, unchanged: a bare date-time IS the serialised string.

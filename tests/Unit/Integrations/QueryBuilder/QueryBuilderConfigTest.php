@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Docuccino\Laravel\Integrations\QueryBuilder\QbEntry;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderConfig;
 
 /**
@@ -112,6 +113,55 @@ it('reads the value delimiter, keeping an empty one and degrading an ill-typed o
         ->and(QueryBuilderConfig::fromArray(['delimiter' => '|'])->splitsOnComma())->toBeFalse()
         ->and(QueryBuilderConfig::fromArray(['delimiter' => ''])->delimiter)->toBe('')
         ->and(QueryBuilderConfig::fromArray(['delimiter' => 123])->delimiter)->toBe(',');
+});
+
+/**
+ * Spatie added `filter_value_splitting_enabled` in 7.2.1; an older release splits every filter whatever the
+ * bag says, so the key is read only where the installed version reads it. Where it is, Spatie asks
+ * `! config('query-builder.filter_value_splitting_enabled', true)`: absent means on, present and falsy off.
+ */
+it('reads the filter splitting switch only where the installed package does, as Spatie reads it', function (array $bag, ?string $version, bool $splitting): void {
+    expect(QueryBuilderConfig::fromInstalled($bag, $version)->filterSplitting)->toBe($splitting);
+})->with([
+    'off on 7.2.1' => [['filter_value_splitting_enabled' => false], '7.2.1.0', false],
+    'off on a later minor' => [['filter_value_splitting_enabled' => false], '7.3.3.0', false],
+    'off on the next major' => [['filter_value_splitting_enabled' => false], '8.0.0.0', false],
+    'off with a v prefix' => [['filter_value_splitting_enabled' => false], 'v7.2.1', false],
+    'a falsy value is off' => [['filter_value_splitting_enabled' => 0], '7.3.3.0', false],
+    'a null value is off' => [['filter_value_splitting_enabled' => null], '7.3.3.0', false],
+    'on where it says so' => [['filter_value_splitting_enabled' => true], '7.3.3.0', true],
+    'on where the bag has no key' => [['delimiter' => ','], '7.3.3.0', true],
+    'on where there is no bag' => [[], '7.3.3.0', true],
+    'ignored on 7.2.0, which splits regardless' => [['filter_value_splitting_enabled' => false], '7.2.0.0', true],
+    'ignored on 7.0.0' => [['filter_value_splitting_enabled' => false], '7.0.0.0', true],
+    'ignored on the previous major' => [['filter_value_splitting_enabled' => false], '6.3.0.0', true],
+    'an unreadable version reads as current' => [['filter_value_splitting_enabled' => false], 'dev-main', false],
+    'no version at all reads as current' => [['filter_value_splitting_enabled' => false], null, false],
+]);
+
+/**
+ * Spatie's `filterValueSplittingDisabled()` holds only for a filter with no `->delimiter()` of its own, and
+ * `getDelimiter()` prefers that delimiter to the configured one. So the switch leaves a filter's own
+ * delimiter in force, and turns the rest into the single value the empty delimiter stands for.
+ */
+it('reads one filter under its own delimiter, or under no splitting where it set none and the switch is off', function (bool $splitting, ?string $own, string $delimiter): void {
+    $config = new QueryBuilderConfig(filterSplitting: $splitting);
+
+    expect($config->forFilter(new QbEntry('status', 'exact', delimiter: $own))->delimiter)->toBe($delimiter);
+})->with([
+    'on, none of its own' => [true, null, ','],
+    'on, a pipe of its own' => [true, '|', '|'],
+    'off, none of its own' => [false, null, ''],
+    'off, a pipe of its own' => [false, '|', '|'],
+    'off, the comma named outright' => [false, ',', ','],
+    'off, the empty one of its own' => [false, '', ''],
+]);
+
+it('carries the splitting switch through every copy', function (): void {
+    $config = (new QueryBuilderConfig(filterSplitting: false))->withFilterDescriptions(['exact' => 'Exact.']);
+
+    expect($config->filterSplitting)->toBeFalse()
+        ->and($config->forFilter(new QbEntry('status', 'exact', delimiter: '|'))->filterSplitting)->toBeFalse();
 });
 
 it('brackets filter and fields member keys under the effective parameter names', function (): void {

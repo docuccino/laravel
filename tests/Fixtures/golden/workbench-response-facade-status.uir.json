@@ -1,0 +1,772 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/archive-facade/expire": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:wan3fsy3cyqkqa6j",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ArchiveFacadeController.php",
+                "line": 45,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ArchiveFacadeController::expire"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.archive-facade.expire",
+        "summary": "Expire an archived entry.",
+        "tags": [
+          "ArchiveFacade"
+        ],
+        "responses": {
+          "410": {
+            "x-docuccino": {
+              "id": "res:v1:agr5ofy22aygiwuz",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Gone",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "const": "Gone"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/archive-facade/purge": {
+      "delete": {
+        "x-docuccino": {
+          "id": "op:v1:mppghgxp3oqjjvag",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ArchiveFacadeController.php",
+                "line": 33,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ArchiveFacadeController::purge"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "delete.api.archive-facade.purge",
+        "summary": "Purge an archived entry.",
+        "tags": [
+          "ArchiveFacade"
+        ],
+        "responses": {
+          "410": {
+            "x-docuccino": {
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Gone"
+          }
+        }
+      }
+    },
+    "/api/archive-facade/purge-aliased": {
+      "delete": {
+        "x-docuccino": {
+          "id": "op:v1:he2uchjy77lbgwr4",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ArchiveFacadeController.php",
+                "line": 63,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ArchiveFacadeController::purgeAliased"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "delete.api.archive-facade.purge-aliased",
+        "summary": "Purge an archived entry, through the root-namespace alias.",
+        "tags": [
+          "ArchiveFacade"
+        ],
+        "responses": {
+          "410": {
+            "x-docuccino": {
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Gone"
+          }
+        }
+      }
+    },
+    "/api/archive-facade/purge-in-real-time": {
+      "delete": {
+        "x-docuccino": {
+          "id": "op:v1:3arksdyzmxawwubu",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ArchiveFacadeController.php",
+                "line": 81,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ArchiveFacadeController::purgeInRealTime"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "delete.api.archive-facade.purge-in-real-time",
+        "summary": "Purge an archived entry, through a real-time facade.",
+        "tags": [
+          "ArchiveFacade"
+        ],
+        "responses": {
+          "410": {
+            "x-docuccino": {
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Gone"
+          }
+        }
+      }
+    },
+    "/api/archive-facade/refuse": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:ogfvml5xwkloyybv",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ArchiveFacadeController.php",
+                "line": 21,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ArchiveFacadeController::refuse"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:kwrlqxpinq2vg2eu",
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "description"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.archive-facade.refuse",
+        "summary": "Refuse to change a locked archive.",
+        "tags": [
+          "ArchiveFacade"
+        ],
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          }
+        }
+      }
+    },
+    "/api/archive-facade/refuse-aliased": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:zworir52yfyhqutk",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ArchiveFacadeController.php",
+                "line": 57,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ArchiveFacadeController::refuseAliased"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:vfeacclqjaiz4chb",
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "description"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.archive-facade.refuse-aliased",
+        "summary": "Refuse to change a locked archive, through the root-namespace alias.",
+        "tags": [
+          "ArchiveFacade"
+        ],
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          }
+        }
+      }
+    },
+    "/api/archive-facade/refuse-by-reply": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:ujskfmdhxwrenmki",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ArchiveFacadeController.php",
+                "line": 69,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ArchiveFacadeController::refuseByReply"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:7jpkihselbwxlmuu",
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "description"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.archive-facade.refuse-by-reply",
+        "summary": "Refuse to change a locked archive, through the application's own alias.",
+        "tags": [
+          "ArchiveFacade"
+        ],
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          }
+        }
+      }
+    },
+    "/api/archive-facade/refuse-in-real-time": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:hl73jmblhk7cpj6p",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ArchiveFacadeController.php",
+                "line": 75,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ArchiveFacadeController::refuseInRealTime"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:lhzdjbrwb76a3kad",
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "description"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.archive-facade.refuse-in-real-time",
+        "summary": "Refuse to change a locked archive, through a real-time facade.",
+        "tags": [
+          "ArchiveFacade"
+        ],
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          }
+        }
+      }
+    },
+    "/api/archive-facade/reset": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:tczpr732izuxgv6m",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ArchiveFacadeController.php",
+                "line": 27,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ArchiveFacadeController::reset"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.archive-facade.reset",
+        "summary": "Reset the archive view.",
+        "tags": [
+          "ArchiveFacade"
+        ],
+        "responses": {
+          "205": {
+            "x-docuccino": {
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Reset Content"
+          }
+        }
+      }
+    },
+    "/api/archive-facade/status": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:b2gm6mnrbinyuecy",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ArchiveFacadeController.php",
+                "line": 51,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ArchiveFacadeController::status"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.archive-facade.status",
+        "summary": "Report the archive's status.",
+        "tags": [
+          "ArchiveFacade"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:wueqrc4socxai7t2",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/archive-facade/tombstone": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:phnxbcslzvm4bvf7",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ArchiveFacadeController.php",
+                "line": 39,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ArchiveFacadeController::tombstone"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.archive-facade.tombstone",
+        "summary": "Show the tombstone of an archived entry.",
+        "tags": [
+          "ArchiveFacade"
+        ],
+        "responses": {
+          "410": {
+            "x-docuccino": {
+              "id": "res:v1:iq6mje7yfhez64ce",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Gone",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error422": {
+        "x-docuccino": {
+          "id": "sch:v1:nzqr7bijbjezgqtr"
+        },
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "const": "locked"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      }
+    },
+    "responses": {
+      "Error422": {
+        "description": "Unprocessable Entity",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error422"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "932274bbc7e851b46d9369b617fb1f046caf7f4146d73625d078c06de533f9f1"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.23.4",
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
+    }
+  }
+}

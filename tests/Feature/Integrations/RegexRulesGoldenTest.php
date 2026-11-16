@@ -60,12 +60,14 @@ beforeEach(function (): void {
         'recipient' => ['Anne-Marie', 'Zoë Smith', 'Ωμέγα', "名前\u{3000}名前", "Jo\u{85}Ann", "Jo\tAnn"],
         'initials' => ['JFK', 'jfk', 'ÉA', 'Éé'],
         'full_name' => ["Anne-Marie O'Neil", 'Zoë Smith', "名前\u{3000}名前"],
+        // Laravel never splits a regex at a comma, nor reads its quotes as a CSV entry's.
+        'pair' => ['"a", "b"', '"one", "two"'],
     ];
 
     // Where the document agrees with the server exactly over ASCII. A caseless `\p{Lu}` takes lowercase
     // letters on PCRE2 from 10.45 and not before, so its pattern takes both and is wider than one of them;
     // a field published without a pattern is wider than the server everywhere.
-    $this->exact = ['postcode', 'colour', 'unit', 'recipient'];
+    $this->exact = ['postcode', 'colour', 'unit', 'recipient', 'pair'];
 });
 
 it('emits regex rules byte-identical to their committed goldens', function (): void {
@@ -105,7 +107,7 @@ it('never refuses a value the server accepts, and agrees with it exactly over AS
     // A value the server takes must pass the document; beyond ASCII the document may be wider, and true.
     expect($refused)->toBe([])
         ->and(in_array($field, $this->exact, true) ? $disagreements : [])->toBe([]);
-})->with(['postcode', 'colour', 'unit', 'recipient', 'initials', 'full_name']);
+})->with(['postcode', 'colour', 'unit', 'recipient', 'initials', 'full_name', 'pair']);
 
 it('publishes patterns that take every accepted value with or without the unicode flag', function (): void {
     $properties = ($this->properties)();

@@ -38,6 +38,7 @@ final class ValidateCommand extends Command
     use IteratesDocuments;
     use RefusesUnreadConfig;
     use RendersDiagnostics;
+    use StartsConsoleBuild;
 
     protected $signature = 'docuccino:validate
         {document? : The configured document key (defaults to every document)}

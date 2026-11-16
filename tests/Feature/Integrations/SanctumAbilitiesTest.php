@@ -4,15 +4,13 @@ declare(strict_types=1);
 
 use Illuminate\Routing\Router;
 use Workbench\App\Http\Controllers\AuthAttributesController;
+use Workbench\App\Http\Controllers\FormController;
 
 /**
- * Real-path coverage for Sanctum token abilities (auth audit #5): the extension reads the actual
- * gathered route middleware (and the #[Abilities] attribute reflected off the action) through the
- * pipeline, emitting the x-abilities member and (on operations with no higher-layer description) the
- * generated description line. Sanctum is a dev dependency, so the integration is registered. Closure
- * routes (no docblock) exercise the description-line half; a documented controller proves the docblock
- * still wins while x-abilities remains the authoritative signal — the integration-layer precedence,
- * mirroring the permission integration.
+ * Real-path coverage for Sanctum token abilities: the extension reads the actual gathered route
+ * middleware (and the #[Abilities] attribute reflected off the action) through the pipeline, emitting
+ * the x-abilities member and a requirement line beneath whatever description the operation has.
+ * Sanctum is a dev dependency, so the integration is registered.
  */
 function abilitiesClosureOperation(string $path, array $middleware): array
 {
@@ -64,4 +62,32 @@ it('emits no x-abilities for a route with no ability middleware or attribute', f
     $operation = abilitiesClosureOperation('api/plain-sanctum', ['auth:sanctum']);
 
     expect($operation)->not->toHaveKey('x-abilities');
+});
+
+/**
+ * The reader of the document sees the description and nothing else: `x-abilities` is for a generator.
+ * The ability is enforced whatever the docblock says, so the docblock's prose must not erase it, and the
+ * line must not displace the prose the author wrote either.
+ */
+it('states the ability beneath a docblock description rather than losing it to the docblock', function (): void {
+    /** @var Router $router */
+    $router = app('router');
+    $router->get('api/ability-documented', [FormController::class, 'index'])->middleware(['auth:sanctum', 'abilities:forms:read']);
+
+    bindStubEngine();
+    $operation = generateDocument()->document->toArray()['paths']['/api/ability-documented']['get'] ?? [];
+
+    expect($operation['x-abilities'])->toBe([['match' => 'all', 'abilities' => ['forms:read']]])
+        ->and($operation['description'])->toBe("Returns the collection of forms visible to the caller.\n\nRequires token ability: forms:read");
+});
+
+it('states a token ability and a permission on one route, each on its own line', function (): void {
+    // Both producers write at the integration layer, where the second was shadowed by the first and its
+    // requirement went missing from the prose.
+    setBuild('documents.default.integrations.permission.enabled', true);
+    $operation = abilitiesClosureOperation('api/ability-and-permission', ['auth:sanctum', 'abilities:forms:read', 'permission:moderate forms']);
+
+    expect($operation['description'])
+        ->toContain('Requires token ability: forms:read')
+        ->toContain('Requires permission: moderate forms');
 });

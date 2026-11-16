@@ -289,3 +289,10 @@ it('keys two Query Builder bags apart when a comma in one value would have colla
         ->and((new QueryBuilderConfigDigestContributor($splitting))->digest())
         ->not->toBe((new QueryBuilderConfigDigestContributor($whole))->digest());
 });
+
+it('keys a Query Builder bag with filter splitting turned off apart from one splitting', function (): void {
+    // The switch reshapes every filter without a delimiter of its own while leaving each value above it
+    // alone, so a warm fragment documented under one must not answer for the other.
+    expect((new QueryBuilderConfigDigestContributor(new QueryBuilderConfig))->digest())
+        ->not->toBe((new QueryBuilderConfigDigestContributor(new QueryBuilderConfig(filterSplitting: false)))->digest());
+});

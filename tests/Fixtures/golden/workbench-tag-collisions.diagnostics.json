@@ -1,0 +1,8 @@
+[
+    {
+        "severity": "info",
+        "code": "tags.name-collision",
+        "message": "Tag \"Report\" is the default tag of distinct controllers (Docuccino\\Laravel\\Tests\\Fixtures\\TagNames\\Admin\\ReportController, Docuccino\\Laravel\\Tests\\Fixtures\\TagNames\\Api\\ReportController), so their operations are grouped together.",
+        "help": "Intended? Nothing to do. Otherwise give one of them a tag of its own with #[Group]."
+    }
+]

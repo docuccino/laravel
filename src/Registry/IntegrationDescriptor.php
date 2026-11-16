@@ -6,11 +6,14 @@ namespace Docuccino\Laravel\Registry;
 
 use Closure;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
+use Docuccino\Laravel\Support\RouteAuthentication;
 
 /**
  * One row of the {@see IntegrationToggles} table: the two orthogonal facts the gate needs — is the
  * package present, and what does the integration contribute — plus the switch metadata (config key,
  * package label for diagnostics, default-on/off, and the opt-in hint for a default-off one).
+ *
+ * @phpstan-import-type Authenticators from RouteAuthentication
  *
  * @internal
  */
@@ -23,6 +26,7 @@ final readonly class IntegrationDescriptor
      * @param  string|null  $optInHint  tail clause of the opt-in diagnostic; null for default-on integrations
      * @param  Closure(?callable(string): bool): bool  $installed  package-presence probe, injectable so the not-installed branch stays testable when the package IS present; framework built-ins ignore it and answer true
      * @param  Closure(): list<class-string|object>  $extensions  contributed when installed AND enabled
+     * @param  (Closure(): Authenticators)|null  $authenticators  the package's middleware that checks a token itself, read by {@see RouteAuthentication} when installed AND enabled
      */
     public function __construct(
         public string $key,
@@ -31,6 +35,7 @@ final readonly class IntegrationDescriptor
         public ?string $optInHint,
         private Closure $installed,
         private Closure $extensions,
+        private ?Closure $authenticators = null,
     ) {}
 
     /**
@@ -47,6 +52,14 @@ final readonly class IntegrationDescriptor
     public function extensions(): array
     {
         return ($this->extensions)();
+    }
+
+    /**
+     * @return Authenticators
+     */
+    public function authenticators(): array
+    {
+        return $this->authenticators === null ? [] : ($this->authenticators)();
     }
 
     /** This document's `enabled` switch, falling back to the default. */

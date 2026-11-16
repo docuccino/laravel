@@ -24,9 +24,9 @@ use Docuccino\Laravel\Support\ParameterLocations;
  * The parameter's name appears nowhere inside them — not even for a `deepObject` container, whose
  * example is keyed by its MEMBERS — so unlike a schema-field rename there is no key to rewrite, and
  * {@see ChangedFieldExamples} has nothing to do here. The one position that
- * would carry a parameter name is an OAS Link Object's `parameters` map, which nothing this product
- * mints publishes; an overlay that writes one keeps what it wrote, the same way an `externalValue`
- * does.
+ * would carry a parameter name is an OAS Link Object's `parameters` map. The response links this product
+ * writes are joined after this verb has run, so they already name what the version publishes; an
+ * overlay that writes one keeps what it wrote, the same way an `externalValue` does.
  *
  * A parameter written as a `$ref` is left where it stands. It is shared with every site referencing it,
  * so renaming it in place would rename it for all of them — including operations a scope was written to

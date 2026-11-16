@@ -18,10 +18,14 @@ use Docuccino\Laravel\Http\DocsController;
  *
  * The framework's config file keeps exactly {@see FRAMEWORK_KEYS}: the master switch, each document's
  * viewer wiring and the cache store. Those are read while the app BOOTS and on the viewer's REQUEST
- * path, where nothing can afford to parse a project file. Everything else there is not merged, not
- * given precedence and not read — a build key left in `config/docuccino.php` is DETECTED and reported,
- * and that is all. Merging the two would be worse than ignoring one of them: the symptom of a silent
- * precedence rule is a document that quietly stops matching the file somebody edited.
+ * path, where nothing can afford to parse a project file. A build setting left there is not merged, not
+ * given precedence and not read — it is DETECTED and reported, and that is all. Merging the two would be
+ * worse than ignoring one of them: the symptom of a silent precedence rule is a document that quietly
+ * stops matching the file somebody edited.
+ *
+ * The `docuccino` namespace is shared: an application may keep settings of its own in
+ * `config/docuccino.php`. So a leftover is a key that names a build setting ({@see DeclaredSettings}),
+ * and any other key is the application's and is left alone.
  *
  * Every check here lives build-side, because `config/` is read at boot knowing nothing about the YAML.
  * Boot therefore degrades — it registers whatever viewer routes it is given — and the build is the one
@@ -102,8 +106,10 @@ final class ConfigSplit
      * own — joining here would make `documents.my.api.info` a path nothing could nest again.
      *
      * The depth each branch stops at is {@see FRAMEWORK_KEYS}: `enabled` is the framework's outright,
-     * `cache` and a document bag are shared and so are read one level in, and everything else is a
-     * build setting whole.
+     * `cache` and a document bag are shared and so are read one level in, and everything else is judged
+     * whole. A path counts only where the shipped `docuccino.yaml` declares it, which every key the
+     * framework file used to hold still is: a renamed or removed setting sat inside a section that
+     * remains.
      *
      * @return list<array{path: list<string>, value: mixed}>
      */
@@ -111,6 +117,7 @@ final class ConfigSplit
     {
         /** @var array<string, mixed> $config */
         $config = (array) config('docuccino', []);
+        $declared = DeclaredSettings::shipped();
         $strayed = [];
 
         foreach ($config as $key => $value) {
@@ -122,7 +129,7 @@ final class ConfigSplit
 
             if ($name === 'cache') {
                 foreach (Hydrate::map($value) as $inner => $member) {
-                    if ($inner !== 'store') {
+                    if ($inner !== 'store' && in_array('cache.'.$inner, $declared, true)) {
                         $strayed[] = ['path' => ['cache', $inner], 'value' => $member];
                     }
                 }
@@ -133,7 +140,7 @@ final class ConfigSplit
             if ($name === 'documents') {
                 foreach (Hydrate::map($value) as $document => $bag) {
                     foreach (Hydrate::map($bag) as $inner => $member) {
-                        if ($inner !== 'viewer') {
+                        if ($inner !== 'viewer' && in_array('documents.*.'.$inner, $declared, true)) {
                             $strayed[] = ['path' => ['documents', $document, $inner], 'value' => $member];
                         }
                     }
@@ -142,7 +149,9 @@ final class ConfigSplit
                 continue;
             }
 
-            $strayed[] = ['path' => [$name], 'value' => $value];
+            if (in_array($name, $declared, true)) {
+                $strayed[] = ['path' => [$name], 'value' => $value];
+            }
         }
 
         return $strayed;
@@ -274,7 +283,22 @@ final class ConfigSplit
                 static fn (string $key): bool => ! array_key_exists($key, $defined),
             ));
 
-            if ($orphans !== []) {
+            if ($orphans !== [] && ViewerConfig::shippedDefault()) {
+                // Nobody wrote this viewer: it is the shipped default, serving the shipped document.
+                $diagnostics[] = new Diagnostic(
+                    severity: Severity::Warning,
+                    code: self::VIEWER_ORPHAN,
+                    message: sprintf(
+                        'The default viewer serves a document named %s, which %s does not define, so its routes are registered and every request to them fails.',
+                        NameList::of($orphans) ?? '',
+                        ConfigFile::NAME,
+                    ),
+                    help: sprintf(
+                        "Set `documents` in config/docuccino.php to the viewers you want, keyed by the documents %s defines. 'documents' => [] serves none.",
+                        ConfigFile::NAME,
+                    ),
+                );
+            } elseif ($orphans !== []) {
                 $diagnostics[] = new Diagnostic(
                     severity: Severity::Warning,
                     code: self::VIEWER_ORPHAN,

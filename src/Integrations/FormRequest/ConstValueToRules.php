@@ -11,8 +11,11 @@ use Docuccino\Core\Inference\ConstValue;
 use Docuccino\Core\Support\Fqcn;
 use Docuccino\Laravel\Integrations\Support\DependencyFileSet;
 use Docuccino\Laravel\Integrations\Support\EnumCaseValue;
+use Docuccino\Laravel\Integrations\Support\RuleDialect;
 use Docuccino\Laravel\Integrations\Support\RuleParsing;
+use Docuccino\Laravel\Integrations\Validation\CastRuleObject;
 use Docuccino\Laravel\Integrations\Validation\CustomRuleReader;
+use Docuccino\Laravel\Integrations\Validation\LiveRuleValue;
 use Docuccino\Laravel\Integrations\Validation\RuleFactories;
 use Docuccino\Laravel\Integrations\Validation\RuleLosses;
 use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
@@ -34,10 +37,30 @@ use Docuccino\Laravel\Integrations\Validation\UnreadRule;
  */
 final class ConstValueToRules
 {
-    /** Framework rule objects that exclude the field when a condition holds, by the rule name each stands for. */
-    private const EXCLUDE_OBJECTS = [
-        'Illuminate\\Validation\\Rules\\ExcludeIf' => 'exclude_if',
-        'Illuminate\\Validation\\Rules\\ExcludeUnless' => 'exclude_unless',
+    /**
+     * Framework rule objects that apply a rule while a condition holds (`…If`) or fails (`…Unless`), by the
+     * rule each applies, the rule name standing for it on a condition unknown here, and the condition under
+     * which it applies.
+     *
+     * @var array<string, array{0: string, 1: string, 2: bool}>
+     */
+    private const CONDITIONAL_OBJECTS = [
+        'Illuminate\\Validation\\Rules\\ExcludeIf' => ['exclude', 'exclude_if', true],
+        'Illuminate\\Validation\\Rules\\ExcludeUnless' => ['exclude', 'exclude_unless', false],
+        'Illuminate\\Validation\\Rules\\RequiredIf' => ['required', 'required_if', true],
+        'Illuminate\\Validation\\Rules\\RequiredUnless' => ['required', 'required_unless', false],
+        'Illuminate\\Validation\\Rules\\ProhibitedIf' => ['prohibited', 'prohibited_if', true],
+        'Illuminate\\Validation\\Rules\\ProhibitedUnless' => ['prohibited', 'prohibited_unless', false],
+    ];
+
+    /** The `Rule::` factories that build those objects, by the lower-cased factory. */
+    private const CONDITIONAL_FACTORIES = [
+        'excludeif' => 'Illuminate\\Validation\\Rules\\ExcludeIf',
+        'excludeunless' => 'Illuminate\\Validation\\Rules\\ExcludeUnless',
+        'requiredif' => 'Illuminate\\Validation\\Rules\\RequiredIf',
+        'requiredunless' => 'Illuminate\\Validation\\Rules\\RequiredUnless',
+        'prohibitedif' => 'Illuminate\\Validation\\Rules\\ProhibitedIf',
+        'prohibitedunless' => 'Illuminate\\Validation\\Rules\\ProhibitedUnless',
     ];
 
     /** Framework rule objects that exclude the field when other fields are sent or missing. */
@@ -67,6 +90,7 @@ final class ConstValueToRules
 
     public function __construct(
         private readonly CustomRuleReader $customRules = new CustomRuleReader,
+        private readonly RuleDialect $dialect = RuleDialect::Laravel,
     ) {
         $this->dependencyFiles = new DependencyFileSet;
         $this->losses = new RuleLosses;
@@ -81,7 +105,7 @@ final class ConstValueToRules
         $this->losses = new RuleLosses;
 
         if ($value->isScalar() && is_string($value->scalar)) {
-            return RuleParsing::tokens($value->scalar);
+            return $this->dialect->field($value->scalar);
         }
 
         $out = [];
@@ -143,7 +167,7 @@ final class ConstValueToRules
     private function item(ConstValue $item): array
     {
         return match (true) {
-            $item->isScalar() => is_string($item->scalar) ? [RuleParsing::token($item->scalar)] : [],
+            $item->isScalar() => is_string($item->scalar) ? $this->dialect->listed($item->scalar) : [],
             $item->isDescriptor() => $this->descriptorItem($item),
             $item->isInstance() => $this->instance($item),
             // A spread, a value from a call or a variable, a nested array: any of them could be `nullable`
@@ -154,16 +178,17 @@ final class ConstValueToRules
 
     /**
      * A `new X(...)` rule object documents as whatever its class declares, and a framework object as the
-     * `Rule::` factory that builds it, chained calls included. An unannotated class contributes nothing
-     * and is named for the caller ({@see UnreadRule}).
+     * `Rule::` factory that builds it, chained calls included, as the rule string Laravel reads it as
+     * ({@see CastRuleObject}), or as the rules its state holds ({@see built()}). An unannotated class
+     * contributes nothing and is named for the caller ({@see UnreadRule}).
      *
      * @return list<ValidationRule>
      */
     private function instance(ConstValue $value): array
     {
         $class = ltrim((string) $value->class, '\\');
-        if (isset(self::EXCLUDE_OBJECTS[$class])) {
-            $rule = self::exclude(self::EXCLUDE_OBJECTS[$class], $value->args[0] ?? null);
+        if (isset(self::CONDITIONAL_OBJECTS[$class])) {
+            $rule = self::conditional($class, $value->args[0] ?? null);
 
             return $rule === null ? [] : [$rule];
         }
@@ -181,6 +206,11 @@ final class ConstValueToRules
             return $this->descriptorItem($descriptor);
         }
 
+        $built = $this->built($value);
+        if ($built !== null) {
+            return $built;
+        }
+
         $facts = $this->customRules->read($class);
 
         $this->dependencyFiles->add($facts->file);
@@ -196,7 +226,8 @@ final class ConstValueToRules
 
     /**
      * A factory call in the rules list, or a framework object read as one. A `Rule::` static that returns
-     * a rule string reads as that string, so `Rule::nullable()` is `'nullable'`. A descriptor that does not
+     * a rule string reads as that string, so `Rule::nullable()` is `'nullable'`, and one that builds an object
+     * Laravel reads as a rule string reads as that ({@see CastRuleObject}). A descriptor that does not
      * read is left out like any other unread rule.
      *
      * @return list<ValidationRule>
@@ -210,11 +241,45 @@ final class ConstValueToRules
             return $rule === null ? [] : [$rule];
         }
 
+        $built = $this->built($descriptor);
+        if ($built !== null) {
+            return $built;
+        }
+
         $string = $descriptor->chain === [] ? RuleFactories::ruleString((string) $descriptor->factory, $descriptor->args) : null;
 
         return $string !== null
             ? RuleParsing::tokens($string)
             : $this->leaveOut(self::label($descriptor), UnreadRule::factoryNarrows((string) $descriptor->factory));
+    }
+
+    /**
+     * A framework rule object built from what is written: the rule strings Laravel casts it to, or, for one it
+     * validates by its state, that state read as the live object is ({@see LiveRuleValue}): `Password::min(8)`
+     * as `string` and `min:8`, with a check of its own on the value named as written. Null where it is neither,
+     * or cannot be built.
+     *
+     * @return list<ValidationRule>|null
+     */
+    private function built(ConstValue $written): ?array
+    {
+        $rule = CastRuleObject::build($written);
+        $strings = CastRuleObject::castStrings($rule);
+        if ($strings !== null) {
+            return array_map(RuleParsing::token(...), $strings);
+        }
+        if ($rule === null || ! LiveRuleValue::readsState($rule::class)) {
+            return null;
+        }
+
+        $out = [];
+        foreach (LiveRuleValue::of($rule)->items as $item) {
+            $out = [...$out, ...($item->isInstance() && $item->class === $rule::class
+                ? $this->leaveOut($written->isDescriptor() ? self::label($written) : UnreadRule::classify($rule::class)['label'], true)
+                : $this->item($item))];
+        }
+
+        return $out;
     }
 
     /**
@@ -273,8 +338,7 @@ final class ConstValueToRules
             $method === 'array' => ValidationRule::of('array', $this->values($descriptor->args) ?? []),
             $method === 'exists' => ValidationRule::of('exists'),
             $method === 'unique' => ValidationRule::of('unique'),
-            $method === 'excludeif' => self::exclude('exclude_if', $descriptor->args[0] ?? null),
-            $method === 'excludeunless' => self::exclude('exclude_unless', $descriptor->args[0] ?? null),
+            isset(self::CONDITIONAL_FACTORIES[$method]) => self::conditional(self::CONDITIONAL_FACTORIES[$method], $descriptor->args[0] ?? null),
             $method === 'exclude' => ValidationRule::of('exclude'),
             $method === 'excludewith' => self::excludeByFields('exclude_with', $descriptor->args),
             $method === 'excludewithout' => self::excludeByFields('exclude_without', $descriptor->args),
@@ -283,18 +347,21 @@ final class ConstValueToRules
     }
 
     /**
-     * `Rule::excludeIf(…)`/`Rule::excludeUnless(…)` and their `new` forms, which stop Laravel running the
-     * field's later rules when their condition says so ({@see RuleSetNormalizer}). A literal bool settles
-     * it now: bare `exclude`, or no rule at all. Any other condition is a callback nothing here can run,
-     * so the rule is kept with no parameters — an exclude rule whose condition is unknown.
+     * A conditional rule object ({@see CONDITIONAL_OBJECTS}), or the `Rule::` factory that builds it. A literal
+     * bool settles it now, as its `__toString()` does: the rule it applies, or no rule at all. Any other
+     * condition is a callback or a value only the request decides, which nothing here runs, so the rule is
+     * kept with no parameters: one applied on a condition this build cannot read. An exclude rule like that
+     * still stops the rules after it ({@see RuleSetNormalizer}); a required or prohibited one leaves the field
+     * optional and sendable, the true floor.
      */
-    private static function exclude(string $name, ?ConstValue $condition): ?ValidationRule
+    private static function conditional(string $class, ?ConstValue $condition): ?ValidationRule
     {
+        [$applied, $unknown, $when] = self::CONDITIONAL_OBJECTS[$class];
         if ($condition === null || ! $condition->isScalar() || ! is_bool($condition->scalar)) {
-            return ValidationRule::of($name);
+            return ValidationRule::of($unknown);
         }
 
-        return $condition->scalar === ($name === 'exclude_if') ? ValidationRule::of('exclude') : null;
+        return $condition->scalar === $when ? ValidationRule::of($applied) : null;
     }
 
     /**
@@ -429,7 +496,8 @@ final class ConstValueToRules
             }
 
             $this->dependencyFiles->add(EnumCaseValue::file($arg));
-            $out[] = is_bool($value) ? ($value ? '1' : '0') : (string) $value;
+            // Laravel writes each value into the rule string as PHP spells it, so `false` is `""`, not `"0"`.
+            $out[] = (string) $value;
         }
 
         return $out;

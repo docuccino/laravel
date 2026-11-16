@@ -6,10 +6,9 @@ use Illuminate\Routing\Router;
 use Workbench\App\Http\Controllers\FormController;
 
 /**
- * Real-path coverage for the spatie/laravel-permission integration (design §Phase 4): the extension
- * reads the actual gathered route middleware through the pipeline and contributes the structured
- * x-permissions member (always) plus a generated description line (on operations with no higher-layer
- * description — a docblock/attribute description still wins, per the integration-layer precedence).
+ * Real-path coverage for the spatie/laravel-permission integration: the extension reads the actual
+ * gathered route middleware through the pipeline and contributes the structured x-permissions member
+ * plus a requirement line beneath whatever description the operation has.
  */
 function permissionClosureOperation(string $path, array $middleware): array
 {
@@ -51,7 +50,9 @@ it('records a role_or_permission any-of requirement', function (): void {
     ]);
 });
 
-it('keeps a docblock description but still emits the structured x-permissions', function (): void {
+it('keeps a docblock description and states the permission beneath it', function (): void {
+    // The permission is enforced whatever the docblock says, and the description is the only part of the
+    // document a reader sees, so the docblock adds to the requirement line rather than replacing it.
     /** @var Router $router */
     $router = app('router');
     $router->get('api/perm-documented', [FormController::class, 'index'])->middleware('permission:view forms');
@@ -60,7 +61,7 @@ it('keeps a docblock description but still emits the structured x-permissions', 
     $operation = generateDocument()->document->toArray()['paths']['/api/perm-documented']['get'] ?? [];
 
     expect($operation['x-permissions'])->toBe([['type' => 'permission', 'values' => ['view forms']]])
-        ->and($operation['description'])->toBe('Returns the collection of forms visible to the caller.');
+        ->and($operation['description'])->toBe("Returns the collection of forms visible to the caller.\n\nRequires permission: view forms");
 });
 
 it('adds nothing for a route without permission middleware', function (): void {

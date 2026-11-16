@@ -182,6 +182,6 @@ it('reflects presentation facts off the real Data class', function (): void {
         ->and($reflector->isPropertyOptional(ArticleData::class, 'subtitle'))->toBeTrue()
         ->and($reflector->outputName(ArticleData::class, 'title'))->toBe('headline')
         ->and($reflector->inputName(ArticleData::class, 'title'))->toBe('heading')
-        ->and($reflector->validationTokens(ArticleData::class, 'body'))->toBe(['max:500'])
+        ->and($reflector->attributeRules(ArticleData::class, 'body')[0])->toBe(['max:500'])
         ->and($reflector->collectionKind('Spatie\\LaravelData\\PaginatedDataCollection'))->toBe('length');
 });

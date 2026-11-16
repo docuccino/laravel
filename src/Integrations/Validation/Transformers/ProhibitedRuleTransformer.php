@@ -13,7 +13,7 @@ use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
 /**
  * The prohibition family, split by whether the field may EVER be sent. A bare `prohibited` never may, and
  * {@see RuleSetNormalizer} has already dropped the field, so it stays a no-op here; the conditional forms
- * and `prohibits` describe a sendable field, so they add a description note.
+ * and `prohibits` describe a sendable field, so they add a note.
  */
 final class ProhibitedRuleTransformer implements RuleTransformer
 {
@@ -36,8 +36,7 @@ final class ProhibitedRuleTransformer implements RuleTransformer
             return;
         }
 
-        $existing = $field->get('description');
-        $field->set('description', is_string($existing) && $existing !== '' ? $existing.' '.$note : $note);
+        $field->note($note);
     }
 
     private function describe(ValidationRule $rule): ?string

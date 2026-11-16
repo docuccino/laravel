@@ -36,6 +36,7 @@ final class CoverageCommand extends Command
     use PrintsSections;
     use RefusesUnreadConfig;
     use RendersDiagnostics;
+    use StartsConsoleBuild;
 
     /**
      * How far apart the logs may be written before it is worth saying so, in seconds.

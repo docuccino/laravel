@@ -10,6 +10,8 @@ use Docuccino\Laravel\Tests\Support\CountingTypeEngine;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Workbench\App\Http\Controllers\BindingController;
 use Workbench\App\Http\Controllers\FormController;
+use Workbench\App\Models\Article;
+use Workbench\App\Models\Ledger;
 
 /**
  * The fragment cache's staleness boundary: the facts that reach emitted bytes without touching a
@@ -137,6 +139,25 @@ it('rebuilds a route whose parameter gained a binder of the application\'s own',
 
     expect(pathParameter($cold['paths'][$path]['get'], 'custom')['schema']['type'])->toBe('integer')
         ->and(pathParameter($warm['paths'][$path]['get'], 'custom')['schema']['type'])->toBe('string');
+});
+
+it('rebuilds a route whose Route::model() binding was pointed at another model', function (): void {
+    fragmentCacheDir('staleness');
+    app()->instance(TypeEngine::class, WorkbenchEngine::make());
+
+    app('router')->model('explicit', Ledger::class);
+    app('router')->get('api/rebindable/{explicit}', [BindingController::class, 'showExplicit']);
+    $cold = generateDocument()->document->toArray();
+
+    // The class a `Route::model()` binder resolves to is global router state too: the route file is
+    // untouched, and the segment now matches an article's slug rather than a ledger's key.
+    app('router')->model('explicit', Article::class);
+    $warm = generateDocument()->document->toArray();
+
+    $path = '/api/rebindable/{explicit}';
+
+    expect(pathParameter($cold['paths'][$path]['get'], 'explicit')['x-docuccino']['facts']['routeBinding']['key'])->toBe('id')
+        ->and(pathParameter($warm['paths'][$path]['get'], 'explicit')['x-docuccino']['facts']['routeBinding']['key'])->toBe('slug');
 });
 
 it('never serves inference-free fragments once the engine package is installed', function (): void {

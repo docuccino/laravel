@@ -9,24 +9,40 @@ use Docuccino\Core\Extensions\Validation\ValidationRule;
 /**
  * Statically parses recovered Laravel rule strings into {@see ValidationRule}s — never executing
  * anything. A pipe string (`'required|max:100'`) splits into tokens; a token (`'in:a,b'`) splits
- * into a name plus comma parameters. Array-form rules feed their string items through {@see token()}.
+ * into a name plus its parameters, read as Laravel reads them. Where a string is split, and how, depends on
+ * who reads it ({@see RuleDialect}).
  */
 final class RuleParsing
 {
     /**
+     * A rule string as Laravel's validator splits a field's: at every pipe.
+     *
      * @return list<ValidationRule>
      */
     public static function tokens(string $pipe): array
     {
-        $out = [];
-        foreach (explode('|', $pipe) as $token) {
-            $token = trim($token);
-            if ($token !== '') {
-                $out[] = self::token($token);
-            }
-        }
+        return array_map(self::token(...), self::pieces(explode('|', $pipe)));
+    }
 
-        return $out;
+    /**
+     * A rule string as laravel-data splits one, wherever it is written: at every pipe, unless `regex:` appears
+     * anywhere in it, when the whole string is one rule, so a pattern's `|` survives.
+     *
+     * @return list<ValidationRule>
+     */
+    public static function dataTokens(string $rules): array
+    {
+        return array_map(self::token(...), self::dataPieces($rules));
+    }
+
+    /**
+     * The rule strings {@see dataTokens()} reads, before each is parsed.
+     *
+     * @return list<string>
+     */
+    public static function dataPieces(string $rules): array
+    {
+        return self::pieces(str_contains($rules, 'regex:') ? [$rules] : explode('|', $rules));
     }
 
     public static function token(string $token): ValidationRule
@@ -37,11 +53,40 @@ final class RuleParsing
         }
 
         $name = substr($token, 0, $colon);
-        $parameters = array_values(array_filter(
-            array_map('trim', explode(',', substr($token, $colon + 1))),
-            static fn (string $parameter): bool => $parameter !== '',
-        ));
 
-        return ValidationRule::of($name, $parameters);
+        return ValidationRule::of($name, self::parameters($name, substr($token, $colon + 1)));
+    }
+
+    /**
+     * Each piece trimmed, and a blank one dropped, as Laravel skips an empty rule.
+     *
+     * @param  list<string>  $pieces
+     * @return list<string>
+     */
+    private static function pieces(array $pieces): array
+    {
+        return array_values(array_filter(array_map(trim(...), $pieces), static fn (string $piece): bool => $piece !== ''));
+    }
+
+    /**
+     * A token's parameters as Laravel's `ValidationRuleParser` reads them: a regex is one parameter, commas,
+     * quotes and all, and anything else is a CSV row, so `in:"a,b",""` lists `a,b` and the empty string.
+     *
+     * @return list<string>
+     */
+    private static function parameters(string $name, string $parameters): array
+    {
+        if (in_array(strtolower(trim($name)), ['regex', 'not_regex', 'notregex'], true)) {
+            return [trim($parameters)];
+        }
+
+        if (trim($parameters) === '') {
+            return [];
+        }
+
+        return array_map(
+            static fn (?string $parameter): string => trim((string) $parameter),
+            str_getcsv($parameters, escape: '\\'),
+        );
     }
 }

@@ -26,6 +26,7 @@ use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Patch\Contribution;
 use Docuccino\Core\Provenance\Source;
 use Docuccino\Laravel\Integrations\Eloquent\CastSchema;
+use Docuccino\Laravel\Integrations\Support\PageSizeDefaultExtension;
 use Docuccino\Laravel\Support\IgnoredResponses;
 use Docuccino\Laravel\Support\ListValueNames;
 use ReflectionClass;
@@ -94,6 +95,9 @@ final class QueryBuilderParametersExtension implements OperationExtension
 
         foreach ($this->builder->build($facts, $context->representation(), $config, $describer) as $spec) {
             $spec->applyTo($operation->parameter('query', $spec->name), $contribution);
+        }
+        if ($facts->paginates && $facts->pageSize !== null) {
+            PageSizeDefaultExtension::record($context, $facts->pageSize);
         }
 
         $this->reportUnresolved($facts, $context);

@@ -47,6 +47,110 @@
           "Forms"
         ],
         "responses": {
+          "409": {
+            "x-docuccino": {
+              "id": "res:v1:x3sawirf3fr7kgy4",
+              "provenance": [
+                {
+                  "producer": "integration:inferred-handler",
+                  "layer": "integration",
+                  "fields": [
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/FormController.php",
+                    "line": 25,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
+                  }
+                }
+              ],
+              "facts": {
+                "examplePlaceholders": {
+                  "application/problem+json": [
+                    "detail"
+                  ]
+                }
+              }
+            },
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:inferred-handler",
+                        "layer": "integration",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/FormController.php",
+                          "line": 25,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
+                        }
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/ErrorProblem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Conflict",
+                  "status": 409,
+                  "detail": "string"
+                }
+              }
+            }
+          },
+          "410": {
+            "x-docuccino": {
+              "id": "res:v1:iyv74epfcjgoijp3",
+              "provenance": [
+                {
+                  "producer": "integration:inferred-handler",
+                  "layer": "integration",
+                  "fields": [
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/FormController.php",
+                    "line": 25,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
+                  }
+                }
+              ]
+            },
+            "description": "Gone",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:inferred-handler",
+                        "layer": "integration",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/FormController.php",
+                          "line": 25,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\FormController::index"
+                        }
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/SentProblem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "status": 410,
+                  "title": "Gone"
+                }
+              }
+            }
+          },
           "599": {
             "x-docuccino": {
               "id": "res:v1:rj3t4zqjrbvbnjqz",
@@ -90,8 +194,13 @@
                   "type": "object",
                   "properties": {
                     "errors": {
-                      "type": "array",
-                      "items": {}
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
                     },
                     "status": {
                       "type": "integer",
@@ -295,10 +404,308 @@
           }
         }
       }
+    },
+    "/api/probe-tickets": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:mlhr75sz6o2gfjls",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ValidationController.php",
+                "line": 21,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ValidationController::store"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:form-request",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ValidationController.php",
+                "line": 21,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ValidationController::store"
+              }
+            }
+          ]
+        },
+        "operationId": "post.api.probe-tickets",
+        "tags": [
+          "Widgets"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreWidgetRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "x-docuccino": {
+              "id": "res:v1:zygrbwdzd3tlpxtk",
+              "provenance": [
+                {
+                  "producer": "attribute",
+                  "layer": "attribute",
+                  "fields": [
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/ValidationController.php",
+                    "line": 21,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\ValidationController::store"
+                  },
+                  "overrode": [
+                    {
+                      "field": "description",
+                      "value": "Created",
+                      "producer": "fallback"
+                    }
+                  ]
+                }
+              ]
+            },
+            "description": "The created widget.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "attribute",
+                        "layer": "attribute",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/ValidationController.php",
+                          "line": 21,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\ValidationController::store"
+                        }
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/WidgetData"
+                }
+              }
+            }
+          },
+          "403": {
+            "x-docuccino": {
+              "id": "res:v1:dt3r3d525e4uu4lv",
+              "provenance": [
+                {
+                  "producer": "integration:inferred-handler",
+                  "layer": "integration",
+                  "fields": [
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/ValidationController.php",
+                    "line": 21,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\ValidationController::store"
+                  }
+                }
+              ]
+            },
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:inferred-handler",
+                        "layer": "integration",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/ValidationController.php",
+                          "line": 21,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\ValidationController::store"
+                        }
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/DebugProblem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403
+                }
+              }
+            }
+          },
+          "422": {
+            "x-docuccino": {
+              "id": "res:v1:pawqxx775vuhuty2",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/ValidationController.php",
+                    "line": 21,
+                    "symbol": "implicit:validated-request"
+                  }
+                }
+              ],
+              "facts": {
+                "examplePlaceholders": {
+                  "application/problem+json": [
+                    "detail",
+                    "errors"
+                  ]
+                }
+              }
+            },
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:implicit-response",
+                        "layer": "integration",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/ValidationController.php",
+                          "line": 21,
+                          "symbol": "implicit:validated-request"
+                        }
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/FieldProblem"
+                },
+                "example": {
+                  "errors": {},
+                  "type": "about:blank",
+                  "title": "Unprocessable Content",
+                  "status": 422,
+                  "detail": "string"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "DebugProblem": {
+        "x-docuccino": {
+          "id": "sch:v1:dojtnaugozvhnpts"
+        },
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "const": "about:blank"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status"
+        ]
+      },
+      "ErrorProblem": {
+        "x-docuccino": {
+          "id": "sch:v1:d2kqc25wjlvaugmq"
+        },
+        "type": "object",
+        "properties": {
+          "detail": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail"
+        ]
+      },
+      "FieldProblem": {
+        "x-docuccino": {
+          "id": "sch:v1:5gjlukqpnalrvihp"
+        },
+        "type": "object",
+        "properties": {
+          "detail": {
+            "type": "string"
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "status": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "const": "about:blank"
+          }
+        },
+        "required": [
+          "errors",
+          "type",
+          "title",
+          "status",
+          "detail"
+        ]
+      },
       "FormData": {
         "x-docuccino": {
           "id": "sch:v1:6iocn62c7ru5zutw"
@@ -345,6 +752,132 @@
           "title",
           "status"
         ]
+      },
+      "SentProblem": {
+        "x-docuccino": {
+          "id": "sch:v1:uwfmozzlwgb52kgs"
+        },
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "status",
+          "title"
+        ]
+      },
+      "StoreWidgetRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:zh4wul5w3rfncvua"
+        },
+        "type": "object",
+        "properties": {
+          "avatar": {
+            "x-docuccino": {
+              "facts": {
+                "blankAsNull": "^[\\x00\\t-\\r  ­͏؜ᅟᅠ ឴឵᠎           ​‌‍‎‏\u2028\u2029  ⁠⁡⁢⁣⁤⁥⁪⁫⁬⁭⁮⁯⠀　ㅤ﻿ﾠ𝅙𝅳𝅴𝅵𝅶𝅷𝅸𝅹𝅺󠀠]*$"
+              }
+            },
+            "description": "An image file.",
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "example": "example"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "example": 1
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "user"
+            ],
+            "example": "admin",
+            "x-enum-varnames": [
+              "Admin",
+              "User"
+            ],
+            "x-enumNames": [
+              "Admin",
+              "User"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/WidgetStatus"
+          }
+        },
+        "required": [
+          "name",
+          "quantity",
+          "role"
+        ]
+      },
+      "WidgetData": {
+        "x-docuccino": {
+          "id": "sch:v1:ielxonxqf7p26bdu"
+        },
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/WidgetStatus"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status"
+        ]
+      },
+      "WidgetStatus": {
+        "x-docuccino": {
+          "id": "sch:v1:xxkbfhrj65orbrgo"
+        },
+        "description": "Where a widget stands in its publication lifecycle.",
+        "type": "string",
+        "enum": [
+          "draft",
+          "published",
+          "archived"
+        ],
+        "x-enum-descriptions": [
+          "Not yet visible to applicants.",
+          "Live and accepting traffic.",
+          ""
+        ],
+        "x-enum-varnames": [
+          "Draft",
+          "Published",
+          "Archived"
+        ],
+        "x-enumNames": [
+          "Draft",
+          "Published",
+          "Archived"
+        ]
       }
     }
   },
@@ -352,7 +885,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "089df3c95998ccb43036c51771dd1b46f457ee3c65023dd72864c096b6695f49"
+      "contentHash": "5ec80d13bd5a9793bf8cabaed9fb9cd0e4c889a7fdb85ab9f2a627da2bcd659a"
     },
     "generator": {
       "name": "docuccino/laravel",

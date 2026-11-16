@@ -11,8 +11,8 @@ use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
  * Base-type rules → a JSON Schema `type` (plus `format` for the string-shaped ones): `string`,
- * `integer`, `numeric`, `boolean`, `array`, `email`, `uuid`, `date`. Runs before the constraint
- * transformers so type-aware rules (`min`/`max`) can read the resolved type.
+ * `integer`, `numeric`, `boolean`, `array`, `email`, `uuid`, `ip`, `ipv4`, `ipv6`, `date`. Runs before the
+ * constraint transformers so type-aware rules (`min`/`max`) can read the resolved type.
  *
  * The format is a reading of intent — `date` is one word for everything non-relative `strtotime` parses —
  * so it is claimed only where nothing better has spoken ({@see ValidationField::mayClaim()}): a rule that
@@ -36,6 +36,8 @@ final class TypeRuleTransformer implements RuleTransformer
         'ulid' => ['type' => 'string', 'format' => 'ulid'],
         'url' => ['type' => 'string', 'format' => 'uri'],
         'ip' => ['type' => 'string', 'format' => 'ip'],
+        'ipv4' => ['type' => 'string', 'format' => 'ipv4'],
+        'ipv6' => ['type' => 'string', 'format' => 'ipv6'],
         'date' => ['type' => 'string', 'format' => 'date'],
     ];
 

@@ -1,0 +1,483 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-array-choices": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:plwx65vnjbzxoboy",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/SpatieData/ArrayChoicesController.php",
+                "line": 12,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SpatieData\\ArrayChoicesController::store"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:spatie-data",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "tests/Fixtures/SpatieData/ArrayChoicesController.php",
+                "line": 12,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SpatieData\\ArrayChoicesController::store"
+              }
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:z6vugwhbjvcmhiop",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/SpatieData/ArrayChoicesController.php",
+                      "line": 12,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.zz-array-choices",
+        "tags": [
+          "ArrayChoices"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArrayChoicesDataRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:362p3gfbvv6vgqfz",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/api/zz-array-choices/merged": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:lrbugq3kx3x574an",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/SpatieData/ArrayChoicesController.php",
+                "line": 17,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SpatieData\\ArrayChoicesController::merge"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:spatie-data",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "tests/Fixtures/SpatieData/ArrayChoicesController.php",
+                "line": 17,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SpatieData\\ArrayChoicesController::merge"
+              }
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:bvxtyododpxnyfpr",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/SpatieData/ArrayChoicesController.php",
+                      "line": 17,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.zz-array-choices.merged",
+        "tags": [
+          "ArrayChoices"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergedArrayChoicesDataRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:vuu4dfpenapbvswr",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ArrayChoicesDataRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:v2z4apwkoiuc6j2v"
+        },
+        "type": "object",
+        "properties": {
+          "banned": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "not": {
+              "type": "object",
+              "additionalProperties": {
+                "enum": [
+                  "a",
+                  "b"
+                ]
+              }
+            }
+          },
+          "blocked": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "not": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "a",
+                  "b"
+                ]
+              }
+            }
+          },
+          "capped": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "maxProperties": 1
+          },
+          "few": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 2
+          },
+          "labels": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "a",
+                "b"
+              ],
+              "example": "a",
+              "x-enum-varnames": [
+                "A",
+                "B"
+              ],
+              "x-enumNames": [
+                "A",
+                "B"
+              ]
+            }
+          },
+          "maybe": {
+            "x-docuccino": {
+              "facts": {
+                "blankAsNull": "^[\\x00\\t-\\r  ­͏؜ᅟᅠ ឴឵᠎           ​‌‍‎‏\u2028\u2029  ⁠⁡⁢⁣⁤⁥⁪⁫⁬⁭⁮⁯⠀　ㅤ﻿ﾠ𝅙𝅳𝅴𝅵𝅶𝅷𝅸𝅹𝅺󠀠]*$"
+              }
+            },
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string",
+              "enum": [
+                "a",
+                "b"
+              ],
+              "example": "a",
+              "x-enum-varnames": [
+                "A",
+                "B"
+              ],
+              "x-enumNames": [
+                "A",
+                "B"
+              ]
+            }
+          },
+          "overridden": {
+            "type": "string",
+            "enum": [
+              "a",
+              "b"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "x-enum-varnames": [
+              "A",
+              "B"
+            ],
+            "x-enumNames": [
+              "A",
+              "B"
+            ]
+          },
+          "ruled": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "a",
+                "b"
+              ],
+              "example": "a",
+              "x-enum-varnames": [
+                "A",
+                "B"
+              ],
+              "x-enumNames": [
+                "A",
+                "B"
+              ]
+            }
+          },
+          "statuses": {
+            "$ref": "#/components/schemas/ListingStatus",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "a",
+                "b"
+              ],
+              "example": "a",
+              "x-enum-varnames": [
+                "A",
+                "B"
+              ],
+              "x-enumNames": [
+                "A",
+                "B"
+              ]
+            }
+          },
+          "unique": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ListingStatus": {
+        "x-docuccino": {
+          "id": "sch:v1:3rztnb5htdkv77og"
+        },
+        "type": "string",
+        "enum": [
+          "open",
+          "closed",
+          "draft"
+        ],
+        "x-enum-descriptions": [
+          "Visible to the public and accepting applications.",
+          "No longer accepting applications.",
+          ""
+        ],
+        "x-enum-varnames": [
+          "Open",
+          "Closed",
+          "Draft"
+        ],
+        "x-enumNames": [
+          "Open",
+          "Closed",
+          "Draft"
+        ]
+      },
+      "MergedArrayChoicesDataRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:autqeipg7rbeafac"
+        },
+        "type": "object",
+        "properties": {
+          "merged": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "a",
+                "b"
+              ],
+              "example": "a",
+              "x-enum-varnames": [
+                "A",
+                "B"
+              ],
+              "x-enumNames": [
+                "A",
+                "B"
+              ]
+            }
+          }
+        }
+      },
+      "UnprocessableEntity": {
+        "x-docuccino": {
+          "id": "sch:v1:f3tcwvg2vhs255gy"
+        },
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "errors"
+        ]
+      }
+    },
+    "responses": {
+      "UnprocessableEntity": {
+        "description": "Unprocessable Entity",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/UnprocessableEntity"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "9143c79c41456e50e4c88c92ce6d45475f4b393a245a07b863209bc2c5e01596"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.23.4",
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
+    }
+  }
+}

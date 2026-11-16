@@ -7,14 +7,14 @@ namespace Workbench\App\Http\Controllers;
 use Docuccino\Laravel\Tests\Fixtures\ApiResources\ArticleResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Workbench\App\Http\Requests\PageSizeBoundsRequest;
 use Workbench\App\Models\Form;
 use Workbench\App\Support\ListPageSize;
 
 /**
- * Four list endpoints that page the same collection, differing only in what the size handed to
- * `paginate()` was built from. Two of them take it from a request key and two answer with a literal of the
- * helper's own, and only the helper's body says which — so the golden they emit is where "the key is the
- * size" is either proven or absent. The stub engine scripts the trace + the return; the bodies are inert.
+ * List endpoints paging one collection, differing only in what the size handed to `paginate()` was built
+ * from: a request key or a helper's own literal, which only the helper's body tells apart, and two direct
+ * reads under a FormRequest bounding the key. The stub engine scripts the trace; the bodies are inert.
  */
 final class PagedListController
 {
@@ -56,5 +56,25 @@ final class PagedListController
     public function lazy(Request $request): AnonymousResourceCollection
     {
         return ArticleResource::collection(Form::query()->paginate(ListPageSize::lazy($request)));
+    }
+
+    /**
+     * A fallback past the bound the FormRequest validates: an absent key is served 50, a sent one at most 20.
+     *
+     * @return AnonymousResourceCollection<int, ArticleResource>
+     */
+    public function overBound(PageSizeBoundsRequest $request): AnonymousResourceCollection
+    {
+        return ArticleResource::collection(Form::query()->paginate($request->integer('per_page', 50)));
+    }
+
+    /**
+     * The same bound with a fallback inside it.
+     *
+     * @return AnonymousResourceCollection<int, ArticleResource>
+     */
+    public function withinBound(PageSizeBoundsRequest $request): AnonymousResourceCollection
+    {
+        return ArticleResource::collection(Form::query()->paginate($request->integer('per_page', 15)));
     }
 }

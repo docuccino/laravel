@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Composer\Autoload\ClassLoader;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Pipeline\BuildWorkers;
 use Docuccino\Laravel\Commands\MemoryLimitOption;
@@ -11,12 +12,9 @@ use Docuccino\Laravel\Engine\TypeEngineFactory;
 use Docuccino\Laravel\Integrations\InferredHandler\HandlerReflector;
 use Docuccino\Laravel\Integrations\InferredHandler\RenderCallback;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
-use Illuminate\Console\Events\CommandStarting;
-use Illuminate\Contracts\Console\Kernel as ConsoleKernel;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Contracts\Redis\Connector;
 use Illuminate\Foundation\Bootstrap\HandleExceptions;
-use Illuminate\Foundation\Console\Kernel as FoundationConsoleKernel;
 use Illuminate\Redis\Connections\Connection;
 use Illuminate\Redis\RedisManager;
 use Illuminate\Support\Facades\Artisan;
@@ -25,7 +23,6 @@ use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\StringInput;
-use Symfony\Component\Console\Output\NullOutput;
 use Symfony\Component\ErrorHandler\Error\FatalError;
 
 /*
@@ -38,7 +35,7 @@ use Symfony\Component\ErrorHandler\Error\FatalError;
 /** Mark this process as started to run `docuccino:export`, the way `php artisan docuccino:export` starts it. */
 function markConsoleBuild(): void
 {
-    MemoryLimitOption::capture(new CommandStarting('docuccino:export', new ArgvInput(['artisan', 'docuccino:export']), new NullOutput));
+    MemoryLimitOption::capture(new ArgvInput(['artisan', 'docuccino:export']));
 }
 
 /**
@@ -103,13 +100,13 @@ it('builds in one process on the console for a count it cannot read', function (
 ])->skip(fn (): bool => ! BuildWorkers::forkable(), 'Forking needs the pcntl and posix extensions.');
 
 it('is no console build when a Docuccino command is called in-process', function (InputInterface $input): void {
-    // Artisan::call() from a queued job, an HTTP request or an Octane worker reports the command starting
-    // too, handed an ArrayInput or a StringInput. That process serves other work — a transaction open
+    // Artisan::call() from a queued job, an HTTP request or an Octane worker starts the command too, handed
+    // an ArrayInput or a StringInput. That process serves other work — a transaction open
     // around the call, sockets it shares, a memory ceiling it runs every other job under — so a build
     // inside it neither forks nor tunes it.
     setBuild('engine.workers', 4);
 
-    MemoryLimitOption::capture(new CommandStarting('docuccino:export', $input, new NullOutput));
+    MemoryLimitOption::capture($input);
 
     expect(ConsoleBuild::active())->toBeFalse()
         ->and(app(TypeEngineFactory::class)->mayTuneProcess())->toBeFalse()
@@ -120,13 +117,8 @@ it('is no console build when a Docuccino command is called in-process', function
 ]);
 
 it('leaves a job\'s open transaction alone when the job calls the export in-process', function (): void {
-    // Outside a test suite the framework reports every command it starts to CommandStarting, Artisan::call()
-    // included — which is what a queued job or a controller calling the export gets.
-    $kernel = app(ConsoleKernel::class);
-    assert($kernel instanceof FoundationConsoleKernel);
-    $kernel->rerouteSymfonyCommandEvents();
-    $kernel->setArtisan(null);
-
+    // Artisan::call() runs the command whole, its own initialize() included — which is what a queued job or
+    // a controller calling the export gets.
     setBuild('engine.workers', 3);
     $engine = countingEngine(WorkbenchEngine::make());
     app()->instance(TypeEngine::class, $engine);
@@ -150,7 +142,7 @@ it('leaves a job\'s open transaction alone when the job calls the export in-proc
 it('stays a console build when it calls a Docuccino command of its own', function (): void {
     // `docuccino:install` runs the export in-process, and the process is still the one it was started as.
     markConsoleBuild();
-    MemoryLimitOption::capture(new CommandStarting('docuccino:export', new ArrayInput(['command' => 'docuccino:export']), new NullOutput));
+    MemoryLimitOption::capture(new ArrayInput(['command' => 'docuccino:export']));
 
     expect(ConsoleBuild::active())->toBeTrue();
 });
@@ -207,10 +199,26 @@ it('closes the Redis connections this process holds before it forks', function (
         ->and($redis->connections())->toBe([]);
 })->skip(fn (): bool => ! BuildWorkers::forkable(), 'Forking needs the pcntl and posix extensions.');
 
+it('has the core end a worker at shutdown before the adapter\'s hook, or anything the application registers, can run', function (): void {
+    // Composer loads autoload files in dependency order, before any application boots, and PHP runs shutdown
+    // functions in the order they were registered and stops at the first that fails. So core's hook is the
+    // first a worker has, and nothing it inherited — the notice's hook, the framework's error handler — can
+    // keep it from ending ({@see BuildWorkers}).
+    $files = array_values(array_map(
+        static fn (string $path): string => (string) realpath($path),
+        require dirname((string) (new ReflectionClass(ClassLoader::class))->getFileName()).'/autoload_files.php',
+    ));
+    $core = array_search((string) realpath(dirname((string) (new ReflectionClass(BuildWorkers::class))->getFileName(), 2).'/shutdown.php'), $files, true);
+    $adapter = array_search((string) realpath(dirname(__DIR__, 2).'/src/shutdown.php'), $files, true);
+
+    expect($core)->toBeInt()
+        ->and($adapter)->toBeInt()
+        ->and($core)->toBeLessThan($adapter);
+});
+
 it('keeps a worker\'s failures out of the application\'s error reporting', function (): void {
-    // A worker that dies of a fatal error runs the shutdown work it inherited, and the framework's hands
-    // the error to the application's exception handler — logs, error trackers, the console the worker
-    // shares — for a failure the build then recovers from. That path is Laravel's own, driven here.
+    // Whatever a worker hands the application's exception handler — logs, error trackers, the console the
+    // worker shares — is a failure the build then recovers from. Laravel's own path for a fatal, driven here.
     $seen = [];
     app()->instance(ExceptionHandler::class, recordingExceptionHandler($seen));
     $fatal = new FatalError('Allowed memory size of 134217728 bytes exhausted', 0, ['type' => E_ERROR, 'message' => 'Allowed memory size of 134217728 bytes exhausted', 'file' => __FILE__, 'line' => __LINE__]);

@@ -124,9 +124,10 @@ it('owes every rendered form the body the bare resource gets, under the status t
         ->and(resolveSchema($document, $body($responses('paginated')['200']))['required'])->toBe(['data', 'links', 'meta'])
         ->and($body($responses('named')['200'])['required'])->toBe(['data', 'meta'])
         // A media type stamped on the rendering leaves the status the resource's: still the created 201,
-        // carrying the same envelope.
+        // carrying the same envelope, under the media type the server labels it with.
         ->and(array_keys($responses('relabelled', 'post')))->toBe([201])
-        ->and($body($responses('relabelled', 'post')[201]))->toBe($plain)
+        ->and(array_keys($responses('relabelled', 'post')[201]['content']))->toBe(['application/vnd.release+json'])
+        ->and(array_diff_key($responses('relabelled', 'post')[201]['content']['application/vnd.release+json']['schema'], ['x-docuccino' => true]))->toBe($plain)
         // The guard arm and the envelope, each under its own status.
         ->and(array_keys($responses('guarded')))->toBe([200, 410])
         ->and(array_diff_key($responses('guarded')[200]['content']['application/json']['schema'], ['x-docuccino' => true]))->toBe($plain);

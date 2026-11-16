@@ -140,9 +140,9 @@ final readonly class TypeEngineFactory
     }
 
     /**
-     * Raises the process ceiling to the configured limit when that's genuinely higher, and arms the
-     * out-of-memory explanation either way — a process already generous enough still benefits from being
-     * told what to change if it turns out not to be.
+     * Raises the process ceiling to the configured limit, or {@see MemoryLimit::DEFAULT} where none is
+     * configured, when that's genuinely higher, and arms the out-of-memory explanation either way — a process
+     * already generous enough still benefits from being told what to change if it turns out not to be.
      *
      * @param  array<string, mixed>  $config
      */

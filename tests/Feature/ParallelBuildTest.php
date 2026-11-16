@@ -13,14 +13,12 @@ use Docuccino\Laravel\Engine\EnginePackage;
 use Docuccino\Laravel\Engine\LazyTypeEngine;
 use Docuccino\Laravel\Tests\Fixtures\TagNames\Api\ReportController;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
-use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Contracts\Console\Kernel as ConsoleKernel;
 use Illuminate\Foundation\Console\Kernel as FoundationConsoleKernel;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\Console\Input\ArgvInput;
-use Symfony\Component\Console\Output\NullOutput;
 
 /*
  * A cold build handed to forked workers is the serial build. Each worker leaves whole fragments where the
@@ -76,7 +74,7 @@ function buildWith(int $workers, TypeEngine $engine, int &$forked = 0): Generati
  */
 function exportedAsConsoleBuild(string $out): array
 {
-    MemoryLimitOption::capture(new CommandStarting('docuccino:export', new ArgvInput(['artisan', 'docuccino:export']), new NullOutput));
+    MemoryLimitOption::capture(new ArgvInput(['artisan', 'docuccino:export']));
 
     // A command of its own each time, as each process gets one: a command links a code's docs once per run,
     // and a run's workers are its own, limit and all.

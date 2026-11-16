@@ -4,18 +4,27 @@ declare(strict_types=1);
 
 use Docuccino\Core\Inference\ActionAnalysis;
 use Docuccino\Core\Inference\ClassMetadata;
+use Docuccino\Core\Inference\DType\ClassT;
+use Docuccino\Core\Inference\DType\ListT;
+use Docuccino\Core\Inference\ReturnSite;
+use Docuccino\Core\Inference\SourceLocation;
+use Docuccino\Core\Inference\ThrowConfidence;
+use Docuccino\Core\Inference\ThrowDisposition;
+use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Inference\PhpStan\Tests\Support\FixtureRunner;
 use Docuccino\Laravel\Integrations\InferredHandler\ReceivedException;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 use Workbench\App\Http\Controllers\FormController;
+use Workbench\App\Http\Controllers\ValidationController;
 
 /**
  * What an application gets when `$exceptions->respond()` rewrites every error of its `api/*` routes into
@@ -144,10 +153,11 @@ it('does not settle a guard on a response the callback rebinds before it returns
     $response = resolveResponse($document, $document['paths']['/api/forms/{form}']['get']['responses']['404'] ?? []);
 
     // The guard reads the rebuilt response, not the one handed in, so it settles nothing: the one return is
-    // reachable, sends a body nothing read, and the 404 stands with its body unsaid — never the framework's
-    // JSON, which the callback replaces for every error it is handed as JSON.
+    // reachable, and the 404 is what it sends — the content it was handed, re-sent under the problem media
+    // type its headers name, of a shape nothing read. Never the framework's JSON, which the callback
+    // replaces for every error it is handed as JSON.
     expect($response)->toHaveKey('description')
-        ->and($response['content'] ?? [])->toBe([]);
+        ->and($response['content'] ?? [])->toBe(['application/problem+json' => ['schema' => []]]);
 })->group('fixture');
 
 it('illustrates the title of every error with the reason phrase its status is sent with', function (string $method, string $path, string $verb, string $status, string $thrown): void {
@@ -172,3 +182,50 @@ it('illustrates the title of every error with the reason phrase its status is se
     'a binding the route cannot resolve' => ['/api/forms/{form}', 'get', '404', ModelNotFoundException::class],
     'a request that fails validation' => ['/api/tickets', 'post', '422', ValidationException::class],
 ])->group('fixture');
+
+it('reads a guard joining conditions with || or && the way it reads each condition alone', function (string $method, array $handoff): void {
+    setBuild('documents.default.routes.include', ['api/*']);
+    $analyses = respondAnalyses([ModelNotFoundException::class, ValidationException::class, HttpResponseException::class], $method);
+
+    $document = emittedArray(localityBuild(static function (Router $router): void {
+        $router->get('api/probe-forms/{form}', [FormController::class, 'show']);
+        $router->post('api/probe-tickets', [ValidationController::class, 'store']);
+        $router->get('api/probe-handoffs', [FormController::class, 'index']);
+    }, static fn (): TypeEngine => WorkbenchEngine::make($analyses, analysisOverrides: [
+        FormController::class.'::index' => new ActionAnalysis(
+            returns: [new ReturnSite(new ListT(new ClassT('Workbench\\App\\Data\\FormData')), new SourceLocation(''))],
+            throws: [new ThrownException(HttpResponseException::class, 409, [], ThrowConfidence::Certain, ThrowDisposition::Signal)],
+        ),
+    ])));
+
+    $media = static fn (string $path, string $verb, string $status): array => array_keys(resolveResponse($document, $document['paths'][$path][$verb]['responses'][$status] ?? [])['content'] ?? []);
+
+    // A disjunction holds only where one of its halves does. Each half is false for a JSON error on an api/*
+    // route: the framework renders it as exactly a JsonResponse, and the exception is not an
+    // HttpResponseException. So the pass-through is never taken, and the rewrite is the one body sent.
+    expect($media('/api/probe-forms/{form}', 'get', '404'))->toBe(['application/problem+json'])
+        ->and($media('/api/probe-tickets', 'post', '422'))->toBe(['application/problem+json'])
+        // An HttpResponseException sends whatever response it carries: a guard naming it passes that through
+        // alone, and one that only asks whether it is JSON cannot say, so the rewrite may be sent beside it.
+        ->and($media('/api/probe-handoffs', 'get', '409'))->toBe($handoff);
+})->with([
+    'not JSON, or a carried response' => ['jsonOrHandoffGuarded', ['application/json']],
+    'off the API, or not JSON' => ['pathOrJsonGuarded', ['application/json', 'application/problem+json']],
+    'off the API, or a carried response' => ['pathOrHandoffGuarded', ['application/json']],
+    'not both on the API and JSON' => ['pathAndJsonRequired', ['application/json', 'application/problem+json']],
+])->group('fixture');
+
+it('keeps the pass-through where one half of a disjunction cannot be answered for a route', function (): void {
+    setBuild('documents.default.routes.include', ['api/*']);
+    $analyses = respondAnalyses([ModelNotFoundException::class], 'jsonOrAskedGuarded');
+
+    $document = emittedArray(localityBuild(static function (Router $router): void {
+        $router->get('api/probe-forms/{form}', [FormController::class, 'show']);
+    }, static fn (): TypeEngine => WorkbenchEngine::make($analyses)));
+
+    $response = resolveResponse($document, $document['paths']['/api/probe-forms/{form}']['get']['responses']['404'] ?? []);
+
+    // Whether the client asked for JSON is the request's to say, not the route's: the pass-through may be
+    // taken, so the framework body stands beside the rewrite.
+    expect(array_keys($response['content'] ?? []))->toBe(['application/json', 'application/problem+json']);
+})->group('fixture');

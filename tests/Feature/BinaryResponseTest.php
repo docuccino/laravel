@@ -152,6 +152,53 @@ it('reads what every recognised call proves', function (
     'path helper' => ["response()->download(storage_path('app/exports/invoices.pdf'))", BINARY_RESPONSE_FACTORY, FrameworkClasses::BINARY_FILE_RESPONSE, 'application/pdf', 'attachment', 'invoices.pdf'],
 ]);
 
+it('reads an argument by the parameter it names, as PHP binds it', function (
+    string $expression,
+    string $receiver,
+    string $class,
+    string $mediaType,
+    ?string $disposition,
+    ?string $filename,
+): void {
+    // A named argument binds to the parameter it names, wherever that parameter sits — so the headers,
+    // name and disposition a call names are exactly the ones the framework receives. Skipping an optional
+    // parameter by naming a later one leaves the skipped one at its default, which is what a call that
+    // wrote nothing there gets. Each row spells the same call a positional row above reads, so the two
+    // spellings have to publish alike.
+    $calls = recoveredCalls($expression, $receiver);
+
+    expect($calls)->toHaveCount(1)
+        ->and($calls[0]->responseClass)->toBe($class)
+        ->and($calls[0]->mediaType)->toBe($mediaType)
+        ->and($calls[0]->disposition)->toBe($disposition)
+        ->and($calls[0]->filename)->toBe($filename);
+})->with([
+    'stream, headers named past the status' => ["response()->stream(\$callback, headers: ['Content-Type' => 'text/csv'])", BINARY_RESPONSE_FACTORY, FrameworkClasses::STREAMED_RESPONSE, 'text/csv', null, null],
+    'stream, every argument named' => ["response()->stream(headers: ['Content-Type' => 'text/csv'], callback: \$callback, status: 200)", BINARY_RESPONSE_FACTORY, FrameworkClasses::STREAMED_RESPONSE, 'text/csv', null, null],
+    'streamJson, headers named' => ["response()->streamJson(\$data, headers: ['Content-Type' => 'application/problem+json'])", BINARY_RESPONSE_FACTORY, FrameworkClasses::STREAMED_JSON_RESPONSE, 'application/problem+json', null, null],
+    'streamDownload, name and headers named' => ["response()->streamDownload(\$callback, headers: ['Content-Type' => 'text/csv'], name: 'report.csv')", BINARY_RESPONSE_FACTORY, FrameworkClasses::STREAMED_RESPONSE, 'text/csv', 'attachment', 'report.csv'],
+    // The name is still what decides whether a disposition is sent at all.
+    'streamDownload, disposition named without a name' => ["response()->streamDownload(\$callback, disposition: 'inline')", BINARY_RESPONSE_FACTORY, FrameworkClasses::STREAMED_RESPONSE, BinaryRepresentation::ANY_MEDIA_TYPE, null, null],
+    'download, name named' => ["response()->download('exports/2026-01.pdf', name: 'invoices.pdf')", BINARY_RESPONSE_FACTORY, FrameworkClasses::BINARY_FILE_RESPONSE, 'application/pdf', 'attachment', 'invoices.pdf'],
+    'download, disposition named past the name and headers' => ["response()->download('exports/invoices.pdf', disposition: 'inline')", BINARY_RESPONSE_FACTORY, FrameworkClasses::BINARY_FILE_RESPONSE, 'application/pdf', 'inline', 'invoices.pdf'],
+    'download, headers named' => ["response()->download('exports/invoices.bin', headers: ['Content-Type' => 'application/pdf'])", BINARY_RESPONSE_FACTORY, FrameworkClasses::BINARY_FILE_RESPONSE, 'application/pdf', 'attachment', 'invoices.bin'],
+    'download, file named' => ["response()->download(file: 'exports/invoices.pdf')", BINARY_RESPONSE_FACTORY, FrameworkClasses::BINARY_FILE_RESPONSE, 'application/pdf', 'attachment', 'invoices.pdf'],
+    'file, headers named' => ["response()->file('exports/invoices.bin', headers: ['Content-Type' => 'application/pdf'])", BINARY_RESPONSE_FACTORY, FrameworkClasses::BINARY_FILE_RESPONSE, 'application/pdf', null, 'invoices.bin'],
+    // The framework merges its own Content-Type over the caller's however the headers are passed.
+    'eventStream, headers named' => ["response()->eventStream(\$callback, headers: ['Content-Type' => 'text/plain'])", BINARY_RESPONSE_FACTORY, FrameworkClasses::STREAMED_RESPONSE, EventStreamRepresentation::MEDIA_TYPE, null, null],
+    // A disk's methods call the file `$path`, not `$file`, and the name binds to the disk's own signature.
+    'disk download, path and name named' => ["\$disk->download(name: 'invoices.pdf', path: 'exports/2026-01.pdf')", BINARY_RESPONSE_FILESYSTEM, FrameworkClasses::STREAMED_RESPONSE, 'application/pdf', 'attachment', 'invoices.pdf'],
+    'disk response, disposition named' => ["\$disk->response('exports/invoices.pdf', disposition: 'attachment')", BINARY_RESPONSE_FILESYSTEM, FrameworkClasses::STREAMED_RESPONSE, 'application/pdf', 'attachment', 'invoices.pdf'],
+    // A facade forwards a named argument to the method it proxies, which binds it by that method's names.
+    'response facade stream, headers named' => ["\\Illuminate\\Support\\Facades\\Response::stream(\$callback, headers: ['Content-Type' => 'text/csv'])", BINARY_RESPONSE_FACTORY, FrameworkClasses::STREAMED_RESPONSE, 'text/csv', null, null],
+    'response facade streamDownload, name and headers named' => ["\\Illuminate\\Support\\Facades\\Response::streamDownload(\$callback, name: 'report.csv', headers: ['Content-Type' => 'text/csv'])", BINARY_RESPONSE_FACTORY, FrameworkClasses::STREAMED_RESPONSE, 'text/csv', 'attachment', 'report.csv'],
+    'response facade download, disposition named' => ["\\Illuminate\\Support\\Facades\\Response::download('exports/invoices.pdf', disposition: 'inline')", BINARY_RESPONSE_FACTORY, FrameworkClasses::BINARY_FILE_RESPONSE, 'application/pdf', 'inline', 'invoices.pdf'],
+    'response facade streamJson, headers named' => ["\\Illuminate\\Support\\Facades\\Response::streamJson(\$data, headers: ['Content-Type' => 'application/problem+json'])", BINARY_RESPONSE_FACTORY, FrameworkClasses::STREAMED_JSON_RESPONSE, 'application/problem+json', null, null],
+    'response facade file, headers named' => ["\\Illuminate\\Support\\Facades\\Response::file('exports/invoices.bin', headers: ['Content-Type' => 'application/pdf'])", BINARY_RESPONSE_FACTORY, FrameworkClasses::BINARY_FILE_RESPONSE, 'application/pdf', null, 'invoices.bin'],
+    'response facade eventStream, headers named' => ["\\Illuminate\\Support\\Facades\\Response::eventStream(\$callback, headers: ['Content-Type' => 'text/plain'])", BINARY_RESPONSE_FACTORY, FrameworkClasses::STREAMED_RESPONSE, EventStreamRepresentation::MEDIA_TYPE, null, null],
+    'storage facade download, name named' => ["\\Illuminate\\Support\\Facades\\Storage::download('exports/2026-01.pdf', name: 'invoices.pdf')", BINARY_RESPONSE_FACTORY, FrameworkClasses::STREAMED_RESPONSE, 'application/pdf', 'attachment', 'invoices.pdf'],
+]);
+
 it('reads nothing off a call it cannot place', function (string $expression, string $receiver): void {
     expect(recoveredCalls($expression, $receiver))->toBe([]);
 })->with([
@@ -160,8 +207,8 @@ it('reads nothing off a call it cannot place', function (string $expression, str
     'unknown method' => ["response()->make('ok')", BINARY_RESPONSE_FACTORY],
     'unknown receiver' => ["\$reports->download('exports/invoices.pdf')", 'Workbench\\App\\Support\\ReportArchive'],
     'unknown facade' => ["\\Workbench\\App\\Facades\\Reports::download('exports/invoices.pdf')", BINARY_RESPONSE_FACTORY],
-    // Nothing is read off a call whose arguments cannot be indexed by position.
-    'named arguments' => ["response()->download(file: 'exports/invoices.pdf')", BINARY_RESPONSE_FACTORY],
+    // A name the method does not declare is no argument it can bind, so nothing is read off the call.
+    'undeclared name' => ["response()->download('exports/invoices.pdf', filename: 'invoices.pdf')", BINARY_RESPONSE_FACTORY],
     'first-class callable' => ['response()->download(...)', BINARY_RESPONSE_FACTORY],
 ]);
 
@@ -306,6 +353,20 @@ it('says the media type is missing when a stream never states one', function ():
         ->and($raised[0]->help)->toContain("mediaType: 'text/csv')]")
         ->and($raised[0]->help)->toContain('#[Response(type:')
         ->and($raised[0]->help)->toContain('mediaType alone documents nothing');
+});
+
+it('documents the media type a stream names by argument name, and says nothing is missing', function (): void {
+    // `headers:` is the same headers array `stream()` takes third: the framework sends `text/csv`, so the
+    // document owes it, and telling the author to name a media type they already named is advice that
+    // cannot be followed.
+    [$responses, , $diagnostics] = documentForReturn(
+        new ClassT(FrameworkClasses::STREAMED_RESPONSE),
+        trace: fileResponseTrace("response()->stream(\$callback, headers: ['Content-Type' => 'text/csv'])"),
+    );
+
+    expect(array_keys($responses['200']['content']))->toBe(['text/csv'])
+        ->and(array_map(static fn ($d): string => $d->code, $diagnostics))
+        ->not->toContain('inferred-response.payload-unrecoverable');
 });
 
 it('gives an action that serves two media types one content entry each', function (): void {

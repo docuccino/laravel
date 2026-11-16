@@ -50,6 +50,7 @@ final class VersionChangesCommand extends Command
     use ReadsCommittedArtifact;
     use RefusesUnreadConfig;
     use RendersDiagnostics;
+    use StartsConsoleBuild;
     use StringOptions;
 
     protected $signature = 'docuccino:version-changes

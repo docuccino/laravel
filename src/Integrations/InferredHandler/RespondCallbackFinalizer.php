@@ -142,7 +142,7 @@ final class RespondCallbackFinalizer implements ErrorResponseFinalizer
         $rewrites = [];
         $statuses = [];
         foreach ($analysis->returns as $site) {
-            if (! RespondConditions::reachable([...$site->conditions, ...$site->typeConditions], $callback, $context, $rendered, $sent)) {
+            if (! RespondConditions::reachable([...$site->conditions, ...$site->typeConditions], $callback, $context, $rendered, $sent, $site->reachedWhen)) {
                 continue;
             }
 

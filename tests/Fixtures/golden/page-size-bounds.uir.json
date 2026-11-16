@@ -1,0 +1,413 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-page-size/cappedBelowConfig": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:u3opyzj7gmeyubpy",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/Pagination/PageSizeBoundsController.php",
+                "line": 17,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\Pagination\\PageSizeBoundsController::cappedBelowConfig"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-page-size.cappedBelowConfig",
+        "tags": [
+          "PageSizeBounds"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:gizyiip2pwmeai7f",
+              "provenance": [
+                {
+                  "producer": "integration:json-api-paginate",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/Pagination/PageSizeBoundsController.php",
+                    "line": 17,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\Pagination\\PageSizeBoundsController::cappedBelowConfig"
+                  }
+                }
+              ]
+            },
+            "name": "page[number]",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:json-api-paginate",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/Pagination/PageSizeBoundsController.php",
+                      "line": 17,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\Pagination\\PageSizeBoundsController::cappedBelowConfig"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:f73hcmeldaj4qkre",
+              "provenance": [
+                {
+                  "producer": "integration:json-api-paginate",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/Pagination/PageSizeBoundsController.php",
+                    "line": 17,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\Pagination\\PageSizeBoundsController::cappedBelowConfig"
+                  }
+                }
+              ]
+            },
+            "name": "page[size]",
+            "in": "query",
+            "description": "Number of results per page.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:json-api-paginate",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "maximum",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/Pagination/PageSizeBoundsController.php",
+                      "line": 17,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\Pagination\\PageSizeBoundsController::cappedBelowConfig"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 10,
+              "maximum": 10,
+              "minimum": 1
+            }
+          }
+        ]
+      }
+    },
+    "/api/zz-page-size/defaultAboveCap": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:dvxrqi7jhkb2fnlo",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/Pagination/PageSizeBoundsController.php",
+                "line": 23,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\Pagination\\PageSizeBoundsController::defaultAboveCap"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-page-size.defaultAboveCap",
+        "tags": [
+          "PageSizeBounds"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:kzmbeft36g4jxdw3",
+              "provenance": [
+                {
+                  "producer": "integration:json-api-paginate",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/Pagination/PageSizeBoundsController.php",
+                    "line": 23,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\Pagination\\PageSizeBoundsController::defaultAboveCap"
+                  }
+                }
+              ]
+            },
+            "name": "page[number]",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:json-api-paginate",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/Pagination/PageSizeBoundsController.php",
+                      "line": 23,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\Pagination\\PageSizeBoundsController::defaultAboveCap"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:5e77becok2go6xan",
+              "provenance": [
+                {
+                  "producer": "integration:json-api-paginate",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/Pagination/PageSizeBoundsController.php",
+                    "line": 23,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\Pagination\\PageSizeBoundsController::defaultAboveCap"
+                  }
+                }
+              ]
+            },
+            "name": "page[size]",
+            "in": "query",
+            "description": "Number of results per page.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:json-api-paginate",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "maximum",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/Pagination/PageSizeBoundsController.php",
+                      "line": 23,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\Pagination\\PageSizeBoundsController::defaultAboveCap"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 50,
+              "maximum": 50,
+              "minimum": 1
+            }
+          }
+        ]
+      }
+    },
+    "/api/zz-page-size/withinBounds": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:6tn4as63zthlygzj",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/Pagination/PageSizeBoundsController.php",
+                "line": 29,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\Pagination\\PageSizeBoundsController::withinBounds"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-page-size.withinBounds",
+        "tags": [
+          "PageSizeBounds"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:5337yrbyp2ba2a4s",
+              "provenance": [
+                {
+                  "producer": "integration:json-api-paginate",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/Pagination/PageSizeBoundsController.php",
+                    "line": 29,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\Pagination\\PageSizeBoundsController::withinBounds"
+                  }
+                }
+              ]
+            },
+            "name": "page[number]",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:json-api-paginate",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/Pagination/PageSizeBoundsController.php",
+                      "line": 29,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\Pagination\\PageSizeBoundsController::withinBounds"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:qw5en3tku7buqizj",
+              "provenance": [
+                {
+                  "producer": "integration:json-api-paginate",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/Pagination/PageSizeBoundsController.php",
+                    "line": 29,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\Pagination\\PageSizeBoundsController::withinBounds"
+                  }
+                }
+              ]
+            },
+            "name": "page[size]",
+            "in": "query",
+            "description": "Number of results per page.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:json-api-paginate",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "maximum",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/Pagination/PageSizeBoundsController.php",
+                      "line": 29,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\Pagination\\PageSizeBoundsController::withinBounds"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1
+            }
+          }
+        ]
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "5e6efacd638828c62854c89609d8b8a05dfa0d532babb117164706257eea153e"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.23.4",
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
+    }
+  }
+}

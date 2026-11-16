@@ -11,6 +11,7 @@ use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Extensions\Schema\ComponentRegistry;
 use Docuccino\Core\Extensions\Schema\DeclarationFiles;
+use Docuccino\Core\Inference\ActionAnalysis;
 use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Patch\Contribution;
 use Docuccino\Laravel\Integrations\Support\AppRenderedErrors;
@@ -36,7 +37,7 @@ final class InferredHandlerExceptionToResponse implements ExceptionToResponse
 
     public function supports(ThrownException $exception, RouteContext $context): bool
     {
-        return $this->renderers->of($exception->exceptionFqcn) !== [];
+        return $exception->response !== null || $this->renderers->of($exception->exceptionFqcn) !== [];
     }
 
     public function producer(): string
@@ -74,7 +75,7 @@ final class InferredHandlerExceptionToResponse implements ExceptionToResponse
 
             // A renderer that only hands back null is looked past, as `Handler::render()` looks past it.
             $delegates = HandlerResponseBuilder::isDelegation($analysis);
-            if ($delegates && $index < count($candidates) - 1) {
+            if ($delegates) {
                 continue;
             }
 
@@ -86,20 +87,28 @@ final class InferredHandlerExceptionToResponse implements ExceptionToResponse
             // A framework delegation (`return null`/void arm) is neither: the framework really does render
             // those, so the gate stays open and the deferral goes unnoted. An analysis that recovered no
             // return at all refutes nothing either, though it is still a fold that failed.
-            if ($analysis->returns !== [] && ! $delegates) {
+            if ($analysis->returns !== []) {
                 AppRenderedErrors::record($context, $exception->exceptionFqcn, $callable->target());
             }
 
             // The deferral is noted per callback for one summary diagnostic at build. The note goes on the
             // ROUTE and not into the log the summary reads: it has to ride this route's fragment, or a warm
             // build comes back without the summary a cold one publishes ({@see HandlerDeferralLog}).
-            if (! $delegates) {
-                HandlerDeferralLog::record($context, $callable->target(), $exception->exceptionFqcn);
-            }
+            HandlerDeferralLog::record($context, $callable->target(), $exception->exceptionFqcn);
 
             return null;
         }
 
-        return null;
+        // Past every renderer, an exception carrying a response is sent as that response, as
+        // `Handler::render()` sends an `HttpResponseException`'s: read as a renderer's return is.
+        $carried = $exception->response;
+
+        return $carried === null ? null : HandlerResponseBuilder::build(
+            new ActionAnalysis(returns: [$carried]),
+            $context,
+            Contribution::integration('inferred-handler'),
+            $exception,
+            $carried->location->file.'::closure@'.$carried->location->line,
+        );
     }
 }

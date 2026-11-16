@@ -27,6 +27,9 @@ final class FrameworkClasses
     /** Illuminate's JSON response wrapper — the `JsonResponse<payload>` type integrations unwrap. */
     public const JSON_RESPONSE = 'Illuminate\\Http\\JsonResponse';
 
+    /** Symfony's JSON response, which Illuminate's extends. */
+    public const JSON_BASE = 'Symfony\\Component\\HttpFoundation\\JsonResponse';
+
     /** Illuminate's redirect. Always sets `Location`, and never carries a body of its own. */
     public const REDIRECT_RESPONSE = 'Illuminate\\Http\\RedirectResponse';
 
@@ -113,6 +116,15 @@ final class FrameworkClasses
     public static function isCollection(string $fqcn): bool
     {
         return $fqcn === self::ENUMERABLE || is_subclass_of($fqcn, self::ENUMERABLE, true);
+    }
+
+    /**
+     * Whether an FQCN names a JSON response: Illuminate's, Symfony's, or any subclass of them, a package's
+     * included. Each sends a JSON body whatever its constructor does with it.
+     */
+    public static function isJson(string $fqcn): bool
+    {
+        return $fqcn === self::JSON_RESPONSE || $fqcn === self::JSON_BASE || is_subclass_of($fqcn, self::JSON_BASE, true);
     }
 
     /**

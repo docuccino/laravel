@@ -7,17 +7,23 @@ namespace Docuccino\Laravel\Integrations\SpatieData;
 use PhpParser\Node;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\ArrayDimFetch;
+use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\Assign;
 use PhpParser\Node\Expr\ClassConstFetch;
+use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Expr\MethodCall;
+use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\NullsafeMethodCall;
 use PhpParser\Node\Expr\NullsafePropertyFetch;
 use PhpParser\Node\Expr\PropertyFetch;
+use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Expr\StaticPropertyFetch;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
+use PhpParser\Node\Stmt\ClassLike;
 use PhpParser\Node\Stmt\ClassMethod;
+use PhpParser\Node\Stmt\Return_;
 use PhpParser\NodeFinder;
 
 /**
@@ -44,14 +50,15 @@ final class WrapSightings
      * answer — what {@see WrapResolver} asks is which claims are supported and how far.
      *
      * @param  array<string, ClassMethod>  $methods  the class's OWN declared methods
+     * @param  string  $fqcn  the class that declares them
      * @return array<string, WrapReason>
      */
-    public static function standing(array $methods): array
+    public static function standing(array $methods, string $fqcn): array
     {
         $standing = [];
 
         foreach (WrapReason::cases() as $reason) {
-            if (self::stands($reason, $methods)) {
+            if (self::stands($reason, $methods, $fqcn)) {
                 $standing[$reason->name] = $reason;
             }
         }
@@ -64,35 +71,99 @@ final class WrapSightings
      *
      * @param  array<string, ClassMethod>  $methods
      */
-    private static function stands(WrapReason $reason, array $methods): bool
+    private static function stands(WrapReason $reason, array $methods, string $fqcn): bool
     {
         return match ($reason) {
-            WrapReason::SelfWithoutWrapping => in_array(true, self::withoutWrappingReceivers($methods), true),
+            WrapReason::SelfWithoutWrapping => in_array(true, self::withoutWrappingReceivers($methods, $fqcn), true),
             WrapReason::SelfTransformDisabled => in_array(true, self::disablingReceivers($methods), true),
-            WrapReason::UnattributedDisabling => in_array(null, self::withoutWrappingReceivers($methods), true)
+            WrapReason::UnattributedDisabling => in_array(null, self::withoutWrappingReceivers($methods, $fqcn), true)
                 || in_array(null, self::disablingReceivers($methods), true),
         };
     }
 
     /**
-     * Who each `withoutWrapping()` call in these bodies was made on.
+     * Who each `withoutWrapping()` call in these bodies was made on. A call on an instance the class
+     * builds of itself and RETURNS — a named constructor's `(new self(…))->withoutWrapping()` — is made
+     * on the object the class hands out, so it speaks for the root as `$this` does. Built and not
+     * returned, the instance may be anything the class holds, so it stays unattributed.
      *
      * @param  array<string, ClassMethod>  $methods
      * @return list<bool|null>
      */
-    private static function withoutWrappingReceivers(array $methods): array
+    private static function withoutWrappingReceivers(array $methods, string $fqcn): array
     {
         $receivers = [];
 
         foreach ($methods as $method) {
+            $returned = self::returnedCalls($method->stmts ?? []);
+
             foreach ((new NodeFinder)->findInstanceOf($method->stmts ?? [], MethodCall::class) as $call) {
                 if ($call->name instanceof Identifier && $call->name->toString() === 'withoutWrapping') {
-                    $receivers[] = self::receiver($call->var);
+                    $receivers[] = self::receiver($call->var)
+                        ?? (in_array($call, $returned, true) && self::buildsItself($call->var, $fqcn) ? true : null);
                 }
             }
         }
 
         return $receivers;
+    }
+
+    /**
+     * The method calls a body's own `return`s are chains of — the returned call and each call it hangs
+     * off. A closure's or a nested class's returns are another function's, so the walk stops there.
+     *
+     * @return list<MethodCall|NullsafeMethodCall>
+     */
+    private static function returnedCalls(mixed $node): array
+    {
+        if (is_array($node)) {
+            $calls = [];
+            foreach ($node as $child) {
+                $calls = [...$calls, ...self::returnedCalls($child)];
+            }
+
+            return $calls;
+        }
+
+        if (! $node instanceof Node || $node instanceof Closure || $node instanceof ArrowFunction || $node instanceof ClassLike) {
+            return [];
+        }
+
+        if ($node instanceof Return_) {
+            $calls = [];
+            for ($expr = $node->expr; $expr instanceof MethodCall || $expr instanceof NullsafeMethodCall; $expr = $expr->var) {
+                $calls[] = $expr;
+            }
+
+            return $calls;
+        }
+
+        $calls = [];
+        foreach ($node->getSubNodeNames() as $name) {
+            $calls = [...$calls, ...self::returnedCalls($node->$name)];
+        }
+
+        return $calls;
+    }
+
+    /**
+     * Whether a receiver chain starts at an instance of `$fqcn` it builds: `new self(…)`, `new static(…)`
+     * or `new` of the class by name, or spatie's `from(…)` called on one of those.
+     */
+    private static function buildsItself(Expr $expr, string $fqcn): bool
+    {
+        while ($expr instanceof MethodCall || $expr instanceof NullsafeMethodCall) {
+            $expr = $expr->var;
+        }
+
+        $class = match (true) {
+            $expr instanceof New_ => $expr->class,
+            $expr instanceof StaticCall && $expr->name instanceof Identifier && $expr->name->toString() === 'from' => $expr->class,
+            default => null,
+        };
+
+        return $class instanceof Name
+            && (in_array($class->toLowerString(), ['self', 'static'], true) || $class->toString() === ltrim($fqcn, '\\'));
     }
 
     /**

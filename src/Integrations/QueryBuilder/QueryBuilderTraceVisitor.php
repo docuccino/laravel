@@ -48,6 +48,8 @@ use PhpParser\Node;
  * until the engine folds the return. Anything still un-foldable lands on
  * {@see QueryBuilderFacts::$unresolved} with its source location, so a dynamic chain becomes a named
  * diagnostic rather than a silent omission.
+ *
+ * @phpstan-import-type FilterDefault from QbEntry
  */
 final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
 {
@@ -548,12 +550,14 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
             filterClass: $filterClass,
             factoryEnum: $factoryEnum,
             factoryClass: $factoryClass,
+            delimiter: $modifiers->delimiter,
         );
     }
 
     /**
-     * `->nullable()` / `->default(<const>)` a folded descriptor carries in its chain: the modifiers the
-     * helper applied in its own body, where the call site has no AST to peel.
+     * `->nullable()` / `->default(<const>)` / `->delimiter(<const>)` a folded descriptor carries in its
+     * chain: the modifiers the helper applied in its own body, where the call site has no AST to peel. The
+     * chain runs in call order, so a later call is the outer one.
      */
     private function chainModifiers(ConstValue $value): QbModifiers
     {
@@ -565,9 +569,18 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
                 continue;
             }
 
+            if ($call['method'] === 'delimiter') {
+                $delimiter = self::delimiterOf($call['args'][0] ?? null);
+                if ($delimiter !== null) {
+                    $modifiers = (new QbModifiers(delimiter: $delimiter))->merge($modifiers);
+                }
+
+                continue;
+            }
+
             $default = $call['method'] === 'default' && isset($call['args'][0]) ? $this->defaultValue($call['args'][0]) : null;
             if ($default !== null) {
-                $modifiers = $modifiers->merge(new QbModifiers(true, $default[0]));
+                $modifiers = $modifiers->merge(QbModifiers::defaulting($default[0]));
             }
         }
 
@@ -661,9 +674,10 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
     }
 
     /**
-     * Peels `->default(<const>)` / `->nullable()` off the top of an entry expression, returning the base
-     * expression plus the folded facts. An unrecognised or non-constant modifier just stops the peel —
-     * the base still recovers, so an unfoldable tail never costs us a whole entry.
+     * Peels `->default(<const>)` / `->nullable()` / `->delimiter(<const>)` off the top of an entry
+     * expression, returning the base expression plus the folded facts. An unrecognised or non-constant
+     * modifier just stops the peel — the base still recovers, so an unfoldable tail never costs us a whole
+     * entry.
      *
      * A first-class-callable modifier (`->default(...)`) stops it too: the entry is then a closure, not a
      * configured filter, so it stays unfolded and lands on {@see QueryBuilderFacts::$unresolved} rather
@@ -692,8 +706,20 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
             if ($modifier === 'default') {
                 $folded = $this->foldDefault($base, $scope);
                 if ($folded !== null) {
-                    $modifiers = $modifiers->merge(new QbModifiers(true, $folded[0]));
+                    $modifiers = $modifiers->merge(QbModifiers::defaulting($folded[0]));
                 }
+                $base = $base->var;
+
+                continue;
+            }
+
+            if ($modifier === 'delimiter') {
+                $arg = $base->getArgs()[0] ?? null;
+                $delimiter = self::delimiterOf($arg === null ? null : $scope->constantValueOf($arg->value));
+                if ($delimiter === null) {
+                    break;
+                }
+                $modifiers = $modifiers->merge(new QbModifiers(delimiter: $delimiter));
                 $base = $base->var;
 
                 continue;
@@ -705,10 +731,16 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
         return [$base, $modifiers];
     }
 
+    /** A `->delimiter()` argument that folded to a string, the empty one (no splitting) included. */
+    private static function delimiterOf(?ConstValue $value): ?string
+    {
+        return $value !== null && $value->isScalar() && is_string($value->scalar) ? $value->scalar : null;
+    }
+
     /**
-     * A `->default(<value>)` argument folded to a scalar, or null when absent / non-constant.
+     * A `->default(<value>)` argument folded, or null when absent / non-constant.
      *
-     * @return array{0: string|int|float|bool|null}|null
+     * @return array{0: FilterDefault}|null
      */
     private function foldDefault(Node\Expr\MethodCall $node, TypeScope $scope): ?array
     {
@@ -721,10 +753,39 @@ final class QueryBuilderTraceVisitor implements FollowsReturnType, TraceVisitor
     /**
      * A default as a request would send it. Spatie filters on the default as if it had been sent, and the
      * query binds an enum case as its value ({@see EnumCaseValue}), so a case is the value it stands for.
+     * A list is a list of those; an empty one applies nothing, and a keyed one or one holding a `null` is
+     * not a value set a request could send, so neither is a default.
+     *
+     * @return array{0: FilterDefault}|null
+     */
+    private function defaultValue(ConstValue $value): ?array
+    {
+        if (! $value->isArray()) {
+            return $this->defaultMember($value);
+        }
+
+        if ($value->items === [] || ($value->keys !== null && $value->keys !== array_keys($value->items))) {
+            return null;
+        }
+
+        $list = [];
+        foreach ($value->items as $item) {
+            $member = $this->defaultMember($item);
+            if ($member === null || $member[0] === null) {
+                return null;
+            }
+            $list[] = $member[0];
+        }
+
+        return [$list];
+    }
+
+    /**
+     * One scalar or case of a default, or null where it is neither.
      *
      * @return array{0: string|int|float|bool|null}|null
      */
-    private function defaultValue(ConstValue $value): ?array
+    private function defaultMember(ConstValue $value): ?array
     {
         if ($value->isCase()) {
             $case = EnumCaseValue::of($value);

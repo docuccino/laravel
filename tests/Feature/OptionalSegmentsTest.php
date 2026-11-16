@@ -160,6 +160,20 @@ it('publishes the value leaving the last segment off sends, as the framework sen
     'a default the constraint accepts' => [static fn (Router $router) => $router->get('api/zz-pages/{page?}', [OptionalSegmentController::class, 'first'])->whereIn('page', ['first', 'last']), 'first'],
 ]);
 
+it('says what leaving the segment off sends beneath the description its author wrote', function (): void {
+    $routes = static function (Router $router): void {
+        $router->get('api/zz-pages/{page?}', [OptionalSegmentController::class, 'described']);
+    };
+    $parameter = pathParameter(localityBuild($routes)->document->toArray()['paths']['/api/zz-pages/{page}']['get'], 'page');
+
+    ($this->serve)($routes);
+
+    // Which shorter URL this one answers exactly as is the router's fact, true whatever the segment is
+    // described as, so the author's prose leads and the fact follows rather than being replaced by it.
+    expect($parameter['description'])->toBe("The page to open.\n\nLeaving it off is the same as sending `first`.")
+        ->and($this->getJson('/api/zz-pages')->json('page'))->toBe($this->getJson('/api/zz-pages/first')->json('page'));
+});
+
 it('publishes no default the segment could not send', function (callable $register): void {
     $parameter = pathParameter(localityBuild(static function (Router $router) use ($register): void {
         $register($router);
@@ -393,6 +407,7 @@ it('publishes optional segments and constrained hosts byte-identical to its comm
         $router->get('api/zz-pages/{page?}', [OptionalSegmentController::class, 'first'])->name('pages.show');
         $router->get('api/zz-archive/{year?}/{month?}', [OptionalSegmentController::class, 'archive']);
         $router->get('api/zz-latest/{page?}', [OptionalSegmentController::class, 'page'])->defaults('page', 'latest');
+        $router->get('api/zz-described/{page?}', [OptionalSegmentController::class, 'described']);
         $router->domain('{tenant}.example.com')->get('api/zz-tenants', [ConstraintController::class, 'hosted'])->whereIn('tenant', ['acme', 'globex']);
         $router->domain('{region}.example.com')->get('api/zz-regions', [ConstraintController::class, 'hosted'])->where('region', '[a-z]{2}-[0-9]');
     });

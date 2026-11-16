@@ -27,6 +27,7 @@ final class CacheCommand extends Command
     use IteratesDocuments;
     use RefusesUnreadConfig;
     use RendersDiagnostics;
+    use StartsConsoleBuild;
 
     protected $signature = 'docuccino:cache
         {document? : The configured document key (defaults to every document)}

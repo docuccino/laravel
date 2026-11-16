@@ -15,8 +15,9 @@ use Docuccino\Core\Extensions\Validation\ValidationRule;
  * Laravel rule carries these; they exist so an author's `#[RuleSchema]` reaches the schema through the
  * chain like everything else, rather than writing keywords behind it.
  *
- * `format` never overwrites one a type rule already implied, and a description is appended to any note
- * an earlier rule left, so nothing is lost whichever order the rules arrive in. A rule parameter is a
+ * `format` never overwrites one a type rule already implied, and a description is the field's prose: the
+ * notes earlier rules stated stand beneath it ({@see ValidationField::note()}), so nothing is lost
+ * whichever order the rules arrive in. A rule parameter is a
  * string by the time it reaches the chain, so a stated example is read back through
  * {@see TypedExample} — the same reading every other producer of an authored example uses.
  */

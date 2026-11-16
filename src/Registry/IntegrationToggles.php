@@ -18,6 +18,7 @@ use Docuccino\Laravel\Integrations\RateLimit\RateLimitIntegration;
 use Docuccino\Laravel\Integrations\Sanctum\SanctumIntegration;
 use Docuccino\Laravel\Integrations\SpatieData\SpatieDataIntegration;
 use Docuccino\Laravel\Integrations\TimacdonaldJsonApi\TimacdonaldJsonApiIntegration;
+use Docuccino\Laravel\Support\RouteAuthentication;
 
 /**
  * The per-document integration enable/disable gate: an integration contributes its extensions only
@@ -31,6 +32,8 @@ use Docuccino\Laravel\Integrations\TimacdonaldJsonApi\TimacdonaldJsonApiIntegrat
  *
  * The single lookup table, dataset-tested over every entry. {@see DefaultExtensions} consumes it by
  * key to preserve built-in ordering; the pipeline reads {@see diagnostics()}.
+ *
+ * @phpstan-import-type Authenticators from RouteAuthentication
  *
  * @internal
  */
@@ -90,16 +93,19 @@ final class IntegrationToggles
                 'sanctum', 'laravel/sanctum', true, null,
                 static fn (?callable $probe): bool => SanctumIntegration::installed($probe),
                 static fn (): array => SanctumIntegration::extensions(),
+                static fn (): array => SanctumIntegration::authenticators(),
             ),
             new IntegrationDescriptor(
                 'passport', 'laravel/passport', true, null,
                 static fn (?callable $probe): bool => PassportIntegration::installed($probe),
                 static fn (): array => PassportIntegration::extensions(),
+                static fn (): array => PassportIntegration::authenticators(),
             ),
             new IntegrationDescriptor(
                 'permission', 'spatie/laravel-permission', false, 'document permission requirements',
                 static fn (?callable $probe): bool => PermissionIntegration::installed($probe),
                 static fn (): array => PermissionIntegration::extensions(),
+                static fn (): array => PermissionIntegration::authenticators(),
             ),
         ];
 
@@ -125,6 +131,25 @@ final class IntegrationToggles
         return $descriptor->installed($probe) && $descriptor->enabledFor($document)
             ? $descriptor->extensions()
             : [];
+    }
+
+    /**
+     * The middleware that checks a token itself, from every integration installed and enabled for this
+     * document, for {@see RouteAuthentication}.
+     *
+     * @param  (callable(string): bool)|null  $probe
+     * @return Authenticators
+     */
+    public static function authenticators(DocumentConfig $document, ?callable $probe = null): array
+    {
+        $authenticators = [];
+        foreach (self::descriptors() as $descriptor) {
+            if ($descriptor->installed($probe) && $descriptor->enabledFor($document)) {
+                $authenticators = [...$authenticators, ...$descriptor->authenticators()];
+            }
+        }
+
+        return $authenticators;
     }
 
     /**

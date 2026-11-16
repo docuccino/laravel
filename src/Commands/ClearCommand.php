@@ -18,6 +18,7 @@ use Illuminate\Console\Command;
 final class ClearCommand extends Command
 {
     use IteratesDocuments;
+    use StartsConsoleBuild;
 
     protected $signature = 'docuccino:clear
         {document? : The configured document key (defaults to every document)}

@@ -47,6 +47,7 @@ final class ExplainCommand extends Command
     use PrintsSections;
     use RefusesUnreadConfig;
     use RendersDiagnostics;
+    use StartsConsoleBuild;
     use StringOptions;
 
     protected $signature = 'docuccino:explain

@@ -1,0 +1,1382 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/failures/bagged": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:bgqjjthz6n6llv7i",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                "line": 33,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FailureOverrideController::bagged"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:form-request",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                "line": 33,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FailureOverrideController::bagged"
+              }
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:izjawd77dlfaajdc",
+                "provenance": [
+                  {
+                    "producer": "integration:framework-errors",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                      "line": 33,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\FailureOverrideController::bagged"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.failures.bagged",
+        "tags": [
+          "FailureOverride"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BaggedFailureRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "x-docuccino": {
+              "id": "res:v1:ymps5222zw6in5gd",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "filed": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "filed"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/api/failures/configured": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:nvodgaevgs4vqds2",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                "line": 48,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FailureOverrideController::configured"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:form-request",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                "line": 48,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FailureOverrideController::configured"
+              }
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:lajcw4torxsio3rk",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                      "line": 48,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.failures.configured",
+        "tags": [
+          "FailureOverride"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfiguredFailureRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "x-docuccino": {
+              "id": "res:v1:bs5j5pathzcfdpgt",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "filed": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "filed"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/api/failures/enveloped": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:ookegc3dvkbgoe4s",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                "line": 23,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FailureOverrideController::enveloped"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:form-request",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                "line": 23,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FailureOverrideController::enveloped"
+              }
+            }
+          ]
+        },
+        "operationId": "post.api.failures.enveloped",
+        "tags": [
+          "FailureOverride"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnvelopedFailureRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "x-docuccino": {
+              "id": "res:v1:54m7n7elcctzbap2",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "filed": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "filed"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "x-docuccino": {
+              "id": "res:v1:jxjnkdbwsrhmpiez",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "errors": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "message": {
+                      "type": "string",
+                      "const": "The given data was invalid."
+                    },
+                    "success": {
+                      "type": "boolean",
+                      "const": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/failures/hiddenRefusal": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:pbftgonzvvjsswwu",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                "line": 58,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FailureOverrideController::hiddenRefusal"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:form-request",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                "line": 58,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FailureOverrideController::hiddenRefusal"
+              }
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:bzicdcevok7bhx7g",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                      "line": 58,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.failures.hiddenRefusal",
+        "tags": [
+          "FailureOverride"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HiddenRefusalRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "x-docuccino": {
+              "id": "res:v1:ffv6dwguozuqj2sc",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "filed": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "filed"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "x-docuccino": {
+              "id": "res:v1:ky72ah3qp6guuv3f",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "const": "Not found."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/api/failures/inherited": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:ccq7njhonbtrhrtq",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                "line": 28,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FailureOverrideController::inherited"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:form-request",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                "line": 28,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FailureOverrideController::inherited"
+              }
+            }
+          ]
+        },
+        "operationId": "post.api.failures.inherited",
+        "tags": [
+          "FailureOverride"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InheritedFailureRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "x-docuccino": {
+              "id": "res:v1:smp2c6i3wxsuknxj",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "filed": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "filed"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "x-docuccino": {
+              "id": "res:v1:lg3qwcecjrdh7zg2",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "errors": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "success": {
+                      "type": "boolean",
+                      "const": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/failures/malformed": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:4mcrtutxdwucdpz2",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                "line": 38,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FailureOverrideController::malformed"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:form-request",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                "line": 38,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FailureOverrideController::malformed"
+              }
+            }
+          ]
+        },
+        "operationId": "post.api.failures.malformed",
+        "tags": [
+          "FailureOverride"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MalformedFailureRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "x-docuccino": {
+              "id": "res:v1:qpslqrso5ifivvt6",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "filed": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "filed"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "x-docuccino": {
+              "id": "res:v1:ggiksrhehnls2rx3",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                    "line": 38,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\FailureOverrideController::malformed"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "BadRequest"
+              }
+            },
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "fallback",
+                        "layer": "fallback",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                          "line": 38,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\FailureOverrideController::malformed"
+                        }
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/failures/parentFailure": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:jafddf6jy3pyxrqx",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                "line": 43,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FailureOverrideController::parentFailure"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:form-request",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                "line": 43,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FailureOverrideController::parentFailure"
+              }
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:vmgksig5j37qbnx4",
+                "provenance": [
+                  {
+                    "producer": "integration:framework-errors",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                      "line": 43,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\FailureOverrideController::parentFailure"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.failures.parentFailure",
+        "tags": [
+          "FailureOverride"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParentFailureRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "x-docuccino": {
+              "id": "res:v1:x3o2wx2i475l7mnm",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "filed": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "filed"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/api/failures/refusalMessage": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:tqiv5tvfuobwzoar",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                "line": 53,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FailureOverrideController::refusalMessage"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:form-request",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                "line": 53,
+                "symbol": "Workbench\\App\\Http\\Controllers\\FailureOverrideController::refusalMessage"
+              }
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:vnjmnpkrdr6p735r",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                      "line": 53,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.failures.refusalMessage",
+        "tags": [
+          "FailureOverride"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefusalMessageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "x-docuccino": {
+              "id": "res:v1:ydstpd3maqpldpep",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "filed": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "filed"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "x-docuccino": {
+              "id": "res:v1:acfubqxrsmmerqda",
+              "provenance": [
+                {
+                  "producer": "integration:framework-errors",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                    "line": 53,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\FailureOverrideController::refusalMessage"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "Forbidden"
+              }
+            },
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:framework-errors",
+                        "layer": "integration",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/FailureOverrideController.php",
+                          "line": 53,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\FailureOverrideController::refusalMessage"
+                        }
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BaggedFailureRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:bzfynita7alvz4i5"
+        },
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "ConfiguredFailureRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:r23vfpoz23h4nnee"
+        },
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "EnvelopedFailureRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:whvvfkicadkwu36w"
+        },
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "HiddenRefusalRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:q2gocdanahqr54e6"
+        },
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "InheritedFailureRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:47xryszohdgtcssx"
+        },
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "MalformedFailureRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:3p4nxhmhtvcse3hy"
+        },
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "ParentFailureRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:f77qhhcac6uwpa36"
+        },
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "RefusalMessageRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:bbwfbf3r4n27syle"
+        },
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "UnprocessableEntity": {
+        "x-docuccino": {
+          "id": "sch:v1:f3tcwvg2vhs255gy"
+        },
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "errors"
+        ]
+      }
+    },
+    "responses": {
+      "UnprocessableEntity": {
+        "description": "Unprocessable Entity",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/UnprocessableEntity"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "d0d5a2068f17b625e540b023dbcd3fabab79c90c74d7661a911c766433bc697d"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.23.4",
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
+    }
+  }
+}

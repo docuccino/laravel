@@ -20,6 +20,11 @@ use Docuccino\Laravel\Support\FrameworkClasses;
  */
 final class JsonApiParameters
 {
+    /** The comma each value list splits on, which no `type: string` can say: kept beneath a description written over this one. */
+    private const SEPARATOR_NOTE = 'Values are separated by `,`.';
+
+    private const FIELDS_SEPARATOR_NOTE = 'Each type\'s fields are separated by `,`.';
+
     /**
      * Apply the JSON:API params when any of the action's return types (JsonResponse-unwrapped) is a
      * JSON:API resource per the given family predicate, attributed to `integration:<producer>`.
@@ -41,6 +46,7 @@ final class JsonApiParameters
     {
         $include = $operation->parameter('query', 'include');
         $include->setDescription('Comma-separated list of relationships to include as compound-document data.', $contribution);
+        $include->declareDescriptionNote(self::SEPARATOR_NOTE, $contribution, inOwnDescription: true);
         $include->setRequired(false, $contribution);
         $include->schema()->set('type', 'string', $contribution);
 
@@ -48,8 +54,10 @@ final class JsonApiParameters
         // On an endpoint that is BOTH a Spatie-QB list and a JSON:API resource, this `fields` param
         // collides with QB's allowedFields `fields`: the pipeline merges parameters by (in + name), so
         // one write shadows the other (later layer wins) with an info diagnostic — acceptable, no dedup.
+        // Each side's notes still follow whichever description wins.
         $fields = $operation->parameter('query', 'fields');
         $fields->setDescription('Sparse fieldsets per resource type (fields[TYPE]=field1,field2).', $contribution);
+        $fields->declareDescriptionNote(self::FIELDS_SEPARATOR_NOTE, $contribution, inOwnDescription: true);
         $fields->setRequired(false, $contribution);
         $fields->set('style', 'deepObject', $contribution);
         $fields->set('explode', true, $contribution);

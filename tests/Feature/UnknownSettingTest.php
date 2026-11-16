@@ -341,6 +341,17 @@ it('derives the settings surface from the file this package ships', function ():
         ->and($declared)->toContain('cache.enabled');
 });
 
+/*
+ * `accept: []` is live and empty, so a fresh install hashes the same, and its commented entries show
+ * the shapes a list entry takes. Both have to read: the keys inside an entry are declared, so writing
+ * one is not reported as unknown, and the value is still a list rather than closed over them.
+ */
+it('reads an empty list shown with commented entries as a list declaring what they hold', function (): void {
+    expect(DeclaredSettings::shipped())->toContain('diagnostics.accept.*.code')
+        ->and(DeclaredSettings::shipped())->toContain('diagnostics.accept.*.operation')
+        ->and(DeclaredSettings::valueTypes()['diagnostics.accept'] ?? null)->toBe(DeclaredSettings::LIST);
+});
+
 it('reads the shipped file from where install copies it', function (): void {
     expect(DeclaredSettings::path())->toEndWith('/php/laravel/config/'.ConfigFile::NAME)
         ->and(is_file(DeclaredSettings::path()))->toBeTrue();

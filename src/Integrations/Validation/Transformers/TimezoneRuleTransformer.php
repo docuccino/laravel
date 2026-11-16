@@ -10,8 +10,8 @@ use Docuccino\Core\Extensions\Validation\ValidationField;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
- * `timezone`. There's no JSON-Schema format for a timezone identifier, so it's a string plus a description.
- * Untyped fields default to string; an existing description is preserved.
+ * `timezone`. There's no JSON-Schema format for a timezone identifier, so it's a string plus a note, where
+ * no earlier rule left one. Untyped fields default to string.
  */
 final class TimezoneRuleTransformer implements RuleTransformer
 {
@@ -31,8 +31,8 @@ final class TimezoneRuleTransformer implements RuleTransformer
             $field->setType('string');
         }
 
-        if (! $field->has('description')) {
-            $field->set('description', 'Must be a valid timezone identifier.');
+        if ($field->notes() === []) {
+            $field->note('Must be a valid timezone identifier.');
         }
 
         // No keyword carries "is a timezone", so the example is the rule's to propose.

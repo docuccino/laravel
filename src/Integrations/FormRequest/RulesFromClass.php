@@ -8,6 +8,7 @@ use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Validation\RecoveredRequest;
 use Docuccino\Core\Extensions\Validation\RuleSet;
 use Docuccino\Core\Inference\ActionRef;
+use Docuccino\Laravel\Integrations\Support\RuleDialect;
 use ReflectionClass;
 
 /**
@@ -33,9 +34,17 @@ use ReflectionClass;
  */
 final class RulesFromClass
 {
+    private readonly ShapeToRuleSet $shapes;
+
+    /**
+     * @param  RuleDialect  $dialect  who validates with the `rules()`: Laravel's validator, or laravel-data,
+     *                                which splits the rule strings in it differently
+     */
     public function __construct(
-        private readonly ShapeToRuleSet $shapes = new ShapeToRuleSet,
-    ) {}
+        private readonly RuleDialect $dialect = RuleDialect::Laravel,
+    ) {
+        $this->shapes = new ShapeToRuleSet(dialect: $dialect);
+    }
 
     /**
      * @param  list<string>  $documentedElsewhere  fields another producer already documents (e.g. a spatie
@@ -84,7 +93,7 @@ final class RulesFromClass
         }
 
         // (2) Descriptor path — trace the returned array with constant folding.
-        $visitor = new RulesMethodVisitor;
+        $visitor = new RulesMethodVisitor(new ConstValueToRules(dialect: $this->dialect));
         $report = $context->engine->trace($ref, $visitor);
         $context->recordDependencyFiles([...$report->dependencyFiles, ...$visitor->dependencyFiles()]);
         $traceFields = $visitor->ruleSet()->fields;

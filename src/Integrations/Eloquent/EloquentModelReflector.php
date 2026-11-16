@@ -11,6 +11,9 @@ use Docuccino\Core\Inference\DType\DType;
 use Docuccino\Core\Inference\DType\NullT;
 use Docuccino\Core\Inference\DType\ScalarT;
 use Docuccino\Core\Inference\DType\UnionT;
+use Docuccino\Laravel\Integrations\Support\ParsedClassFile;
+use PhpParser\Node\Scalar\String_;
+use PhpParser\Node\Stmt\Return_;
 use ReflectionClass;
 use ReflectionMethod;
 use ReflectionProperty;
@@ -26,14 +29,6 @@ final class EloquentModelReflector
 {
     public const MODEL = 'Illuminate\\Database\\Eloquent\\Model';
 
-    /**
-     * The chain an implicit binding's column comes out of. Overriding ANY of them takes the answer out
-     * of the declarations {@see routeKeyNameFor()} can read.
-     *
-     * @var list<string>
-     */
-    private const ROUTE_KEY_METHODS = ['getRouteKeyName', 'getKeyName'];
-
     public function __construct(
         private readonly CastsMethodReader $castsMethod = new CastsMethodReader,
     ) {}
@@ -45,6 +40,18 @@ final class EloquentModelReflector
     private const HAS_ULIDS = 'Illuminate\\Database\\Eloquent\\Concerns\\HasUlids';
 
     private const SERIALIZE_DATE = 'serializeDate';
+
+    /** The methods the framework resolves a model's own binding through, or hands its route key out by. */
+    private const OWN_BINDING = ['getRouteKey', 'resolveRouteBinding', 'resolveSoftDeletableRouteBinding', 'resolveRouteBindingQuery'];
+
+    /** The methods a model is serialised through, from the whole body down to the attributes it sends. */
+    private const SERIALISATION = ['toJson', 'jsonSerialize', 'toArray', 'attributesToArray', 'getArrayableAttributes'];
+
+    /** Where a model's attribute is read: what `$model->column` and laravel-data's model normalizer return. */
+    private const ATTRIBUTE_READS = ['__get', 'getAttribute', 'getAttributeValue', 'getAttributeFromArray'];
+
+    /** The methods a scope parent resolves its children through. */
+    private const CHILD_BINDING = ['resolveChildRouteBinding', 'resolveSoftDeletableChildRouteBinding', 'resolveChildRouteBindingQuery'];
 
     /** @var list<string>|null the framework's own public properties, read once per process. */
     private static ?array $frameworkProperties = null;
@@ -112,12 +119,12 @@ final class EloquentModelReflector
      * somewhere no reflection can read.
      *
      * Laravel resolves an implicit binding through `getRouteKeyName()`, which defaults to
-     * `getKeyName()`, which answers the declared `$primaryKey`. Only that declaration is readable, so
-     * a model overriding either method — a trait it imports counts, since PHP reports a flattened
-     * method as the using class's — has chosen a column this cannot see, and answering `id` for one of
-     * those would tell a consumer to send an id where the server matches a slug. Null is what
-     * {@see keySchemaFor()} cannot do: that one owes a schema either way and a primary-key shape is
-     * still the closest static answer, where a NAME is either right or a lie.
+     * `getKeyName()`, which answers the declared `$primaryKey`. A `getRouteKeyName()` whose whole body is
+     * `return '<column>';` states its column as plainly as a property would, so it is read — in the class or
+     * the trait PHP took it from; any other body — a branch, a config read — has chosen a column this
+     * cannot see, and so has an overridden `getKeyName()` or a binding the model resolves itself
+     * ({@see resolvesOwnBinding()}). Answering `id` for one of those would tell a consumer to send an id
+     * where the server matches a slug, so the answer there is null.
      */
     public function routeKeyNameFor(string $fqcn): ?string
     {
@@ -125,13 +132,99 @@ final class EloquentModelReflector
             return null;
         }
 
-        foreach (self::ROUTE_KEY_METHODS as $method) {
-            if ((new ReflectionMethod($fqcn, $method))->getDeclaringClass()->getName() !== self::MODEL) {
-                return null;
+        if ((new ReflectionMethod($fqcn, 'getKeyName'))->getDeclaringClass()->getName() !== self::MODEL || self::resolvesOwnBinding($fqcn)) {
+            return null;
+        }
+
+        $routeKey = new ReflectionMethod($fqcn, 'getRouteKeyName');
+
+        return $routeKey->getDeclaringClass()->getName() === self::MODEL
+            ? $this->facts($fqcn)['keyName']
+            : self::literalReturn($routeKey);
+    }
+
+    /**
+     * Whether the model resolves a binding, or hands out its route key, in code of its own: a hashid or
+     * public-id trait overriding `resolveRouteBinding()` and `getRouteKey()` is the usual shape. Whatever
+     * column it matches on is in that code, whichever column the route or the route key names. A model
+     * finding its scoped children its own way counts too, since nothing says which of its methods a
+     * lookup on it reaches. The framework's own traits (`HasUuids` validating the value first) keep the
+     * column, so they don't count.
+     */
+    public static function resolvesOwnBinding(string $fqcn): bool
+    {
+        return self::overridesAny($fqcn, [...self::OWN_BINDING, ...self::CHILD_BINDING]);
+    }
+
+    /**
+     * Whether the model writes its own serialised form, in which case no member of it is known to be the
+     * column it is named for.
+     */
+    public static function serialisesItself(string $fqcn): bool
+    {
+        return self::overridesAny($fqcn, self::SERIALISATION);
+    }
+
+    /** Whether the model reads its attributes in code of its own, so a column may not reach PHP as stored. */
+    public static function readsAttributesItself(string $fqcn): bool
+    {
+        return self::overridesAny($fqcn, self::ATTRIBUTE_READS);
+    }
+
+    /** Whether the model finds the children scoped to it in code of its own. */
+    public static function resolvesChildBindings(string $fqcn): bool
+    {
+        return self::overridesAny($fqcn, self::CHILD_BINDING);
+    }
+
+    /**
+     * @param  list<string>  $methods
+     */
+    private static function overridesAny(string $fqcn, array $methods): bool
+    {
+        if (! self::isModel($fqcn) || ! class_exists($fqcn)) {
+            return false;
+        }
+
+        $framework = dirname((string) (new ReflectionClass(self::MODEL))->getFileName()).DIRECTORY_SEPARATOR;
+
+        foreach ($methods as $name) {
+            if (! method_exists($fqcn, $name)) {
+                continue;
+            }
+
+            $method = new ReflectionMethod($fqcn, $name);
+            if ($method->getDeclaringClass()->getName() !== self::MODEL && ! str_starts_with((string) $method->getFileName(), $framework)) {
+                return true;
             }
         }
 
-        return $this->facts($fqcn)['keyName'];
+        return false;
+    }
+
+    /**
+     * Whether the route key is the primary key — the one column whose shape {@see keySchemaFor()} answers.
+     */
+    public function routesOnPrimaryKey(string $fqcn): bool
+    {
+        $name = $this->routeKeyNameFor($fqcn);
+
+        return $name !== null && $name === $this->facts($fqcn)['keyName'];
+    }
+
+    /** The column a method names when its whole body is one `return '<literal>';`, else null. */
+    private static function literalReturn(ReflectionMethod $method): ?string
+    {
+        $node = ParsedClassFile::declarationOf($method);
+        $statements = $node === null ? [] : ($node->stmts ?? []);
+
+        if (count($statements) !== 1 || ! $statements[0] instanceof Return_ || ! $statements[0]->expr instanceof String_) {
+            return null;
+        }
+
+        $column = $statements[0]->expr->value;
+
+        return $column === '' ? null : $column;
     }
 
     /**

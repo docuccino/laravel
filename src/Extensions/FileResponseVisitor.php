@@ -14,6 +14,8 @@ use Docuccino\Laravel\Support\EventStreamRepresentation;
 use Docuccino\Laravel\Support\FileMediaTypes;
 use Docuccino\Laravel\Support\FrameworkClasses;
 use PhpParser\Node;
+use ReflectionMethod;
+use ReflectionParameter;
 
 /**
  * Finds the calls that build a file, download, stream or event-stream response, and reads what each one
@@ -25,7 +27,7 @@ use PhpParser\Node;
  * `Response` facade, `Storage::` and `Storage::disk('s3')->` all land here and an application's own
  * `download()` never does.
  *
- * @phpstan-type CallSpec array{class: string, file: ?int, name: ?int, headers: ?int, sets: ?string, disposition: ?int, needsName: bool, mediaType: ?string, schema: array<string, mixed>}
+ * @phpstan-type CallSpec array{class: string, file: ?string, name: ?string, headers: ?string, sets: ?string, disposition: ?string, needsName: bool, mediaType: ?string, schema: array<string, mixed>}
  */
 final class FileResponseVisitor implements TraceVisitor
 {
@@ -40,10 +42,20 @@ final class FileResponseVisitor implements TraceVisitor
     private const STORAGE_FACADE = 'Illuminate\\Support\\Facades\\Storage';
 
     /**
+     * The class a call of each family really runs, for a receiver typed as a contract or reached through a
+     * facade: neither contract declares every method here, and a named argument binds to the parameter
+     * names of the method that runs, not of one that declares it.
+     */
+    private const IMPLEMENTATIONS = [
+        'factory' => 'Illuminate\\Routing\\ResponseFactory',
+        'filesystem' => 'Illuminate\\Filesystem\\FilesystemAdapter',
+    ];
+
+    /**
      * Every call that produces a file or streamed body, and exactly what it proves. Per entry: the
-     * response class it hands back; `file`, `name` and `disposition` are argument positions, and
-     * `headers` is the argument a `Content-Type` may be READ from — each null where the call has no such
-     * argument, or where reading it would not be the truth; `sets` is the disposition the call sets and
+     * response class it hands back; `file`, `name` and `disposition` are parameter names, and `headers`
+     * names the parameter a `Content-Type` may be READ from — each null where the call has no such
+     * parameter, or where reading it would not be the truth; `sets` is the disposition the call sets and
      * `needsName` marks the calls that only set one when a name was supplied; `mediaType` is a type the
      * call fixes outright and `schema` the body under it.
      *
@@ -57,16 +69,16 @@ final class FileResponseVisitor implements TraceVisitor
      */
     private const CALLS = [
         'factory' => [
-            'download' => ['class' => FrameworkClasses::BINARY_FILE_RESPONSE, 'file' => 0, 'name' => 1, 'headers' => 2, 'sets' => FileResponseCall::ATTACHMENT, 'disposition' => 3, 'needsName' => false, 'mediaType' => null, 'schema' => BinaryRepresentation::SCHEMA],
-            'file' => ['class' => FrameworkClasses::BINARY_FILE_RESPONSE, 'file' => 0, 'name' => null, 'headers' => 1, 'sets' => null, 'disposition' => null, 'needsName' => false, 'mediaType' => null, 'schema' => BinaryRepresentation::SCHEMA],
-            'stream' => ['class' => FrameworkClasses::STREAMED_RESPONSE, 'file' => null, 'name' => null, 'headers' => 2, 'sets' => null, 'disposition' => null, 'needsName' => false, 'mediaType' => null, 'schema' => BinaryRepresentation::SCHEMA],
-            'streamDownload' => ['class' => FrameworkClasses::STREAMED_RESPONSE, 'file' => null, 'name' => 1, 'headers' => 2, 'sets' => FileResponseCall::ATTACHMENT, 'disposition' => 3, 'needsName' => true, 'mediaType' => null, 'schema' => BinaryRepresentation::SCHEMA],
-            'streamJson' => ['class' => FrameworkClasses::STREAMED_JSON_RESPONSE, 'file' => null, 'name' => null, 'headers' => 2, 'sets' => null, 'disposition' => null, 'needsName' => false, 'mediaType' => 'application/json', 'schema' => []],
+            'download' => ['class' => FrameworkClasses::BINARY_FILE_RESPONSE, 'file' => 'file', 'name' => 'name', 'headers' => 'headers', 'sets' => FileResponseCall::ATTACHMENT, 'disposition' => 'disposition', 'needsName' => false, 'mediaType' => null, 'schema' => BinaryRepresentation::SCHEMA],
+            'file' => ['class' => FrameworkClasses::BINARY_FILE_RESPONSE, 'file' => 'file', 'name' => null, 'headers' => 'headers', 'sets' => null, 'disposition' => null, 'needsName' => false, 'mediaType' => null, 'schema' => BinaryRepresentation::SCHEMA],
+            'stream' => ['class' => FrameworkClasses::STREAMED_RESPONSE, 'file' => null, 'name' => null, 'headers' => 'headers', 'sets' => null, 'disposition' => null, 'needsName' => false, 'mediaType' => null, 'schema' => BinaryRepresentation::SCHEMA],
+            'streamDownload' => ['class' => FrameworkClasses::STREAMED_RESPONSE, 'file' => null, 'name' => 'name', 'headers' => 'headers', 'sets' => FileResponseCall::ATTACHMENT, 'disposition' => 'disposition', 'needsName' => true, 'mediaType' => null, 'schema' => BinaryRepresentation::SCHEMA],
+            'streamJson' => ['class' => FrameworkClasses::STREAMED_JSON_RESPONSE, 'file' => null, 'name' => null, 'headers' => 'headers', 'sets' => null, 'disposition' => null, 'needsName' => false, 'mediaType' => 'application/json', 'schema' => []],
             'eventStream' => ['class' => FrameworkClasses::STREAMED_RESPONSE, 'file' => null, 'name' => null, 'headers' => null, 'sets' => null, 'disposition' => null, 'needsName' => false, 'mediaType' => EventStreamRepresentation::MEDIA_TYPE, 'schema' => EventStreamRepresentation::SCHEMA],
         ],
         'filesystem' => [
-            'download' => ['class' => FrameworkClasses::STREAMED_RESPONSE, 'file' => 0, 'name' => 1, 'headers' => 2, 'sets' => FileResponseCall::ATTACHMENT, 'disposition' => null, 'needsName' => false, 'mediaType' => null, 'schema' => BinaryRepresentation::SCHEMA],
-            'response' => ['class' => FrameworkClasses::STREAMED_RESPONSE, 'file' => 0, 'name' => 1, 'headers' => 2, 'sets' => FileResponseCall::INLINE, 'disposition' => 3, 'needsName' => false, 'mediaType' => null, 'schema' => BinaryRepresentation::SCHEMA],
+            'download' => ['class' => FrameworkClasses::STREAMED_RESPONSE, 'file' => 'path', 'name' => 'name', 'headers' => 'headers', 'sets' => FileResponseCall::ATTACHMENT, 'disposition' => null, 'needsName' => false, 'mediaType' => null, 'schema' => BinaryRepresentation::SCHEMA],
+            'response' => ['class' => FrameworkClasses::STREAMED_RESPONSE, 'file' => 'path', 'name' => 'name', 'headers' => 'headers', 'sets' => FileResponseCall::INLINE, 'disposition' => 'disposition', 'needsName' => false, 'mediaType' => null, 'schema' => BinaryRepresentation::SCHEMA],
         ],
     ];
 
@@ -84,11 +96,12 @@ final class FileResponseVisitor implements TraceVisitor
     public function enterNode(Node $node, TypeScope $scope): bool
     {
         if ($node instanceof Node\Expr\MethodCall && $node->name instanceof Node\Identifier && ! $node->isFirstClassCallable()) {
-            $this->record($this->receiverKind($scope->typeOf($node->var)), $node->name->toString(), $node->getArgs(), $scope);
+            $receiver = $scope->typeOf($node->var);
+            $this->record($this->receiverKind($receiver), $receiver instanceof ClassT ? $receiver->fqcn : null, $node->name->toString(), $node->getArgs(), $scope);
         }
 
         if ($node instanceof Node\Expr\StaticCall && $node->name instanceof Node\Identifier && $node->class instanceof Node\Name && ! $node->isFirstClassCallable()) {
-            $this->record($this->facadeKind($node->class->toString()), $node->name->toString(), $node->getArgs(), $scope);
+            $this->record($this->facadeKind($node->class->toString()), null, $node->name->toString(), $node->getArgs(), $scope);
         }
 
         return true;
@@ -107,27 +120,31 @@ final class FileResponseVisitor implements TraceVisitor
     /**
      * @param  array<array-key, Node\Arg>  $args
      */
-    private function record(?string $kind, string $method, array $args, TypeScope $scope): void
+    private function record(?string $kind, ?string $receiver, string $method, array $args, TypeScope $scope): void
     {
         $spec = $kind === null ? null : (self::CALLS[$kind][$method] ?? null);
-        if ($spec === null) {
+        $parameters = $kind === null || $spec === null ? null : $this->parameterNames($receiver, self::IMPLEMENTATIONS[$kind], $method);
+        if ($spec === null || $parameters === null) {
             return;
         }
 
-        // Everything below is read off a POSITION, and two argument forms may not occupy one: a named
-        // argument puts its value under a name instead, and a spread holds a sequence that fills its own
-        // index and every later one. `ArgumentSlots` places what it can — a spread the call site
-        // wrote out IS its arguments — and nothing is read off what is left, which costs the media type
-        // and never mis-states it.
-        $slots = ArgumentSlots::of($args);
-        if (! $slots->isIndexable()) {
+        // Each argument is read off the parameter it binds to. A spread this build cannot read fills its
+        // own position and every later one, and may bind names too, so nothing about the call is known;
+        // a name the method does not declare binds nothing. Either costs the media type and never
+        // mis-states it.
+        $slots = ArgumentSlots::of(array_values($args), $parameters);
+        if ($slots->isOpaque() || array_filter(array_keys($slots->all()), is_string(...)) !== []) {
             return;
         }
-        $positional = $slots->positional();
+        $argument = static function (?string $parameter) use ($slots, $parameters): ?Node\Expr {
+            $position = $parameter === null ? false : array_search($parameter, $parameters, true);
 
-        $path = $spec['file'] === null ? null : $this->literalPath($positional[$spec['file']] ?? null, $scope);
-        $headers = $spec['headers'] === null ? null : ($positional[$spec['headers']] ?? null);
-        $name = $this->suppliedName($spec['name'] === null ? null : ($positional[$spec['name']] ?? null), $scope);
+            return $position === false ? null : $slots->at($position);
+        };
+
+        $path = $this->literalPath($argument($spec['file']), $scope);
+        $headers = $argument($spec['headers']);
+        $name = $this->suppliedName($argument($spec['name']), $scope);
 
         // Stated first, then whatever the call fixes, then the file's own extension. A call whose type
         // the framework overrides has no headers argument to read, so its own answer still wins.
@@ -137,9 +154,24 @@ final class FileResponseVisitor implements TraceVisitor
             responseClass: $spec['class'],
             mediaType: $mediaType ?? ($spec['file'] === null ? BinaryRepresentation::ANY_MEDIA_TYPE : BinaryRepresentation::OCTET_STREAM),
             schema: $spec['schema'],
-            disposition: $this->disposition($spec, $name, $scope, $positional),
+            disposition: $this->disposition($spec, $name, $scope, $argument($spec['disposition'])),
             filename: $this->literalString($name, $scope) ?? ($path === null ? null : basename($path)),
         );
+    }
+
+    /**
+     * The parameter names of the method a call runs, as installed: the receiver's own where it is a class
+     * that has one, else the framework's implementation; null where that has none either.
+     *
+     * @return list<string>|null
+     */
+    private function parameterNames(?string $receiver, string $implementation, string $method): ?array
+    {
+        $class = $receiver !== null && class_exists($receiver) && method_exists($receiver, $method) ? $receiver : $implementation;
+
+        return method_exists($class, $method)
+            ? array_map(static fn (ReflectionParameter $parameter): string => $parameter->getName(), (new ReflectionMethod($class, $method))->getParameters())
+            : null;
     }
 
     /**
@@ -147,15 +179,13 @@ final class FileResponseVisitor implements TraceVisitor
      * leaves it unknown, and a call that only sets a header when a name was supplied sets none without.
      *
      * @param  CallSpec  $spec
-     * @param  list<Node\Expr>  $args
      */
-    private function disposition(array $spec, ?Node\Expr $name, TypeScope $scope, array $args): ?string
+    private function disposition(array $spec, ?Node\Expr $name, TypeScope $scope, ?Node\Expr $override): ?string
     {
         if ($spec['sets'] === null || ($spec['needsName'] && $name === null)) {
             return null;
         }
 
-        $override = $spec['disposition'] === null ? null : ($args[$spec['disposition']] ?? null);
         if ($override === null) {
             return $spec['sets'];
         }

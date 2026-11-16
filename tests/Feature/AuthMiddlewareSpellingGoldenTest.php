@@ -8,6 +8,7 @@ use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
 use Docuccino\Laravel\Pipeline\DocumentGenerator;
 use Docuccino\Laravel\Support\AuthMiddlewareNames;
+use Docuccino\Laravel\Tests\Fixtures\Middleware\ApplicationAuthenticate;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Routing\Router;
@@ -29,6 +30,9 @@ beforeEach(function (): void {
     $router = app('router');
     $router->get('api/spelling/by-alias', [FormController::class, 'index'])->middleware('auth:web');
     $router->get('api/spelling/by-class', [FormController::class, 'index'])->middleware(Authenticate::using('web'));
+    // A third spelling: the application's own alias for its own subclass of the authenticator.
+    $router->aliasMiddleware('signed-in', ApplicationAuthenticate::class);
+    $router->get('api/spelling/by-own-alias', [FormController::class, 'index'])->middleware('signed-in:web');
 
     setDocuments([
         'spelling' => [

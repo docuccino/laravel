@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Docuccino\Laravel\Tests\Fixtures\Middleware\ApplicationAuthenticate;
+use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Routing\Router;
 use Workbench\App\Http\Controllers\FormController;
 
@@ -139,3 +141,25 @@ it('leaves a flow URL carrying no credentials exactly as the application configu
     expect($flows['clientCredentials']['tokenUrl'])->toBe('https://api.acme.com/v1/oauth/token')
         ->and(array_filter($diagnostics, static fn ($d): bool => str_contains($d->message, 'credential')))->toBe([]);
 });
+
+/**
+ * The same parameters name a Passport guard: a guard whose driver is `passport` is Passport's to secure,
+ * and which alias selected it changes nothing the server does.
+ */
+it('requires the Passport scheme wherever the authenticator names a passport-driver guard', function (string $authenticator): void {
+    /** @var Router $router */
+    $router = app('router');
+    $router->aliasMiddleware('signed-in', ApplicationAuthenticate::class);
+    $router->aliasMiddleware('fw-signed-in', Authenticate::class);
+    $router->get('api/passport-authenticated', [FormController::class, 'index'])->middleware($authenticator);
+
+    $operation = passportDocument(['partner' => ['driver' => 'passport']])['paths']['/api/passport-authenticated']['get'];
+
+    expect($operation['security'] ?? null)->toBe([['passport' => []]]);
+})->with([
+    'the auth alias' => ['auth:partner'],
+    'the class spelling Authenticate::using() writes' => [Authenticate::using('partner')],
+    'the application subclass by class' => [ApplicationAuthenticate::using('partner')],
+    'an application alias of the framework authenticator' => ['fw-signed-in:partner'],
+    'an application alias of its own subclass' => ['signed-in:partner'],
+]);

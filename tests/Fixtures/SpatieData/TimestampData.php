@@ -10,8 +10,8 @@ use Spatie\LaravelData\Casts\DateTimeInterfaceCast;
 use Spatie\LaravelData\Data;
 
 /**
- * A Data class whose datetime property casts to a Unix timestamp (`format: 'U'`), so it serialises as
- * an integer rather than the default date-time string. Only ever reflected.
+ * A Data class whose datetime property casts from a Unix timestamp (`format: 'U'`), which shapes what a
+ * request sends and not what a response carries. Only ever reflected.
  */
 final class TimestampData extends Data
 {

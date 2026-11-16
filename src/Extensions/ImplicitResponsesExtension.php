@@ -19,12 +19,13 @@ use Docuccino\Core\Inference\ThrowConfidence;
 use Docuccino\Core\Inference\ThrowDisposition;
 use Docuccino\Core\Inference\ThrownException;
 use Docuccino\Core\Provenance\Source;
-use Docuccino\Laravel\Support\AuthMiddlewareDetector;
 use Docuccino\Laravel\Support\CanGate;
+use Docuccino\Laravel\Support\FormRequestFailure;
 use Docuccino\Laravel\Support\GateBody;
 use Docuccino\Laravel\Support\GateDenial;
 use Docuccino\Laravel\Support\IgnoredResponses;
 use Docuccino\Laravel\Support\MiddlewareClasses;
+use Docuccino\Laravel\Support\RouteAuthentication;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 use Illuminate\Routing\Middleware\ValidateSignature;
 use ReflectionClass;
@@ -37,10 +38,10 @@ use ReflectionClass;
  *
  *  | Status | Signal |
  *  |--------|--------|
- *  | 401    | auth middleware detected AND the route is not `#[Unauthenticated]` |
+ *  | 401    | the route runs an authenticator ({@see RouteAuthentication}) AND is not `#[Unauthenticated]` |
  *  | 422    | validation rules were recovered (Data / FormRequest / inline / action rules()), body or query |
  *  | 404    | the route has ≥1 model-bound path parameter (one 404 per operation, not per param) |
- *  | 403    | `can:` / `signed` / `verified` middleware, or a FormRequest `authorize()` not `return true` |
+ *  | 403    | `can:` / `signed` / `verified` middleware, an auth package's scope or ability middleware naming one, spatie/laravel-permission's role or permission middleware, or a FormRequest `authorize()` not `return true` |
  *
  * The 403 is inferred from the PRESENCE of a gate, which is right for `signed`/`verified` and only
  * usually right for `can:`: a policy method that returns `true` unconditionally cannot deny, and the
@@ -60,8 +61,6 @@ final class ImplicitResponsesExtension implements OperationExtension
 {
     private const PRODUCER = 'integration:implicit-response';
 
-    private const AUTHENTICATION = 'Illuminate\\Auth\\AuthenticationException';
-
     private const VALIDATION = 'Illuminate\\Validation\\ValidationException';
 
     private const MODEL_NOT_FOUND = 'Illuminate\\Database\\Eloquent\\ModelNotFoundException';
@@ -71,7 +70,9 @@ final class ImplicitResponsesExtension implements OperationExtension
     public function __construct(
         private readonly GateDenial $gates,
         private readonly MiddlewareClasses $middleware,
+        private readonly RouteAuthentication $authentication,
         private readonly ResponseDraftApplier $applier = new ResponseDraftApplier,
+        private readonly InferredResponsesExtension $responses = new InferredResponsesExtension,
     ) {}
 
     public function phase(): OperationPhase
@@ -85,14 +86,15 @@ final class ImplicitResponsesExtension implements OperationExtension
             return;
         }
 
-        // 401 — behind auth middleware and not explicitly public.
-        if (AuthMiddlewareDetector::matches($context) && ! $context->attributes->has(Unauthenticated::class)) {
-            $this->synthesize($operation, $context, 401, self::AUTHENTICATION, 'auth-middleware');
+        // 401 — behind an authenticator and not explicitly public, as whatever that authenticator throws.
+        $refusal = $this->authentication->refusal($context);
+        if ($refusal !== null && ! $context->attributes->has(Unauthenticated::class)) {
+            $this->synthesize($operation, $context, 401, $refusal, 'auth-middleware');
         }
 
         // 422 — the route validates its input, in the body or in the query.
         if ($this->hasValidatedRequest($operation)) {
-            $this->synthesize($operation, $context, 422, self::VALIDATION, 'validated-request');
+            $this->refuse($operation, $context, 422, self::VALIDATION, 'validated-request', FormRequestFailure::VALIDATION);
         }
 
         // 404 — one per operation, regardless of how many params are model-bound.
@@ -107,10 +109,14 @@ final class ImplicitResponsesExtension implements OperationExtension
         $authorization = $this->authorizationSignal($context);
         if ($authorization !== null) {
             $noOther403 = ! $operation->hasResponse('403');
-            $this->synthesize($operation, $context, 403, self::AUTHORIZATION, $authorization);
+            if ($authorization['signal'] === 'formrequest-authorize') {
+                $this->refuse($operation, $context, 403, $authorization['exception'], $authorization['signal'], FormRequestFailure::AUTHORIZATION);
+            } else {
+                $this->synthesize($operation, $context, 403, $authorization['exception'], $authorization['signal']);
+            }
 
             if ($noOther403 && $operation->hasResponse('403')) {
-                $this->reportUndeniableGates($context, $authorization);
+                $this->reportUndeniableGates($context, $authorization['signal']);
             }
         }
     }
@@ -162,6 +168,71 @@ final class ImplicitResponsesExtension implements OperationExtension
         ));
     }
 
+    /**
+     * The response a request the route's FormRequest refuses gets: what the application's override of the
+     * refusing hook answers with where it has one ({@see FormRequestFailure}), and the framework's error where it
+     * has none. The override replaces that error outright — a response it throws is documented as a returned one
+     * is, at the status it carries, and an exception it throws as an action's throw is — so the framework's body
+     * stands only where the override is the framework's own (`parent::` is read as the exception it declares) or
+     * where nothing it does could be read, which the author is told about.
+     */
+    private function refuse(
+        OperationDraft $operation,
+        RouteContext $context,
+        int $status,
+        string $exceptionFqcn,
+        string $signal,
+        string $hook,
+    ): void {
+        $failure = FormRequestFailure::of($context, $hook);
+        if ($failure === null || ! $failure->isRead()) {
+            $this->synthesize($operation, $context, $status, $exceptionFqcn, $signal);
+            if ($failure !== null) {
+                $this->reportUnreadFailure($context, $failure, $status);
+            }
+
+            return;
+        }
+
+        $this->responses->document($operation, $context, $failure->responses, null, $failure->label);
+
+        foreach ($failure->throws as $throw) {
+            $mapped = IgnoredResponses::mapThrow($context, $throw);
+            if ($mapped !== null) {
+                $this->applier->apply($operation, $mapped->draft, $mapped->producer(), $this->throwSource($context, $throw));
+            }
+        }
+    }
+
+    private function reportUnreadFailure(RouteContext $context, FormRequestFailure $failure, int $status): void
+    {
+        $context->components->addDiagnostic(new Diagnostic(
+            severity: Severity::Warning,
+            code: 'inferred-response.form-request-failure-unread',
+            message: sprintf(
+                '%s answers the request it refuses in a way this build cannot read, so the framework\'s %d is documented in its place, which may not be the response the server sends.',
+                $failure->label,
+                $status,
+            ),
+            routeSignature: $context->route->signature($context->httpMethod()),
+            help: sprintf(
+                'Throw an HttpResponseException carrying a response built where the analyzer can see it (response()->json([...], %d)), or an exception named at the throw (throw new SubmissionRefused(...)); or call parent::%s() where the framework\'s answer is the one you want.',
+                $status,
+                $failure->hook,
+            ),
+        ));
+    }
+
+    /** Where a refusal's throw is written: its deepest frame, else the action. */
+    private function throwSource(RouteContext $context, ThrownException $throw): ?Source
+    {
+        $frame = $throw->callChain === [] ? null : $throw->callChain[count($throw->callChain) - 1];
+
+        return $frame !== null && $frame->location->file !== ''
+            ? $context->sourceAt($frame->location, $throw->exceptionFqcn)
+            : $context->actionSource();
+    }
+
     private function synthesize(
         OperationDraft $operation,
         RouteContext $context,
@@ -210,10 +281,12 @@ final class ImplicitResponsesExtension implements OperationExtension
     }
 
     /**
-     * The 403 signal name, or null. Authorization middleware first (`can:`/`signed`/`verified`), then
-     * a FormRequest whose `authorize()` gate is not a literal `return true`.
+     * The 403 signal and the exception it stands for, or null. Authorization middleware first, then a
+     * FormRequest whose `authorize()` gate is not a literal `return true`.
+     *
+     * @return array{signal: string, exception: string}|null
      */
-    private function authorizationSignal(RouteContext $context): ?string
+    private function authorizationSignal(RouteContext $context): ?array
     {
         foreach ($context->route->middleware as $middleware) {
             $signal = $this->middlewareSignal($context, $middleware);
@@ -222,29 +295,32 @@ final class ImplicitResponsesExtension implements OperationExtension
             }
         }
 
-        return $this->formRequestAuthorizes($context) ? 'formrequest-authorize' : null;
+        return $this->formRequestAuthorizes($context) ? ['signal' => 'formrequest-authorize', 'exception' => self::AUTHORIZATION] : null;
     }
 
     /**
      * The 403 signal ONE middleware raises, or null. Stated once because two readers ask it: the signal
      * above takes the first answer in route order, while the reachability check needs to know whether
      * anything OTHER than a `can:` gate is also holding the 403 up.
+     *
+     * @return array{signal: string, exception: string}|null
      */
-    private function middlewareSignal(RouteContext $context, string $middleware): ?string
+    private function middlewareSignal(RouteContext $context, string $middleware): ?array
     {
         if (CanGate::matches($middleware)) {
-            return 'can-middleware';
+            return ['signal' => 'can-middleware', 'exception' => self::AUTHORIZATION];
         }
         // Asked by class, through the build's alias map: an application's own alias or subclass of either
         // middleware produces the 403 too, and an alias re-pointed elsewhere does not.
         if ($this->middleware->runs($context, $middleware, ValidateSignature::class)) {
-            return 'signed-middleware';
+            return ['signal' => 'signed-middleware', 'exception' => self::AUTHORIZATION];
         }
         if ($this->middleware->runs($context, $middleware, EnsureEmailIsVerified::class)) {
-            return 'verified-middleware';
+            return ['signal' => 'verified-middleware', 'exception' => self::AUTHORIZATION];
         }
 
-        return null;
+        // A user or token lacking what a package's middleware names, as the package throws it.
+        return $this->authentication->denial($context, $middleware);
     }
 
     /** Whether the route's FormRequest declares an authorize() gate that is not a literal `return true`. */

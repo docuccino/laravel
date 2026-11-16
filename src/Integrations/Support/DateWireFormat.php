@@ -6,12 +6,13 @@ namespace Docuccino\Laravel\Integrations\Support;
 
 use DateTimeImmutable;
 use DateTimeZone;
+use Docuccino\Core\Draft\SchemaNotes;
 
 /**
  * A PHP `date()` format string → what a value written with it publishes. One home for the policy, because
- * three readers ask the same question: a Data class's response properties read the app's
- * `data.date_format`, its request properties read whatever the property's most specific source states,
- * and an Eloquent `datetime:FORMAT` cast reads its own parameter.
+ * three readers ask the same question: a Data class's response properties read the format their transformer
+ * writes, its request properties the one their cast reads, and an Eloquent `datetime:FORMAT` cast its own
+ * parameter.
  *
  * The `format` claim is an ALLOW-LIST rather than a heuristic: `date`/`date-time` name RFC 3339 shapes and
  * nothing else, so a pattern that writes something else publishes a string naming the pattern instead of a
@@ -26,7 +27,7 @@ final class DateWireFormat
     /** The one PHP format whose value is an integer rather than a formatted string. */
     public const UNIX = 'U';
 
-    /** What a `U` value is, in the one sentence both directions say it with. */
+    /** What an integer epoch is, in the one sentence every reader says it with. */
     public const TIMESTAMP_NOTE = 'Unix timestamp (seconds).';
 
     /** The instant every {@see example()} is of: a constant, so no clock or locale reaches the document. */
@@ -56,7 +57,9 @@ final class DateWireFormat
 
     /**
      * The schema a value SERIALIZED with this format publishes: the `format` keyword where one is honest,
-     * else a string with the pattern named in prose — a vague true shape beats a precise false one.
+     * else a string with the pattern named in a note — a vague true shape beats a precise false one. A
+     * note ({@see SchemaNotes}) rather than the description, so prose the property's author writes leads
+     * it instead of replacing it.
      *
      * @return array<string, mixed>
      */
@@ -66,13 +69,55 @@ final class DateWireFormat
 
         return $oas !== null
             ? ['type' => 'string', 'format' => $oas]
-            : ['type' => 'string', 'description' => sprintf('Serialized using the date format "%s".', $phpFormat)];
+            : SchemaNotes::onto(['type' => 'string'], [sprintf('Serialized using the date format "%s".', $phpFormat)]);
     }
 
-    /** The note naming a pattern the request ACCEPTS, for a reader whose `format` keyword cannot say it. */
-    public static function expected(string $phpFormat): string
+    /**
+     * What a value serialized as an integer Unix timestamp publishes, its meaning as a note for the reason
+     * {@see serializedSchema()} gives.
+     *
+     * @return array<string, mixed>
+     */
+    public static function timestampSchema(): array
     {
-        return sprintf('Expected format: %s', $phpFormat);
+        return SchemaNotes::onto(['type' => 'integer'], [self::TIMESTAMP_NOTE]);
+    }
+
+    /**
+     * The OAS `format` every value written with any of these patterns satisfies, or null where they do not
+     * all share one: a request accepting `d/m/Y` or `Y-m-d` takes a value no single keyword names.
+     *
+     * @param  non-empty-list<string>  $phpFormats
+     */
+    public static function oasOfAll(array $phpFormats): ?string
+    {
+        $named = array_unique(array_map(self::oas(...), $phpFormats));
+
+        return count($named) === 1 ? reset($named) : null;
+    }
+
+    /**
+     * The note naming the pattern a request ACCEPTS, or the patterns where it accepts any of several, for a
+     * reader whose `format` keyword cannot say it. Several are quoted, as a pattern may hold a comma.
+     */
+    public static function expected(string $phpFormat, string ...$more): string
+    {
+        if ($more === []) {
+            return sprintf('Expected format: %s', $phpFormat);
+        }
+
+        return sprintf('Expected format: one of "%s"', implode('", "', [$phpFormat, ...$more]));
+    }
+
+    /**
+     * The pattern the values `createFromFormat()` READS with `$phpFormat` are written in: the format less its
+     * unescaped `!` and `|`, which reset fields rather than match a byte, and which `format()` would write
+     * literally. Only for a reader that parses with no round trip — Laravel's `date_format` rule formats the
+     * parsed value back and compares, so its `!` is a byte no value matches.
+     */
+    public static function readPattern(string $phpFormat): string
+    {
+        return preg_replace('/\\\\.(*SKIP)(*FAIL)|[!|]/s', '', $phpFormat) ?? $phpFormat;
     }
 
     /** The fixed instant rendered with the pattern — the bytes the wire really carries. */

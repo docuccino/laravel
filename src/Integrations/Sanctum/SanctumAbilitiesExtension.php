@@ -6,7 +6,6 @@ namespace Docuccino\Laravel\Integrations\Sanctum;
 
 use Docuccino\Attributes\Abilities;
 use Docuccino\Attributes\Unauthenticated;
-use Docuccino\Core\Draft\DescriptionAppender;
 use Docuccino\Core\Draft\OperationDraft;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\OperationExtension;
@@ -16,8 +15,8 @@ use Docuccino\Core\Patch\Contribution;
 /**
  * Documents the Sanctum token abilities an operation requires. Each `abilities:`/`ability:` middleware (or
  * the deprecated `CheckScopes`/`CheckForAnyScope` FQCN forms) and each `#[Abilities]` attribute becomes an
- * entry in the machine-readable `x-abilities` member, plus a "Requires token ability: …" line on the
- * description. `sanctumToken` is an HTTP bearer scheme, so OAS can't carry abilities as scopes — hence the
+ * entry in the machine-readable `x-abilities` member, plus a "Requires token ability: …" line after
+ * whatever description the operation has. `sanctumToken` is an HTTP bearer scheme, so OAS can't carry abilities as scopes — hence the
  * extension member. Skipped for `#[Unauthenticated]`, where an abilities line would contradict
  * `security: []`.
  */
@@ -90,6 +89,6 @@ final class SanctumAbilitiesExtension implements OperationExtension
     {
         $sentences = array_unique(array_map(static fn (AbilityRequirement $r): string => $r->describe(), $requirements));
 
-        DescriptionAppender::append($operation, implode("\n\n", $sentences), $contribution);
+        $operation->declareDescriptionNote(implode("\n\n", $sentences), $contribution);
     }
 }

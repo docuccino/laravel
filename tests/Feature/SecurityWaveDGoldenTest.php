@@ -7,6 +7,7 @@ use Docuccino\Core\Emit\UirEmitter;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Laravel\Config\DocumentConfigFactory;
 use Docuccino\Laravel\Pipeline\DocumentGenerator;
+use Docuccino\Laravel\Tests\Fixtures\Middleware\ApplicationAuthenticate;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Routing\Router;
@@ -52,6 +53,11 @@ beforeEach(function (): void {
     // alias-only reading resolved no driver and no integration claimed the route.
     $router->get('api/wave-d/partner-by-class', [FormController::class, 'index'])
         ->middleware(Authenticate::using('partner'));
+    // The same guards named through the application's own alias for its own authenticator: its
+    // parameters select the guard whatever the alias, so each route is the integration's its guard names.
+    $router->aliasMiddleware('signed-in', ApplicationAuthenticate::class);
+    $router->get('api/wave-d/partner-own-alias', [FormController::class, 'index'])->middleware('signed-in:partner');
+    $router->get('api/wave-d/token-own-alias', [FormController::class, 'index'])->middleware('signed-in:sanctum');
     // One authorization requirement written two ways: spatie's alias on the group, and the class name
     // its `::using()` helper renders on the route. The middleware list is unique by string, so both
     // survive to the producer and the published requirement has to be one either way.
@@ -59,6 +65,10 @@ beforeEach(function (): void {
         $router->get('api/wave-d/moderated', [FormController::class, 'index'])
             ->middleware(PermissionMiddleware::class.':moderate forms,web');
     });
+    // A token ability and a permission on one documented action: two requirements, each of which
+    // has its own line, beneath the description the action's docblock writes.
+    $router->get('api/wave-d/moderated-reports', [FormController::class, 'index'])
+        ->middleware(['auth:sanctum', 'abilities:read', 'permission:moderate forms,web']);
     // An ability the middleware names twice, beside the `#[Abilities]` attribute restating what the
     // middleware already says — the two ways an application belts and braces one token ability.
     $router->post('api/wave-d/publish-twice', [AuthAttributesController::class, 'publish'])

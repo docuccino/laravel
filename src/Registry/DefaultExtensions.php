@@ -31,6 +31,7 @@ use Docuccino\Laravel\Extensions\FrameworkResponseTypeToSchema;
 use Docuccino\Laravel\Extensions\IgnoredParametersExtension;
 use Docuccino\Laravel\Extensions\ImplicitResponsesExtension;
 use Docuccino\Laravel\Extensions\InferredResponsesExtension;
+use Docuccino\Laravel\Extensions\MessageBagTypeToSchema;
 use Docuccino\Laravel\Extensions\PathParametersExtension;
 use Docuccino\Laravel\Extensions\RecordedExamplesExtension;
 use Docuccino\Laravel\Extensions\RequestHeadersExtension;
@@ -45,7 +46,10 @@ use Docuccino\Laravel\Integrations\FormRequest\ValidationRequestExtension;
 use Docuccino\Laravel\Integrations\FrameworkErrors\FrameworkErrorsIntegration;
 use Docuccino\Laravel\Integrations\InferredHandler\InferredHandlerIntegration;
 use Docuccino\Laravel\Integrations\Support\AuthConfigDigestContributor;
+use Docuccino\Laravel\Integrations\Support\PageSizeDefaultExtension;
 use Docuccino\Laravel\Integrations\Validation\ValidationIntegration;
+use Docuccino\Laravel\Links\ResponseLinkAssembly;
+use Docuccino\Laravel\Links\ResponseLinkFacts;
 use Docuccino\Laravel\Routing\LaravelRouteResolver;
 use Docuccino\Laravel\Support\GatePoliciesDigestContributor;
 use Docuccino\Laravel\Support\LeakageDigestContributor;
@@ -109,6 +113,9 @@ final class DefaultExtensions
             // Finalize: every parameter every producer contributes now exists, so the subtractive
             // #[IgnoreParam] can drop one without a later producer writing it back.
             IgnoredParametersExtension::class,
+            // Finalize: every bound a page-size parameter carries has been written, so a fallback outside
+            // them can move into prose.
+            PageSizeDefaultExtension::class,
             // Finalize: a status only becomes a $ref once a mapper resolves, so this is the first point
             // at which a declared error-component name is known to have reached nothing.
             DeclaredErrorComponentsExtension::class,
@@ -148,11 +155,12 @@ final class DefaultExtensions
             ...$enabled('passport'),
             ...$enabled('permission'),
             // Ahead of the core mappers: a framework response object and a rendered view are transport,
-            // not bodies, and a collection is the array it holds, so none may reach the framework-agnostic
-            // class mapper and be reflected into a component.
+            // not bodies, and a collection and a validator's message bag are the arrays they hold, so none may
+            // reach the framework-agnostic class mapper and be reflected into a component.
             FrameworkResponseTypeToSchema::class,
             ViewTypeToSchema::class,
             EnumerableTypeToSchema::class,
+            MessageBagTypeToSchema::class,
             ...DefaultTypeMappers::all(),
             // Collapses an error body repeated across operations into one shared component + $refs.
             // The only document transformer that moves a byte, so everything reading the finished
@@ -167,6 +175,10 @@ final class DefaultExtensions
             // rides the operation fragment, so a warm build assembles the same workflows a cold one does.
             WorkflowStepExtension::class,
             WorkflowAssembly::class,
+            // Records what each operation's code proves about the links it takes part in, and joins them
+            // into response `links` once the whole route set — versioned — has been seen.
+            ResponseLinkFacts::class,
+            ResponseLinkAssembly::class,
             // The document lints. All diagnostics-only, and all pinned to Priorities::LAST so they read
             // what will be emitted — this list's order is not what settles that, the attribute is.
             SensitiveFieldLint::class,

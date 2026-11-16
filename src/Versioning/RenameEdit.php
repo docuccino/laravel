@@ -32,6 +32,12 @@ final readonly class RenameEdit implements VersionVerb
         private SchemaFacet $facet,
     ) {}
 
+    /** Today's name of the member, which older documents publish under another — and may give to another field. */
+    public function retiredMember(): string
+    {
+        return $this->to;
+    }
+
     public function schema(): string
     {
         return $this->schema;

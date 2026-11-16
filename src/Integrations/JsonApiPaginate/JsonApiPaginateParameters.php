@@ -27,9 +27,11 @@ final class JsonApiPaginateParameters
         $defaultSize = $facts->defaultSizeOverride ?? $config->defaultSize;
         $maxResults = $facts->maxResultsOverride ?? $config->maxResults;
 
+        // The package clamps every size to the maximum, the default included, so a default above it pages
+        // by the maximum.
         $size = new QueryParameterSpec(
             name: $config->bracket($config->sizeParameter),
-            schema: ['type' => 'integer', 'default' => $defaultSize, 'minimum' => 1, 'maximum' => $maxResults],
+            schema: ['type' => 'integer', 'default' => min($defaultSize, $maxResults), 'minimum' => 1, 'maximum' => $maxResults],
             description: 'Number of results per page.',
         );
 

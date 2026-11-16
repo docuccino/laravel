@@ -62,6 +62,18 @@ final class ViewerConfig
     }
 
     /**
+     * Whether the viewers in effect are the ones the package ships: the application set no `documents`
+     * of its own, so the framework merged the shipped map in, or it published that map unchanged.
+     */
+    public static function shippedDefault(): bool
+    {
+        /** @var array<string, mixed> $shipped */
+        $shipped = require dirname(__DIR__, 2).'/config/docuccino.php';
+
+        return config('docuccino.documents') === ($shipped['documents'] ?? null);
+    }
+
+    /**
      * Every document's viewer bag, keyed by document, exactly as the framework config holds it.
      *
      * @return array<string, array<string, mixed>>

@@ -41,6 +41,7 @@ final class DiffCommand extends Command
     use ReadsCommittedArtifact;
     use RefusesUnreadConfig;
     use RendersDiagnostics;
+    use StartsConsoleBuild;
     use StringOptions;
 
     protected $signature = 'docuccino:diff

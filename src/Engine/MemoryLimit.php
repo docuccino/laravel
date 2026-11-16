@@ -4,17 +4,27 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Engine;
 
+use Docuccino\Core\Pipeline\WorkerCount;
+
 /**
  * The php.ini memory ceiling in-process inference runs under. In-process PHPStan analyses inside the
  * calling process, so the ceiling is whatever that process started with — and exhausting it is an
  * uncatchable fatal, the one failure mode the engine's "degrade rather than fail" promise cannot cover.
  *
  * Raise-only, deliberately: the knob exists to stop an OOM, so it never lowers a ceiling, never caps a
- * process that is already unlimited, and never removes a ceiling either. Pure, so every shorthand and
- * comparison is dataset-testable.
+ * process that is already unlimited, and never removes a ceiling either. Where nothing usable is configured
+ * the target is {@see DEFAULT}, under the same rule. Pure, so every shorthand and comparison is
+ * dataset-testable.
  */
 final class MemoryLimit
 {
+    /**
+     * The ceiling a console build raises itself to when none is configured. PHP's stock 128M is less than a
+     * small application's cold build needs; this is what Composer does for itself at 1.5G. Kept below that
+     * because a worker is counted at the whole ceiling where a container caps memory ({@see WorkerCount}).
+     */
+    public const string DEFAULT = '1G';
+
     /** php.ini shorthand suffixes, in bytes. */
     private const UNITS = ['k' => 1024, 'm' => 1048576, 'g' => 1073741824];
 
@@ -50,25 +60,29 @@ final class MemoryLimit
     }
 
     /**
-     * The limit worth setting, or null to leave the process alone — nothing configured, a value PHP
-     * wouldn't accept, or a ceiling no higher than the one already in force.
+     * The limit worth setting, or null to leave the process alone because the ceiling in force is already
+     * at least as high. The configured value wins where it is one PHP would accept; otherwise — nothing
+     * configured, a blank, a value PHP wouldn't accept — {@see DEFAULT} is the target.
      *
      * `-1` is readable but not askable: this knob exists to stop an OOM, and removing the ceiling
-     * altogether is the opposite of that. A process that already runs unlimited is still left alone.
+     * altogether is the opposite of that, so it counts as nothing configured. A process that already runs
+     * unlimited is still left alone.
      */
     public static function target(?string $configured, string $current): ?string
     {
-        if ($configured === null || trim($configured) === '' || trim($configured) === self::UNLIMITED) {
-            return null;
-        }
-
-        $wanted = self::bytes($configured);
-        if ($wanted === null) {
-            return null;
-        }
-
+        $wanted = self::askable($configured) ?? self::DEFAULT;
         $inForce = self::bytes($current);
 
-        return $inForce !== null && $inForce >= $wanted ? null : trim($configured);
+        return $inForce !== null && $inForce >= self::bytes($wanted) ? null : $wanted;
+    }
+
+    /** The configured ceiling, trimmed, where it is one worth asking for; null where it isn't. */
+    private static function askable(?string $configured): ?string
+    {
+        $configured = trim((string) $configured);
+
+        return $configured === '' || $configured === self::UNLIMITED || self::bytes($configured) === null
+            ? null
+            : $configured;
     }
 }

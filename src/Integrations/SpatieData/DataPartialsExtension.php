@@ -32,6 +32,9 @@ final class DataPartialsExtension implements OperationExtension
         'except' => 'Comma-separated deny-list of properties to omit from the response.',
     ];
 
+    /** What each partial's `type: string` cannot say, kept beneath a description written over this one. */
+    private const SEPARATOR_NOTE = 'Values are separated by `,`.';
+
     public function __construct(private readonly DataClassReflector $reflector = new DataClassReflector) {}
 
     public function phase(): OperationPhase
@@ -55,6 +58,7 @@ final class DataPartialsExtension implements OperationExtension
         foreach ($partials as $partial) {
             $parameter = $operation->parameter('query', $partial);
             $parameter->setDescription(self::DESCRIPTIONS[$partial], $contribution);
+            $parameter->declareDescriptionNote(self::SEPARATOR_NOTE, $contribution, inOwnDescription: true);
             $parameter->setRequired(false, $contribution);
             $parameter->schema()->set('type', 'string', $contribution);
         }

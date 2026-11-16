@@ -49,6 +49,7 @@ final class ExportCommand extends Command
     use IteratesDocuments;
     use RefusesUnreadConfig;
     use RendersDiagnostics;
+    use StartsConsoleBuild;
     use StringOptions;
 
     protected $signature = 'docuccino:export

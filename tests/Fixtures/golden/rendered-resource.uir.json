@@ -659,7 +659,7 @@
         "responses": {
           "201": {
             "x-docuccino": {
-              "id": "res:v1:vja34mb5averf3ni",
+              "id": "res:v1:x6qug37esqqf6fci",
               "provenance": [
                 {
                   "producer": "integration:api-resources",
@@ -677,7 +677,7 @@
             },
             "description": "Created",
             "content": {
-              "application/json": {
+              "application/vnd.release+json": {
                 "schema": {
                   "x-docuccino": {
                     "provenance": [
@@ -1204,7 +1204,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "d048646f92e735ae8431aad0ea7848051c65dc7c721d521484157108198e3f08"
+      "contentHash": "d5540b8158918b393711602804d1647e75344aa0fc32f6a456af1c260046e143"
     },
     "generator": {
       "name": "docuccino/laravel",

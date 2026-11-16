@@ -8,15 +8,20 @@ use Docuccino\Laravel\Integrations\SpatieData\WrapSightings;
 use Docuccino\Laravel\Integrations\SpatieData\WrapUncertainty;
 use Docuccino\Laravel\Integrations\Support\ParsedClassFile;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\AuthorData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\AuthorPageData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ComputedWrapData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\DeferredContextProblemData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\FromBuiltPageData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\HelperContextProblemData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\NamedBuiltPageData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\NestedTransformDisabledData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\NestedUnwrappedData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\NestedWrapDisabledData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\OwnResponseProblemData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ProblemDocumentData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\SiblingWrapData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\StaticBuiltPageData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\ThreadData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\WrappedData;
 
 /*
@@ -180,6 +185,12 @@ it('raises each reason off the shape that spells it, and none off the shapes tha
     $rows = [
         // `$this->withoutWrapping()` — a chain of method hops off the object itself.
         ProblemDocumentData::class => ['SelfWithoutWrapping'],
+        // …and off an instance the class builds of itself and returns, which is the object it hands
+        // out: `new self`, `new static`, `new` by name and `from()`.
+        AuthorPageData::class => ['SelfWithoutWrapping'],
+        StaticBuiltPageData::class => ['SelfWithoutWrapping'],
+        NamedBuiltPageData::class => ['SelfWithoutWrapping'],
+        FromBuiltPageData::class => ['SelfWithoutWrapping'],
         // A disabled transformation handed straight to `$this->transform(…)`.
         OwnResponseProblemData::class => ['SelfTransformDisabled'],
         NestedWrapDisabledData::class => ['SelfTransformDisabled'],
@@ -187,6 +198,9 @@ it('raises each reason off the shape that spells it, and none off the shapes tha
         DeferredContextProblemData::class => ['SelfTransformDisabled'],
         // A hop through a helper: the vocabulary is here and no receiver can be named for it.
         HelperContextProblemData::class => ['UnattributedDisabling'],
+        // Instances of itself built unwrapped and NOT returned by the method — passed into the one it
+        // returns, or returned by a closure — so nothing says they are the object handed out.
+        ThreadData::class => ['UnattributedDisabling'],
         // The vocabulary aimed at a value the object HOLDS, in both of spatie's spellings. Neither
         // speaks for the root and neither reaches the ordinary serialisation of anything, so both
         // raise nothing — a different silence from the one below, and the resolver rows are where
@@ -208,7 +222,7 @@ it('raises each reason off the shape that spells it, and none off the shapes tha
         $file = (new ReflectionClass($fqcn))->getFileName();
         expect($file)->toBeString();
 
-        $standing = WrapSightings::standing(ParsedClassFile::methodsOf((string) $file, $fqcn));
+        $standing = WrapSightings::standing(ParsedClassFile::methodsOf((string) $file, $fqcn), $fqcn);
 
         $raised[$fqcn] = array_keys($standing);
         sort($raised[$fqcn]);
@@ -220,7 +234,7 @@ it('raises each reason off the shape that spells it, and none off the shapes tha
     // reason is there. Without this the row above would pass just as well on a scan that found
     // nothing anywhere.
     $neighbour = 'Docuccino\Laravel\Tests\Fixtures\SpatieData\SiblingWrapProblemData';
-    $raised[$neighbour] = array_keys(WrapSightings::standing(ParsedClassFile::methodsOf($sibling, $neighbour)));
+    $raised[$neighbour] = array_keys(WrapSightings::standing(ParsedClassFile::methodsOf($sibling, $neighbour), $neighbour));
     $expected[$neighbour] = ['SelfWithoutWrapping'];
 
     expect($raised)->toBe($expected);
@@ -248,6 +262,7 @@ it('publishes the envelope a class really sends, and says which ones it could no
     $rows = [
         // Unwrapped: the class takes its own envelope off, in each spelling spatie offers.
         'withoutWrapping() on itself' => [ProblemDocumentData::class, null, null],
+        'withoutWrapping() on itself as a named constructor builds and returns it' => [AuthorPageData::class, null, null],
         'a disabled transformation of itself' => [OwnResponseProblemData::class, null, null],
         'the same, built into a local first' => [DeferredContextProblemData::class, null, null],
         // Wrapped: what the class disables belongs to a value it HOLDS. Spatie resolves the root's
@@ -261,6 +276,7 @@ it('publishes the envelope a class really sends, and says which ones it could no
         'a neighbour in the same file unwraps itself' => [SiblingWrapData::class, 'data', null],
         // Wrapped, and said out loud: the vocabulary is here and its receiver could not be named.
         'a disabling no receiver could be named for' => [HelperContextProblemData::class, 'data', 'spatie-data.root-wrap-unsettled'],
+        'instances of itself it unwraps and does not return' => [ThreadData::class, 'data', 'spatie-data.root-wrap-unsettled'],
         // Wrapped, and said out loud: the key itself could not be read off the override.
         'a defaultWrap() that returns no literal' => [ComputedWrapData::class, 'data', 'spatie-data.root-wrap-unsettled'],
         // Wrapped, quietly: the ordinary cases.

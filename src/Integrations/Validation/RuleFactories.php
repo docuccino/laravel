@@ -48,15 +48,8 @@ final class RuleFactories
      */
     public static function ruleString(string $factory, array $args): ?string
     {
-        $factory = ltrim($factory, '\\');
-        $separator = strrpos($factory, '::');
-        if ($separator === false || strcasecmp(substr($factory, 0, $separator), self::RULE) !== 0) {
-            return null;
-        }
-
-        $method = substr($factory, $separator + 2);
-        $reflection = self::method($method);
-        if ($reflection === null || self::returns($method) !== 'string' || count($args) < $reflection->getNumberOfRequiredParameters()) {
+        $method = self::staticOf($factory);
+        if ($method === null || self::returns($method->getName()) !== 'string') {
             return null;
         }
 
@@ -69,13 +62,43 @@ final class RuleFactories
             $values[] = $arg->scalar;
         }
 
-        try {
-            $rule = $reflection->invoke(null, ...$values);
-        } catch (Throwable) {
+        $rule = self::call($method, $values);
+
+        return is_string($rule) ? $rule : null;
+    }
+
+    /**
+     * The public static of the installed `Rule` a factory names, or null where it names another class, a
+     * macro or nothing.
+     *
+     * @param  string  $factory  `Illuminate\Validation\Rule::nullable`
+     */
+    public static function staticOf(string $factory): ?ReflectionMethod
+    {
+        $factory = ltrim($factory, '\\');
+        $separator = strrpos($factory, '::');
+
+        return $separator === false || strcasecmp(substr($factory, 0, $separator), self::RULE) !== 0
+            ? null
+            : self::method(substr($factory, $separator + 2));
+    }
+
+    /**
+     * What a static of `Rule` returns for these values, or null where they are too few or it throws.
+     *
+     * @param  list<mixed>  $values
+     */
+    private static function call(ReflectionMethod $method, array $values): mixed
+    {
+        if (count($values) < $method->getNumberOfRequiredParameters()) {
             return null;
         }
 
-        return is_string($rule) ? $rule : null;
+        try {
+            return $method->invoke(null, ...$values);
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     /** `'string'`, a class name, or null for any other declared return. */

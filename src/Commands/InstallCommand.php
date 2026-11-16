@@ -39,6 +39,7 @@ final class InstallCommand extends Command
 {
     use GuardsEnabled;
     use PrintsSections;
+    use StartsConsoleBuild;
 
     /** How many route prefixes are worth listing when nothing matched. */
     private const int PREFIX_LIMIT = 8;

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Docuccino\Core\Draft\OperationDraft;
+use Docuccino\Core\Draft\SchemaNotes;
 use Docuccino\Core\Extensions\BuiltIn\DefaultTypeMappers;
 use Docuccino\Core\Extensions\Context\AttributeSet;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
@@ -18,21 +19,29 @@ use Docuccino\Core\Extensions\Validation\ValidationRule;
 use Docuccino\Core\Extensions\Validation\ValidationSchema;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Inference\ClassMetadata;
+use Docuccino\Core\Inference\DType\ArrayShapeField;
+use Docuccino\Core\Inference\DType\ArrayShapeT;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\DType\ListT;
+use Docuccino\Core\Inference\DType\LiteralT;
 use Docuccino\Core\Inference\DType\NullT;
 use Docuccino\Core\Inference\DType\ScalarT;
 use Docuccino\Core\Inference\DType\UnionT;
 use Docuccino\Core\Inference\NullTypeEngine;
 use Docuccino\Core\Inference\PropertyMetadata;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
+use Docuccino\Laravel\Integrations\FormRequest\ConstValueToRules;
+use Docuccino\Laravel\Integrations\FormRequest\ShapeToRuleSet;
 use Docuccino\Laravel\Integrations\SpatieData\DataClassReflector;
 use Docuccino\Laravel\Integrations\SpatieData\DataRequestExtension;
 use Docuccino\Laravel\Integrations\SpatieData\DataValidationRules;
+use Docuccino\Laravel\Integrations\Support\RuleDialect;
+use Docuccino\Laravel\Integrations\Validation\LiveRuleValue;
 use Docuccino\Laravel\Integrations\Validation\RuleOrdering;
 use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
 use Docuccino\Laravel\Integrations\Validation\ValidationIntegration;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\AddressData;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\AttributeKeywordData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\BaseApiData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\CustomMappedController;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\CustomMappedData;
@@ -42,6 +51,7 @@ use Docuccino\Laravel\Tests\Fixtures\SpatieData\InheritedMergeRulesData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\MergedRulesController;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\MergedRulesData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ReversedNameMapper;
+use Docuccino\Laravel\Tests\Fixtures\SpatieData\RuleObjectChoicesData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\ValidatedData;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationRuleParser;
@@ -49,14 +59,14 @@ use Spatie\LaravelData\Support\Validation\ValidationPath;
 use Workbench\App\Enums\WidgetStatus;
 
 /**
- * Exhaustive coverage of the spatie validation-attribute → Laravel rule-token map ({@see
- * DataClassReflector::validationTokens()}): every supported attribute is recovered as the right
- * token, and an unsupported attribute degrades with the same permissive + info-diagnostic contract
+ * Coverage of the spatie validation-attribute → Laravel rule-token reading ({@see
+ * DataClassReflector::attributeRules()}): attributes are recovered as the rule laravel-data writes
+ * for them, and one the vocabulary has no reader for degrades with the same permissive + info-diagnostic contract
  * as an unknown string rule. The token is then shown to drive the SHARED validation chain to the
  * expected schema effect.
  */
 it('recovers the right Laravel rule token from every supported spatie validation attribute', function (string $property, string $expected): void {
-    expect((new DataClassReflector)->validationTokens(ValidatedData::class, $property))->toBe([$expected]);
+    expect((new DataClassReflector)->attributeRules(ValidatedData::class, $property)[0])->toBe([$expected]);
 })->with([
     'Required' => ['required', 'required'],
     'Nullable' => ['nullable', 'nullable'],
@@ -64,7 +74,8 @@ it('recovers the right Laravel rule token from every supported spatie validation
     'Present' => ['present', 'present'],
     'Prohibited' => ['prohibited', 'prohibited'],
     'Filled' => ['filled', 'filled'],
-    'Email' => ['email', 'email'],
+    // laravel-data checks an address written with no mode against RFC 5322, and writes so.
+    'Email' => ['email', 'email:rfc'],
     'Url' => ['url', 'url'],
     'ActiveUrl' => ['activeUrl', 'active_url'],
     'Uuid' => ['uuid', 'uuid'],
@@ -84,8 +95,6 @@ it('recovers the right Laravel rule token from every supported spatie validation
     'Min' => ['min', 'min:1'],
     'Size' => ['size', 'size:10'],
     'Between' => ['between', 'between:1,10'],
-    'In' => ['in', 'in:draft,published'],
-    'NotIn' => ['notIn', 'not_in:x,y'],
     'Regex' => ['regex', 'regex:/^[a-z]+$/'],
     'DateFormat' => ['dateFormat', 'date_format:Y-m-d'],
     'MaxDigits' => ['maxDigits', 'max_digits:5'],
@@ -93,36 +102,62 @@ it('recovers the right Laravel rule token from every supported spatie validation
     'DigitsBetween' => ['digitsBetween', 'digits_between:1,5'],
     'StartsWith' => ['startsWith', 'starts_with:a'],
     'EndsWith' => ['endsWith', 'ends_with:z'],
-    // Not in the reflector's map → snake-cased short name; recovery is independent of whether a
-    // transformer then handles the token (the chain now maps `accepted` → const, but the token
-    // recovery under test here is unchanged).
-    'Accepted (not in the reflector map)' => ['accepted', 'accepted'],
+    'Accepted' => ['accepted', 'accepted'],
 ]);
 
-it('reads an enum case in #[In] and #[NotIn] as the value Laravel compares, never dropping it', function (string $property, string $expected): void {
-    $reflected = (new ReflectionProperty(EnumCaseChoicesData::class, $property))->getAttributes()[0];
+it('recovers the rule an attribute names itself, not its class name', function (string $property, string $expected): void {
+    // laravel-data writes each attribute's rule from its own keyword(), so `#[GreaterThan(5)]` is `gt:5`; its class
+    // name snake-cased (`greater_than`) is a rule Laravel has never heard of.
+    expect((new DataClassReflector)->attributeRules(AttributeKeywordData::class, $property)[0])->toBe([$expected]);
+})->with([
+    'ListType' => ['items', 'list'],
+    'GreaterThan' => ['above', 'gt:5'],
+    'GreaterThanOrEqualTo' => ['atLeast', 'gte:5'],
+    'LessThan' => ['below', 'lt:10'],
+    'LessThanOrEqualTo' => ['atMost', 'lte:10'],
+    'IPv4' => ['v4', 'ipv4'],
+    'IPv6' => ['v6', 'ipv6'],
+    'MimeTypes' => ['avatar', 'mimetypes:image/png'],
+    // Its parameters come in the order the attribute declares them, not the order they were named in.
+    'Between, named out of order' => ['count', 'between:1,10'],
+]);
+
+it('reads an #[In] or #[NotIn] as the rule laravel-data builds from it, as Laravel parses that rule', function (string $fqcn, string $property, string $name, array $parameters, bool $case): void {
+    $reflected = (new ReflectionProperty($fqcn, $property))->getAttributes()[0];
 
     // spatie/laravel-data takes a case in these attributes from 4.21; before it, PHP refuses one, so no
     // application on that version can write what this reads.
     $takes = (new ReflectionParameter([$reflected->getName(), '__construct'], 0))->getType();
     $types = $takes instanceof ReflectionUnionType ? $takes->getTypes() : [$takes];
 
-    if (! in_array(UnitEnum::class, array_map(static fn ($type): string => $type instanceof ReflectionNamedType ? $type->getName() : '', $types), true)) {
+    if ($case && ! in_array(UnitEnum::class, array_map(static fn ($type): string => $type instanceof ReflectionNamedType ? $type->getName() : '', $types), true)) {
         $this->markTestSkipped('The installed spatie/laravel-data takes no enum case in #['.class_basename($reflected->getName()).'].');
     }
 
-    // Spatie hands the cases to Laravel's In/NotIn, which cast a backed case to its backing value and a pure
-    // one to its name. The rule Laravel's parser reads off the rule Spatie builds is the one owed.
+    // Spatie hands the values to Laravel's In/NotIn, which writes each as PHP makes it a string: a backed case
+    // as its backing value, a pure one as its name, `true` as "1" and `false` as "". Laravel's parser then reads
+    // the list as CSV, so a quoted value keeps its comma. What it reads off the rule Spatie builds is owed.
     $attribute = $reflected->newInstance();
-    [$name, $parameters] = ValidationRuleParser::parse((string) $attribute->getRule(ValidationPath::create()));
+    [$parsed, $owed] = ValidationRuleParser::parse((string) $attribute->getRule(ValidationPath::create()));
 
-    expect((new DataClassReflector)->validationTokens(EnumCaseChoicesData::class, $property))->toBe([$expected])
-        ->and(Str::snake($name).':'.implode(',', $parameters))->toBe($expected);
+    $read = [];
+    foreach ((new DataClassReflector)->attributeRules($fqcn, $property)[1] as $object) {
+        $read = [...$read, ...(new ConstValueToRules)->fold(LiveRuleValue::of($object))];
+    }
+
+    expect((new DataClassReflector)->attributeRules($fqcn, $property)[0])->toBe([])
+        ->and(array_map(static fn (ValidationRule $rule): array => [$rule->name, $rule->parameters], $read))->toBe([[$name, $parameters]])
+        ->and([Str::snake($parsed), $owed])->toBe([$name, $parameters]);
 })->with([
-    'a case beside a value' => ['schedule', 'in:draft,scheduled'],
-    'int-backed cases' => ['priority', 'in:1,10'],
-    'a pure case' => ['channel', 'in:Email'],
-    'an excluded case' => ['phase', 'not_in:archived'],
+    'values' => [ValidatedData::class, 'in', 'in', ['draft', 'published'], false],
+    'excluded values' => [ValidatedData::class, 'notIn', 'not_in', ['x', 'y'], false],
+    'a case beside a value' => [EnumCaseChoicesData::class, 'schedule', 'in', ['draft', 'scheduled'], true],
+    'int-backed cases' => [EnumCaseChoicesData::class, 'priority', 'in', ['1', '10'], true],
+    'a pure case' => [EnumCaseChoicesData::class, 'channel', 'in', ['Email'], true],
+    'an excluded case' => [EnumCaseChoicesData::class, 'phase', 'not_in', ['archived'], true],
+    'both booleans' => [RuleObjectChoicesData::class, 'consent', 'in', ['1', ''], false],
+    'false excluded' => [RuleObjectChoicesData::class, 'agreed', 'not_in', [''], false],
+    'a value holding a comma' => [RuleObjectChoicesData::class, 'pair', 'in', ['a,b', 'c'], false],
 ]);
 
 it('records the enum a validation attribute quotes values from, so editing it re-documents the rule', function (): void {
@@ -184,6 +219,31 @@ it('degrades an unsupported spatie validation attribute like an unknown string r
     expect($unhandled)->toHaveCount(1);
 });
 
+it('reads an attribute that builds a rule object as the rules Laravel validates with that object', function (string $attribute, string $source, ClassT|ScalarT $type, array $schema, array $unread): void {
+    $carrier = attributeCarrier('Spatie\\LaravelData\\Attributes\\Validation\\'.$attribute, $source);
+    $context = new SchemaConverter(DefaultTypeMappers::all(), new NullTypeEngine, new ComponentRegistry, new RepresentationPolicy);
+
+    $rules = new DataValidationRules;
+    $ruleSet = $rules->build($carrier, new ClassMetadata($carrier, [new PropertyMetadata('value', $type)]), new NullTypeEngine, null, $context);
+    $converted = (new DefaultValidationRulesToSchema(ValidationIntegration::transformers()))->convert((new RuleOrdering)->order((new RuleSetNormalizer)->normalize($ruleSet)), $context);
+
+    expect(array_diff_key(SchemaNotes::rendered($converted->schema)['properties']['value'], ['example' => true]))->toBe($schema)
+        ->and(array_map(static fn (array $note): string => $note['rule'], $rules->unreadRuleObjects()))->toBe($unread)
+        ->and(array_filter($converted->diagnostics, static fn ($d): bool => $d->code === 'validation.rule-unhandled'))->toBe([]);
+})->with([
+    // Laravel casts a Dimensions to `dimensions:min_width=10,max_height=50`, the bounds it checks an image against.
+    'dimensions by name' => ['Dimensions', 'maxHeight: 50, minWidth: 10', new ClassT('Illuminate\\Http\\UploadedFile'), ['type' => 'string', 'format' => 'binary', 'description' => 'Image dimensions: min_width=10, max_height=50.'], []],
+    'dimensions by position' => ['Dimensions', '10, 20', new ClassT('Illuminate\\Http\\UploadedFile'), ['type' => 'string', 'format' => 'binary', 'description' => 'Image dimensions: min_width=10, min_height=20.'], []],
+    'dimensions handed to #[Rule]' => ['Rule', 'new \Illuminate\Validation\Rules\Dimensions(["min_width" => 10])', new ClassT('Illuminate\\Http\\UploadedFile'), ['type' => 'string', 'format' => 'binary', 'description' => 'Image dimensions: min_width=10.'], []],
+    // A password is first validated as `string|min:10`; a letters check then runs on it, which no schema states.
+    'a password' => ['Password', 'min: 10', ScalarT::string(), ['type' => 'string', 'minLength' => 10], []],
+    'a password by position' => ['Password', '10, true', ScalarT::string(), ['type' => 'string', 'minLength' => 10], ['new Illuminate\\Validation\\Rules\\Password']],
+    'a password at its default' => ['Password', '', ScalarT::string(), ['type' => 'string', 'minLength' => 12], []],
+    // A table and a column decide nothing the document states.
+    'a row that must exist' => ['Exists', 'column: "email", table: "users"', ScalarT::string(), ['type' => 'string'], []],
+    'a value that must be unique' => ['Unique', '"users", ignore: "5"', ScalarT::string(), ['type' => 'string'], []],
+]);
+
 it('makes a #[Nullable] property null-admitting', function (): void {
     $result = buildValidatedSchema([new PropertyMetadata('nullable', UnionT::of([ScalarT::string(), new NullT]))]);
 
@@ -239,6 +299,25 @@ it('still lets a rules() override prohibit a field property inference documented
 
     expect(array_keys($rules->fields))->toBe(['name']);
 });
+
+it('reads the rule strings of a rules() array as its reader splits them, on the engine\'s literal path too', function (RuleDialect $dialect, array $overridden, array $pattern): void {
+    // A Data class's rules() is read by laravel-data, which splits a string in a list at its pipes and keeps a
+    // string holding a regex whole; a Form Request's by Laravel, which does neither (each reference is checked
+    // in RuleParsingTest). The engine's constant array shape owes the same answer as the traced array.
+    $shape = new ArrayShapeT([
+        new ArrayShapeField('overridden', new ArrayShapeT([new ArrayShapeField(0, new LiteralT('string|max:3'))])),
+        new ArrayShapeField('overriddenPattern', new LiteralT('regex:/^(ab|cd)$/')),
+    ]);
+
+    $fields = (new ShapeToRuleSet(dialect: $dialect))->convert($shape)->fields;
+    $read = static fn (string $field): array => array_map(static fn (ValidationRule $rule): array => [$rule->name, $rule->parameters], $fields[$field]);
+
+    expect($read('overridden'))->toBe($overridden)
+        ->and($read('overriddenPattern'))->toBe($pattern);
+})->with([
+    'laravel-data' => [RuleDialect::LaravelData, [['string', []], ['max', ['3']]], [['regex', ['/^(ab|cd)$/']]]],
+    'Laravel' => [RuleDialect::Laravel, [['string|max', ['3']]], [['regex', ['/^(ab']], ['cd)$/', []]]],
+]);
 
 it('appends rather than replaces under #[MergeValidationRules]', function (string $fqcn): void {
     // Spatie's resolver `merge`s the override into what it inferred when the class carries the attribute,

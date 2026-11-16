@@ -1,0 +1,240 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-conditional-presence": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:2tbeytk6vzsbylsk",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/SpatieData/ConditionalPresenceController.php",
+                "line": 12,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SpatieData\\ConditionalPresenceController::store"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:spatie-data",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "tests/Fixtures/SpatieData/ConditionalPresenceController.php",
+                "line": 12,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SpatieData\\ConditionalPresenceController::store"
+              }
+            }
+          ]
+        },
+        "operationId": "post.api.zz-conditional-presence",
+        "tags": [
+          "ConditionalPresence"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConditionalPresenceDataRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:5ezjywcz7lteoybm",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "x-docuccino": {
+              "id": "res:v1:56m4o3bvmyxjecdu",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/SpatieData/ConditionalPresenceController.php",
+                    "line": 12,
+                    "symbol": "implicit:validated-request"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "UnprocessableEntity"
+              }
+            },
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:implicit-response",
+                        "layer": "integration",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "tests/Fixtures/SpatieData/ConditionalPresenceController.php",
+                          "line": 12,
+                          "symbol": "implicit:validated-request"
+                        }
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "errors": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ConditionalPresenceDataRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:flqov6rful3jc2m2"
+        },
+        "type": "object",
+        "properties": {
+          "billing": {
+            "type": "object",
+            "properties": {
+              "line": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "line"
+            ]
+          },
+          "email": {
+            "type": "string"
+          },
+          "home": {
+            "type": "object",
+            "properties": {
+              "line": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "line"
+            ]
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nickname": {
+            "type": "string"
+          },
+          "office": {
+            "type": "object",
+            "properties": {
+              "line": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "line"
+            ]
+          },
+          "phone": {
+            "type": "string"
+          },
+          "referrer": {
+            "description": "Must not be sent when kind is business.",
+            "type": "string"
+          },
+          "vat": {
+            "description": "Required when kind is business.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "email",
+          "home",
+          "office"
+        ]
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "5085f7a0efea0e477c1e81312d68bc1331685aa65f43eb5ebbd6fff376d6f975"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.23.4",
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
+    }
+  }
+}

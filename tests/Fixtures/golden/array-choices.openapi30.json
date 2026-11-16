@@ -1,0 +1,215 @@
+{
+  "openapi": "3.0.4",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-choice-lists": {
+      "post": {
+        "operationId": "post.api.zz-choice-lists",
+        "tags": [
+          "ChoiceList"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreChoiceListRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "errors": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Grade": {
+        "type": "integer",
+        "enum": [
+          1,
+          2,
+          3
+        ],
+        "x-enum-varnames": [
+          "Pass",
+          "Merit",
+          "Distinction"
+        ],
+        "x-enumNames": [
+          "Pass",
+          "Merit",
+          "Distinction"
+        ]
+      },
+      "StoreChoiceListRequest": {
+        "type": "object",
+        "properties": {
+          "codes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "1",
+                "2"
+              ],
+              "example": "1",
+              "x-enum-varnames": [
+                "_1",
+                "_2"
+              ],
+              "x-enumNames": [
+                "_1",
+                "_2"
+              ]
+            },
+            "uniqueItems": true
+          },
+          "grades": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Grade"
+            }
+          },
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "not": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "1",
+                  "2",
+                  1,
+                  2,
+                  true
+                ]
+              }
+            }
+          },
+          "listed": {
+            "type": "array",
+            "enum": [
+              "a",
+              "b"
+            ],
+            "x-enum-varnames": [
+              "A",
+              "B"
+            ],
+            "x-enumNames": [
+              "A",
+              "B"
+            ]
+          },
+          "muted": {
+            "anyOf": [
+              {
+                "type": "array"
+              },
+              {
+                "type": "object"
+              },
+              {
+                "type": "object",
+                "enum": [
+                  null
+                ],
+                "nullable": true
+              }
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "enum": [
+                      "spam",
+                      "ads"
+                    ]
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": {
+                    "enum": [
+                      "spam",
+                      "ads"
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "news",
+                    "sport"
+                  ],
+                  "example": "news",
+                  "x-enum-varnames": [
+                    "News",
+                    "Sport"
+                  ],
+                  "x-enumNames": [
+                    "News",
+                    "Sport"
+                  ]
+                }
+              },
+              {
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

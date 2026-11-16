@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\Sanctum;
 
+use Closure;
 use Docuccino\Attributes\Unauthenticated;
 use Docuccino\Core\Draft\OperationDraft;
 use Docuccino\Core\Extensions\Context\RouteContext;
@@ -22,14 +23,25 @@ use Illuminate\Contracts\Config\Repository as ConfigRepository;
  * Which modes a document exposes is per-document config (`integrations.sanctum.modes`), so audience
  * segmentation happens per document — the effective set is the route's supported modes ∩ the document's
  * allowed ones. Defers entirely when config already declares security schemes; skips `#[Unauthenticated]`.
+ *
+ * Whether the route runs an authenticator, and which guard each entry names, are the adapter's answers,
+ * handed in: read by class through the build's alias map, so an application's own alias or subclass counts.
  */
 final class SanctumSecurityExtension implements OperationExtension
 {
     private const DEFAULT_MODES = [SanctumDetector::TOKEN, SanctumDetector::STATEFUL];
 
+    /**
+     * @param  Closure(RouteContext): bool  $authenticates  whether the route runs the framework's
+     *                                                      authenticator or one the document's pattern names
+     * @param  Closure(RouteContext, string): ?string  $guardArguments  an entry's guard arguments, by class
+     *                                                                  through the build's alias map
+     */
     public function __construct(
-        private readonly SanctumDetector $detector = new SanctumDetector,
+        private readonly Closure $authenticates,
+        private readonly Closure $guardArguments,
         private readonly ?ConfigRepository $config = null,
+        private readonly SanctumDetector $detector = new SanctumDetector,
     ) {}
 
     public function phase(): OperationPhase
@@ -78,6 +90,8 @@ final class SanctumSecurityExtension implements OperationExtension
             $context->route->middleware,
             AuthGuardDrivers::map($this->config?->get('auth.guards')),
             $this->defaultGuard(),
+            fn (): bool => ($this->authenticates)($context),
+            fn (string $middleware): ?string => ($this->guardArguments)($context, $middleware),
         );
 
         return array_values(array_filter($supported, static fn (string $mode): bool => in_array($mode, $allowed, true)));

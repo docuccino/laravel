@@ -1,0 +1,1916 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-gadgets": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:ttmjf5vfhd4kjp7o",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/DescribedNotes/DescribedFilterController.php",
+                "line": 20,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\DescribedFilterController::index"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "400": {
+                "id": "res:v1:6453irwdsognsqls",
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/DescribedFilterController.php",
+                      "line": 20,
+                      "symbol": "query-builder:strict-mode"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.zz-gadgets",
+        "tags": [
+          "DescribedFilter"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:i64jtwfr3oxgw7w2",
+              "provenance": [
+                {
+                  "producer": "attribute",
+                  "layer": "attribute",
+                  "fields": [
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DescribedNotes/DescribedFilterController.php",
+                    "line": 20,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\DescribedFilterController::index"
+                  },
+                  "overrode": [
+                    {
+                      "field": "description",
+                      "value": "Exact match on `status`. Accepts a comma-separated list of values (matched as `whereIn`). Accepts `null` to filter for absent values.",
+                      "producer": "integration:query-builder"
+                    }
+                  ]
+                },
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "explode",
+                    "required",
+                    "style"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DescribedNotes/DescribedFilterController.php",
+                    "line": 20,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\DescribedFilterController::index"
+                  }
+                }
+              ]
+            },
+            "name": "filter[status]",
+            "in": "query",
+            "description": "The state to list.\n\nAccepts a comma-separated list of values (matched as `whereIn`). Accepts `null` to filter for absent values.",
+            "required": false,
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "items",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/DescribedFilterController.php",
+                      "line": 20,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\DescribedFilterController::index"
+                    }
+                  }
+                ]
+              },
+              "type": "array",
+              "items": {
+                "description": "Where a widget stands in its publication lifecycle.",
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "published",
+                  "archived"
+                ],
+                "x-enum-descriptions": [
+                  "Not yet visible to applicants.",
+                  "Live and accepting traffic.",
+                  ""
+                ],
+                "x-enum-varnames": [
+                  "Draft",
+                  "Published",
+                  "Archived"
+                ],
+                "x-enumNames": [
+                  "Draft",
+                  "Published",
+                  "Archived"
+                ]
+              }
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:k444ljqbl7bsqjpj",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DescribedNotes/DescribedFilterController.php",
+                    "line": 20,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\DescribedFilterController::index"
+                  }
+                }
+              ]
+            },
+            "name": "page",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/DescribedFilterController.php",
+                      "line": 20,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\DescribedFilterController::index"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/api/zz-gadgets/browse": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:ryqqoowsgmhetdox",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/DescribedNotes/DescribedFilterController.php",
+                "line": 32,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\DescribedFilterController::browse"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "400": {
+                "id": "res:v1:j4e5wo53ln4u4lyp",
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/DescribedFilterController.php",
+                      "line": 32,
+                      "symbol": "query-builder:strict-mode"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.zz-gadgets.browse",
+        "tags": [
+          "DescribedFilter"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:anjda6hppmrc3uf7",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "explode",
+                    "required",
+                    "style"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DescribedNotes/DescribedFilterController.php",
+                    "line": 32,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\DescribedFilterController::browse"
+                  }
+                }
+              ]
+            },
+            "name": "filter[status]",
+            "in": "query",
+            "description": "Exact match on `status`. Accepts a comma-separated list of values (matched as `whereIn`). Accepts `null` to filter for absent values.",
+            "required": false,
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "items",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/DescribedFilterController.php",
+                      "line": 32,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\DescribedFilterController::browse"
+                    }
+                  }
+                ]
+              },
+              "type": "array",
+              "items": {
+                "description": "Where a widget stands in its publication lifecycle.",
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "published",
+                  "archived"
+                ],
+                "x-enum-descriptions": [
+                  "Not yet visible to applicants.",
+                  "Live and accepting traffic.",
+                  ""
+                ],
+                "x-enum-varnames": [
+                  "Draft",
+                  "Published",
+                  "Archived"
+                ],
+                "x-enumNames": [
+                  "Draft",
+                  "Published",
+                  "Archived"
+                ]
+              }
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:s2aijqdu5op6ben3",
+              "provenance": [
+                {
+                  "producer": "integration:query-builder",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DescribedNotes/DescribedFilterController.php",
+                    "line": 32,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\DescribedFilterController::browse"
+                  }
+                }
+              ]
+            },
+            "name": "page",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:query-builder",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/DescribedFilterController.php",
+                      "line": 32,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\DescribedFilterController::browse"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/api/zz-listings": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:6sloxaipwofuap3n",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                "line": 17,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::index"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:j2xqfop2ktmlhy5g",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                      "line": 17,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.zz-listings",
+        "tags": [
+          "Listing"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:6obma7cymtbw3kfy",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                    "line": 17,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::index"
+                  }
+                }
+              ]
+            },
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "example",
+                      "format",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                      "line": 17,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::index"
+                    }
+                  }
+                ]
+              },
+              "type": "string",
+              "format": "date",
+              "example": "2024-01-01"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:4wgy24kn6ev2sjno",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                    "line": 17,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::index"
+                  }
+                }
+              ]
+            },
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                      "line": 17,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::index"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:edadp4twfoewz2c5",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                    "line": 17,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::index"
+                  }
+                }
+              ]
+            },
+            "name": "name",
+            "in": "query",
+            "description": "Must start with one of: ab, cd.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "example",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                      "line": 17,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::index"
+                    }
+                  }
+                ]
+              },
+              "type": "string",
+              "example": "abexample"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:3hydazxbtnd7o2gg",
+              "provenance": [
+                {
+                  "producer": "attribute",
+                  "layer": "attribute",
+                  "fields": [
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                    "line": 17,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::index"
+                  }
+                },
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                    "line": 17,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::index"
+                  }
+                }
+              ]
+            },
+            "name": "nickname",
+            "in": "query",
+            "description": "What the lister goes by.\n\nMust not be sent when kind is business.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                      "line": 17,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::index"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:qndulokdmzul4ppf",
+              "provenance": [
+                {
+                  "producer": "attribute",
+                  "layer": "attribute",
+                  "fields": [
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                    "line": 17,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::index"
+                  },
+                  "overrode": [
+                    {
+                      "field": "description",
+                      "value": "How far through review a submission has got.",
+                      "producer": "integration:form-request"
+                    }
+                  ]
+                },
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                    "line": 17,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::index"
+                  }
+                }
+              ]
+            },
+            "name": "stage",
+            "in": "query",
+            "description": "The stage to list.\n\nRequired when name is present.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "enum",
+                      "example",
+                      "type",
+                      "x-enum-varnames",
+                      "x-enumNames"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                      "line": 17,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::index"
+                    }
+                  }
+                ]
+              },
+              "type": "string",
+              "enum": [
+                "queued",
+                "approved"
+              ],
+              "example": "queued",
+              "x-enum-varnames": [
+                "Queued",
+                "Approved"
+              ],
+              "x-enumNames": [
+                "Queued",
+                "Approved"
+              ]
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:drv3wqrhf5463p2d",
+              "provenance": [
+                {
+                  "producer": "attribute",
+                  "layer": "attribute",
+                  "fields": [
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                    "line": 17,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::index"
+                  }
+                },
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                    "line": 17,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::index"
+                  }
+                }
+              ]
+            },
+            "name": "until",
+            "in": "query",
+            "description": "End of the range.\n\nMust be a date after from.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "format",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                      "line": 17,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::index"
+                    }
+                  }
+                ]
+              },
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:t6j4fiubb6ongg4v",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      },
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:4bhj7sedcyupsvea",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "requestBody",
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                "line": 29,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::store"
+              },
+              "overrode": [
+                {
+                  "field": "requestBody",
+                  "value": {
+                    "content": {
+                      "application/json": {
+                        "schema": {
+                          "properties": {
+                            "from": {
+                              "example": "2024-01-01",
+                              "format": "date",
+                              "type": "string"
+                            },
+                            "kind": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "description": "Must start with one of: ab, cd.",
+                              "example": "abexample",
+                              "type": "string"
+                            },
+                            "nickname": {
+                              "description": "Must not be sent when kind is business.",
+                              "type": "string"
+                            },
+                            "stage": {
+                              "description": "How far through review a submission has got.\n\nRequired when name is present.",
+                              "enum": [
+                                "queued",
+                                "approved"
+                              ],
+                              "example": "queued",
+                              "type": "string",
+                              "x-enum-varnames": [
+                                "Queued",
+                                "Approved"
+                              ],
+                              "x-enumNames": [
+                                "Queued",
+                                "Approved"
+                              ]
+                            },
+                            "until": {
+                              "description": "Must be a date after from.",
+                              "format": "date",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "from"
+                          ],
+                          "type": "object"
+                        }
+                      }
+                    },
+                    "required": true
+                  },
+                  "producer": "integration:form-request"
+                }
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:zdkhewikt6v3gqzp",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                      "line": 29,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.zz-listings",
+        "tags": [
+          "Listing"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "2024-01-01"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "Who to look for.\n\nMust start with one of: ab, cd.",
+                    "type": "string",
+                    "example": "abexample"
+                  },
+                  "nickname": {
+                    "description": "Must not be sent when kind is business.",
+                    "type": "string"
+                  },
+                  "stage": {
+                    "description": "How far through review a submission has got.\n\nRequired when name is present.",
+                    "type": "string",
+                    "enum": [
+                      "queued",
+                      "approved"
+                    ],
+                    "example": "queued",
+                    "x-enum-varnames": [
+                      "Queued",
+                      "Approved"
+                    ],
+                    "x-enumNames": [
+                      "Queued",
+                      "Approved"
+                    ]
+                  },
+                  "until": {
+                    "description": "End of the range.\n\nMust be a date after from.",
+                    "type": "string",
+                    "format": "date"
+                  }
+                },
+                "required": [
+                  "from"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:v3ntf673n6zr4ps2",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/api/zz-listings/create": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:u44ayb7fgribv7no",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                "line": 34,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::create"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:form-request",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                "line": 34,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::create"
+              }
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:4a6d3sk2xvf53iej",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                      "line": 34,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.zz-listings.create",
+        "tags": [
+          "Listing"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TypeDescribedListingRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:mdlpuoc7nz74q6vb",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/api/zz-listings/search": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:kvrawegm323i54vd",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                "line": 22,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::search"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:xc4xn3uviihkx5rd",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                      "line": 22,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.zz-listings.search",
+        "tags": [
+          "Listing"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:kmn4jj737ee675yn",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                    "line": 22,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::search"
+                  }
+                }
+              ]
+            },
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "example",
+                      "format",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                      "line": 22,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::search"
+                    }
+                  }
+                ]
+              },
+              "type": "string",
+              "format": "date",
+              "example": "2024-01-01"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:xm37t5sqzgk3skaq",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                    "line": 22,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::search"
+                  }
+                }
+              ]
+            },
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                      "line": 22,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::search"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:qsons4nhht7gbaxv",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                    "line": 22,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::search"
+                  }
+                }
+              ]
+            },
+            "name": "name",
+            "in": "query",
+            "description": "Must start with one of: ab, cd.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "example",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                      "line": 22,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::search"
+                    }
+                  }
+                ]
+              },
+              "type": "string",
+              "example": "abexample"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:lhc45md656zr32um",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                    "line": 22,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::search"
+                  }
+                }
+              ]
+            },
+            "name": "nickname",
+            "in": "query",
+            "description": "Must not be sent when kind is business.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                      "line": 22,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::search"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:hdtny3hyxwk7bznw",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                    "line": 22,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::search"
+                  }
+                }
+              ]
+            },
+            "name": "stage",
+            "in": "query",
+            "description": "How far through review a submission has got.\n\nRequired when name is present.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "enum",
+                      "example",
+                      "type",
+                      "x-enum-varnames",
+                      "x-enumNames"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                      "line": 22,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::search"
+                    }
+                  }
+                ]
+              },
+              "type": "string",
+              "enum": [
+                "queued",
+                "approved"
+              ],
+              "example": "queued",
+              "x-enum-varnames": [
+                "Queued",
+                "Approved"
+              ],
+              "x-enumNames": [
+                "Queued",
+                "Approved"
+              ]
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:nutochhqfyde7ndp",
+              "provenance": [
+                {
+                  "producer": "integration:form-request",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                    "line": 22,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::search"
+                  }
+                }
+              ]
+            },
+            "name": "until",
+            "in": "query",
+            "description": "Must be a date after from.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "format",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/ListingController.php",
+                      "line": 22,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\ListingController::search"
+                    }
+                  }
+                ]
+              },
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:ms7pcwbxfa6mbgdh",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/api/zz-ranges": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:r52yxb3fvhq5zhnt",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/DescribedNotes/RangeDataController.php",
+                "line": 12,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\RangeDataController::index"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:pi2bhpc7rsrnhhup",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/RangeDataController.php",
+                      "line": 12,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.zz-ranges",
+        "tags": [
+          "RangeData"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:ymnts2gpiolcqvud",
+              "provenance": [
+                {
+                  "producer": "integration:spatie-data",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DescribedNotes/RangeDataController.php",
+                    "line": 12,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\RangeDataController::index"
+                  }
+                }
+              ]
+            },
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:spatie-data",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/RangeDataController.php",
+                      "line": 12,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\RangeDataController::index"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:66iqcmzt5mbzfltf",
+              "provenance": [
+                {
+                  "producer": "integration:spatie-data",
+                  "layer": "integration",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DescribedNotes/RangeDataController.php",
+                    "line": 12,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\RangeDataController::index"
+                  }
+                }
+              ]
+            },
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:spatie-data",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/RangeDataController.php",
+                      "line": 12,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\RangeDataController::index"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:fhbkhqnar2yyn7g3",
+              "provenance": [
+                {
+                  "producer": "integration:spatie-data",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DescribedNotes/RangeDataController.php",
+                    "line": 12,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\RangeDataController::index"
+                  }
+                }
+              ]
+            },
+            "name": "nickname",
+            "in": "query",
+            "description": "What the lister goes by.\n\nMust not be sent when kind is business.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:spatie-data",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/RangeDataController.php",
+                      "line": 12,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\RangeDataController::index"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:l277lotzkdqamczt",
+              "provenance": [
+                {
+                  "producer": "integration:spatie-data",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/DescribedNotes/RangeDataController.php",
+                    "line": 12,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\RangeDataController::index"
+                  }
+                }
+              ]
+            },
+            "name": "until",
+            "in": "query",
+            "description": "End of the range.\n\nMust be a date after from.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:spatie-data",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/RangeDataController.php",
+                      "line": 12,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\RangeDataController::index"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:vmaa7snhtf7ajsrv",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      },
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:zyo3vc4af5tbnc7s",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/DescribedNotes/RangeDataController.php",
+                "line": 17,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\RangeDataController::store"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:spatie-data",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "tests/Fixtures/DescribedNotes/RangeDataController.php",
+                "line": 17,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\RangeDataController::store"
+              }
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:tuf4uv3cgg7tpqub",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/DescribedNotes/RangeDataController.php",
+                      "line": 17,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.zz-ranges",
+        "tags": [
+          "RangeData"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RangeDataRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:5uizycqagpm2odam",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BadRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:ezf5e6ailaljycet"
+        },
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "RangeDataRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:7kvfhafjx45xypig"
+        },
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "nickname": {
+            "description": "What the lister goes by.\n\nMust not be sent when kind is business.",
+            "type": "string"
+          },
+          "until": {
+            "description": "End of the range.\n\nMust be a date after from.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from"
+        ]
+      },
+      "TypeDescribedListingRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:6oazq5e3fi3ngjpz"
+        },
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date",
+            "example": "2024-01-01"
+          },
+          "until": {
+            "description": "End of the range.\n\nMust be a date after from.",
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "from"
+        ]
+      },
+      "UnprocessableEntity": {
+        "x-docuccino": {
+          "id": "sch:v1:f3tcwvg2vhs255gy"
+        },
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "errors"
+        ]
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad Request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/BadRequest"
+            }
+          }
+        }
+      },
+      "UnprocessableEntity": {
+        "description": "Unprocessable Entity",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/UnprocessableEntity"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "8f7eeda32123d2dee5fba7c0722222043d8ddbf9b8453f13b0703604d4a1472a",
+      "contentHash": "ab57e3a13b009c154c04ff1fe3d46ee3886002fb345e7c544a2e85230d7417e4"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.23.4",
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
+    }
+  }
+}

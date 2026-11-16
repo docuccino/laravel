@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Docuccino\Core\Diff\DocumentDiffer;
+use Docuccino\Core\Document\UirDocument;
 use Docuccino\Core\Emit\EmitOptions;
 use Docuccino\Core\Emit\OpenApi30DownlevelEmitter;
 use Docuccino\Core\Emit\OpenApi31DownlevelEmitter;
@@ -14,6 +16,7 @@ use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\ReturnSite;
 use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Inference\TypeEngine;
+use Docuccino\Core\Support\JsonValue;
 use Docuccino\Inference\PhpStan\Metadata\ClassMetadataFactory;
 use Docuccino\Laravel\Tests\Fixtures\AdoptedUnion\AnswerController;
 use Docuccino\Laravel\Tests\Fixtures\AdoptedUnion\AnswerRequest;
@@ -31,12 +34,13 @@ use Docuccino\Laravel\Tests\Fixtures\TaggedUnion\LinkAttachment;
 use Docuccino\Laravel\Tests\Support\TraceScript;
 use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
 use Illuminate\Routing\Router;
+use Opis\JsonSchema\Validator;
 
 /*
  * An object the rules split by a tag, whose field a `#[BodyParameter]` declares as the sealed union the
  * same shapes are built into. The declaration names the type a client already has from the response side,
- * so the body publishes THAT — and the bounds the rules prove ride beside it, request-side, because the
- * component is shared with a response the server never bounds. Nothing else in the golden corpus declares
+ * so the body publishes THAT union's members — each one the rules bound further joined to its bounds,
+ * request-side, because the components are shared with a response the server never bounds. Nothing else in the golden corpus declares
  * a type over a field the rules recovered, which is why no golden moved when a declaration learned to
  * refine what it is written over rather than replace it.
  *
@@ -84,22 +88,49 @@ $field = static function (array $schema): array {
     return $schema;
 };
 
-// The answer a client reads: the shared union, refined by tag value, with the empty object a tagged member
-// cannot describe and the null the declaration admits. Written out from the rules rather than read back:
-// `measure` caps its steps at 20, `letters` sends one to twenty letters of at most eight characters each,
-// and `count` is bounded no further than its member already is.
+// The answer a client reads: the shared union's members, each the rules bound further written as that member
+// AND its bounds, with the empty object a tagged member cannot describe and the null the declaration admits.
+// Written out from the rules rather than read back: `measure` caps its steps at 20, `letters` sends one to
+// twenty letters of at most eight characters each, and `count` is bounded no further than its member already
+// is. A generator merges an `allOf` a property at a time and reads no bound off an untyped fragment, so a
+// bounded property is restated whole; and nothing bounds a member beside a `$ref`, which generators drop.
 $adopted = [
     'anyOf' => [
         [
-            '$ref' => '#/components/schemas/Answer',
-            'anyOf' => [
-                ['properties' => ['kind' => ['const' => 'count']]],
-                ['properties' => ['kind' => ['const' => 'measure'], 'steps' => ['maxItems' => 20]]],
-                ['properties' => ['kind' => ['const' => 'letters'], 'letters' => ['items' => ['maxLength' => 8], 'maxItems' => 20, 'minItems' => 1]]],
+            'oneOf' => [
+                ['$ref' => '#/components/schemas/CountAnswer'],
+                ['allOf' => [
+                    ['$ref' => '#/components/schemas/LettersAnswer'],
+                    ['type' => 'object', 'properties' => ['letters' => ['type' => 'array', 'items' => ['type' => 'string', 'maxLength' => 8], 'maxItems' => 20, 'minItems' => 1]]],
+                ]],
+                ['allOf' => [
+                    ['$ref' => '#/components/schemas/MeasureAnswer'],
+                    ['type' => 'object', 'properties' => ['steps' => ['type' => 'array', 'items' => ['type' => 'integer'], 'maxItems' => 20]]],
+                ]],
+            ],
+            // Told apart as the shared union is, by the members a client already has types for.
+            'discriminator' => [
+                'mapping' => [
+                    'count' => '#/components/schemas/CountAnswer',
+                    'letters' => '#/components/schemas/LettersAnswer',
+                    'measure' => '#/components/schemas/MeasureAnswer',
+                ],
+                'propertyName' => 'kind',
             ],
         ],
         ['type' => 'object', 'maxProperties' => 0],
         ['type' => 'null'],
+    ],
+];
+
+// The same contract spelled as the union's pointer with the bounds beside it, one refinement per tag value —
+// which a document built before the field listed its members carries.
+$beside = [
+    '$ref' => '#/components/schemas/Answer',
+    'anyOf' => [
+        ['properties' => ['kind' => ['const' => 'count']]],
+        ['properties' => ['kind' => ['const' => 'measure'], 'steps' => ['maxItems' => 20]]],
+        ['properties' => ['kind' => ['const' => 'letters'], 'letters' => ['items' => ['maxLength' => 8], 'maxItems' => 20, 'minItems' => 1]]],
     ],
 ];
 
@@ -266,11 +297,21 @@ it('publishes what the declaration and the rules both accept, and names what the
     // 422: neither is offered, though the declaration admits null. `count` also requires a `reason` no
     // answer class has; the refinement publishes it, and the author is told a typed client cannot send it.
     expect($field($properties['answer']))->toBe([
-        '$ref' => '#/components/schemas/Answer',
-        'anyOf' => [
-            ['properties' => ['kind' => ['const' => 'count'], 'reason' => ['type' => 'string']], 'required' => ['reason']],
-            ['properties' => ['kind' => ['const' => 'measure'], 'steps' => ['maxItems' => 20]]],
-            ['properties' => ['kind' => ['const' => 'letters'], 'letters' => ['items' => ['maxLength' => 8], 'maxItems' => 20, 'minItems' => 1]]],
+        'oneOf' => [
+            ['allOf' => [['$ref' => '#/components/schemas/CountAnswer'], ['type' => 'object', 'properties' => ['reason' => ['type' => 'string']], 'required' => ['reason']]]],
+            ['allOf' => [
+                ['$ref' => '#/components/schemas/LettersAnswer'],
+                ['type' => 'object', 'properties' => ['letters' => ['type' => 'array', 'items' => ['type' => 'string', 'maxLength' => 8], 'maxItems' => 20, 'minItems' => 1]]],
+            ]],
+            ['allOf' => [['$ref' => '#/components/schemas/MeasureAnswer'], ['type' => 'object', 'properties' => ['steps' => ['type' => 'array', 'items' => ['type' => 'integer'], 'maxItems' => 20]]]]],
+        ],
+        'discriminator' => [
+            'mapping' => [
+                'count' => '#/components/schemas/CountAnswer',
+                'letters' => '#/components/schemas/LettersAnswer',
+                'measure' => '#/components/schemas/MeasureAnswer',
+            ],
+            'propertyName' => 'kind',
         ],
     ])
         // A declaration over a plain field keeps the bounds still true of its type, and drops the value
@@ -280,4 +321,61 @@ it('publishes what the declaration and the rules both accept, and names what the
         ->and(array_map(static fn ($d): string => $d->message, diagnosticsCoded($result->diagnostics, 'attribute.body-parameter-unlisted')))->toBe([
             '#[BodyParameter(name: "answer")] declares a type that does not list `answer.reason` where `kind` is count, which the rules require — the document publishes it beside the type, but a client built from the type alone has no field to send it in.',
         ]);
+});
+
+it('enforces every bound for a reader that drops what sits beside a $ref', function (array $answer, bool $accepted) use ($engine, $routes): void {
+    // Generators and 3.0 readers ignore a `$ref`'s siblings, so a bound published there reaches no client
+    // validator. Read that way, the published body must still refuse what the server refuses.
+    $drop = static function (mixed $node) use (&$drop): mixed {
+        if (is_array($node)) {
+            return array_map($drop, $node);
+        }
+
+        if (! $node instanceof stdClass) {
+            return $node;
+        }
+
+        return is_string($node->{'$ref'} ?? null) ? (object) ['$ref' => $node->{'$ref'}] : (object) array_map($drop, get_object_vars($node));
+    };
+
+    $document = $drop(json_decode((new OpenApi31DownlevelEmitter)->emit(localityBuild($routes('storeTyped'), $engine)->document), flags: JSON_THROW_ON_ERROR));
+    $validator = new Validator;
+    $validator->resolver()?->registerRaw($document, 'https://docuccino.test/answers.json');
+    $schema = (object) ['$ref' => 'https://docuccino.test/answers.json#/components/schemas/DeclaredAnswerRequest'];
+
+    expect($validator->validate(json_decode((string) json_encode(['answer' => $answer])), $schema)->isValid())->toBe($accepted);
+})->with([
+    'letters' => [['kind' => 'letters', 'letters' => ['a', 'bb']], true],
+    'letters, none' => [['kind' => 'letters', 'letters' => []], false],
+    'letters, twenty-one' => [['kind' => 'letters', 'letters' => array_fill(0, 21, 'a')], false],
+    'letters, one too long' => [['kind' => 'letters', 'letters' => ['abcdefghi']], false],
+    'measure, twenty-one steps' => [['kind' => 'measure', 'value' => 1.5, 'steps' => range(1, 21)], false],
+]);
+
+it('reads as no change against the bounds written beside the union\'s pointer', function () use ($engine, $routes, $beside): void {
+    // The respelling moves no contract, so a diff against a document carrying the earlier spelling — in any
+    // of the versions it is exported as — reports nothing for an upgrade to explain away.
+    $document = localityBuild($routes('storeDeclared', 'storeTyped', 'last'), $engine)->document;
+    $respelled = static function (string $emitted) use ($beside): UirDocument {
+        $array = (array) JsonValue::decode($emitted);
+        $at = [['paths', '/api/zz-answers/storeDeclared', 'post', 'requestBody', 'content', 'application/json', 'schema', 'properties', 'answer', 'anyOf', 0], ['components', 'schemas', 'DeclaredAnswerRequest', 'properties', 'answer', 'anyOf', 0]];
+        foreach ($at as $path) {
+            $node = &$array;
+            foreach ($path as $key) {
+                $node = &$node[$key];
+            }
+            $node = $beside;
+            unset($node);
+        }
+
+        return UirDocument::fromArray($array);
+    };
+
+    foreach ([new UirEmitter, new OpenApi31DownlevelEmitter, new OpenApi30DownlevelEmitter] as $emitter) {
+        $emitted = $emitter->emit($document);
+        $now = UirDocument::fromArray((array) JsonValue::decode($emitted));
+
+        expect((new DocumentDiffer)->diff($respelled((new UirEmitter)->emit($document)), $now)->changes)->toBe([])
+            ->and((new DocumentDiffer)->diff($now, $respelled((new UirEmitter)->emit($document)))->changes)->toBe([]);
+    }
 });

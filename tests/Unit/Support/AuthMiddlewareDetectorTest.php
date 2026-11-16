@@ -9,6 +9,7 @@ use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Inference\NullTypeEngine;
 use Docuccino\Laravel\Support\AuthMiddlewareDetector;
+use Docuccino\Laravel\Support\MiddlewareClasses;
 use Illuminate\Auth\Middleware\Authenticate;
 
 /**
@@ -26,8 +27,8 @@ it('reads the configured pattern the same way for either spelling of one middlew
         document: new DocumentConfig('default', [], authMiddleware: $pattern),
     );
 
-    expect(AuthMiddlewareDetector::matches($context('auth:web')))->toBe($matched)
-        ->and(AuthMiddlewareDetector::matches($context(Authenticate::using('web'))))->toBe($matched);
+    expect(AuthMiddlewareDetector::matches($context('auth:web'), app(MiddlewareClasses::class)))->toBe($matched)
+        ->and(AuthMiddlewareDetector::matches($context(Authenticate::using('web')), app(MiddlewareClasses::class)))->toBe($matched);
 })->with([
     'the shipped default' => ['auth*', true],
     'narrowed to the guard by hand' => ['auth:web', true],
@@ -52,7 +53,7 @@ it('detects nothing where the document configures no pattern', function (?string
         document: new DocumentConfig('default', [], authMiddleware: $pattern),
     );
 
-    expect(AuthMiddlewareDetector::matches($context))->toBeFalse();
+    expect(AuthMiddlewareDetector::matches($context, app(MiddlewareClasses::class)))->toBeFalse();
 })->with([
     'no pattern at all' => [null],
     'an empty pattern' => [''],

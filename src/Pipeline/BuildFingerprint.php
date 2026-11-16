@@ -25,6 +25,9 @@ use Docuccino\Laravel\Support\Psr4Namespaces;
  * scope IS that map and descent defaults to the shipped half of it ({@see TypeEngineFactory}). Both
  * halves are digested separately, since which SECTION a root sits in is itself one of the two scopes.
  *
+ * The application's class aliases are in because the engine reads a root alias as the class it names
+ * (`\Response::json(…)`), and one added in `config/app.php` or a service provider moves no locked byte.
+ *
  * `engine.memory_limit` and `engine.workers` are the two keys deliberately left out: a process ceiling and
  * how many processes share the work cannot change a documented byte, and either would otherwise cost a full
  * rebuild each time it moved.
@@ -42,11 +45,13 @@ final readonly class BuildFingerprint
     /**
      * @param  array<string, mixed>  $engineConfig  the `engine` bag
      * @param  string  $basePath  the application root, holding the `composer.lock` this digests
+     * @param  array<string, string>  $aliases  the application's class aliases, alias → class
      */
     public function __construct(
         private array $engineConfig = [],
         private string $basePath = '',
         private EnginePackage $engine = new EnginePackage,
+        private array $aliases = [],
     ) {}
 
     /** The digest for a build about to run on `$engine`. */
@@ -64,6 +69,7 @@ final readonly class BuildFingerprint
             EngineConfigFile::digest($this->engineConfig, $this->basePath),
             $this->psr4Digest(),
             $this->lockDigest(),
+            Json::stable($this->aliases),
         ]));
     }
 

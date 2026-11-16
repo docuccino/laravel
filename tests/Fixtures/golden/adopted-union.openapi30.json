@@ -41,50 +41,59 @@
                   "answer": {
                     "anyOf": [
                       {
-                        "allOf": [
+                        "oneOf": [
                           {
-                            "$ref": "#/components/schemas/Answer"
+                            "$ref": "#/components/schemas/CountAnswer"
+                          },
+                          {
+                            "allOf": [
+                              {
+                                "$ref": "#/components/schemas/LettersAnswer"
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "letters": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "maxLength": 8
+                                    },
+                                    "maxItems": 20,
+                                    "minItems": 1
+                                  }
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "allOf": [
+                              {
+                                "$ref": "#/components/schemas/MeasureAnswer"
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "steps": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "integer"
+                                    },
+                                    "maxItems": 20
+                                  }
+                                }
+                              }
+                            ]
                           }
                         ],
-                        "anyOf": [
-                          {
-                            "properties": {
-                              "kind": {
-                                "enum": [
-                                  "count"
-                                ]
-                              }
-                            }
+                        "discriminator": {
+                          "mapping": {
+                            "count": "#/components/schemas/CountAnswer",
+                            "letters": "#/components/schemas/LettersAnswer",
+                            "measure": "#/components/schemas/MeasureAnswer"
                           },
-                          {
-                            "properties": {
-                              "kind": {
-                                "enum": [
-                                  "measure"
-                                ]
-                              },
-                              "steps": {
-                                "maxItems": 20
-                              }
-                            }
-                          },
-                          {
-                            "properties": {
-                              "kind": {
-                                "enum": [
-                                  "letters"
-                                ]
-                              },
-                              "letters": {
-                                "items": {
-                                  "maxLength": 8
-                                },
-                                "maxItems": 20,
-                                "minItems": 1
-                              }
-                            }
-                          }
-                        ]
+                          "propertyName": "kind"
+                        }
                       },
                       {
                         "type": "object",
@@ -191,50 +200,59 @@
           "answer": {
             "anyOf": [
               {
-                "allOf": [
+                "oneOf": [
                   {
-                    "$ref": "#/components/schemas/Answer"
+                    "$ref": "#/components/schemas/CountAnswer"
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/LettersAnswer"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "letters": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 8
+                            },
+                            "maxItems": 20,
+                            "minItems": 1
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/MeasureAnswer"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "steps": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer"
+                            },
+                            "maxItems": 20
+                          }
+                        }
+                      }
+                    ]
                   }
                 ],
-                "anyOf": [
-                  {
-                    "properties": {
-                      "kind": {
-                        "enum": [
-                          "count"
-                        ]
-                      }
-                    }
+                "discriminator": {
+                  "mapping": {
+                    "count": "#/components/schemas/CountAnswer",
+                    "letters": "#/components/schemas/LettersAnswer",
+                    "measure": "#/components/schemas/MeasureAnswer"
                   },
-                  {
-                    "properties": {
-                      "kind": {
-                        "enum": [
-                          "measure"
-                        ]
-                      },
-                      "steps": {
-                        "maxItems": 20
-                      }
-                    }
-                  },
-                  {
-                    "properties": {
-                      "kind": {
-                        "enum": [
-                          "letters"
-                        ]
-                      },
-                      "letters": {
-                        "items": {
-                          "maxLength": 8
-                        },
-                        "maxItems": 20,
-                        "minItems": 1
-                      }
-                    }
-                  }
-                ]
+                  "propertyName": "kind"
+                }
               },
               {
                 "type": "object",

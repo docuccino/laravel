@@ -22,12 +22,14 @@ use Docuccino\Core\Inference\DType\NullT;
 use Docuccino\Core\Inference\DType\ScalarT;
 use Docuccino\Core\Inference\DType\UnionT;
 use Docuccino\Core\Inference\TypeEngine;
+use Docuccino\Laravel\Integrations\FormRequest\ConstValueToRules;
 use Docuccino\Laravel\Integrations\FormRequest\RulesFromClass;
 use Docuccino\Laravel\Integrations\Support\DateWireFormat;
 use Docuccino\Laravel\Integrations\Support\DependencyFileSet;
 use Docuccino\Laravel\Integrations\Support\FieldPaths;
 use Docuccino\Laravel\Integrations\Support\RuleParsing;
 use Docuccino\Laravel\Integrations\Validation\CustomRuleReader;
+use Docuccino\Laravel\Integrations\Validation\LiveRuleValue;
 use Docuccino\Laravel\Integrations\Validation\RuleOrdering;
 use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
 use Docuccino\Laravel\Integrations\Validation\Transformers\AdditionalPropertiesRuleTransformer;
@@ -41,13 +43,14 @@ use Docuccino\Laravel\Integrations\Validation\UnreadRule;
  * marker-stripped type (unless a spatie type attribute already stated one), and every recovered
  * validation token. Nested Data recurses into dotted `author.name` / `items.*.title` keys, and the input
  * key honours `#[MapInputName]`/`#[MapName]`. A property that can never be sent — `#[Computed]`,
- * `#[WithoutValidation]`, `#[FromRouteParameter]`, `#[HiddenFromRequest]`, `#[Prohibited]` — contributes
- * no field and no subtree.
+ * `#[WithoutValidation]`, `#[FromRouteParameter]`, `#[HiddenFromRequest]`, or a `#[Prohibited]` whose
+ * condition settles to it — contributes no field and no subtree.
  *
  * The rule vocabulary has one word — `array` — for every array shape, so a recovered container states its
- * own structure instead: a `list<V>` synthesises the `key.*` item field Laravel itself uses, an `array{…}`
+ * own structure too: a `list<V>` synthesises the `key.*` item field Laravel itself uses, an `array{…}`
  * shape a `key.<member>` field per key, and an `array<string, V>` carries its value schema on an
- * `additional_properties` rule ({@see AdditionalPropertiesRuleTransformer}).
+ * `additional_properties` rule ({@see AdditionalPropertiesRuleTransformer}). The `array` word itself stays,
+ * as laravel-data adds it, because Laravel reads an `in` or `not_in` beside it differently.
  *
  * A date is the same shape of gap: `date` is one word for everything non-relative `strtotime` parses, so a
  * `DateTimeInterface`-typed property states its own wire format on a `date_wire` rule
@@ -83,7 +86,7 @@ final class DataValidationRules
     private readonly DependencyFileSet $dependencyFiles;
 
     /**
-     * The `#[Rule(new X)]` objects the last rule set could not read ({@see unreadRuleObjects()}).
+     * The rule objects the last rule set could not read ({@see unreadRuleObjects()}).
      *
      * @var list<array{key: ?string, class: string, property: string, rule: string, narrows: bool}>
      */
@@ -96,18 +99,23 @@ final class DataValidationRules
 
     private ?ValidationRulesToSchema $validation = null;
 
+    private readonly ReadDate $dates;
+
     /**
-     * @param  string  $dateFormat  the app's `data.date_format`, read exactly as {@see DataSchema} reads
-     *                              it for the response side ({@see dateWireRules()})
+     * @param  string|list<string>  $dateFormat  the app's `data.date_format`, which the date cast parses input
+     *                                           with where the property names no format of its own
+     * @param  array<string, string>  $casts  the app's `data.casts` ({@see ReadDate})
      */
     public function __construct(
         private readonly DataClassReflector $reflector = new DataClassReflector,
         private readonly CustomRuleReader $customRules = new CustomRuleReader,
         private readonly RuleSetNormalizer $normalizer = new RuleSetNormalizer,
         private readonly RuleOrdering $ordering = new RuleOrdering,
-        private readonly string $dateFormat = DateWireFormat::DEFAULT_FORMAT,
+        string|array $dateFormat = DateWireFormat::DEFAULT_FORMAT,
+        array $casts = ReadDate::DEFAULT_CASTS,
     ) {
         $this->dependencyFiles = new DependencyFileSet;
+        $this->dates = new ReadDate($this->reflector, $dateFormat, $casts);
     }
 
     public function reflector(): DataClassReflector
@@ -128,7 +136,7 @@ final class DataValidationRules
     }
 
     /**
-     * The `#[Rule(new X)]` objects the last {@see build()} saw and could not read, each with the request
+     * The rule objects the last {@see build()} saw and could not read, each with the request
      * key it was found at — null inside a map's value, which has no key of its own — the Data class and
      * property that carry it, and whether it can only refuse values. One that can is left out and the
      * property's other rules stand; one that cannot ({@see UnreadRule}) takes the property's stated rules
@@ -385,10 +393,13 @@ final class DataValidationRules
     {
         $fields = [];
         foreach ($metadata->properties as $property) {
+            if ($this->reflector->isExcludedFromRequest($fqcn, $property->name)) {
+                continue;
+            }
+
             // A prohibited property contributes no field and no subtree. The rule set's `prohibited` pass
             // can't cover it: the nested-Data branch below never reaches the token.
-            if ($this->reflector->isExcludedFromRequest($fqcn, $property->name)
-                || $this->reflector->isProhibited($fqcn, $property->name)) {
+            if ($this->statesProhibited($fqcn, $property->name)) {
                 continue;
             }
 
@@ -398,15 +409,17 @@ final class DataValidationRules
             $nested = $this->nestedData($fqcn, $property->name, self::unwrapNull($stripped), $visiting);
             if ($nested !== null) {
                 [$childFqcn, $isCollection, $childMetadata] = $nested;
-                $fields[$key] = $this->presence($fqcn, $property->name, $stripped, [], $isCollection ? 'array' : null);
+                // laravel-data writes the child's rules whatever presence rule the property states, so a child
+                // field it requires requires the property too: its presence is its type's.
+                $fields[$key] = $this->presence($fqcn, $property->name, $stripped, [], $isCollection ? 'array' : null, false);
                 $fields = [...$fields, ...$this->fieldsFor($childFqcn, $childMetadata, $key.($isCollection ? '.*.' : '.'), [...$visiting, $childFqcn])];
 
                 continue;
             }
 
-            $tokens = $this->reflector->validationTokens($fqcn, $property->name);
+            [$tokens, $objects] = $this->reflector->attributeRules($fqcn, $property->name, rtrim($prefix, '.'));
             $this->dependencyFiles->add(...$this->reflector->validationEnumFiles($fqcn, $property->name));
-            [$objectRules, $opaque] = $this->ruleObjectRules($fqcn, $property->name, $key);
+            [$objectRules, $opaque] = $this->ruleObjectRules($objects, $fqcn, $property->name, $key);
             $stated = $opaque ? [] : [
                 ...array_map(RuleParsing::token(...), $tokens),
                 ...$objectRules,
@@ -417,24 +430,26 @@ final class DataValidationRules
                 ...$this->dateWireRules($fqcn, $property->name, $stripped, $stated),
             ];
 
+            $requiring = $this->reflector->statesRequiringRule($fqcn, $property->name);
+
             // An UploadedFile-typed property gets a synthesised `file` rule so the shared chain flips the
             // body to multipart/form-data and emits a binary schema — needed because a real upload Data
             // class usually has a dynamic rules() and only `#[Required]` to go on.
             $upload = $this->uploadedFileKind($stripped, $attributeRules);
             if ($upload === 'single') {
-                $fields[$key] = [...$this->presence($fqcn, $property->name, $stripped, $attributeRules, null), ...$attributeRules, ValidationRule::of('file')];
+                $fields[$key] = [...$this->presence($fqcn, $property->name, $stripped, $attributeRules, null, $requiring), ...$attributeRules, ValidationRule::of('file')];
 
                 continue;
             }
             if ($upload === 'list') {
                 // The field is the array; each item is the uploaded file.
-                $fields[$key] = [...$this->presence($fqcn, $property->name, $stripped, $attributeRules, 'array'), ...$attributeRules];
+                $fields[$key] = [...$this->presence($fqcn, $property->name, $stripped, $attributeRules, 'array', $requiring), ...$attributeRules];
                 $fields[$key.'.*'] = [ValidationRule::of('file')];
 
                 continue;
             }
 
-            $fields[$key] = [...$this->presence($fqcn, $property->name, $stripped, $attributeRules, null), ...$attributeRules];
+            $fields[$key] = [...$this->presence($fqcn, $property->name, $stripped, $attributeRules, null, $requiring), ...$attributeRules];
             $fields = [...$fields, ...$this->containerFields($key, self::unwrapNull($stripped), $visiting)];
         }
 
@@ -520,16 +535,15 @@ final class DataValidationRules
     }
 
     /**
-     * The `date_wire` carrier for a `DateTimeInterface`-typed property: the wire format the app really
-     * accepts, from the most specific source there is. A `#[WithCast(DateTimeInterfaceCast::class,
-     * format: …)]` states it for this property outright — it is literally the format the cast parses
-     * input with — and otherwise the app's `data.date_format` does, which is the source
-     * {@see DataSchema} reads for the response side, so the two directions agree by construction rather
-     * than by a second guess. A field whose own rules already carry a `date_format` says it more
-     * specifically still and gets none.
+     * The `date_wire` carrier for a `DateTimeInterface`-typed property: the formats the cast laravel-data
+     * reads it with accepts ({@see ReadDate}) — a `#[WithCast(DateTimeInterfaceCast::class, format: …)]`'s
+     * own, else the app's `data.date_format`, either a pattern or a list. The response side reads what the
+     * transformer writes instead ({@see WrittenDate}), so the two agree wherever the class states neither.
+     * A field whose own rules already carry a `date_format` says it more specifically still and gets none,
+     * and so does one read by a cast no one can read: it claims no type it cannot stand behind.
      *
-     * The PHP format travels on the rule as it was written, never a word summarising it: what the document
-     * may CLAIM about a pattern — a `format` keyword, a note, the example bytes — is one policy, and
+     * The PHP patterns travel on the rule, never a word summarising them: what the document may CLAIM about
+     * a pattern — a `format` keyword, a note, the example bytes — is one policy, and
      * {@see DateWireRuleTransformer} applies it.
      *
      * @param  list<ValidationRule>  $stated  the rules the property itself declared
@@ -537,7 +551,8 @@ final class DataValidationRules
      */
     private function dateWireRules(string $fqcn, string $property, DType $stripped, array $stated): array
     {
-        if (! DataSchema::hasDateTime($stripped)) {
+        $dateClass = DataSchema::dateClass($stripped);
+        if ($dateClass === null) {
             return [];
         }
 
@@ -547,9 +562,9 @@ final class DataValidationRules
             }
         }
 
-        $format = $this->reflector->dateTimeCastFormat($fqcn, $property) ?? $this->dateFormat;
+        $patterns = $this->dates->patterns($fqcn, $property, $dateClass);
 
-        return [ValidationRule::of('date_wire', [$format])];
+        return $patterns === null ? [] : [ValidationRule::of('date_wire', $patterns)];
     }
 
     /**
@@ -652,27 +667,57 @@ final class DataValidationRules
     }
 
     /**
-     * Rules from a `#[Rule(new Iban)]` object's `#[RuleSchema]`, alongside the string tokens, and whether
-     * one of the objects has content nothing can read that could loosen the rules beside it. An
-     * unannotated rule object contributes nothing and is recorded ({@see unreadRuleObjects()}).
+     * Whether a `#[Prohibited]` on the property prohibits it outright: bare, or handed a `ProhibitedIf` whose
+     * condition settles to it, read as {@see ruleObjectRules()} reads the object. One on a condition this build
+     * cannot settle leaves the property sendable.
+     */
+    private function statesProhibited(string $fqcn, string $property): bool
+    {
+        foreach ($this->reflector->prohibitions($fqcn, $property) as $rule) {
+            $read = is_string($rule) ? [RuleParsing::token($rule)] : (new ConstValueToRules($this->customRules))->fold(LiveRuleValue::of($rule));
+            if (in_array('prohibited', array_map(static fn (ValidationRule $rule): string => $rule->name, $read), true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Rules from the rule objects a property's attributes hand Laravel ({@see DataClassReflector::attributeRules()}),
+     * read as the same `new` in a rules array reads ({@see ConstValueToRules}): a framework object as the
+     * `Rule::` factory that builds it, an annotated one by its `#[RuleSchema]`. Also whether one of them has
+     * content nothing can read that could loosen the rules beside it. One that does not read is recorded
+     * ({@see unreadRuleObjects()}).
      *
+     * @param  list<object>  $objects
      * @return array{0: list<ValidationRule>, 1: bool}
      */
-    private function ruleObjectRules(string $fqcn, string $property, string $key): array
+    private function ruleObjectRules(array $objects, string $fqcn, string $property, string $key): array
     {
         $rules = [];
         $opaque = false;
-        foreach ($this->reflector->ruleObjectClasses($fqcn, $property) as $ruleClass) {
-            $facts = $this->customRules->read($ruleClass);
-            $this->dependencyFiles->add($facts->file);
+        foreach ($objects as $object) {
+            $folder = new ConstValueToRules($this->customRules);
+            $read = $folder->fold(LiveRuleValue::of($object));
+            $this->dependencyFiles->add(...$folder->dependencyFiles());
 
-            if (! $facts->annotated) {
-                $unread = UnreadRule::classify($ruleClass);
-                $opaque = $opaque || ! $unread['narrows'];
-                $this->unread[] = ['key' => $key, 'class' => $fqcn, 'property' => $property, 'rule' => $unread['label'], 'narrows' => $unread['narrows']];
+            $losses = array_map(static fn (string $label): array => [$label, true], $folder->unread());
+            if ($folder->opaque() !== null) {
+                $losses[] = [$folder->opaque(), false];
             }
 
-            $rules = [...$rules, ...$facts->rules];
+            // A choice whose values did not all read publishes none of them, which the reader owes a word too.
+            if ($folder->widened()) {
+                $losses[] = [UnreadRule::classify($object::class)['label'], true];
+            }
+
+            foreach ($losses as [$label, $narrows]) {
+                $opaque = $opaque || ! $narrows;
+                $this->unread[] = ['key' => $key, 'class' => $fqcn, 'property' => $property, 'rule' => $label, 'narrows' => $narrows];
+            }
+
+            $rules = [...$rules, ...$read];
         }
 
         return [$rules, $opaque];
@@ -758,13 +803,14 @@ final class DataValidationRules
     /**
      * Presence/nullability/type rules synthesised from the property type, prepended ahead of the spatie
      * attribute rules and only when one doesn't already state them. Mirrors spatie's own inference:
-     * `required` is skipped for a nullable, Optional/Lazy or defaulted property, and for one stating any
-     * requiring rule ({@see REQUIRING_RULES}).
+     * `required` is skipped for a nullable, Optional/Lazy or defaulted property, for one stating any
+     * requiring rule ({@see REQUIRING_RULES}), and where `$requiring` says it carries a requiring attribute
+     * ({@see DataClassReflector::statesRequiringRule()}), whatever rule that attribute builds.
      *
      * @param  list<ValidationRule>  $attributeRules
      * @return list<ValidationRule>
      */
-    private function presence(string $fqcn, string $property, DType $stripped, array $attributeRules, ?string $forceType): array
+    private function presence(string $fqcn, string $property, DType $stripped, array $attributeRules, ?string $forceType, bool $requiring): array
     {
         $named = array_map(static fn (ValidationRule $rule): string => $rule->name, $attributeRules);
         $out = [];
@@ -775,7 +821,7 @@ final class DataValidationRules
 
         if (($optional || $defaulted) && ! in_array('sometimes', $named, true)) {
             $out[] = ValidationRule::of('sometimes');
-        } elseif (! $optional && ! $defaulted && ! $nullable
+        } elseif (! $optional && ! $defaulted && ! $nullable && ! $requiring
             && array_intersect(self::REQUIRING_RULES, $named) === [] && ! in_array('present', $named, true)) {
             $out[] = ValidationRule::of('required');
         }
@@ -790,6 +836,11 @@ final class DataValidationRules
             return $out;
         }
 
+        // laravel-data adds `array` to every array-typed property, and `in`/`not_in` read the elements beside it.
+        if (self::isContainer($stripped) && ! in_array('array', $named, true)) {
+            $out[] = ValidationRule::of('array');
+        }
+
         $enum = $this->enumRule($stripped);
         if ($enum !== null && array_intersect(self::TYPE_RULES, $named) === []) {
             $out[] = $enum;
@@ -797,8 +848,9 @@ final class DataValidationRules
             return $out;
         }
 
+        // A keyed shape's word is the `array` already carried.
         $typeRule = self::typeRule($stripped);
-        if ($typeRule !== null && array_intersect(self::TYPE_RULES, $named) === []) {
+        if ($typeRule !== null && $typeRule !== 'array' && array_intersect(self::TYPE_RULES, $named) === []) {
             $out[] = ValidationRule::of($typeRule);
         }
 
@@ -825,11 +877,11 @@ final class DataValidationRules
 
     /**
      * The rule word for a recovered type. A container type says which container it is — `list` for proven
-     * sequential keys, `object` for a string-keyed map — rather than the `array` the vocabulary uses for
-     * both: stating `array` here would hand the rule chain an open question this recovery had already
-     * answered, and a shape contributing no child path to answer it with (a positional tuple, a map whose
-     * values nothing could describe) would be widened to "array or object" on the way out. Only a keyed
-     * array SHAPE stays `array`, because the child paths it contributes settle it.
+     * sequential keys, `object` for a string-keyed map — beyond the `array` the vocabulary uses for both:
+     * `array` alone would hand the rule chain an open question this recovery had already answered, and a
+     * shape contributing no child path to answer it with (a positional tuple, a map whose values nothing
+     * could describe) would be widened to "array or object" on the way out. Only a keyed array SHAPE says
+     * `array`, because the child paths it contributes settle it.
      */
     private static function typeRule(DType $type): ?string
     {
@@ -853,6 +905,14 @@ final class DataValidationRules
         }
 
         return $type instanceof MapT ? 'object' : null;
+    }
+
+    /** Whether a type is a PHP array, whatever shape it was recovered as. */
+    private static function isContainer(DType $type): bool
+    {
+        $type = self::unwrapNull($type);
+
+        return $type instanceof ListT || $type instanceof MapT || $type instanceof ArrayShapeT;
     }
 
     /** The sole non-null member of a nullable union, else the type itself. */

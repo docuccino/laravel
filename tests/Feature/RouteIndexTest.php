@@ -70,11 +70,11 @@ it('locates the route for the host the descriptor names when the index missed', 
     expect($context)->not->toBeNull()
         ->and($context->actionRef->class)->toBe($expected);
 })->with([
-    'the second host' => ['b.example.com', '\\'.AdminReportController::class],
-    'the first host' => ['a.example.com', '\\'.ApiReportController::class],
+    'the second host' => ['b.example.com', AdminReportController::class],
+    'the first host' => ['a.example.com', ApiReportController::class],
     // A resolver that reports no host has said nothing to choose by, so it still gets a route rather
     // than a skeleton — degraded, but an answer, and the same one every build.
-    'no host reported' => [null, '\\'.ApiReportController::class],
+    'no host reported' => [null, ApiReportController::class],
     // …but a descriptor that DOES name a host and finds no route on it degrades to a skeleton. Handing
     // it a sibling bound elsewhere would document that sibling's middleware, bindings and action under
     // a host it does not answer on: a confident, wrong answer where none was available.

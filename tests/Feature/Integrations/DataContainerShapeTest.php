@@ -467,3 +467,23 @@ it('descends a deep container all the way down', function (): void {
         'items' => ['type' => 'array', 'items' => ['type' => 'array', 'items' => ['type' => 'array', 'items' => ['type' => 'array', 'items' => ['type' => 'string']]]]],
     ]);
 });
+
+it('carries the array rule laravel-data adds to every array-typed property, beside the shape it was recovered as', function (DType $type, bool $converter, array $expected): void {
+    // laravel-data adds `array` to a property whose PHP type is an array, whatever its docblock says, and an
+    // `in` or `not_in` beside that rule reads the elements. The shape word stays beside it, so the container
+    // the type proved is still the one published (the matrix above).
+    $metadata = new ClassMetadata(ContainerShapeData::class, [new PropertyMetadata('box', $type)]);
+    $ruleSet = (new DataValidationRules)->build(ContainerShapeData::class, $metadata, new NullTypeEngine, null, $converter ? schemaConverter() : null);
+
+    expect(array_map(static fn (ValidationRule $rule): string => $rule->name, $ruleSet->fields['box']))->toBe($expected);
+})->with([
+    'list<string>' => [new ListT(ScalarT::string()), true, ['required', 'array', 'list']],
+    'array<string, string>' => [new MapT(ScalarT::string(), ScalarT::string()), true, ['required', 'array', 'additional_properties']],
+    'array<string, string>, no converter' => [new MapT(ScalarT::string(), ScalarT::string()), false, ['required', 'array', 'object']],
+    'array{width: int}' => [new ArrayShapeT([new ArrayShapeField('width', ScalarT::int())]), true, ['required', 'array']],
+    'array{int, string}' => [new ArrayShapeT([new ArrayShapeField(0, ScalarT::int()), new ArrayShapeField(1, ScalarT::string())], true), true, ['required', 'array', 'list']],
+    'list<string>|null' => [UnionT::of([new ListT(ScalarT::string()), new NullT]), true, ['nullable', 'array', 'list']],
+    // Not an array, so laravel-data adds none.
+    'string' => [ScalarT::string(), true, ['required', 'string']],
+    'mixed' => [new UnknownT('mixed'), true, ['required']],
+]);

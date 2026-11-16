@@ -1,0 +1,516 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/exports/{export}/fail/{code}": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:x6yersainijckde6",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ExportController.php",
+                "line": 24,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ExportController::fail"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "500": {
+                "id": "res:v1:7c6wl32cszpk4wg2",
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/ExportController.php",
+                      "line": 24,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\ExportController::fail"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.exports.@export.fail.@code",
+        "summary": "Fail an export with the fault the caller names.",
+        "tags": [
+          "Export"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:2nz2tyxdqtgrxqry",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:famkl72mlxblmx3k",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "export",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/exports/{export}/lock": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:hxg56fjs3ren6umq",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ExportController.php",
+                "line": 18,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ExportController::lock"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.exports.@export.lock",
+        "summary": "Lock an export.",
+        "tags": [
+          "Export"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:uctwqqr76ktic6rs",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "export",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "423": {
+            "x-docuccino": {
+              "id": "res:v1:2ycghall7m7pntrv",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/ExportController.php",
+                    "line": 18,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\ExportController::lock"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "Locked"
+              }
+            },
+            "description": "Locked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "fallback",
+                        "layer": "fallback",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/ExportController.php",
+                          "line": 18,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\ExportController::lock"
+                        }
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exports/{export}/retire": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:p5ykt7amfmdc57zc",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ExportController.php",
+                "line": 30,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ExportController::retire"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "500": {
+                "id": "res:v1:6b3eecnr34ng7dlr",
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/ExportController.php",
+                      "line": 30,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\ExportController::retire"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.exports.@export.retire",
+        "summary": "Retire an export under a fault code no fault is backed by.",
+        "tags": [
+          "Export"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:eh7o4um5imimkc6w",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "export",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/exports/{export}/withdraw": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:2odxxktxtsuo6edt",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ExportController.php",
+                "line": 36,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ExportController::withdraw"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "500": {
+                "id": "res:v1:iwe2h7phlongzwhz",
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/ExportController.php",
+                      "line": 36,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\ExportController::withdraw"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.exports.@export.withdraw",
+        "summary": "Withdraw an export, naming a fault code no fault is backed by.",
+        "tags": [
+          "Export"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:z6kklyjzppcdlxt7",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "required"
+                  ]
+                }
+              ]
+            },
+            "name": "export",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "InternalServerError": {
+        "x-docuccino": {
+          "id": "sch:v1:ymhinvqj233m43e2"
+        },
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      }
+    },
+    "responses": {
+      "InternalServerError": {
+        "description": "Internal Server Error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/InternalServerError"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "f5cc3ba9acbeee3300dd32894423af68a20a7ed142fde085f5a0a39bb0690a0b"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.23.4",
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
+    }
+  }
+}

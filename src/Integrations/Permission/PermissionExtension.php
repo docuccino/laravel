@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Docuccino\Laravel\Integrations\Permission;
 
 use Docuccino\Attributes\Unauthenticated;
-use Docuccino\Core\Draft\DescriptionAppender;
 use Docuccino\Core\Draft\OperationDraft;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\OperationExtension;
@@ -15,9 +14,9 @@ use Docuccino\Core\Patch\Contribution;
 /**
  * Documents the authorization a `spatie/laravel-permission` middleware enforces. Each
  * `role:`/`permission:`/`role_or_permission:` middleware becomes an entry in the machine-readable
- * `x-permissions` member, plus a "Requires permission: …" line on the description. Writes at the
- * integration layer, so a docblock or attribute description still wins — `x-permissions` stays the
- * authoritative signal either way.
+ * `x-permissions` member, plus a "Requires permission: …" line after whatever description the
+ * operation has — a docblock or attribute description is kept, and the requirement is still stated
+ * beneath it.
  */
 final class PermissionExtension implements OperationExtension
 {
@@ -84,6 +83,6 @@ final class PermissionExtension implements OperationExtension
     {
         $sentences = array_unique(array_map(static fn (PermissionRequirement $r): string => $r->describe(), $requirements));
 
-        DescriptionAppender::append($operation, implode("\n\n", $sentences), $contribution);
+        $operation->declareDescriptionNote(implode("\n\n", $sentences), $contribution);
     }
 }

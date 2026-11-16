@@ -12,6 +12,8 @@ use Docuccino\Core\Examples\ExampleRedaction;
 use Docuccino\Core\Examples\RecordedExampleAudit;
 use Docuccino\Core\Extensions\BuiltIn\AttributeExamplesExtension;
 use Docuccino\Core\Extensions\BuiltIn\AttributeOverridesExtension;
+use Docuccino\Core\Extensions\Context\DocumentConfig;
+use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Lint\ExampleSchemaLint;
 use Docuccino\Core\Lint\LintRuleOptions;
@@ -36,7 +38,6 @@ use Docuccino\Laravel\Commands\DiffCommand;
 use Docuccino\Laravel\Commands\ExplainCommand;
 use Docuccino\Laravel\Commands\ExportCommand;
 use Docuccino\Laravel\Commands\InstallCommand;
-use Docuccino\Laravel\Commands\MemoryLimitOption;
 use Docuccino\Laravel\Commands\ValidateCommand;
 use Docuccino\Laravel\Commands\VersionChangesCommand;
 use Docuccino\Laravel\Commands\WatchCommand;
@@ -65,16 +66,22 @@ use Docuccino\Laravel\Integrations\Passport\PassportSecurityExtension;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderConfig;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderConfigDigestContributor;
 use Docuccino\Laravel\Integrations\QueryBuilder\QueryBuilderParametersExtension;
+use Docuccino\Laravel\Integrations\Sanctum\SanctumSecurityExtension;
 use Docuccino\Laravel\Integrations\SpatieData\DataClassReflector;
 use Docuccino\Laravel\Integrations\SpatieData\DataSchema;
 use Docuccino\Laravel\Integrations\SpatieData\DataValidationRules;
+use Docuccino\Laravel\Integrations\SpatieData\ReadDate;
+use Docuccino\Laravel\Integrations\SpatieData\SpatieDataDigestContributor;
 use Docuccino\Laravel\Integrations\SpatieData\WrapResolver;
+use Docuccino\Laravel\Integrations\SpatieData\WrittenDate;
 use Docuccino\Laravel\Integrations\Support\DateWireFormat;
+use Docuccino\Laravel\Links\DataColumns;
 use Docuccino\Laravel\Pipeline\BuildFingerprint;
 use Docuccino\Laravel\Pipeline\DocumentBuilder;
 use Docuccino\Laravel\Pipeline\DocumentGenerator;
 use Docuccino\Laravel\Pipeline\FragmentStore;
 use Docuccino\Laravel\Registry\ExtensionRegistry;
+use Docuccino\Laravel\Registry\IntegrationToggles;
 use Docuccino\Laravel\Routing\LaravelRouteResolver;
 use Docuccino\Laravel\Routing\ResolvedRouteIndex;
 use Docuccino\Laravel\Routing\RouteSurvey;
@@ -84,6 +91,7 @@ use Docuccino\Laravel\Support\GateDenial;
 use Docuccino\Laravel\Support\GatePoliciesDigestContributor;
 use Docuccino\Laravel\Support\LeakageDigestContributor;
 use Docuccino\Laravel\Support\MiddlewareClasses;
+use Docuccino\Laravel\Support\RouteAuthentication;
 use Docuccino\Laravel\Versioning\Scaffold\ChangeStub;
 use Docuccino\Laravel\Versioning\VersionChangeCollector;
 use Docuccino\Laravel\Watch\ArtisanBuildRunner;
@@ -92,11 +100,10 @@ use Docuccino\Laravel\Watch\BuildToken;
 use Docuccino\Laravel\Watch\WatchSet;
 use Docuccino\Laravel\Watch\WatchSignal;
 use Docuccino\Laravel\Webhooks\WebhookCollector;
-use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Contracts\Auth\Access\Gate as GateContract;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Foundation\Application;
-use Illuminate\Support\Facades\Event;
+use Illuminate\Foundation\AliasLoader;
 use Illuminate\Support\Facades\Route;
 use Laravel\Passport\Passport;
 use Laravel\Passport\Scope;
@@ -162,6 +169,13 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
         // after the resolver has filled the router.
         $this->app->scoped(MiddlewareClasses::class);
 
+        // Which middleware authenticates is the framework's answer plus each auth package's, and the
+        // package's is its integration's to give: read per document, so a disabled one contributes none.
+        $this->app->bind(RouteAuthentication::class, static fn (Application $app): RouteAuthentication => new RouteAuthentication(
+            $app->make(MiddlewareClasses::class),
+            static fn (DocumentConfig $document): array => IntegrationToggles::authenticators($document),
+        ));
+
         // Same deal: the inferred-handler tier writes response-fold deferrals, the summary transformer
         // drains them once per build.
         $this->app->scoped(HandlerDeferralLog::class);
@@ -182,7 +196,7 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
         $this->app->bind(GateDenial::class, static function (Application $app): GateDenial {
             $vendor = new VendorRoutePolicy($app->basePath('vendor'));
 
-            return new GateDenial(self::gateResolver($app), $vendor->isVendorFile(...));
+            return new GateDenial($app->make(RouteAuthentication::class), self::gateResolver($app), $vendor->isVendorFile(...));
         });
 
         $this->app->bind(
@@ -233,7 +247,7 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             ->give(fn (): string => $this->app->storagePath('docuccino'));
 
         // Resolved (not captured) so it reads the marker as it stands when the engine is built — which is
-        // after CommandStarting has run for one of our commands, and never during a web request.
+        // after one of our commands has marked it (StartsConsoleBuild), and never during a web request.
         $this->app->when(TypeEngineFactory::class)
             ->needs('$console')
             ->give(static fn (): bool => ConsoleBuild::active());
@@ -286,11 +300,14 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
         });
 
         // What that cache keys on beyond config and routes: the engine that resolved, its
-        // output-shaping config and the app's locked dependencies.
+        // output-shaping config, the app's locked dependencies and its class aliases.
         $this->app->bind(BuildFingerprint::class, function (Application $app): BuildFingerprint {
             $engine = $app->make(BuildConfig::class)->engine();
 
-            return new BuildFingerprint($engine, $app->basePath(), $app->make(EnginePackage::class));
+            /** @var array<string, string> $aliases */
+            $aliases = AliasLoader::getInstance()->getAliases();
+
+            return new BuildFingerprint($engine, $app->basePath(), $app->make(EnginePackage::class), $aliases);
         });
 
         $this->app->when(DocumentBuilder::class)
@@ -398,7 +415,7 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             $vendor = new VendorRoutePolicy($app->basePath('vendor'));
 
             return new QueryBuilderParametersExtension(
-                QueryBuilderConfig::fromArray($config, self::spatieQueryBuilderMajor()),
+                QueryBuilderConfig::fromInstalled($config, self::spatieQueryBuilderVersion()),
                 isVendorFile: $vendor->isVendorFile(...),
             );
         });
@@ -407,16 +424,34 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
             /** @var array<string, mixed> $config */
             $config = (array) config('query-builder', []);
 
-            return new QueryBuilderConfigDigestContributor(QueryBuilderConfig::fromArray($config, self::spatieQueryBuilderMajor()));
+            return new QueryBuilderConfigDigestContributor(QueryBuilderConfig::fromInstalled($config, self::spatieQueryBuilderVersion()));
         });
 
         // Passport's oauth2 scheme (and the cache digest below) need facts that only live on the
-        // vendor class: the scope catalogue and which grants are enabled.
+        // vendor class: the scope catalogue and which grants are enabled. Which guard an entry names is
+        // read by class through the alias map.
         $this->app->bind(PassportSecurityExtension::class, function (Application $app): PassportSecurityExtension {
             /** @var Repository $config */
             $config = $app->make('config');
 
-            return new PassportSecurityExtension($config, self::passportRuntime());
+            $authentication = new RouteAuthentication($app->make(MiddlewareClasses::class));
+
+            return new PassportSecurityExtension($config, $authentication->guardArguments(...), self::passportRuntime());
+        });
+
+        // Sanctum's stateful mode needs the route to authenticate a user: the framework's authenticators
+        // and the document's pattern, by class through the alias map. A package's token middleware is
+        // not a session guard, so the integrations' own authenticators are left out.
+        $this->app->bind(SanctumSecurityExtension::class, static function (Application $app): SanctumSecurityExtension {
+            $authentication = new RouteAuthentication($app->make(MiddlewareClasses::class));
+            /** @var Repository $config */
+            $config = $app->make('config');
+
+            return new SanctumSecurityExtension(
+                static fn (RouteContext $context): bool => $authentication->refusal($context) !== null,
+                $authentication->guardArguments(...),
+                $config,
+            );
         });
 
         $this->app->bind(PassportDigestContributor::class, function (Application $app): PassportDigestContributor {
@@ -439,17 +474,31 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
         $this->app->bind(DataSchema::class, function (Application $app): DataSchema {
             return new DataSchema(
                 reflector: $app->make(DataClassReflector::class),
-                dateFormat: self::dataDateFormat(),
+                dateFormat: self::dataOutputDateFormat(),
                 wrap: new WrapResolver(self::stringConfig('data.wrap')),
+                transformers: self::dataClassMap('data.transformers', WrittenDate::DEFAULT_TRANSFORMERS),
             );
         });
 
-        // The request side is handed the SAME `data.date_format`, so a DateTimeInterface property
-        // documents one wire format in both directions.
+        // A response link's Data half reads laravel-data as the app configured it: the names, the envelope,
+        // and what may stand between a model's column and the wire.
+        $this->app->bind(DataColumns::class, function (Application $app): DataColumns {
+            return new DataColumns(
+                reflector: $app->make(DataClassReflector::class),
+                wrap: new WrapResolver(self::stringConfig('data.wrap')),
+                globalInputMapper: self::stringConfig('data.name_mapping_strategy.input'),
+                globalOutputMapper: self::stringConfig('data.name_mapping_strategy.output'),
+                normalizers: SpatieDataDigestContributor::normalizers(config('data.normalizers')),
+                castTypes: array_keys(self::dataClassMap('data.casts', [])),
+                transformerTypes: array_keys(self::dataClassMap('data.transformers', [])),
+            );
+        });
+
         $this->app->bind(DataValidationRules::class, function (Application $app): DataValidationRules {
             return new DataValidationRules(
                 reflector: $app->make(DataClassReflector::class),
                 dateFormat: self::dataDateFormat(),
+                casts: self::dataClassMap('data.casts', ReadDate::DEFAULT_CASTS),
             );
         });
 
@@ -506,27 +555,59 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
     }
 
     /**
-     * The installed spatie/laravel-query-builder major, off Composer's runtime API. No extra cache
+     * The installed spatie/laravel-query-builder version, off Composer's runtime API. No extra cache
      * keying: the app's composer.lock is already in {@see BuildFingerprint}, so an upgrade retires
      * warm fragments on its own.
      */
-    private static function spatieQueryBuilderMajor(): int
+    private static function spatieQueryBuilderVersion(): ?string
     {
         if (! class_exists(InstalledVersions::class)) {
-            return QueryBuilderConfig::majorOf(null);
+            return null;
         }
 
         try {
-            return QueryBuilderConfig::majorOf(InstalledVersions::getVersion('spatie/laravel-query-builder'));
+            return InstalledVersions::getVersion('spatie/laravel-query-builder');
         } catch (Throwable) {
-            return QueryBuilderConfig::majorOf(null);
+            return null;
         }
     }
 
-    /** The app's spatie-data date format, or the package's own default where it is unset. */
-    private static function dataDateFormat(): string
+    /**
+     * The app's spatie-data date format, or the list of them laravel-data's cast tries in turn.
+     *
+     * @return string|list<string>
+     */
+    private static function dataDateFormat(): string|array
     {
-        return self::stringConfig('data.date_format') ?? DateWireFormat::DEFAULT_FORMAT;
+        $format = config('data.date_format');
+
+        return is_array($format) ? array_values(array_filter($format, is_string(...))) : self::stringConfig('data.date_format') ?? DateWireFormat::DEFAULT_FORMAT;
+    }
+
+    /** The format laravel-data's date transformer writes by default: `data.date_format`, or its first entry. */
+    private static function dataOutputDateFormat(): string
+    {
+        $format = config('data.date_format');
+        $first = is_array($format) ? reset($format) : $format;
+
+        return is_string($first) && $first !== '' ? $first : DateWireFormat::DEFAULT_FORMAT;
+    }
+
+    /**
+     * The app's `data.transformers` or `data.casts`, in order, or laravel-data's shipped date entry where it
+     * is unset.
+     *
+     * @param  array<string, string>  $default
+     * @return array<string, string>
+     */
+    private static function dataClassMap(string $key, array $default): array
+    {
+        $configured = config($key);
+        if (! is_array($configured)) {
+            return $default;
+        }
+
+        return array_filter($configured, static fn (mixed $transformer, int|string $transformable): bool => is_string($transformable) && is_string($transformer), ARRAY_FILTER_USE_BOTH);
     }
 
     /** A non-empty string config value, or null when unset/blank. */
@@ -621,10 +702,6 @@ final class DocuccinoServiceProvider extends PackageServiceProvider
      */
     public function packageBooted(): void
     {
-        // Ahead of the off-switch: `--memory-limit` has to reach config before a command's dependencies
-        // resolve the engine, and this listener is the last hook early enough (see MemoryLimitOption).
-        Event::listen(CommandStarting::class, MemoryLimitOption::capture(...));
-
         // The BUILD configuration, joining the framework config `hasConfigFile()` already put under
         // this tag. Both of them, because the tag names the package's configuration and the package's
         // configuration is two files: on its own, `config/docuccino.php` hands an author viewer wiring

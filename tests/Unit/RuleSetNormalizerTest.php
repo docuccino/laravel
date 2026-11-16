@@ -100,6 +100,54 @@ it('keeps the array rule when the only child is a wildcard, which IS an array', 
     ]);
 });
 
+/*
+ * Beside Laravel's `array` rule, `in` compares each element of an array value, so it is the items' rule, and
+ * `not_in` refuses an array whose every element is listed, which is the container's. Without `array` —
+ * `list` included — both compare the value itself and stand. Laravel reads it so in 12 and 13 alike
+ * (`ValidatesAttributes::validateIn()`), whatever order the rules are written in.
+ */
+it('moves in beside array onto the items, and reads not_in beside it as the elements', function (array $fields, array $expected): void {
+    expect(normalizedNames($fields))->toBe($expected);
+})->with([
+    'no item rules, so the item key is written beside its list' => [
+        ['tags' => ['in', 'array'], 'name' => ['string']],
+        ['tags' => ['array_or_object'], 'tags.*' => ['in'], 'name' => ['string']],
+    ],
+    'item rules after the list' => [
+        ['tags' => ['array', 'in'], 'tags.*' => ['string', 'distinct']],
+        ['tags' => ['array'], 'tags.*' => ['string', 'distinct', 'in']],
+    ],
+    'item rules before the list' => [
+        ['tags.*' => ['string'], 'tags' => ['array', 'in']],
+        ['tags.*' => ['string', 'in'], 'tags' => ['array']],
+    ],
+    'a list of lists' => [
+        ['grid' => ['array'], 'grid.*' => ['array', 'in']],
+        ['grid' => ['array'], 'grid.*' => ['array_or_object'], 'grid.*.*' => ['in']],
+    ],
+    'an object a named child proves' => [
+        ['meta' => ['array', 'in'], 'meta.a' => ['string']],
+        ['meta' => ['object'], 'meta.*' => ['in'], 'meta.a' => ['string']],
+    ],
+    'not_in' => [
+        ['tags' => ['array', 'not_in']],
+        ['tags' => ['array_or_object', 'array_not_in']],
+    ],
+    'list, which is not array' => [
+        ['tags' => ['list', 'in', 'not_in']],
+        ['tags' => ['list', 'in', 'not_in']],
+    ],
+    // An enum rule asks the enum's tryFrom() about the value, which an array never is.
+    'an enum rule' => [
+        ['tags' => ['array', 'enum']],
+        ['tags' => ['array_or_object', 'enum']],
+    ],
+    'no array rule' => [
+        ['tag' => ['string', 'in', 'not_in']],
+        ['tag' => ['string', 'in', 'not_in']],
+    ],
+]);
+
 it('leaves an ordinary rule set untouched', function (): void {
     $fields = ['name' => ['required', 'string'], 'age' => ['integer']];
 

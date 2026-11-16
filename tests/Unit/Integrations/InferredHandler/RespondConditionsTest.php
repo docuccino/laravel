@@ -9,6 +9,7 @@ use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Context\RouteDescriptor;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Core\Inference\CallCondition;
+use Docuccino\Core\Inference\ConditionTree;
 use Docuccino\Core\Tests\Support\StubTypeEngine;
 use Docuccino\Laravel\Integrations\InferredHandler\LocatedCallable;
 use Docuccino\Laravel\Integrations\InferredHandler\RespondCallback;
@@ -133,3 +134,22 @@ it('treats a call it cannot answer without a request as no evidence either way',
     'a response call other than the status' => [new CallCondition('response', 'isRedirect', [], true)],
     'the status read with arguments' => [new CallCondition('response', 'getStatusCode', ['x'], 419)],
 ]);
+
+it('reads a guard joining conditions by answering each the way it answers it alone', function (string $uri, ConditionTree $guard, bool $reachable): void {
+    expect(RespondConditions::reachable([], respondConditionsCallback(), respondConditionsFor($uri), new ResponseDraft('404'), guards: $guard))->toBe($reachable);
+})->with(static function (): array {
+    $api = ConditionTree::leaf(new CallCondition('request', 'is', ['api/*'], true));
+    $notFound = ConditionTree::leaf(new CallCondition('response', 'getStatusCode', [], 404));
+    $asks = ConditionTree::leaf(new CallCondition('request', 'expectsJson', [], true));
+
+    return [
+        // `! is('api/*') || getStatusCode() !== 404` on an api route rendering a 404: both halves false.
+        'a disjunction both halves of which fail' => ['/api/forms', ConditionTree::any([ConditionTree::not($api), ConditionTree::not($notFound)]), false],
+        'a disjunction one half of which holds' => ['/portal/forms', ConditionTree::any([ConditionTree::not($api), ConditionTree::not($notFound)]), true],
+        // Whether a client asks for JSON is the request's to say: the half that fails decides nothing alone.
+        'a disjunction with a half no route answers' => ['/api/forms', ConditionTree::any([ConditionTree::not($api), $asks]), true],
+        'a conjunction with a half no route answers, and one that fails' => ['/portal/forms', ConditionTree::all([$api, $asks]), false],
+        // A status is no truth value: `if ($response->getStatusCode())` is not read as a comparison with true.
+        'a status read as a truth value' => ['/api/forms', ConditionTree::not(ConditionTree::leaf(new CallCondition('response', 'getStatusCode', [], true))), true],
+    ];
+});

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\Passport;
 
+use Closure;
 use Docuccino\Attributes\Unauthenticated;
 use Docuccino\Core\Draft\OperationDraft;
 use Docuccino\Core\Extensions\Context\RouteContext;
@@ -20,15 +21,21 @@ use Illuminate\Contracts\Config\Repository;
  * carries `scope:`/`scopes:` or client-credentials middleware, or when an `auth:<guard>` (bare `auth` =
  * default guard) resolves to a guard whose `config('auth.guards')` driver is `passport` — so a custom
  * passport-driver guard is recognised, an `api` guard on the token driver is not, and multi-guard lists
- * work. Defers when config already declares security schemes; skips `#[Unauthenticated]`.
+ * work. Which guard an entry names is the adapter's answer, handed in, so an application's own alias for
+ * the authenticator counts. Defers when config already declares security schemes; skips `#[Unauthenticated]`.
  */
 final class PassportSecurityExtension implements OperationExtension
 {
     /** What a machine-dependent-value report names, since the scheme's own slot isn't settled yet. */
     private const PUBLISHED = "The Passport scheme's OAuth2 flow URLs";
 
+    /**
+     * @param  Closure(RouteContext, string): ?string  $guardArguments  an entry's guard arguments, by class
+     *                                                                  through the build's alias map
+     */
     public function __construct(
         private readonly Repository $config,
+        private readonly Closure $guardArguments,
         private readonly PassportRuntime $runtime = new PassportRuntime,
         private readonly ScopeMiddlewareParser $scopes = new ScopeMiddlewareParser,
     ) {}
@@ -51,7 +58,7 @@ final class PassportSecurityExtension implements OperationExtension
         $middleware = $context->route->middleware;
         $requirements = $this->scopes->parse($middleware);
 
-        if (! $this->protects($middleware, $requirements)) {
+        if (! $this->protects($context, $requirements)) {
             return;
         }
 
@@ -68,11 +75,10 @@ final class PassportSecurityExtension implements OperationExtension
         $operation->setSecurity($requirements->toSecurity($name), Contribution::integration('passport', $context->actionSource()));
     }
 
-    /**
-     * @param  list<string>  $middleware
-     */
-    private function protects(array $middleware, ScopeRequirements $requirements): bool
+    private function protects(RouteContext $context, ScopeRequirements $requirements): bool
     {
+        $middleware = $context->route->middleware;
+
         // Recovered scopes mean Passport-protected regardless of driver.
         if (! $requirements->isEmpty()) {
             return true;
@@ -88,6 +94,7 @@ final class PassportSecurityExtension implements OperationExtension
             $middleware,
             AuthGuardDrivers::map($this->config->get('auth.guards')),
             $this->defaultGuard(),
+            fn (string $entry): ?string => ($this->guardArguments)($context, $entry),
         );
 
         return in_array('passport', $drivers, true);

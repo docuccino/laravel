@@ -20,11 +20,13 @@ use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Inference\ActionAnalysis;
 use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\DType\DType;
+use Docuccino\Core\Inference\DType\LiteralT;
 use Docuccino\Core\Inference\DType\NeverT;
 use Docuccino\Core\Inference\DType\PayloadStatusT;
 use Docuccino\Core\Inference\DType\UnionT;
 use Docuccino\Core\Inference\DType\UnknownT;
 use Docuccino\Core\Inference\DType\VoidT;
+use Docuccino\Core\Inference\ReturnSite;
 use Docuccino\Core\Inference\SourceLocation;
 use Docuccino\Core\Inference\StatusCodes;
 use Docuccino\Core\Patch\Contribution;
@@ -56,9 +58,10 @@ final class InferredResponsesExtension implements OperationExtension
     private const DEFAULT_STATUS = '200';
 
     /**
-     * The OAS range key a redirect documents under: `RedirectResponse` takes any 3xx and the return site
-     * names none of them, so the range is what the code proves and 302 would be a guess. Whether it is
-     * still there once every layer has spoken belongs to the document lint of the same name, not here: an
+     * The OAS range key a redirect documents under where no status was read for it: `RedirectResponse`
+     * takes any 3xx and the return site names none of them, so the range is what the code proves and 302
+     * would be a guess; a status the call states is published as itself ({@see frameworkResponse()}).
+     * Whether it is still there once every layer has spoken belongs to the document lint of the same name, not here: an
      * attribute retires it ({@see OperationDraft::supersedeStatusRange()}), and a diagnostic raised from
      * this side would tell an author who pinned the code to pin it again.
      */
@@ -99,9 +102,21 @@ final class InferredResponsesExtension implements OperationExtension
     {
         [$analysis, $producer] = $this->responseAnalysis($context);
 
-        $fileCalls = $this->fileResponseCalls($analysis, $context);
+        $this->document($operation, $context, $analysis->returns, $producer, $context->actionLabel());
+    }
 
-        /** @var array<string, array{payloads: list<DType>, location: ?SourceLocation, empty: bool, headers: ?array<string, mixed>, bodies: array<string, array<string, mixed>>}> $byStatus */
+    /**
+     * Documents each return path as the response it is sent as. Also asked for responses the framework sends
+     * from outside the action — a form request's own answer to a request it refuses — so they read alike.
+     *
+     * @param  list<ReturnSite>  $returns
+     * @param  string  $label  what the notices name as sending them
+     */
+    public function document(OperationDraft $operation, RouteContext $context, array $returns, ?string $producer, string $label): void
+    {
+        $fileCalls = $this->fileResponseCalls($returns, $context);
+
+        /** @var array<string, array{payloads: list<array{DType, ?string}>, location: ?SourceLocation, empty: bool, headers: ?array<string, mixed>, bodies: array<string, array<string, mixed>>}> $byStatus */
         $byStatus = [];
 
         /** @var array<string, list<string>> $unrecovered */
@@ -109,8 +124,8 @@ final class InferredResponsesExtension implements OperationExtension
 
         $unread = false;
 
-        foreach ($analysis->returns as $return) {
-            [$statuses, $payload, $empty, $headers, $bodies] = $this->unwrap($return->type, $fileCalls);
+        foreach ($returns as $return) {
+            [$statuses, $payload, $empty, $headers, $bodies, $mediaType] = $this->unwrap($return->type, $fileCalls);
             $unread = $unread || $statuses === [OperationDraft::UNREAD_STATUS];
 
             // Every status the class landed on, not just the first: two return paths of one bare
@@ -135,7 +150,7 @@ final class InferredResponsesExtension implements OperationExtension
                     $bucket = $byStatus[$placedStatus] ??= ['payloads' => [], 'location' => null, 'empty' => false, 'headers' => null, 'bodies' => []];
                     $bucket['location'] ??= $return->location;
                     if ($placedPayload !== null) {
-                        $bucket['payloads'][] = $placedPayload;
+                        $bucket['payloads'][] = [$placedPayload, $mediaType];
                     }
                     $bucket['empty'] = $bucket['empty'] || ($placedPayload === null && $empty);
                     $bucket['headers'] ??= $headers;
@@ -145,9 +160,9 @@ final class InferredResponsesExtension implements OperationExtension
             }
         }
 
-        $this->reportUnrecovered($context, $unrecovered);
+        $this->reportUnrecovered($context, $unrecovered, $label);
         if ($unread) {
-            $this->reportUnreadStatus($context);
+            $this->reportUnreadStatus($context, $label);
         }
 
         if ($byStatus === []) {
@@ -185,7 +200,7 @@ final class InferredResponsesExtension implements OperationExtension
      *
      * @param  array<string, list<string>>  $fqcns  the unrecovered response class → every status it landed on
      */
-    private function reportUnrecovered(RouteContext $context, array $fqcns): void
+    private function reportUnrecovered(RouteContext $context, array $fqcns, string $label): void
     {
         foreach ($fqcns as $fqcn => $statuses) {
             // The streamed JSON response is the exception: it names its own media type, so what it is
@@ -204,7 +219,7 @@ final class InferredResponsesExtension implements OperationExtension
                     $streamed
                         ? '%s returns a bare %s, and nothing at the call site names the media type it streams, so the body is documented as any media type at all.'
                         : '%s returns a bare %s, so nothing names the response body and its shape could not be recovered.',
-                    $context->actionLabel(),
+                    $label,
                     $fqcn,
                 ),
                 routeSignature: $context->route->signature(),
@@ -221,7 +236,7 @@ final class InferredResponsesExtension implements OperationExtension
      * survives: a declaration that retires it ({@see OperationDraft::retiresUnreadStatus()}), a
      * `#[Response]` or a `#[ResponseHeader]` alike, has already said what the notice would ask for.
      */
-    private function reportUnreadStatus(RouteContext $context): void
+    private function reportUnreadStatus(RouteContext $context, string $label): void
     {
         foreach ([...$context->attributes->all(Response::class), ...$context->attributes->all(ResponseHeader::class)] as $declared) {
             if (OperationDraft::retiresUnreadStatus((string) $declared->status)) {
@@ -234,7 +249,7 @@ final class InferredResponsesExtension implements OperationExtension
             code: 'inferred-response.status-unread',
             message: sprintf(
                 '%s sets a response status the analyzer could not read, so its body is documented under `default` (any status) rather than under a code it may never send.',
-                $context->actionLabel(),
+                $label,
             ),
             routeSignature: $context->route->signature(),
             help: 'Name each status it can send with #[Response(status: …)] — the inferred body moves onto every status you name below 400 — or pass the status as a literal, a constant, or a choice between them ($ok ? 200 : 503).',
@@ -299,10 +314,12 @@ final class InferredResponsesExtension implements OperationExtension
      * `BinaryFileResponse` for a download and for an inline file, so the call site is the only place the
      * difference — and the media type — is written down. Tracing through the context records the walk's
      * files, so a warm build reports what a cold one did.
+     *
+     * @param  list<ReturnSite>  $returns
      */
-    private function fileResponseCalls(ActionAnalysis $analysis, RouteContext $context): ?FileResponseVisitor
+    private function fileResponseCalls(array $returns, RouteContext $context): ?FileResponseVisitor
     {
-        foreach ($analysis->returns as $return) {
+        foreach ($returns as $return) {
             $type = $return->type;
             if ($type instanceof ClassT && (FrameworkClasses::isBinaryFile($type->fqcn) || FrameworkClasses::isStreamed($type->fqcn))) {
                 $context->trace($visitor = new FileResponseVisitor);
@@ -386,64 +403,73 @@ final class InferredResponsesExtension implements OperationExtension
     }
 
     /**
-     * Unwrap a return type to `(statuses, payloadType, isEmptyBody, headers, bodies)`. A
-     * `JsonResponse<payload, status>` yields the payload under each status it folds to (void payload =
-     * empty body); an unparameterised framework response goes to {@see frameworkResponse()};
-     * anything else yields itself under 200. `bodies` are media-type-keyed schemas the response class
-     * proves directly, rather than payload types the converter has to map.
+     * Unwrap a return type to `(statuses, payloadType, isEmptyBody, headers, bodies, mediaType)`. A
+     * `JsonResponse<payload, status, contentType>` yields the payload under each status it folds to (void
+     * payload = empty body), sent as the media type the code stated where it stated one; an unparameterised
+     * framework response goes to {@see frameworkResponse()}; anything else yields itself under 200. `bodies`
+     * are media-type-keyed schemas the response class proves directly, rather than payload types the
+     * converter has to map.
      *
-     * @return array{0: non-empty-list<string>, 1: ?DType, 2: bool, 3: ?array<string, mixed>, 4: array<string, array<string, mixed>>}
+     * @return array{0: non-empty-list<string>, 1: ?DType, 2: bool, 3: ?array<string, mixed>, 4: array<string, array<string, mixed>>, 5: ?string}
      */
     private function unwrap(DType $type, ?FileResponseVisitor $fileCalls): array
     {
         if ($type instanceof VoidT || $type instanceof NeverT) {
-            return [[self::DEFAULT_STATUS], null, false, null, []];
+            return [[self::DEFAULT_STATUS], null, false, null, [], null];
         }
 
+        // The engine writes a body and status it read onto the framework's class alone; a subclass it read
+        // nothing off arrives bare, and is matched with its family below.
         if ($type instanceof ClassT && $type->fqcn === FrameworkClasses::JSON_RESPONSE && $type->typeArgs !== []) {
             $statuses = self::statusesOf($type->typeArgs);
             $payload = $type->typeArgs[0];
 
             if ($payload instanceof VoidT || $payload instanceof NeverT) {
-                return [$statuses, null, true, null, []];
+                return [$statuses, null, true, null, [], null];
             }
 
-            return [$statuses, $payload, false, null, []];
+            $stated = $type->typeArgs[2] ?? null;
+
+            return [$statuses, $payload, false, null, [], $stated instanceof LiteralT && is_string($stated->value) ? $stated->value : null];
         }
 
         if ($type instanceof ClassT && FrameworkClasses::isResponse($type->fqcn)) {
-            [$status, $payload, $empty, $headers, $bodies] = $this->frameworkResponse($type, $fileCalls);
-
-            return [[$status], $payload, $empty, $headers, $bodies];
+            return [...$this->frameworkResponse($type, $fileCalls), null];
         }
 
-        return [[self::DEFAULT_STATUS], $type, false, null, []];
+        return [[self::DEFAULT_STATUS], $type, false, null, [], null];
     }
 
     /**
      * A framework response object handed back with no payload generic: transport, not a body, so only what
      * the class itself proves is documented. A redirect proves a 3xx plus `Location` and no body; a bare
-     * `JsonResponse` proves a JSON body of an unrecovered shape, which converts to an open `{}` rather than
+     * JSON response proves a JSON body of an unrecovered shape, which converts to an open `{}` rather than
      * the no-body claim the class contradicts; a file or streamed response goes to {@see fileResponse()};
-     * anything else proves neither media type nor shape.
+     * anything else proves neither media type nor shape. Each family is matched with its subclasses, so a
+     * class whose own status and body went unread is documented as the framework class it extends.
      *
-     * @return array{0: string, 1: ?DType, 2: bool, 3: ?array<string, mixed>, 4: array<string, array<string, mixed>>}
+     * A redirect, file or stream the engine read a status for carries it as a `JsonResponse` does, in its
+     * second type argument ({@see statusesOf()}). A redirect whose status was not read keeps the range.
+     *
+     * @return array{0: non-empty-list<string>, 1: ?DType, 2: bool, 3: ?array<string, mixed>, 4: array<string, array<string, mixed>>}
      */
     private function frameworkResponse(ClassT $type, ?FileResponseVisitor $fileCalls): array
     {
         if (FrameworkClasses::isRedirect($type->fqcn)) {
-            return [self::REDIRECT_STATUS, null, true, self::LOCATION_HEADER, []];
+            $codes = StatusCodes::of($type->typeArgs[1] ?? null);
+
+            return [$codes === null ? [self::REDIRECT_STATUS] : array_map(strval(...), $codes), null, true, self::LOCATION_HEADER, []];
         }
 
-        if ($type->fqcn === FrameworkClasses::JSON_RESPONSE) {
-            return [self::DEFAULT_STATUS, $type, false, null, []];
+        if (FrameworkClasses::isJson($type->fqcn)) {
+            return [[self::DEFAULT_STATUS], $type, false, null, []];
         }
 
         if (FrameworkClasses::isBinaryFile($type->fqcn) || FrameworkClasses::isStreamed($type->fqcn)) {
-            return $this->fileResponse($type, $fileCalls);
+            return [self::statusesOf($type->typeArgs), ...$this->fileResponse($type, $fileCalls)];
         }
 
-        return [self::DEFAULT_STATUS, null, true, null, []];
+        return [[self::DEFAULT_STATUS], null, true, null, []];
     }
 
     /**
@@ -452,14 +478,14 @@ final class InferredResponsesExtension implements OperationExtension
      * recovered calls answer where there are any and the class's own fallback answers where there are
      * none ({@see BinaryRepresentation}). Several calls at one status become one content entry each.
      *
-     * @return array{0: string, 1: ?DType, 2: bool, 3: ?array<string, mixed>, 4: array<string, array<string, mixed>>}
+     * @return array{0: ?DType, 1: bool, 2: ?array<string, mixed>, 3: array<string, array<string, mixed>>}
      */
     private function fileResponse(ClassT $type, ?FileResponseVisitor $fileCalls): array
     {
         $calls = $fileCalls?->forClass($type->fqcn) ?? [];
 
         if ($calls === []) {
-            return [self::DEFAULT_STATUS, null, false, null, $this->classBody($type->fqcn)];
+            return [null, false, null, $this->classBody($type->fqcn)];
         }
 
         $bodies = [];
@@ -467,7 +493,7 @@ final class InferredResponsesExtension implements OperationExtension
             $bodies[$call->mediaType] = $call->schema;
         }
 
-        return [self::DEFAULT_STATUS, null, false, $this->dispositionHeader($calls), $bodies];
+        return [null, false, $this->dispositionHeader($calls), $bodies];
     }
 
     /**
@@ -546,7 +572,7 @@ final class InferredResponsesExtension implements OperationExtension
             return null;
         }
 
-        if ($type->fqcn === FrameworkClasses::JSON_RESPONSE) {
+        if (FrameworkClasses::isJson($type->fqcn)) {
             // Parameterised is not the same as recovered: a response the engine could only pin a STATUS on
             // — a fluent `->setStatusCode(202)` over a body it could not follow — carries an unresolved
             // payload arg, and its body is exactly as undescribed as a bare response's. A void payload is
@@ -598,7 +624,7 @@ final class InferredResponsesExtension implements OperationExtension
      * fallback, since the code stated them. `$bodies` are schemas the response class proved directly,
      * sorted so which entry is primary follows from the set and not from return-path order.
      *
-     * @param  list<DType>  $payloads
+     * @param  list<array{DType, ?string}>  $payloads  each with the media type its code stated, if it stated one
      * @param  ?array<string, mixed>  $headers
      * @param  array<string, array<string, mixed>>  $bodies
      */
@@ -664,21 +690,22 @@ final class InferredResponsesExtension implements OperationExtension
     }
 
     /**
-     * The status's payloads grouped by the media type each serialises as, from the gated
-     * {@see PayloadMediaTypeResolver} chain — JSON:API resources answer `application/vnd.api+json`, a
-     * rendered view `text/html`, everything else the default `application/json`. A return path that
+     * The status's payloads grouped by the media type each serialises as: the one its code stated in a
+     * `Content-Type` header, or else the gated {@see PayloadMediaTypeResolver} chain's — JSON:API resources
+     * answer `application/vnd.api+json`, a rendered view `text/html`, everything else the default
+     * `application/json`. A return path that
      * negotiates between representations is one content entry per media type rather than one `anyOf`
      * under a media type half of it contradicts. Sorted, so which entry is primary follows from the set
      * of payloads and not from return-path order.
      *
-     * @param  list<DType>  $payloads
+     * @param  list<array{DType, ?string}>  $payloads
      * @return array<string, list<DType>>
      */
     private function byMediaType(RouteContext $context, array $payloads): array
     {
         $groups = [];
-        foreach ($payloads as $payload) {
-            $groups[$context->payloadMediaType($payload)][] = $payload;
+        foreach ($payloads as [$payload, $stated]) {
+            $groups[$stated ?? $context->payloadMediaType($payload)][] = $payload;
         }
 
         ksort($groups);

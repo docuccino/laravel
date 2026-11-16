@@ -11,11 +11,16 @@ use Docuccino\Core\Patch\Contribution;
  * One query parameter an integration contributes, already resolved through the representation policy. A
  * plain assertable value the builder returns and the extension writes onto the draft — always
  * `in: query`, always optional.
+ *
+ * `$notes` are the facts its description states that no keyword can — the parameter's own, and each
+ * deepObject property's by name. The description already carries them; they are named apart so a
+ * description someone else writes over this one keeps them beneath it.
  */
 final readonly class QueryParameterSpec
 {
     /**
      * @param  array<string, mixed>  $schema
+     * @param  array<string, string>  $propertyNotes
      */
     public function __construct(
         public string $name,
@@ -24,6 +29,8 @@ final readonly class QueryParameterSpec
         public ?string $style = null,
         public ?bool $explode = null,
         public mixed $example = null,
+        public ?string $notes = null,
+        public array $propertyNotes = [],
     ) {}
 
     /**
@@ -38,6 +45,9 @@ final readonly class QueryParameterSpec
 
         if ($this->description !== null) {
             $parameter->setDescription($this->description, $contribution);
+        }
+        if ($this->notes !== null) {
+            $parameter->declareDescriptionNote($this->notes, $contribution, inOwnDescription: true);
         }
         if ($this->style !== null) {
             $parameter->set('style', $this->style, $contribution);
@@ -76,6 +86,11 @@ final readonly class QueryParameterSpec
             $property = $parameter->schema()->property((string) $name);
             foreach ($schema as $keyword => $value) {
                 $property->set((string) $keyword, $value, $contribution);
+            }
+
+            $notes = $this->propertyNotes[(string) $name] ?? null;
+            if ($notes !== null) {
+                $property->declareDescriptionNote($notes, $contribution, inOwnDescription: true);
             }
         }
     }

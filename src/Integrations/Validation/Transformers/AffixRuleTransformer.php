@@ -11,7 +11,7 @@ use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
  * `starts_with`/`ends_with`. A single affix becomes an anchored `pattern` with the literal regex-escaped;
- * a multi-value any-of set has no single pattern, so it degrades to a description. Untyped fields default
+ * a multi-value any-of set has no single pattern, so it degrades to a note. Untyped fields default
  * to string.
  */
 final class AffixRuleTransformer implements RuleTransformer
@@ -52,8 +52,7 @@ final class AffixRuleTransformer implements RuleTransformer
             ? sprintf('Must start with one of: %s.', implode(', ', $values))
             : sprintf('Must end with one of: %s.', implode(', ', $values));
 
-        $existing = $field->get('description');
-        $field->set('description', is_string($existing) && $existing !== '' ? $existing.' '.$note : $note);
+        $field->note($note);
     }
 
     /** Escape ECMA-262 regex metacharacters in a literal affix. */

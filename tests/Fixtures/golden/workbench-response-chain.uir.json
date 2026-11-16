@@ -1,0 +1,1340 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/chains/accept": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:35rxneproxwxsnl3",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ResponseChainController.php",
+                "line": 31,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ResponseChainController::accept"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.chains.accept",
+        "summary": "Accept an export.",
+        "tags": [
+          "ResponseChain"
+        ],
+        "responses": {
+          "202": {
+            "x-docuccino": {
+              "id": "res:v1:2gegyajvhlf5yvv4",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "accepted": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "accepted"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chains/batch": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:44bdjhiizzt6cda2",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ResponseChainController.php",
+                "line": 49,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ResponseChainController::batch"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.chains.batch",
+        "summary": "Queue a batch, its id map always an object.",
+        "tags": [
+          "ResponseChain"
+        ],
+        "responses": {
+          "202": {
+            "x-docuccino": {
+              "id": "res:v1:7gvynsma766ij5sm",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chains/built": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:2ldxvhl73evcn2qh",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ResponseChainController.php",
+                "line": 115,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ResponseChainController::built"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.chains.built",
+        "summary": "Queue an export, built into a local.",
+        "tags": [
+          "ResponseChain"
+        ],
+        "responses": {
+          "202": {
+            "x-docuccino": {
+              "id": "res:v1:moeqzlkp775xa7rh",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "queued": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "queued"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chains/cached": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:5s6tcfupq4kvxdy3",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ResponseChainController.php",
+                "line": 73,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ResponseChainController::cached"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.chains.cached",
+        "summary": "Queue an export, cacheable for a minute.",
+        "tags": [
+          "ResponseChain"
+        ],
+        "responses": {
+          "202": {
+            "x-docuccino": {
+              "id": "res:v1:3s4itdei4c75lhzh",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "queued": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "queued"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chains/export": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:mlrocsch6zdniub5",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ResponseChainController.php",
+                "line": 79,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ResponseChainController::export"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.chains.export",
+        "summary": "Download the latest export, deleted once it is sent.",
+        "tags": [
+          "ResponseChain"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:65vuuedrsamt447f",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "format",
+                          "type"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chains/flash": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:gzrydgmq6qk3ir3g",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ResponseChainController.php",
+                "line": 85,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ResponseChainController::flash"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.chains.flash",
+        "summary": "Queue an export and see the export list.",
+        "tags": [
+          "ResponseChain"
+        ],
+        "responses": {
+          "303": {
+            "x-docuccino": {
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                },
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "headers"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/ResponseChainController.php",
+                    "line": 85,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\ResponseChainController::flash"
+                  }
+                }
+              ]
+            },
+            "description": "See Other",
+            "headers": {
+              "Location": {
+                "description": "The URL to follow.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chains/locked": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:eiik4aodzamiybtg",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ResponseChainController.php",
+                "line": 109,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ResponseChainController::locked"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.chains.locked",
+        "summary": "Look up a locked export.",
+        "tags": [
+          "ResponseChain"
+        ],
+        "responses": {
+          "default": {
+            "x-docuccino": {
+              "id": "res:v1:wych67o22g3vtt44",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ],
+              "facts": {
+                "statusUnplaced": true
+              }
+            },
+            "description": "Any status",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chains/note": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:2luh34sw6kicehx4",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ResponseChainController.php",
+                "line": 25,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ResponseChainController::note"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.chains.note",
+        "summary": "Accept a note.",
+        "tags": [
+          "ResponseChain"
+        ],
+        "responses": {
+          "202": {
+            "x-docuccino": {
+              "id": "res:v1:x4jk56uqcj2fzvnt",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Accepted",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "const",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "string",
+                  "const": "accepted"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chains/padded": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:bf5qzcculf6gy4jf",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ResponseChainController.php",
+                "line": 43,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ResponseChainController::padded"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.chains.padded",
+        "summary": "Queue an export, answering JSONP when asked.",
+        "tags": [
+          "ResponseChain"
+        ],
+        "responses": {
+          "202": {
+            "x-docuccino": {
+              "id": "res:v1:szqothcjqhnivicb",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chains/prepared": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:6m5czrtztohzceum",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ResponseChainController.php",
+                "line": 91,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ResponseChainController::prepared"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.chains.prepared",
+        "summary": "Queue an export, prepared for the request.",
+        "tags": [
+          "ResponseChain"
+        ],
+        "responses": {
+          "default": {
+            "x-docuccino": {
+              "id": "res:v1:4wvi6wkols3j3m5d",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ],
+              "facts": {
+                "statusUnplaced": true
+              }
+            },
+            "description": "Any status",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chains/pretty": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:vs2kgcvujltjq6r2",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ResponseChainController.php",
+                "line": 55,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ResponseChainController::pretty"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.chains.pretty",
+        "summary": "Queue an export, pretty-printed.",
+        "tags": [
+          "ResponseChain"
+        ],
+        "responses": {
+          "202": {
+            "x-docuccino": {
+              "id": "res:v1:fls4ia3htpxtakdo",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "queued": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "queued"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chains/refilled": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:5f5gidgjztakzbap",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ResponseChainController.php",
+                "line": 123,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ResponseChainController::refilled"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.chains.refilled",
+        "summary": "Accept an export, built into a local whose data is set after.",
+        "tags": [
+          "ResponseChain"
+        ],
+        "responses": {
+          "202": {
+            "x-docuccino": {
+              "id": "res:v1:qp4rufd2diugabet",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "accepted": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "accepted"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chains/relocated": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:yoiwpydo46ewwean",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ResponseChainController.php",
+                "line": 103,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ResponseChainController::relocated"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.chains.relocated",
+        "summary": "Follow a moved export.",
+        "tags": [
+          "ResponseChain"
+        ],
+        "responses": {
+          "308": {
+            "x-docuccino": {
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                },
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "headers"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/ResponseChainController.php",
+                    "line": 103,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\ResponseChainController::relocated"
+                  }
+                }
+              ]
+            },
+            "description": "Permanent Redirect",
+            "headers": {
+              "Location": {
+                "description": "The URL to follow.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chains/remember": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:ri5tuzoec3zwzn4u",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ResponseChainController.php",
+                "line": 61,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ResponseChainController::remember"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.chains.remember",
+        "summary": "Queue an export and remember it.",
+        "tags": [
+          "ResponseChain"
+        ],
+        "responses": {
+          "202": {
+            "x-docuccino": {
+              "id": "res:v1:vzj6p7qrc4rgg3nx",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "queued": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "queued"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chains/removed": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:xksdobjtwmcfeqwl",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ResponseChainController.php",
+                "line": 97,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ResponseChainController::removed"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.chains.removed",
+        "summary": "Look up a removed export.",
+        "tags": [
+          "ResponseChain"
+        ],
+        "responses": {
+          "404": {
+            "x-docuccino": {
+              "id": "res:v1:p2awpbrsbcjawkmm",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "const": "This resource is gone."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chains/settle": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:irqpvdclrezwlw6m",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ResponseChainController.php",
+                "line": 37,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ResponseChainController::settle"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.chains.settle",
+        "summary": "Accept an export, setting the status last.",
+        "tags": [
+          "ResponseChain"
+        ],
+        "responses": {
+          "202": {
+            "x-docuccino": {
+              "id": "res:v1:53uyhuiu3ji7tyk3",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "accepted": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "accepted"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chains/unchanged": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:qkulyt4g764kszls",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/ResponseChainController.php",
+                "line": 67,
+                "symbol": "Workbench\\App\\Http\\Controllers\\ResponseChainController::unchanged"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.chains.unchanged",
+        "summary": "Check an export is unchanged.",
+        "tags": [
+          "ResponseChain"
+        ],
+        "responses": {
+          "304": {
+            "x-docuccino": {
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Not Modified"
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "12581503fcd598f74e06a659af3d10b6ffa143ee8795a60931c6f2576b3c261e"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.23.4",
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
+    }
+  }
+}

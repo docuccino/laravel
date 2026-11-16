@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use Docuccino\Laravel\Tests\Fixtures\Middleware\ApplicationAuthenticate;
+use Illuminate\Auth\Middleware\Authenticate;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Routing\Router;
 use Workbench\App\Http\Controllers\FormController;
 
@@ -84,3 +87,38 @@ it('emits no security by default', function (): void {
     expect($document)->not->toHaveKey('security')
         ->and($document['components'] ?? [])->not->toHaveKey('securitySchemes');
 });
+
+/**
+ * The `auth_middleware` pattern is written in the framework's vocabulary, and an application's own alias
+ * for an authenticator is that same middleware: it refuses a guest with the 401 the route documents, so it
+ * owes the requirement that 401 asks for. A pattern narrowed to one guard stays narrowed under the alias.
+ */
+it('applies the default requirement to an authenticator whatever alias the application gave it', function (string $pattern, string $authenticator, bool $applied): void {
+    /** @var Router $router */
+    $router = app('router');
+    $router->aliasMiddleware('signed-in', ApplicationAuthenticate::class);
+    $router->aliasMiddleware('fw-signed-in', Authenticate::class);
+    $router->aliasMiddleware('throttled', ThrottleRequests::class);
+    $router->get('api/protected', [FormController::class, 'index'])->middleware($authenticator);
+
+    $document = stubDocumentArray(function (array $raw) use ($pattern): array {
+        $raw['security']['schemes'] = ['bearer' => ['type' => 'http', 'scheme' => 'bearer']];
+        $raw['security']['default'] = [['bearer' => []]];
+        $raw['security']['auth_middleware'] = $pattern;
+
+        return $raw;
+    });
+
+    expect($document['paths']['/api/protected']['get']['security'] ?? null)->toBe($applied ? [['bearer' => []]] : null);
+})->with([
+    'the auth alias' => ['auth*', 'auth', true],
+    'the class spelling' => ['auth*', Authenticate::using('web'), true],
+    'the application subclass by class' => ['auth*', ApplicationAuthenticate::class, true],
+    'an application alias of the framework authenticator' => ['auth*', 'fw-signed-in', true],
+    'an application alias of its own subclass' => ['auth*', 'signed-in', true],
+    'an application alias naming a guard' => ['auth*', 'signed-in:web', true],
+    'the session variant, which the pattern has always named' => ['auth*', 'auth.session', true],
+    'a pattern narrowed to the guard the alias names' => ['auth:web', 'signed-in:web', true],
+    'a pattern narrowed to another guard' => ['auth:api', 'signed-in:web', false],
+    'an alias of middleware that does not authenticate' => ['auth*', 'throttled:60,1', false],
+]);

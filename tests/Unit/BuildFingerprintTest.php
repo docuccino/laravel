@@ -221,3 +221,15 @@ it('follows the app composer.lock, and survives an app that has none', function 
     @unlink($root.'/composer.lock');
     @rmdir($root);
 });
+
+it('changes when the application adds a class alias, which the engine reads a root-namespace call through', function (): void {
+    // `\Reply::json(…)` is an unknown class until the alias exists, and adding one in `config/app.php` or a
+    // provider moves no file the analysis read and no locked byte.
+    $engine = new NullTypeEngine;
+    $framework = ['Response' => 'Illuminate\\Support\\Facades\\Response'];
+
+    $digest = static fn (array $aliases): string => (new BuildFingerprint([], '', new EnginePackage, $aliases))->digest($engine);
+
+    expect($digest($framework))->toBe($digest($framework))
+        ->not->toBe($digest([...$framework, 'Reply' => 'App\\Support\\Facades\\Reply']));
+});

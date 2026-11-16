@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use Docuccino\Core\Pipeline\GenerationResult;
 use Docuccino\Laravel\Tests\Fixtures\TagNames\Admin\ReportController as AdminReportController;
+use Docuccino\Laravel\Tests\Fixtures\TagNames\Api\DaybookController;
+use Docuccino\Laravel\Tests\Fixtures\TagNames\Api\JournalController;
 use Docuccino\Laravel\Tests\Fixtures\TagNames\Api\LedgerController;
 use Docuccino\Laravel\Tests\Fixtures\TagNames\Api\ReportController as ApiReportController;
 
@@ -41,7 +43,74 @@ it('reports two controllers that merged into one default tag, naming both', func
         ->toContain(AdminReportController::class)
         ->toContain(ApiReportController::class)
         ->and($reported[0]->help)->toContain('#[Group]')
-        ->and($reported[0]->help)->toContain('tags.map');
+        // A tag mapper is handed the short name and nothing else, and both controllers have the same
+        // one, so `tags.map` has no way to send them apart: offering it would be advice that cannot work.
+        ->and($reported[0]->help)->not->toContain('tags.map');
+});
+
+it('reports nothing when tags.map sends two different names to one tag', function (): void {
+    // Distinct short names reach one tag only through the mapper, which is the author's own config
+    // saying they belong together. The author has already answered, so there is nothing to act on.
+    $result = tagCollisionDocument(
+        static function ($router): void {
+            $router->get('api/zz-journal', [JournalController::class, 'index']);
+            $router->get('api/zz-daybook', [DaybookController::class, 'index']);
+        },
+        static function (array $raw): array {
+            $raw['tags']['map'] = ['Journal' => 'Accounts', 'Daybook' => 'Accounts'];
+
+            return $raw;
+        },
+    );
+
+    expect(array_column(array_column($result->document->toArray()['paths'], 'get'), 'tags'))
+        ->toContain(['Accounts'])
+        ->and(diagnosticsCoded($result->diagnostics, 'tags.name-collision'))->toBe([]);
+});
+
+it('still reports a shared short name when the mapper also sends another controller to its tag', function (): void {
+    // The mapped third member is configuration; the two ReportControllers are not. The report names
+    // only the pair that collided, because that is the pair #[Group] has to separate.
+    $result = tagCollisionDocument(
+        static function ($router): void {
+            $router->get('api/zz-api-reports', [ApiReportController::class, 'index']);
+            $router->get('api/zz-admin-reports', [AdminReportController::class, 'index']);
+            $router->get('api/zz-journal', [JournalController::class, 'index']);
+        },
+        static function (array $raw): array {
+            $raw['tags']['map'] = ['Journal' => 'Report'];
+
+            return $raw;
+        },
+    );
+
+    $reported = diagnosticsCoded($result->diagnostics, 'tags.name-collision');
+
+    expect($reported)->toHaveCount(1)
+        ->and($reported[0]->message)
+        ->toContain(AdminReportController::class)
+        ->toContain(ApiReportController::class)
+        ->not->toContain(JournalController::class);
+});
+
+it('reports nothing for one controller registered through the route registrar and through Route::get()', function (): void {
+    // `Route::name(…)->get(…, [Foo::class, …])` stores the class as `\Foo` and `Route::get()` as `Foo`.
+    // That is one controller, so there is no second one to collide with — and its source reads the same
+    // from either route.
+    $result = tagCollisionDocument(static function ($router): void {
+        $router->get('api/zz-ledgers', [LedgerController::class, 'index']);
+        $router->name('zz-ledgers.archive')->get('api/zz-ledgers/archive', [LedgerController::class, 'index']);
+    });
+
+    $paths = $result->document->toArray()['paths'];
+    $symbol = static fn (array $operation): array => array_values(array_filter(array_map(
+        static fn (array $record): ?string => $record['source']['symbol'] ?? null,
+        $operation['x-docuccino']['provenance'],
+    )));
+
+    expect(diagnosticsCoded($result->diagnostics, 'tags.name-collision'))->toBe([])
+        ->and(array_unique($symbol($paths['/api/zz-ledgers/archive']['get'])))->toBe([LedgerController::class.'::index'])
+        ->and($symbol($paths['/api/zz-ledgers/archive']['get']))->toBe($symbol($paths['/api/zz-ledgers']['get']));
 });
 
 it('names the controllers in FQCN order, not in the order the routes were registered', function (): void {

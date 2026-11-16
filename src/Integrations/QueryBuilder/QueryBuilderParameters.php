@@ -113,8 +113,14 @@ final class QueryBuilderParameters
 
         if ($policy->filtersDeepObject()) {
             $properties = [];
+            $notes = [];
             foreach ($facts->filters as $filter) {
-                $properties[$filter->name] = $this->filterProperty($filter, $policy, $config);
+                $filterConfig = $config->forFilter($filter);
+                $properties[$filter->name] = $this->filterProperty($filter, $policy, $filterConfig);
+                $note = self::filterNotes($filter, $policy, $filterConfig);
+                if ($note !== null) {
+                    $notes[$filter->name] = $note;
+                }
             }
 
             return [new QueryParameterSpec(
@@ -123,19 +129,23 @@ final class QueryBuilderParameters
                 description: 'Filter the result set.',
                 style: 'deepObject',
                 explode: true,
+                propertyNotes: $notes,
             )];
         }
 
         $specs = [];
         foreach ($facts->filters as $filter) {
-            [$schema, $style, $explode] = $this->filterSchema($filter, $policy, $config);
+            // A filter's own delimiter decides how its values split, so it is read under that one.
+            $filterConfig = $config->forFilter($filter);
+            [$schema, $style, $explode] = $this->filterSchema($filter, $policy, $filterConfig);
             $specs[] = new QueryParameterSpec(
                 name: self::filterParameter($filter->name, $policy, $config),
                 schema: $schema,
-                description: $this->filterDescription($filter, $config),
+                description: $this->filterDescription($filter, $policy, $filterConfig),
                 style: $style,
                 explode: $explode,
                 example: $filter->example,
+                notes: self::filterNotes($filter, $policy, $filterConfig),
             );
         }
 
@@ -143,27 +153,41 @@ final class QueryBuilderParameters
     }
 
     /**
-     * `[schema, style, explode]` for a bracketed filter: the soft-delete filter is a fixed enum, an
-     * enum-typed one the effective whereIn shape ({@see whereInSchema()}, carrying comma style only on
-     * the comma form), a resolved column its scalar schema, everything else {@see schemaWithoutColumn()}.
+     * `[schema, style, explode]` for a bracketed filter: its {@see valueSchema()}, carrying comma style
+     * only where that is the whereIn array.
      *
      * @return array{0: array<string, mixed>, 1: string|null, 2: bool|null}
      */
     private function filterSchema(QbEntry $filter, RepresentationPolicy $policy, QueryBuilderConfig $config): array
     {
+        $schema = self::withDefault(self::valueSchema($filter, $policy, $config), $filter, $config);
+
+        return self::isWhereIn($filter) && $config->splitsOnComma() ? [$schema, 'form', false] : [$schema, null, null];
+    }
+
+    /**
+     * The schema a filter's value is published with, in either representation: the soft-delete filter is
+     * a fixed enum, an enum-typed one the effective whereIn shape ({@see whereInSchema()}), a resolved
+     * column its scalar schema, everything else {@see schemaWithoutColumn()}.
+     *
+     * @return array<string, mixed>
+     */
+    private static function valueSchema(QbEntry $filter, RepresentationPolicy $policy, QueryBuilderConfig $config): array
+    {
         if ($filter->kind === 'trashed') {
-            return [$this->withDefault(self::trashedSchema($policy->enumNaming), $filter), null, null];
+            return self::trashedSchema($policy->enumNaming);
         }
 
-        if ($filter->enumTyped && $filter->columnSchema !== null) {
-            $schema = $this->withDefault(self::whereInSchema($filter->columnSchema, $config), $filter);
-
-            return $config->splitsOnComma() ? [$schema, 'form', false] : [$schema, null, null];
+        if (self::isWhereIn($filter) && $filter->columnSchema !== null) {
+            return self::whereInSchema($filter->columnSchema, $config);
         }
 
-        $schema = $filter->columnSchema ?? self::schemaWithoutColumn($filter);
+        return $filter->columnSchema ?? self::schemaWithoutColumn($filter);
+    }
 
-        return [$this->withDefault($schema, $filter), null, null];
+    private static function isWhereIn(QbEntry $filter): bool
+    {
+        return $filter->kind !== 'trashed' && $filter->enumTyped && $filter->columnSchema !== null;
     }
 
     /**
@@ -226,20 +250,14 @@ final class QueryBuilderParameters
      */
     private function filterProperty(QbEntry $filter, RepresentationPolicy $policy, QueryBuilderConfig $config): array
     {
-        if ($filter->kind === 'trashed') {
-            $schema = self::trashedSchema($policy->enumNaming);
-        } elseif ($filter->enumTyped && $filter->columnSchema !== null) {
-            $schema = self::whereInSchema($filter->columnSchema, $config);
-        } else {
-            $schema = $filter->columnSchema ?? self::schemaWithoutColumn($filter);
-        }
+        $schema = self::valueSchema($filter, $policy, $config);
 
-        $schema['description'] = $this->filterDescription($filter, $config);
+        $schema['description'] = $this->filterDescription($filter, $policy, $config);
         if ($filter->example !== null) {
             $schema['example'] = $filter->example;
         }
 
-        return $this->withDefault($schema, $filter);
+        return self::withDefault($schema, $filter, $config);
     }
 
     /**
@@ -262,32 +280,76 @@ final class QueryBuilderParameters
      * @param  array<string, mixed>  $schema
      * @return array<string, mixed>
      */
-    private function withDefault(array $schema, QbEntry $filter): array
+    private static function withDefault(array $schema, QbEntry $filter, QueryBuilderConfig $config): array
     {
-        if ($filter->hasDefault) {
-            // Even under the enum-array modelling the default is the single value, not a wrapped list.
-            $schema['default'] = $filter->default;
+        $default = self::schemaDefault($filter, $schema, $config);
+        if ($default !== null) {
+            $schema['default'] = $default[0];
         }
 
         return $schema;
     }
 
-    /** A filter's description: its comment (else the kind's contract sentence), plus whereIn/nullable notes. */
-    private function filterDescription(QbEntry $filter, QueryBuilderConfig $config): string
+    /**
+     * The filter's default as the schema beside it must carry it, or null where it has none or that
+     * schema cannot ({@see filterNotes()} states it instead). Spatie applies a default exactly as if it
+     * had been sent, so on a whereIn array it is the list a request sending it would split into — one
+     * value is a list of one, a delimited string its parts. A default that still does not conform is
+     * left off rather than published as a value the schema calls invalid; `null` never conforms, since a
+     * nullable filter says so in prose, not in its type.
+     *
+     * @param  array<string, mixed>  $schema
+     * @return array{0: string|int|float|bool|list<string|int|float|bool>}|null
+     */
+    private static function schemaDefault(QbEntry $filter, array $schema, QueryBuilderConfig $config): ?array
+    {
+        $default = $filter->default;
+        if (! $filter->hasDefault || $default === null) {
+            return null;
+        }
+
+        if (($schema['type'] ?? null) === 'array' && ! is_array($default)) {
+            $default = is_string($default) && $config->delimiter !== '' ? explode($config->delimiter, $default) : [$default];
+        }
+
+        return self::conforms($default, $schema) ? [$default] : null;
+    }
+
+    /**
+     * Whether a default is an instance of the schema beside it, as far as that schema says here: its
+     * `type`, its `enum`, and an array's items. A `$ref` or an untyped schema holds it to nothing.
+     *
+     * @param  array<mixed>  $schema
+     */
+    private static function conforms(mixed $value, array $schema): bool
+    {
+        $enum = $schema['enum'] ?? null;
+        if (is_array($enum) && ! in_array($value, $enum, true)) {
+            return false;
+        }
+
+        $items = $schema['items'] ?? [];
+
+        return match ($schema['type'] ?? null) {
+            'array' => is_array($value) && array_is_list($value) && is_array($items)
+                && array_filter($value, static fn (mixed $member): bool => ! self::conforms($member, $items)) === [],
+            'string' => is_string($value),
+            'integer' => is_int($value),
+            'number' => is_int($value) || is_float($value),
+            'boolean' => is_bool($value),
+            default => true,
+        };
+    }
+
+    /** A filter's description: its comment (else the kind's contract sentence), plus its notes. */
+    private function filterDescription(QbEntry $filter, RepresentationPolicy $policy, QueryBuilderConfig $config): string
     {
         // The entry's own comment describes THIS filter, so it still outranks a per-kind sentence, which
         // describes every filter of that kind.
         $base = $filter->comment ?? self::filterKindDescription($filter, $config);
 
-        $notes = [];
-        if ($filter->enumTyped) {
-            $notes = [...$notes, ...self::whereInNotes($filter, $config)];
-        }
-        if ($filter->nullable) {
-            $notes[] = self::NULLABLE_NOTE;
-        }
-
-        if ($notes === []) {
+        $notes = self::filterNotes($filter, $policy, $config);
+        if ($notes === null) {
             return $base;
         }
 
@@ -295,7 +357,36 @@ final class QueryBuilderParameters
         // ends itself; an author's comment is whatever they wrote.
         $lead = preg_match('/[.!?]$/', $base) === 1 ? $base : $base.'.';
 
-        return implode(' ', [$lead, ...$notes]);
+        return $lead.' '.$notes;
+    }
+
+    /**
+     * What the filter accepts that its schema cannot say — a list matched as `whereIn`, a `null` that
+     * matches absent values, a default its schema could not carry — as one paragraph, or null where it
+     * accepts nothing more. True whatever describes the filter, so a description an author writes over it
+     * keeps these beneath.
+     */
+    private static function filterNotes(QbEntry $filter, RepresentationPolicy $policy, QueryBuilderConfig $config): ?string
+    {
+        $notes = [];
+        if ($filter->enumTyped) {
+            $notes = [...$notes, ...self::whereInNotes($filter, $config)];
+        }
+        if ($filter->nullable) {
+            $notes[] = self::NULLABLE_NOTE;
+        }
+        if ($filter->hasDefault && self::schemaDefault($filter, self::valueSchema($filter, $policy, $config), $config) === null) {
+            $notes[] = self::defaultsSentence(array_map(
+                static fn (string|int|float|bool|null $value): string => match (true) {
+                    is_bool($value) => $value ? 'true' : 'false',
+                    $value === null => 'null',
+                    default => (string) $value,
+                },
+                is_array($filter->default) ? $filter->default : [$filter->default],
+            ));
+        }
+
+        return $notes === [] ? null : implode(' ', $notes);
     }
 
     /**
@@ -480,9 +571,11 @@ final class QueryBuilderParameters
 
         $description = self::withDefaultsNote($description, $onSchema ? [] : $defaults);
 
+        // Every sentence here is the allow-list's, so all of it stays beneath a description someone else
+        // writes: the values, what `-` means, the separator and a default the schema could not carry.
         return $comma
-            ? new QueryParameterSpec($name, $schema, $description, style: 'form', explode: false)
-            : new QueryParameterSpec($name, $schema, $description);
+            ? new QueryParameterSpec($name, $schema, $description, style: 'form', explode: false, notes: $description)
+            : new QueryParameterSpec($name, $schema, $description, notes: $description);
     }
 
     /**
@@ -539,9 +632,17 @@ final class QueryBuilderParameters
             return $description;
         }
 
-        $list = implode(', ', array_map(static fn (string $default): string => sprintf('`%s`', $default), $defaults));
+        return $description.' '.self::defaultsSentence($defaults);
+    }
 
-        return sprintf('%s Defaults to %s.', $description, $list);
+    /**
+     * A default stated in prose, each value as a request would write it.
+     *
+     * @param  list<string>  $defaults
+     */
+    private static function defaultsSentence(array $defaults): string
+    {
+        return sprintf('Defaults to %s.', implode(', ', array_map(static fn (string $default): string => sprintf('`%s`', $default), $defaults)));
     }
 
     /**
@@ -650,11 +751,14 @@ final class QueryBuilderParameters
 
         if ($policy->filtersDeepObject()) {
             $properties = [];
+            $notes = [];
             foreach ($groups as $type => $columns) {
+                $key = $type === '' ? '_' : $type;
                 $prose = sprintf('Fields to return: %s.', implode(', ', $columns));
                 [$schema, $prose] = self::listSchema($columns, $prose, $config, $policy->enumNaming, self::fieldDescriptions($facts, $type, $columns, $describer), $facts->partial('fields'));
                 $schema['description'] = $prose;
-                $properties[$type === '' ? '_' : $type] = $schema;
+                $properties[$key] = $schema;
+                $notes[$key] = $prose;
             }
 
             return [new QueryParameterSpec(
@@ -663,6 +767,7 @@ final class QueryBuilderParameters
                 description: 'Request a sparse fieldset.',
                 style: 'deepObject',
                 explode: true,
+                propertyNotes: $notes,
             )];
         }
 

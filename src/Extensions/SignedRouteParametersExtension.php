@@ -20,7 +20,10 @@ use Illuminate\Routing\Middleware\ValidateSignature;
  */
 final class SignedRouteParametersExtension implements OperationExtension
 {
-    private const SIGNATURE = 'Signature of the signed link this request is made from. Send it, and the link\'s other query parameters, as the link carries them.';
+    /** How a request keeps the signature valid: true under any description, so it outlives one written over this. */
+    private const SIGNATURE_NOTE = 'Send it, and the link\'s other query parameters, as the link carries them.';
+
+    private const SIGNATURE = 'Signature of the signed link this request is made from. '.self::SIGNATURE_NOTE;
 
     private const EXPIRES = 'Unix timestamp after which the signed link is no longer accepted. Carried only by links that expire.';
 
@@ -42,6 +45,7 @@ final class SignedRouteParametersExtension implements OperationExtension
         $signature = $operation->parameter('query', 'signature');
         $signature->setRequired(true, $contribution);
         $signature->setDescription(self::SIGNATURE, $contribution);
+        $signature->declareDescriptionNote(self::SIGNATURE_NOTE, $contribution, inOwnDescription: true);
         $signature->schema()->set('type', 'string', $contribution);
 
         $expires = $operation->parameter('query', 'expires');

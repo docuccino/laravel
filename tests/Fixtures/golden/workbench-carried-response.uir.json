@@ -1,0 +1,903 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/carried/abortFacade": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:e5yo3bktifewdoeb",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/CarriedResponseController.php",
+                "line": 75,
+                "symbol": "Workbench\\App\\Http\\Controllers\\CarriedResponseController::abortFacade"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "423": {
+                "id": "res:v1:2yajlx5x6melmrop",
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "description"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.carried.abortFacade",
+        "tags": [
+          "CarriedResponse"
+        ],
+        "responses": {
+          "423": {
+            "$ref": "#/components/responses/Error423"
+          }
+        }
+      }
+    },
+    "/api/carried/abortIf": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:p3tgwzgso2k7bqk7",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/CarriedResponseController.php",
+                "line": 80,
+                "symbol": "Workbench\\App\\Http\\Controllers\\CarriedResponseController::abortIf"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "423": {
+                "id": "res:v1:5jkq3irb5yzchzut",
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "description"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.carried.abortIf",
+        "tags": [
+          "CarriedResponse"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:6kkoijxre4bqmdq5",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "423": {
+            "$ref": "#/components/responses/Error423"
+          }
+        }
+      }
+    },
+    "/api/carried/abortJson": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:3m75qjwozllcxeor",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/CarriedResponseController.php",
+                "line": 70,
+                "symbol": "Workbench\\App\\Http\\Controllers\\CarriedResponseController::abortJson"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "423": {
+                "id": "res:v1:l55msyuba4umk3mi",
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "description"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.carried.abortJson",
+        "tags": [
+          "CarriedResponse"
+        ],
+        "responses": {
+          "423": {
+            "$ref": "#/components/responses/Error423"
+          }
+        }
+      }
+    },
+    "/api/carried/caseChosen": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:lmohdlrzn566bbwg",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/CarriedResponseController.php",
+                "line": 63,
+                "symbol": "Workbench\\App\\Http\\Controllers\\CarriedResponseController::caseChosen"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.carried.caseChosen",
+        "tags": [
+          "CarriedResponse"
+        ],
+        "responses": {
+          "default": {
+            "x-docuccino": {
+              "id": "res:v1:s5i4y2rgqqtyms2x",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ],
+              "facts": {
+                "statusUnplaced": true
+              }
+            },
+            "description": "Any status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "Gone"
+                        },
+                        {
+                          "type": "string",
+                          "const": "Locked"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/carried/caseHelper": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:tufujzygzuknie6g",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/CarriedResponseController.php",
+                "line": 58,
+                "symbol": "Workbench\\App\\Http\\Controllers\\CarriedResponseController::caseHelper"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.carried.caseHelper",
+        "tags": [
+          "CarriedResponse"
+        ],
+        "responses": {
+          "423": {
+            "x-docuccino": {
+              "id": "res:v1:pg5yeluhdek4uri3",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Locked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "const": "Locked"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/carried/facadeJson": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:xqzor3k7lyz56xcg",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/CarriedResponseController.php",
+                "line": 26,
+                "symbol": "Workbench\\App\\Http\\Controllers\\CarriedResponseController::facadeJson"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "423": {
+                "id": "res:v1:de2n2pqye2lk3lmb",
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "description"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.carried.facadeJson",
+        "tags": [
+          "CarriedResponse"
+        ],
+        "responses": {
+          "423": {
+            "$ref": "#/components/responses/Error423"
+          }
+        }
+      }
+    },
+    "/api/carried/helperJson": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:gxs43xutrtosjzob",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/CarriedResponseController.php",
+                "line": 21,
+                "symbol": "Workbench\\App\\Http\\Controllers\\CarriedResponseController::helperJson"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "423": {
+                "id": "res:v1:qbmxknazc2jizuaj",
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "description"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.carried.helperJson",
+        "tags": [
+          "CarriedResponse"
+        ],
+        "responses": {
+          "423": {
+            "$ref": "#/components/responses/Error423"
+          }
+        }
+      }
+    },
+    "/api/carried/newJson": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:vqapy5rksxd3nifq",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/CarriedResponseController.php",
+                "line": 31,
+                "symbol": "Workbench\\App\\Http\\Controllers\\CarriedResponseController::newJson"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "423": {
+                "id": "res:v1:2giigbehfg6klfpk",
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "description"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.carried.newJson",
+        "tags": [
+          "CarriedResponse"
+        ],
+        "responses": {
+          "423": {
+            "$ref": "#/components/responses/Error423"
+          }
+        }
+      }
+    },
+    "/api/carried/redirect": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:xalcaj2ytriaphli",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/CarriedResponseController.php",
+                "line": 41,
+                "symbol": "Workbench\\App\\Http\\Controllers\\CarriedResponseController::redirect"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.carried.redirect",
+        "tags": [
+          "CarriedResponse"
+        ],
+        "responses": {
+          "3XX": {
+            "x-docuccino": {
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                },
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "headers"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/CarriedResponseController.php",
+                    "line": 41,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\CarriedResponseController::redirect"
+                  }
+                }
+              ]
+            },
+            "description": "Redirect",
+            "headers": {
+              "Location": {
+                "description": "The URL to follow.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/carried/subclass": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:4ye522xwbhjoltv3",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/CarriedResponseController.php",
+                "line": 46,
+                "symbol": "Workbench\\App\\Http\\Controllers\\CarriedResponseController::subclass"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.carried.subclass",
+        "tags": [
+          "CarriedResponse"
+        ],
+        "responses": {
+          "410": {
+            "x-docuccino": {
+              "id": "res:v1:2flcxxhxznnkj5rd",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Gone",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "const": "This resource is gone."
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/carried/text": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:ansn5tcjdgs3s3be",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/CarriedResponseController.php",
+                "line": 36,
+                "symbol": "Workbench\\App\\Http\\Controllers\\CarriedResponseController::text"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.carried.text",
+        "tags": [
+          "CarriedResponse"
+        ],
+        "responses": {
+          "409": {
+            "x-docuccino": {
+              "id": "res:v1:eo64ajqmlmwexnij",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Conflict",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "const",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "string",
+                  "const": "Already submitted."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/carried/viaHelper": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:k6vhvonogjlxnhue",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/CarriedResponseController.php",
+                "line": 51,
+                "symbol": "Workbench\\App\\Http\\Controllers\\CarriedResponseController::viaHelper"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "423": {
+                "id": "res:v1:ih62v3vohoen2uom",
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "description"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.carried.viaHelper",
+        "tags": [
+          "CarriedResponse"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:4zone3pncdddzdkq",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "423": {
+            "$ref": "#/components/responses/Error423"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error423": {
+        "x-docuccino": {
+          "id": "sch:v1:k7k6afasdgjizlok"
+        },
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "const": "locked"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      }
+    },
+    "responses": {
+      "Error423": {
+        "description": "Locked",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error423"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "ea19fe16580ab9f1101cbb8eacc761168b41aab0c0cf02a6253da309697ed965"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.23.4",
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
+    }
+  }
+}

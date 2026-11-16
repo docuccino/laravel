@@ -7,7 +7,7 @@ namespace Docuccino\Laravel\Commands;
 use Docuccino\Laravel\Config\BuildConfig;
 use Docuccino\Laravel\Engine\ConsoleBuild;
 use Docuccino\Laravel\Engine\MemoryLimit;
-use Illuminate\Console\Events\CommandStarting;
+use Symfony\Component\Console\Input\InputInterface;
 
 /**
  * Records `--memory-limit` for this run, making the flag and the configured `engine.memory_limit` one
@@ -16,8 +16,9 @@ use Illuminate\Console\Events\CommandStarting;
  * both, and this is the only place it is known. A command called in-process has neither.
  *
  * It has to happen this early: the engine reads its ceiling when the container builds it, and that happens
- * while a command's dependencies are injected — before any `handle()` body runs. So the value is read off
- * the raw input, which `CommandStarting` is the last hook to reach in time.
+ * while a command's dependencies are injected — before any `handle()` body runs. So each of our commands
+ * calls it from its own `initialize()` ({@see StartsConsoleBuild}), which runs between binding the input and
+ * resolving those dependencies, in every environment.
  *
  * Held on the container beside the console marker, and for the same reason: a ceiling asked for on the
  * command line is a fact about this PROCESS, where the configured one is a fact about the project.
@@ -28,13 +29,14 @@ final readonly class MemoryLimitOption
 {
     public function __construct(public string $limit) {}
 
-    public static function capture(CommandStarting $event): void
+    /** Called with one of our commands' input; anything but this process's own command line is ignored. */
+    public static function capture(InputInterface $input): void
     {
-        if (! str_starts_with($event->command ?? '', 'docuccino:') || ! ConsoleBuild::markStartedBy($event->input)) {
+        if (! ConsoleBuild::markStartedBy($input)) {
             return;
         }
 
-        $limit = $event->input->getParameterOption('--memory-limit', '');
+        $limit = $input->getParameterOption('--memory-limit', '');
         $limit = is_string($limit) ? trim($limit) : '';
 
         if ($limit !== '') {

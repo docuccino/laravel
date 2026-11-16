@@ -142,15 +142,14 @@ it('does not depend on the order the middleware are written in', function (): vo
         ];
     }
 
-    // The stated answer, not just agreement: 24 identically empty operations would agree too. Only one
-    // requirement note reaches the description because a second write at the integration layer is
-    // shadowed ({@see \Docuccino\Core\Draft\DescriptionAppender}); which one is a fact about the
-    // extension order, not about the middleware order, so it belongs in this comparison unchanged.
+    // The stated answer, not just agreement: 24 identically empty operations would agree too. The route
+    // enforces both requirements, so the description states both; their order is the extensions' order,
+    // not the middleware's, so it belongs in this comparison unchanged.
     expect($published)->toHaveCount(24)
         ->and($published[0])->toBe([
             'x-permissions' => [['type' => 'permission', 'values' => ['edit articles']]],
             'x-abilities' => [['match' => 'all', 'abilities' => ['orders:read']]],
-            'description' => 'Requires permission: edit articles',
+            'description' => "Requires permission: edit articles\n\nRequires token ability: orders:read",
         ]);
 
     foreach ($published as $index => $one) {

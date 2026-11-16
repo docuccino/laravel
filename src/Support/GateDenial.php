@@ -50,6 +50,7 @@ final class GateDenial
      *                                               names a body in somebody else's package
      */
     public function __construct(
+        private readonly RouteAuthentication $authentication,
         private readonly Closure $gate,
         private readonly Closure $isVendorFile,
     ) {}
@@ -122,9 +123,9 @@ final class GateDenial
             return null;
         }
 
-        // A guest never reaches a gate behind auth middleware. Where one can, Laravel skips a policy
+        // A guest never reaches a gate behind an authenticator. Where one can, Laravel skips a policy
         // method that refuses guests and denies, so `return true;` is not the whole story.
-        if (! AuthMiddlewareDetector::matches($context) && ! $this->methodAllowsGuests($method)) {
+        if (! $this->authentication->refusesGuests($context) && ! $this->methodAllowsGuests($method)) {
             return null;
         }
 

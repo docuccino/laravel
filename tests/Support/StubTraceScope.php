@@ -98,13 +98,19 @@ final class StubTraceScope implements FoldsCallReturns, TypeScope
     {
         if ($expr instanceof Node\Expr\Array_) {
             $items = [];
+            $keys = [];
             foreach ($expr->items as $item) {
                 $items[] = $item->unpack
                     ? ConstValue::spread('spread array item')
                     : $this->fold($item->value) ?? ConstValue::unknown('non-constant array item');
+                $key = $item->key === null ? null : $this->fold($item->key);
+                // A key that does not fold loses every key, as the real engine's does.
+                $keys = $keys === null || ($item->key !== null && ! is_string($key?->scalar) && ! is_int($key?->scalar))
+                    ? null
+                    : [...$keys, $key?->scalar];
             }
 
-            return ConstValue::array($items);
+            return ConstValue::array($items, $keys);
         }
 
         if ($expr instanceof Node\Scalar\String_) {

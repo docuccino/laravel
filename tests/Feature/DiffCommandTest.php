@@ -3,9 +3,18 @@
 declare(strict_types=1);
 
 use Docuccino\Core\Emit\UirEmitter;
+use Docuccino\Core\Inference\ActionAnalysis;
+use Docuccino\Core\Inference\DType\ClassT;
+use Docuccino\Core\Inference\ReturnSite;
+use Docuccino\Core\Inference\SourceLocation;
+use Docuccino\Core\Inference\TypeEngine;
 use Docuccino\Core\Support\JsonValue;
+use Docuccino\Laravel\Tests\Fixtures\OverriddenResponse\OverriddenResponseController;
+use Docuccino\Laravel\Tests\Support\WorkbenchEngine;
+use Illuminate\Routing\RouteCollection;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Process;
+use Workbench\App\Data\FormData;
 
 /**
  * Feature coverage for docuccino:diff — self-diff is empty, a removed operation is breaking, the
@@ -416,3 +425,32 @@ it('reports a payload it could not encode rather than printing an empty line', f
 
     @unlink($old);
 });
+
+it('reports no changes against an export of a build whose response type a declaration overrode', function (array $options): void {
+    // The build keeps the overridden type beside the trail that names it; no artifact export writes by
+    // default carries that trail, so none carries the type. Read as built, the fresh side reported it added.
+    app()->instance(TypeEngine::class, WorkbenchEngine::make(analysisOverrides: [
+        OverriddenResponseController::class.'::show' => new ActionAnalysis(returns: [new ReturnSite(new ClassT(FormData::class), new SourceLocation(''))]),
+    ]));
+    // Alone, so nothing but the trail refers to `FormData`.
+    app('router')->setRoutes(new RouteCollection);
+    app('router')->get('api/zz-overridden', [OverriddenResponseController::class, 'show']);
+
+    $path = sys_get_temp_dir().'/docuccino-export-'.uniqid().'.json';
+    $this->artisan('docuccino:export', ['document' => 'default', '--out' => $path, ...$options])->assertSuccessful();
+
+    $exit = Artisan::call('docuccino:diff', ['old' => $path, '--format' => 'json']);
+
+    /** @var array<string, mixed> $result */
+    $result = json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($exit)->toBe(0)
+        ->and(generateDocument()->document->toArray()['components']['schemas'])->toHaveKey('FormData')
+        ->and($result['changes'])->toBe([])
+        ->and($result['counts']['total'])->toBe(0);
+
+    @unlink($path);
+})->with([
+    'OpenAPI, ids kept' => [[]],
+    'full, winners' => [['--format' => 'full']],
+]);

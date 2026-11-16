@@ -126,6 +126,20 @@ it('keys the list on the file declaring the override, and a warm build equals a 
         ->toContain($fixtures.'/ListedResource.php', $fixtures.'/ListedCollection.php');
 });
 
+it('publishes the same collection from a warm cache as from a cold one where with() restates the page inline', function (string $action): void {
+    // The page component is registered before with() turns out to change what is sent, and the body is
+    // then restated inline. A warm hit re-registers only what the operation reaches, so a cold build that
+    // published the unused page would publish a document the warm one does not.
+    $routes = static function (Router $router) use ($action): void {
+        $router->get('api/zz-'.$action, [ListedCollectionController::class, $action]);
+    };
+
+    $warm = assertWarmEqualsCold($routes, $routes, $this->engine)->document->toArray();
+
+    expect($warm['components']['schemas'])->not->toHaveKey('CatalogueResourcePage')
+        ->and(unreachableComponents($warm))->toBe([]);
+})->with(['tallied', 'appended']);
+
 it('publishes a with() meta key the page also sends as the array Laravel merges the two into', function (): void {
     // PaginatedResourceResponse merges with() into the pagination information with array_merge_recursive,
     // so a key both send is sent as the list of both values: the page component's integer is not it.
@@ -175,9 +189,11 @@ it('publishes a with() meta key the page also sends as the array Laravel merges 
 
 it('publishes the data a with() data key is merged into, paginated, as the array or object it is sent as', function (): void {
     // with()'s data is merged into the page's data by array_merge_recursive, so the list the page component
-    // states is not what is sent: its items and the member's keys arrive as one object.
+    // states is not what is sent: its items and the member's keys arrive as one object. Built beside a
+    // collection that does publish the page component, which is the only place the component exists.
     $result = localityBuild(static function (Router $router): void {
         $router->get('api/zz-appended', [ListedCollectionController::class, 'appended']);
+        $router->get('api/zz-listed-pages', [ListedCollectionController::class, 'paginated']);
     }, $this->engine);
     $document = $result->document->toArray();
     $body = $document['paths']['/api/zz-appended']['get']['responses']['200']['content']['application/json']['schema'];

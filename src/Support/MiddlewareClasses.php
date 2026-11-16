@@ -28,6 +28,26 @@ final class MiddlewareClasses
     /** @param  class-string  $class */
     public function runs(RouteContext $context, string $middleware, string $class): bool
     {
+        return MiddlewareResolution::runs($middleware, $class, $this->aliasMap($context, $middleware));
+    }
+
+    /**
+     * The entry as the framework resolves it: its alias's class with the arguments kept, or the entry
+     * itself where no alias answers. What a reader of an entry's spelling reads it from where the
+     * application named the middleware under an alias of its own.
+     */
+    public function resolve(RouteContext $context, string $middleware): string
+    {
+        return MiddlewareResolution::resolve($middleware, $this->aliasMap($context, $middleware));
+    }
+
+    /**
+     * This build's alias map, the class the entry resolves to recorded on the route.
+     *
+     * @return array<string, string>
+     */
+    private function aliasMap(RouteContext $context, string $middleware): array
+    {
         $registered = $this->router->getMiddleware();
         if ($this->aliases === null || $registered !== $this->read) {
             $this->read = $registered;
@@ -41,6 +61,6 @@ final class MiddlewareClasses
             $context->recordDependencyFiles(DeclarationFiles::of($resolved));
         }
 
-        return MiddlewareResolution::runs($middleware, $class, $aliases);
+        return $aliases;
     }
 }

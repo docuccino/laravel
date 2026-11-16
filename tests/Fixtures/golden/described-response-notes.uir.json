@@ -1,0 +1,250 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-logbooks": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:p2xsmqnzcmoojrjs",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/DescribedNotes/LogbookController.php",
+                "line": 10,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\LogbookController::show"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-logbooks",
+        "tags": [
+          "Logbook"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:3z3dagea5g7esdg2",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/Logbook"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zz-logbooks/summary": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:pel3qvzbd6demhwu",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/DescribedNotes/LogbookController.php",
+                "line": 15,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\DescribedNotes\\LogbookController::summary"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-logbooks.summary",
+        "tags": [
+          "Logbook"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:t64t3pcdrznm2cyo",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/LogbookData"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Logbook": {
+        "x-docuccino": {
+          "id": "sch:v1:tsptblshmvux3k2c"
+        },
+        "type": "object",
+        "properties": {
+          "closed_on": {
+            "description": "The day the logbook was closed.\n\nSerialized using the date format \"d/m/Y\".",
+            "type": "string"
+          },
+          "created_at": {
+            "description": "When the logbook was started.",
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "opened_on": {
+            "description": "Serialized using the date format \"d/m/Y\".",
+            "type": "string"
+          },
+          "sealed_on": {
+            "description": "When the logbook was sealed, if it has been.\n\nSerialized using the date format \"d/m/Y H:i\".",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "closed_on",
+          "opened_on",
+          "sealed_on",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "LogbookData": {
+        "x-docuccino": {
+          "id": "sch:v1:yns3yq7an2gio4br"
+        },
+        "type": "object",
+        "properties": {
+          "archivedOn": {
+            "description": "When the logbook was archived.",
+            "type": "string",
+            "format": "date"
+          },
+          "closedOn": {
+            "description": "The day the logbook was closed.\n\nSerialized using the date format \"d/m/Y\".",
+            "type": "string"
+          },
+          "openedOn": {
+            "description": "When the logbook was opened.\n\nSerialized using the date format \"d/m/Y\".",
+            "type": "string"
+          },
+          "reviewedOn": {
+            "description": "When the logbook was last reviewed, if it has been.\n\nSerialized using the date format \"d/m/Y\".",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sealedOn": {
+            "description": "Serialized using the date format \"d/m/Y\".",
+            "type": "string"
+          },
+          "stampedAt": {
+            "description": "When the logbook was stamped.\n\nSerialized using the date format \"d/m/Y\".",
+            "type": "string"
+          }
+        },
+        "required": [
+          "closedOn",
+          "openedOn",
+          "sealedOn",
+          "reviewedOn",
+          "stampedAt",
+          "archivedOn"
+        ]
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "a5a9567b75bc5d97090560b2d2cfa9f7ac71045b55a1c8ddddb1ca0a9d8746c6"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.23.4",
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
+    }
+  }
+}

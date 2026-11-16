@@ -33,6 +33,8 @@ use Illuminate\Console\Command;
  * carves into the exit code and nothing else. This is also where the two reports acceptance owes the
  * reader are raised: a code it could not cover, and an entry this run proved does nothing.
  *
+ * @phpstan-import-type Entry from AcceptedCodes
+ *
  * @mixin Command
  */
 trait FailsOnSeverity
@@ -48,9 +50,6 @@ trait FailsOnSeverity
      * @param  list<Diagnostic>  $diagnostics
      */
     abstract protected function renderDiagnostics(string $document, array $diagnostics): void;
-
-    /** @return list<string> */
-    abstract protected function printedCodes(): array;
 
     /** @return list<Diagnostic> */
     abstract protected function printedDiagnostics(): array;
@@ -116,13 +115,13 @@ trait FailsOnSeverity
     {
         $notes = [];
 
-        foreach (AcceptedDiagnostics::read()->refused($diagnostics) as $code) {
+        foreach (AcceptedDiagnostics::read()->refused($diagnostics) as $entry) {
             $notes[] = new Diagnostic(
                 severity: Severity::Warning,
                 code: 'config.accept-refused',
                 message: sprintf(
-                    "diagnostics.accept names '%s', which this build reported as an error; acceptance never covers an error, so it still fails the run.",
-                    $code,
+                    'diagnostics.accept names %s, which this build reported as an error; acceptance never covers an error, so it still fails the run.',
+                    self::acceptanceEntry($entry),
                 ),
                 help: 'Fix what the error reports, then drop the entry — it does nothing while the code is an error.',
             );
@@ -147,16 +146,30 @@ trait FailsOnSeverity
 
         $stale = [];
 
-        foreach (AcceptedDiagnostics::read()->unused($this->printedCodes()) as $code) {
+        foreach (AcceptedDiagnostics::read()->unused($this->printedDiagnostics()) as $entry) {
             $stale[] = new Diagnostic(
                 severity: Severity::Warning,
                 code: 'config.accept-unused',
-                message: sprintf("diagnostics.accept names '%s', which nothing reported in this build.", $code),
-                help: 'Delete the entry: the cause is fixed, or the code is misspelled. An acceptance nobody can see expire is the next stale config key.',
+                message: sprintf('diagnostics.accept names %s, which nothing reported in this build.', self::acceptanceEntry($entry)),
+                help: $entry['operation'] === null
+                    ? 'Delete the entry: the cause is fixed, or the code is misspelled. An acceptance nobody can see expire is the next stale config key.'
+                    : 'Delete the entry: the finding is fixed, the route was renamed, or the code or operation is misspelled. Copy the operation as the route signature printed above a finding.',
             );
         }
 
         $this->renderDiagnostics(ConfigFile::NAME, $stale);
+    }
+
+    /**
+     * An entry as the reader wrote it, so the line to delete or fix can be found in the file.
+     *
+     * @param  Entry  $entry
+     */
+    private static function acceptanceEntry(array $entry): string
+    {
+        return $entry['operation'] === null
+            ? sprintf("'%s'", $entry['code'])
+            : sprintf("'%s' at '%s'", $entry['code'], $entry['operation']);
     }
 
     /** False (after printing why) when `--fail-on` names something we don't know. */

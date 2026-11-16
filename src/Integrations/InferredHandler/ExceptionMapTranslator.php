@@ -86,7 +86,7 @@ final class ExceptionMapTranslator implements ExceptionTranslator
         }
 
         foreach ($analysis->throws as $throw) {
-            $translated = $exception->as($throw->exceptionFqcn, $throw->httpStatusHint);
+            $translated = $exception->as($throw->exceptionFqcn, $throw->httpStatusHint, $throw->response);
             $outcomes[$translated->identityKey()] ??= $translated;
         }
 

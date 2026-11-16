@@ -6,7 +6,10 @@ namespace Docuccino\Laravel\Tests\Fixtures\RegexRules;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-/** `regex:` rules as applications write them: case-insensitive, and Unicode letters and spaces under `/u`. */
+/**
+ * `regex:` rules as applications write them: case-insensitive, Unicode letters and spaces under `/u`, and a
+ * pattern holding quotes and a comma, which Laravel never splits.
+ */
 final class StoreAddressRequest extends FormRequest
 {
     public function authorize(): bool
@@ -26,6 +29,7 @@ final class StoreAddressRequest extends FormRequest
             'recipient' => ['required', 'string', 'regex:/^[\pL\s\-]+$/uD'],
             'initials' => ['required', 'string', 'regex:/^\p{Lu}+$/iuD'],
             'full_name' => ['required', 'string', 'regex:/^[\pL\'-]+(?:\s+[\pL\'-]+)*$/uD'],
+            'pair' => ['required', 'string', 'regex:/^"[a-z]+", "[a-z]+"$/D'],
         ];
     }
 }

@@ -11,6 +11,7 @@ use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
 use Docuccino\Core\Patch\Contribution;
 use Docuccino\Laravel\Support\AuthMiddlewareDetector;
+use Docuccino\Laravel\Support\MiddlewareClasses;
 
 /**
  * The security layer (design §Auth detection). `#[Unauthenticated]` marks an operation public by
@@ -23,6 +24,8 @@ use Docuccino\Laravel\Support\AuthMiddlewareDetector;
  */
 final class SecurityExtension implements OperationExtension
 {
+    public function __construct(private readonly MiddlewareClasses $middleware) {}
+
     public function phase(): OperationPhase
     {
         return OperationPhase::Security;
@@ -37,7 +40,7 @@ final class SecurityExtension implements OperationExtension
         }
 
         $requirement = $context->document->defaultSecurity();
-        if ($requirement !== null && $requirement !== [] && AuthMiddlewareDetector::matches($context)) {
+        if ($requirement !== null && $requirement !== [] && AuthMiddlewareDetector::matches($context, $this->middleware)) {
             $operation->setSecurity($requirement, Contribution::integration('security'));
         }
     }

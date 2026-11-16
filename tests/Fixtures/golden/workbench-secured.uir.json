@@ -704,7 +704,29 @@
                 "operationId"
               ]
             }
-          ]
+          ],
+          "uses": {
+            "responses": {
+              "401": {
+                "id": "res:v1:5wdufcmpez574zip",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FormController.php",
+                      "line": 25,
+                      "symbol": "implicit:auth-middleware"
+                    }
+                  }
+                ]
+              }
+            }
+          }
         },
         "operationId": "get.api.authenticated-forms",
         "summary": "List forms.",
@@ -750,6 +772,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           }
         }
       }
@@ -789,6 +814,24 @@
           ],
           "uses": {
             "responses": {
+              "401": {
+                "id": "res:v1:4mqin5w6mzjgearv",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FormController.php",
+                      "line": 25,
+                      "symbol": "implicit:auth-middleware"
+                    }
+                  }
+                ]
+              },
               "403": {
                 "id": "res:v1:csy6schtmfd7iz3s",
                 "provenance": [
@@ -854,6 +897,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
@@ -1398,6 +1444,24 @@
           ],
           "uses": {
             "responses": {
+              "401": {
+                "id": "res:v1:tfdf4wyiehnwu7h5",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FormController.php",
+                      "line": 25,
+                      "symbol": "implicit:auth-middleware"
+                    }
+                  }
+                ]
+              },
               "403": {
                 "id": "res:v1:uu2j6vkul665jt5h",
                 "provenance": [
@@ -1463,6 +1527,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
@@ -2472,13 +2539,6 @@
               "fields": [
                 "description",
                 "summary"
-              ],
-              "overrode": [
-                {
-                  "field": "description",
-                  "value": "Requires permission: moderate forms",
-                  "producer": "integration:permission"
-                }
               ]
             },
             {
@@ -2492,6 +2552,7 @@
               "producer": "integration:permission",
               "layer": "integration",
               "fields": [
+                "description",
                 "x-permissions"
               ],
               "source": {
@@ -2504,7 +2565,7 @@
         },
         "operationId": "get.api.moderated-forms",
         "summary": "List forms.",
-        "description": "Returns the collection of forms visible to the caller.",
+        "description": "Returns the collection of forms visible to the caller.\n\nRequires permission: moderate forms",
         "tags": [
           "Forms"
         ],
@@ -3693,6 +3754,24 @@
           ],
           "uses": {
             "responses": {
+              "401": {
+                "id": "res:v1:joznvczinmf3hzg5",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/FormController.php",
+                      "line": 25,
+                      "symbol": "implicit:auth-middleware"
+                    }
+                  }
+                ]
+              },
               "403": {
                 "id": "res:v1:hctolxrnzahyg3pw",
                 "provenance": [
@@ -3758,6 +3837,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
@@ -4779,6 +4861,20 @@
           "keeper"
         ]
       },
+      "Unauthorized": {
+        "x-docuccino": {
+          "id": "sch:v1:qntkok75rrb2gjjq"
+        },
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
       "UnprocessableEntity": {
         "x-docuccino": {
           "id": "sch:v1:f3tcwvg2vhs255gy"
@@ -4931,6 +5027,16 @@
           }
         }
       },
+      "Unauthorized": {
+        "description": "Unauthorized",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Unauthorized"
+            }
+          }
+        }
+      },
       "UnprocessableEntity": {
         "description": "Unprocessable Entity",
         "content": {
@@ -4967,7 +5073,7 @@
     "document": {
       "id": "doc:secured",
       "configHash": "d89a86d522eb398c0a3d894b165ad3d553ea98b9606eab23fb4d7a6a100fb07f",
-      "contentHash": "5ecef6c0b85bb515a30e66464e4bff20309c861eacaf9ffea060bfbb6ae94ec1"
+      "contentHash": "5f55c5c4e4145820d477496ef1b5728c4e811fa4b3e93973e228572c33964429"
     },
     "generator": {
       "name": "docuccino/laravel",

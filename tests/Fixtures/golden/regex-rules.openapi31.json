@@ -83,6 +83,10 @@
             "pattern": "^(?:[A-Za-z]|[^\\x00-\\x7F])+$",
             "example": "example"
           },
+          "pair": {
+            "type": "string",
+            "pattern": "^\"[a-z]+\", \"[a-z]+\"$"
+          },
           "postcode": {
             "type": "string",
             "pattern": "^[A-Za-z]{1,2}[0-9][A-Z0-9a-z]? ?[0-9][A-Za-z]{2}$"
@@ -103,7 +107,8 @@
           "unit",
           "recipient",
           "initials",
-          "full_name"
+          "full_name",
+          "pair"
         ]
       }
     }

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Docuccino\Laravel\Integrations\Support\AuthGuardDrivers;
+use Docuccino\Laravel\Support\AuthMiddlewareNames;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Auth\Middleware\AuthenticateWithBasicAuth;
 
@@ -15,7 +16,7 @@ use Illuminate\Auth\Middleware\AuthenticateWithBasicAuth;
  * not the other is a route whose owning integration never claims it.
  */
 it('resolves auth middleware to the drivers behind their guards', function (array $middleware, array $drivers, string $default, array $expected): void {
-    expect(AuthGuardDrivers::driversFor($middleware, $drivers, $default))->toBe($expected);
+    expect(AuthGuardDrivers::driversFor($middleware, $drivers, $default, AuthMiddlewareNames::guardArguments(...)))->toBe($expected);
 })->with([
     'auth:api → passport' => [['auth:api'], ['api' => 'passport'], 'web', ['passport']],
     'auth:api → sanctum' => [['auth:api'], ['api' => 'sanctum'], 'web', ['sanctum']],

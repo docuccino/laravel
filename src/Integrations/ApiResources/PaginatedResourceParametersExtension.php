@@ -11,6 +11,7 @@ use Docuccino\Core\Extensions\Contracts\OperationPhase;
 use Docuccino\Core\Extensions\Ordering\ExtensionOrder;
 use Docuccino\Core\Extensions\Ordering\Priorities;
 use Docuccino\Core\Patch\Contribution;
+use Docuccino\Laravel\Integrations\Support\PageSizeDefaultExtension;
 use Docuccino\Laravel\Integrations\Support\PaginatedResponseBody;
 use Docuccino\Laravel\Integrations\Support\PaginationTerminalVisitor;
 use Docuccino\Laravel\Integrations\Support\PaginatorPageParameter;
@@ -63,6 +64,7 @@ final class PaginatedResourceParametersExtension implements OperationExtension
                 $operation->parameter('query', $size->key),
                 $contribution,
             );
+            PageSizeDefaultExtension::record($context, $size);
         }
 
         // Last, because a size key's own file is only known once the recovery has run — the reader resolves

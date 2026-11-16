@@ -21,6 +21,13 @@ use Docuccino\Core\Inference\PropertyMetadata;
 use Docuccino\Laravel\Extensions\FrameworkResponseTypeToSchema;
 use Docuccino\Laravel\Support\FrameworkClasses;
 use Docuccino\Laravel\Tests\Fixtures\FrameworkResponses\CustomJsonResponse;
+use Docuccino\Laravel\Tests\Fixtures\FrameworkResponses\Package\ArchiveFileResponse;
+use Docuccino\Laravel\Tests\Fixtures\FrameworkResponses\Package\ChunkedResponse;
+use Docuccino\Laravel\Tests\Fixtures\FrameworkResponses\Package\EnvelopeResponse;
+use Docuccino\Laravel\Tests\Fixtures\FrameworkResponses\Package\FeedResponse;
+use Docuccino\Laravel\Tests\Fixtures\FrameworkResponses\Package\NoticeResponse;
+use Docuccino\Laravel\Tests\Fixtures\FrameworkResponses\Package\RelayRedirectResponse;
+use Workbench\App\Http\Responses\AcceptedResponse;
 
 /**
  * A framework response object is transport, not an API contract. These pin the two halves of that:
@@ -232,6 +239,48 @@ it('gives a bare JsonResponse an open JSON body and says so out loud', function 
         ->and($raised[0]->help)->toContain('#[Response(');
 });
 
+it('gives a bare JSON response subclass the open JSON body its framework class proves, naming the subclass', function (string $fqcn): void {
+    // Symfony's JsonResponse labels its body `application/json` and encodes no data as `{}`, and a subclass
+    // inherits both whoever wrote it, so "no body" is a claim the class contradicts as much as the parent's.
+    [$responses, $document, $diagnostics] = documentForReturn(new ClassT($fqcn), [$fqcn => responseObjectMetadata($fqcn)]);
+
+    expect(array_keys($responses))->toBe([200])
+        ->and($responses['200']['content'] ?? null)->toBe(['application/json' => ['schema' => []]])
+        ->and(typeSchemas($document))->toBe([]);
+
+    $raised = array_values(array_filter(
+        $diagnostics,
+        static fn ($d): bool => $d->code === 'inferred-response.payload-unrecoverable' && $d->routeSignature === 'GET /api/forms',
+    ));
+
+    expect($raised)->toHaveCount(1)
+        ->and($raised[0]->message)->toContain($fqcn)
+        ->and($raised[0]->help)->toContain('#[Response(type:');
+})->with([
+    'symfony\'s own' => [FrameworkClasses::JSON_BASE],
+    'an application\'s subclass' => [CustomJsonResponse::class],
+    'a package\'s subclass' => [EnvelopeResponse::class],
+]);
+
+it('documents a bare subclass of every framework response as the framework class it extends', function (string $parent, string $subclass): void {
+    // Unread, a subclass proves what its framework class proves and no more: the same status, headers,
+    // media type and shape. The rows are one per family the response side tells apart.
+    [$asParent] = documentForReturn(new ClassT($parent));
+    [$asSubclass] = documentForReturn(new ClassT($subclass));
+
+    expect(is_subclass_of($subclass, $parent))->toBeTrue()
+        ->and(stripDocuccinoRecursive($asSubclass))->toBe(stripDocuccinoRecursive($asParent));
+})->with([
+    'json' => [FrameworkClasses::JSON_RESPONSE, EnvelopeResponse::class],
+    'symfony json' => [FrameworkClasses::JSON_BASE, CustomJsonResponse::class],
+    'redirect' => [FrameworkClasses::REDIRECT_RESPONSE, RelayRedirectResponse::class],
+    'file' => [FrameworkClasses::BINARY_FILE_RESPONSE, ArchiveFileResponse::class],
+    'stream' => [FrameworkClasses::STREAMED_RESPONSE, ChunkedResponse::class],
+    'streamed json' => [FrameworkClasses::STREAMED_JSON_RESPONSE, FeedResponse::class],
+    'plain' => ['Illuminate\\Http\\Response', NoticeResponse::class],
+    'symfony plain' => [FrameworkClasses::RESPONSE_BASE, AcceptedResponse::class],
+]);
+
 it('documents only the status for a framework response that proves nothing at all', function (): void {
     // The base response class carries a body of no stated media type and no stated shape, so claiming
     // `application/json` would be a confident wrong answer. Its file and streamed siblings DO prove
@@ -273,6 +322,22 @@ it('still documents the payload of a JsonResponse whose generic was recovered', 
         ])
         ->and(typeSchemas($document))->toBe([]);
 });
+
+it('recognises the JSON family and nothing else', function (string $fqcn, bool $expected): void {
+    expect(FrameworkClasses::isJson($fqcn))->toBe($expected);
+})->with([
+    'illuminate json' => [FrameworkClasses::JSON_RESPONSE, true],
+    'symfony json' => [FrameworkClasses::JSON_BASE, true],
+    'app subclass' => [CustomJsonResponse::class, true],
+    'package subclass' => [EnvelopeResponse::class, true],
+    'streamed json' => [FrameworkClasses::STREAMED_JSON_RESPONSE, false],
+    'illuminate redirect' => [FrameworkClasses::REDIRECT_RESPONSE, false],
+    'symfony response base' => [FrameworkClasses::RESPONSE_BASE, false],
+    'illuminate response' => ['Illuminate\\Http\\Response', false],
+    'binary file' => [FrameworkClasses::BINARY_FILE_RESPONSE, false],
+    'streamed' => [FrameworkClasses::STREAMED_RESPONSE, false],
+    'not a class at all' => ['App\\Nope\\Missing', false],
+]);
 
 it('recognises the redirect family and nothing else', function (string $fqcn, bool $expected): void {
     expect(FrameworkClasses::isRedirect($fqcn))->toBe($expected);

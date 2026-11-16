@@ -221,8 +221,11 @@ it('reflects the new attribute facts off the real class', function (): void {
         ->and($reflector->propertyDefault(AccountData::class, 'country'))->toBe(['hasDefault' => true, 'value' => 'GB'])
         ->and($reflector->propertyDefault(AccountData::class, 'displayName')['hasDefault'])->toBeFalse()
         ->and($reflector->dataCollectionOf(AccountData::class, 'tags'))->toBe(TagData::class)
-        ->and($reflector->validationTokens(AccountData::class, 'code'))->toBe(['max:5'])
-        ->and($reflector->validationTokens(AccountData::class, 'status'))->toBe(['in:active,suspended']);
+        ->and($reflector->attributeRules(AccountData::class, 'code')[0])->toBe(['max:5'])
+        // laravel-data validates an `#[Enum]` with the framework's `Enum` rule, so that object is what it
+        // hands over, read as `Rule::enum()` is, and no token stands for it.
+        ->and($reflector->attributeRules(AccountData::class, 'status')[0])->toBe([])
+        ->and($reflector->attributeRules(AccountData::class, 'status')[1])->toEqual([new Illuminate\Validation\Rules\Enum(AccountStatus::class)]);
 });
 
 it('separates having a default from having a documentable one', function (): void {
@@ -244,12 +247,12 @@ it('silently drops an object-valued #[Rule(new …)] but recovers the string for
     $reflector = new DataClassReflector;
 
     // A custom rule object can't be recovered statically, so no tokens — the field keeps its type.
-    expect($reflector->validationTokens(PinnedRuleData::class, 'label'))->toBe([])
+    expect($reflector->attributeRules(PinnedRuleData::class, 'label')[0])->toBe([])
         // The string escape-hatch form still lands.
-        ->and($reflector->validationTokens(PinnedRuleData::class, 'code'))->toBe(['max:5']);
+        ->and($reflector->attributeRules(PinnedRuleData::class, 'code')[0])->toBe(['max:5']);
 });
 
-it('documents a WithCast DateTimeInterfaceCast format:U property as an integer timestamp', function (): void {
+it('documents a WithCast DateTimeInterfaceCast format:U property as the string the transformer writes', function (): void {
     $components = new ComponentRegistry;
     $engine = new StubTypeEngine(classes: [
         TimestampData::class => new ClassMetadata(TimestampData::class, [
@@ -261,13 +264,15 @@ it('documents a WithCast DateTimeInterfaceCast format:U property as an integer t
 
     $properties = $components->schemas()['TimestampData']['properties'];
 
-    // A `format: 'U'` cast becomes an integer (Unix seconds); a plain datetime stays a date-time string.
-    expect($properties['expiresAt'])->toBe(['type' => 'integer', 'description' => 'Unix timestamp (seconds).'])
+    // A cast only reads input. laravel-data writes both with its date transformer, which formats with
+    // `data.date_format` and never consults the cast, so the two publish alike.
+    expect($properties['expiresAt'])->toBe(['type' => 'string', 'format' => 'date-time'])
         ->and($properties['createdAt'])->toBe(['type' => 'string', 'format' => 'date-time']);
 
-    // The reflector reads the format straight off the attribute.
-    expect((new DataClassReflector)->dateTimeCastFormat(TimestampData::class, 'expiresAt'))->toBe('U')
-        ->and((new DataClassReflector)->dateTimeCastFormat(TimestampData::class, 'createdAt'))->toBeNull();
+    // The reflector still reads the cast straight off the attribute, for the request side.
+    expect((new DataClassReflector)->propertyCast(TimestampData::class, 'expiresAt'))
+        ->toBe(['class' => 'Spatie\\LaravelData\\Casts\\DateTimeInterfaceCast', 'arguments' => ['format' => 'U']])
+        ->and((new DataClassReflector)->propertyCast(TimestampData::class, 'createdAt'))->toBeNull();
 });
 
 it('excludes route-parameter and explicitly request-hidden properties, but not output-#[Hidden] ones', function (): void {

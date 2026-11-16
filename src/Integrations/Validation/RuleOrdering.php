@@ -28,7 +28,7 @@ final class RuleOrdering
         'required' => 0, 'present' => 0, 'filled' => 0, 'sometimes' => 0, 'nullable' => 0,
         'string' => 10, 'integer' => 10, 'int' => 10, 'numeric' => 10, 'boolean' => 10,
         'bool' => 10, 'array' => 10, 'email' => 10, 'uuid' => 10, 'ulid' => 10, 'url' => 10,
-        'ip' => 10, 'date' => 10, 'date_format' => 10, 'json' => 10, 'list' => 10,
+        'ip' => 10, 'ipv4' => 10, 'ipv6' => 10, 'date' => 10, 'date_format' => 10, 'json' => 10, 'list' => 10,
         // The word a bare `array` becomes where nothing decided the container: a type word like the rest
         // of this band, and read by the same constraint rules below.
         'array_or_object' => 10,
@@ -39,17 +39,16 @@ final class RuleOrdering
         // settle on.
         'object' => 12, 'additional_properties' => 12, 'date_wire' => 12,
         'file' => 15, 'image' => 15,
-        'in' => 20, 'enum' => 20, 'not_in' => 20, 'exists' => 20, 'unique' => 20,
+        'in' => 20, 'enum' => 20, 'not_in' => 20, 'array_not_in' => 20, 'exists' => 20, 'unique' => 20,
         'regex' => 25, 'alpha' => 25, 'alpha_num' => 25, 'alpha_dash' => 25,
-        'starts_with' => 25, 'ends_with' => 25, 'timezone' => 25,
+        'starts_with' => 25, 'ends_with' => 25, 'timezone' => 25, 'mac_address' => 25, 'hex_color' => 25,
         'digits' => 25, 'digits_between' => 25, 'max_digits' => 25, 'min_digits' => 25,
         'before' => 25, 'before_or_equal' => 25, 'after' => 25, 'after_or_equal' => 25,
         'min' => 30, 'max' => 30, 'between' => 30, 'size' => 30,
         'decimal' => 30, 'multiple_of' => 30, 'gt' => 30, 'gte' => 30, 'lt' => 30, 'lte' => 30,
         'distinct' => 30,
         'confirmed' => 40,
-        // Annotations last: a stated description appends to any note the constraint rules left, and a
-        // stated format/example sees the final resolved type.
+        // Annotations last: a stated format/example sees the final resolved type.
         'format' => 50, 'description' => 50, 'example' => 50,
     ];
 

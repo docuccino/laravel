@@ -12,7 +12,7 @@ use Docuccino\Core\Extensions\Validation\ValidationRule;
 /**
  * `required_if`, `required_unless`, `required_with[_all]`, `required_without[_all]`. The field is required
  * only under a runtime condition OpenAPI can't express, so it stays optional — the safe floor — and the
- * condition becomes a "Required when …" description note.
+ * condition becomes a "Required when …" note.
  */
 final class ConditionalRequiredRuleTransformer implements RuleTransformer
 {
@@ -42,8 +42,7 @@ final class ConditionalRequiredRuleTransformer implements RuleTransformer
             return;
         }
 
-        $existing = $field->get('description');
-        $field->set('description', is_string($existing) && $existing !== '' ? $existing.' '.$note : $note);
+        $field->note($note);
     }
 
     private function describe(ValidationRule $rule): ?string

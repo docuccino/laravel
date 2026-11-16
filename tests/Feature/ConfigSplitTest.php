@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Docuccino\Core\Diagnostics\Severity;
+use Docuccino\Laravel\Config\BuildConfig;
 use Docuccino\Laravel\Config\ConfigSplit;
 use Docuccino\Laravel\Pipeline\DocumentBuilder;
 use Docuccino\Laravel\Tests\Support\BuildSettings;
@@ -186,6 +187,43 @@ it('leaves the whole suite standing on the split ConfigSplit describes', functio
         ->and(ConfigSplit::staleKeys())->toBe([]);
 });
 
+// --- A shared namespace: the application's own keys in config/docuccino.php ------------------------
+
+it('leaves an application its own keys in config/docuccino.php, beside a configuration file or without one', function (): void {
+    // `docuccino` is an ordinary config file name, and an application may keep settings of its own in
+    // it. The package reads only its own keys there, so a key that names no build setting was never one
+    // the build ignored: reporting it tells its author to delete settings their application reads, and
+    // without a docuccino.yaml the refusal stops every build of an application that configured nothing.
+    config()->set('docuccino.links', ['github' => 'https://example.test']);
+    config()->set('docuccino.cache.ttl', 60);
+    config()->set('docuccino.documents.default.label', 'API');
+
+    expect(ConfigSplit::staleKeys())->toBe([])
+        ->and(configSplitDiagnostics('config.stale-php-keys'))->toBe([]);
+
+    BuildSettings::none();
+
+    expect(ConfigSplit::notMigrated(app(BuildConfig::class)))->toBeNull()
+        ->and(configSplitDiagnostics('config.not-migrated'))->toBe([]);
+});
+
+it('still names the build settings beside an application\'s own keys', function (): void {
+    // The warning exists for settings the framework file used to carry, renamed and removed ones
+    // included: each sat inside a section docuccino.yaml still declares, so the section is named.
+    config()->set('docuccino.links', ['github' => 'https://example.test']);
+    config()->set('docuccino.engine.neon', 'phpstan.neon');
+    config()->set('docuccino.documents.default.security.auto_detect_middleware', 'auth*');
+    config()->set('docuccino.documents.default.representation.lists', 'array');
+    config()->set('docuccino.documents.default.routes.closure', null);
+
+    expect(ConfigSplit::staleKeys())->toBe([
+        'documents.default.representation',
+        'documents.default.routes',
+        'documents.default.security',
+        'engine',
+    ]);
+});
+
 // --- Zero configuration: neither file says anything ------------------------------------------------
 
 it('says nothing at all about an application that configures nothing', function (): void {
@@ -216,6 +254,26 @@ it('warns about a viewer configured for a document the build does not define', f
         // Boot cannot know, so it registers the routes and the request is what fails. This is the only
         // place that can say so before somebody clicks the link.
         ->and($warnings[0]->message)->toContain('every request to them fails');
+});
+
+it('says the default viewer is the one serving a document the build does not define', function (): void {
+    // With no `documents` of the application's own, the framework merges the shipped map in, so the
+    // default viewer's routes are registered for a `default` document. A file naming its documents
+    // otherwise leaves those routes failing every request, which is worth saying, but the viewer is
+    // nothing its author wrote: the remedy is to say which viewers they want, not to delete an entry
+    // their config/docuccino.php does not have.
+    BuildSettings::set('documents', ['people' => ['info' => ['title' => 'People', 'version' => '1.0.0']]]);
+
+    bindStubEngine();
+    $warnings = diagnosticsCoded(
+        app(DocumentBuilder::class)->build('people', WorkbenchEngine::make())->diagnostics,
+        'config.viewer-orphan',
+    );
+
+    expect($warnings)->toHaveCount(1)
+        ->and($warnings[0]->message)->toContain('The default viewer serves a document named default')
+        ->and($warnings[0]->message)->not->toContain('config/docuccino.php configures')
+        ->and($warnings[0]->help)->toContain("'documents' => [] serves none");
 });
 
 it('escapes the route it says two documents collide on', function (): void {

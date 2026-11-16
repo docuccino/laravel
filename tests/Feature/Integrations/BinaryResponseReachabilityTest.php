@@ -56,6 +56,10 @@ it('recovers the media type and disposition of an idiomatic file or stream call'
     // A disk download is a STREAMED response, not a binary one — recovering it the other way round
     // would file the body under a class the return type never matches.
     'storage download' => ['invoice', FrameworkClasses::STREAMED_RESPONSE, 'application/pdf', 'attachment', 'invoice-2026.pdf'],
+    // A named argument binds to the parameter it names, so the headers skip past the status untouched.
+    'stream, headers named' => ['namedExport', FrameworkClasses::STREAMED_RESPONSE, 'text/csv', null, null],
+    // Through the facade, whose static call the analyser hands over as a static call, not a method call.
+    'facade streamDownload, name and headers named' => ['namedLedger', FrameworkClasses::STREAMED_RESPONSE, 'text/csv', 'attachment', 'ledger.csv'],
 ])->group('fixture');
 
 it('reads nothing off an action that builds no file or stream response', function (): void {

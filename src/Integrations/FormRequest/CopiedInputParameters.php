@@ -6,6 +6,7 @@ namespace Docuccino\Laravel\Integrations\FormRequest;
 
 use Docuccino\Core\Draft\OperationDraft;
 use Docuccino\Core\Draft\ParameterDraft;
+use Docuccino\Core\Draft\SchemaNotes;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Extensions\Contracts\OperationExtension;
 use Docuccino\Core\Extensions\Contracts\OperationPhase;
@@ -82,6 +83,9 @@ final class CopiedInputParameters implements OperationExtension
             $schema = is_array($field) ? $field : [];
         }
 
+        // What the rules enforce goes beneath whatever description wins, which may be the author's.
+        [$schema, $note] = SchemaNotes::take($schema);
+
         // A hint is an x-docuccino member, not a schema keyword, so it travels on the draft.
         $docuccino = $schema['x-docuccino'] ?? null;
         unset($schema['x-docuccino']);
@@ -95,6 +99,9 @@ final class CopiedInputParameters implements OperationExtension
         unset($schema['description']);
         if (is_string($description)) {
             $parameter->setDescription($description, $contribution);
+        }
+        if ($note !== null) {
+            $parameter->declareDescriptionNote($note, $contribution);
         }
 
         // Every value a header or query string carries is a string on the wire.

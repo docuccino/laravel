@@ -255,40 +255,59 @@
                     },
                     "anyOf": [
                       {
-                        "$ref": "#/components/schemas/Answer",
-                        "anyOf": [
+                        "oneOf": [
                           {
-                            "properties": {
-                              "kind": {
-                                "const": "count"
-                              }
-                            }
+                            "$ref": "#/components/schemas/CountAnswer"
                           },
                           {
-                            "properties": {
-                              "kind": {
-                                "const": "measure"
+                            "allOf": [
+                              {
+                                "$ref": "#/components/schemas/LettersAnswer"
                               },
-                              "steps": {
-                                "maxItems": 20
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "letters": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "maxLength": 8
+                                    },
+                                    "maxItems": 20,
+                                    "minItems": 1
+                                  }
+                                }
                               }
-                            }
+                            ]
                           },
                           {
-                            "properties": {
-                              "kind": {
-                                "const": "letters"
+                            "allOf": [
+                              {
+                                "$ref": "#/components/schemas/MeasureAnswer"
                               },
-                              "letters": {
-                                "items": {
-                                  "maxLength": 8
-                                },
-                                "maxItems": 20,
-                                "minItems": 1
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "steps": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "integer"
+                                    },
+                                    "maxItems": 20
+                                  }
+                                }
                               }
-                            }
+                            ]
                           }
-                        ]
+                        ],
+                        "discriminator": {
+                          "mapping": {
+                            "count": "#/components/schemas/CountAnswer",
+                            "letters": "#/components/schemas/LettersAnswer",
+                            "measure": "#/components/schemas/MeasureAnswer"
+                          },
+                          "propertyName": "kind"
+                        }
                       },
                       {
                         "type": "object",
@@ -466,40 +485,59 @@
             },
             "anyOf": [
               {
-                "$ref": "#/components/schemas/Answer",
-                "anyOf": [
+                "oneOf": [
                   {
-                    "properties": {
-                      "kind": {
-                        "const": "count"
-                      }
-                    }
+                    "$ref": "#/components/schemas/CountAnswer"
                   },
                   {
-                    "properties": {
-                      "kind": {
-                        "const": "measure"
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/LettersAnswer"
                       },
-                      "steps": {
-                        "maxItems": 20
+                      {
+                        "type": "object",
+                        "properties": {
+                          "letters": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 8
+                            },
+                            "maxItems": 20,
+                            "minItems": 1
+                          }
+                        }
                       }
-                    }
+                    ]
                   },
                   {
-                    "properties": {
-                      "kind": {
-                        "const": "letters"
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/MeasureAnswer"
                       },
-                      "letters": {
-                        "items": {
-                          "maxLength": 8
-                        },
-                        "maxItems": 20,
-                        "minItems": 1
+                      {
+                        "type": "object",
+                        "properties": {
+                          "steps": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer"
+                            },
+                            "maxItems": 20
+                          }
+                        }
                       }
-                    }
+                    ]
                   }
-                ]
+                ],
+                "discriminator": {
+                  "mapping": {
+                    "count": "#/components/schemas/CountAnswer",
+                    "letters": "#/components/schemas/LettersAnswer",
+                    "measure": "#/components/schemas/MeasureAnswer"
+                  },
+                  "propertyName": "kind"
+                }
               },
               {
                 "type": "object",
@@ -660,7 +698,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "1a97bcf413eb52b5ae8654a6a555f0a5e5f48961dc29f4ea54ba8bd44c8c76e8"
+      "contentHash": "50fb1686e4dff8c7c1972b747a9e6b3498607fea24001426e836d4f35be08b99"
     },
     "generator": {
       "name": "docuccino/laravel",

@@ -1,0 +1,417 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-rule-objects": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:krv5dw5e6o7t4idm",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/SpatieData/RuleObjectChoicesController.php",
+                "line": 12,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SpatieData\\RuleObjectChoicesController::store"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:spatie-data",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "tests/Fixtures/SpatieData/RuleObjectChoicesController.php",
+                "line": 12,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\SpatieData\\RuleObjectChoicesController::store"
+              }
+            }
+          ]
+        },
+        "operationId": "post.api.zz-rule-objects",
+        "tags": [
+          "RuleObjectChoices"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleObjectChoicesDataRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:oej7ovj3e26i7am4",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "x-docuccino": {
+              "id": "res:v1:3pnc6pdrbb73nbbl",
+              "provenance": [
+                {
+                  "producer": "integration:implicit-response",
+                  "layer": "integration",
+                  "fields": [
+                    "component",
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/SpatieData/RuleObjectChoicesController.php",
+                    "line": 12,
+                    "symbol": "implicit:validated-request"
+                  }
+                }
+              ],
+              "facts": {
+                "component": "UnprocessableEntity"
+              }
+            },
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:implicit-response",
+                        "layer": "integration",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "source": {
+                          "file": "tests/Fixtures/SpatieData/RuleObjectChoicesController.php",
+                          "line": 12,
+                          "symbol": "implicit:validated-request"
+                        }
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "errors": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "RuleObjectChoicesDataRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:krp7ahdwehbbi7j7"
+        },
+        "type": "object",
+        "properties": {
+          "agreed": {
+            "type": "boolean",
+            "not": {
+              "enum": [
+                false
+              ]
+            },
+            "example": true
+          },
+          "code": {
+            "type": "string",
+            "not": {
+              "enum": [
+                "legacy"
+              ]
+            }
+          },
+          "colour": {
+            "type": "string",
+            "enum": [
+              "red",
+              "blue"
+            ],
+            "example": "red",
+            "x-enum-varnames": [
+              "Red",
+              "Blue"
+            ],
+            "x-enumNames": [
+              "Red",
+              "Blue"
+            ]
+          },
+          "consent": {
+            "type": "boolean",
+            "enum": [
+              true,
+              false
+            ],
+            "example": true,
+            "x-enum-varnames": [
+              "True",
+              "False"
+            ],
+            "x-enumNames": [
+              "True",
+              "False"
+            ]
+          },
+          "mark": {
+            "type": "string",
+            "not": {
+              "enum": [
+                "void"
+              ]
+            }
+          },
+          "note": {
+            "x-docuccino": {
+              "facts": {
+                "blankAsNull": "^[\\x00\\t-\\r  ­͏؜ᅟᅠ ឴឵᠎           ​‌‍‎‏\u2028\u2029  ⁠⁡⁢⁣⁤⁥⁪⁫⁬⁭⁮⁯⠀　ㅤ﻿ﾠ𝅙𝅳𝅴𝅵𝅶𝅷𝅸𝅹𝅺󠀠]*$"
+              }
+            },
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 3,
+            "example": "exa"
+          },
+          "pair": {
+            "type": "string",
+            "enum": [
+              "a,b",
+              "c"
+            ],
+            "example": "a,b",
+            "x-enum-varnames": [
+              "AB",
+              "C"
+            ],
+            "x-enumNames": [
+              "AB",
+              "C"
+            ]
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published"
+            ],
+            "example": "draft",
+            "x-enum-descriptions": [
+              "Not yet visible to applicants.",
+              "Live and accepting traffic."
+            ],
+            "x-enum-varnames": [
+              "Draft",
+              "Published"
+            ],
+            "x-enumDescriptions": {
+              "draft": "Not yet visible to applicants.",
+              "published": "Live and accepting traffic."
+            },
+            "x-enumNames": [
+              "Draft",
+              "Published"
+            ]
+          },
+          "priority": {
+            "$ref": "#/components/schemas/WidgetPriority"
+          },
+          "quoted": {
+            "type": "string",
+            "enum": [
+              "x,y",
+              "z"
+            ],
+            "example": "x,y",
+            "x-enum-varnames": [
+              "XY",
+              "Z"
+            ],
+            "x-enumNames": [
+              "XY",
+              "Z"
+            ]
+          },
+          "size": {
+            "type": "string",
+            "enum": [
+              "small",
+              "large"
+            ],
+            "example": "small",
+            "x-enum-varnames": [
+              "Small",
+              "Large"
+            ],
+            "x-enumNames": [
+              "Small",
+              "Large"
+            ]
+          },
+          "stage": {
+            "$ref": "#/components/schemas/WidgetStatus"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published"
+            ],
+            "example": "draft",
+            "x-enum-descriptions": [
+              "Not yet visible to applicants.",
+              "Live and accepting traffic."
+            ],
+            "x-enum-varnames": [
+              "Draft",
+              "Published"
+            ],
+            "x-enumDescriptions": {
+              "draft": "Not yet visible to applicants.",
+              "published": "Live and accepting traffic."
+            },
+            "x-enumNames": [
+              "Draft",
+              "Published"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/WidgetStatus"
+          }
+        },
+        "required": [
+          "status",
+          "size",
+          "priority",
+          "code",
+          "stage",
+          "phase",
+          "state",
+          "colour",
+          "mark"
+        ]
+      },
+      "WidgetPriority": {
+        "x-docuccino": {
+          "id": "sch:v1:glla22yq7z5c5qmw"
+        },
+        "type": "integer",
+        "enum": [
+          1,
+          5,
+          10
+        ],
+        "x-enum-descriptions": [
+          "Handled when idle.",
+          "",
+          "Jumps the queue."
+        ],
+        "x-enum-varnames": [
+          "Low",
+          "Normal",
+          "High"
+        ],
+        "x-enumNames": [
+          "Low",
+          "Normal",
+          "High"
+        ]
+      },
+      "WidgetStatus": {
+        "x-docuccino": {
+          "id": "sch:v1:xxkbfhrj65orbrgo"
+        },
+        "description": "Where a widget stands in its publication lifecycle.",
+        "type": "string",
+        "enum": [
+          "draft",
+          "published",
+          "archived"
+        ],
+        "x-enum-descriptions": [
+          "Not yet visible to applicants.",
+          "Live and accepting traffic.",
+          ""
+        ],
+        "x-enum-varnames": [
+          "Draft",
+          "Published",
+          "Archived"
+        ],
+        "x-enumNames": [
+          "Draft",
+          "Published",
+          "Archived"
+        ]
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "114ce2dfa542dd3dd146b6cd1d2b45f3ef3a60b32f874a5043f349522c3bd0ba"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.23.4",
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
+    }
+  }
+}

@@ -165,51 +165,66 @@ it('makes each artifact after writing the one before it, and holds one at a time
     )]);
     exportWith($limit, $this->dir.'/artifacts');
 
-    // As each file is reported written: what this process holds, where an artifact held past its write would
-    // add itself to every later figure; and the most it held since the file before, which an artifact emitted
-    // or read back in between raises by that artifact.
+    // In order: each answer the workers' set makes in this process or lets go, and each file reported written.
+    // As a file is reported, also what this process holds once its garbage is collected, which an artifact
+    // held past its write, wherever it is held, would add itself to.
+    $events = [];
     $held = [];
-    $made = [];
-    $output = new class($held, $made) extends BufferedOutput
+    $output = new class($events, $held) extends BufferedOutput
     {
-        private int $last;
-
         /**
+         * @param  list<string>  $events
          * @param  list<int>  $held
-         * @param  list<int>  $made
          */
-        public function __construct(private array &$held, private array &$made)
+        public function __construct(private array &$events, private array &$held)
         {
             parent::__construct();
-            $this->last = memory_get_usage();
         }
 
         protected function doWrite(string $message, bool $newline): void
         {
-            if (str_starts_with($message, 'Wrote ')) {
+            if (preg_match('/^Wrote \S+\/(\S+) \(/', $message, $wrote) === 1) {
+                $this->events[] = $wrote[1];
+                gc_collect_cycles();
                 $this->held[] = memory_get_usage();
-                $this->made[] = memory_get_peak_usage() - $this->last;
-                memory_reset_peak_usage();
-                $this->last = memory_get_usage();
             }
 
             parent::doWrite($message, $newline);
         }
     };
-    $started = 0;
-    app()->instance(BuildWorkers::class, countedWorkers($limit, $started));
+    app()->instance(BuildWorkers::class, new BuildWorkers(static fn (): int => $limit, holds: static function (bool $made) use (&$events): void {
+        $events[] = $made ? 'made' : 'let go';
+    }));
     $command = app(ExportCommand::class);
     $command->setLaravel(app());
 
     $exit = $command->run(new ArrayInput([]), $output);
     $artifact = (int) filesize($this->dir.'/artifacts/full.json');
 
+    // How many answers were held as each file was reported, and what happened between one report and the next.
+    $holding = 0;
+    $atWrite = [];
+    $between = [[]];
+    foreach ($events as $event) {
+        if ($event !== 'made' && $event !== 'let go') {
+            $atWrite[$event] = $holding;
+            $between[] = [];
+
+            continue;
+        }
+
+        $holding += $event === 'made' ? 1 : -1;
+        $between[array_key_last($between)][] = $event;
+    }
+
     expect($exit)->toBe(0)
+        // The one being written, and no other: not every artifact made before the first write, nor one ahead.
+        ->and($atWrite)->toBe(['openapi-3.2.json' => 1, 'openapi-3.1.json' => 1, 'openapi-3.0.json' => 1, 'full.json' => 1])
+        // Each let go once written, and only then the next made.
+        ->and(array_slice($between, 1, 3))->toBe(array_fill(0, 3, ['let go', 'made']))
+        ->and($holding)->toBe(0)
         ->and($artifact)->toBeGreaterThan(4_000_000)
-        ->and($held)->toHaveCount(4)
-        ->and(max($held) - $held[0])->toBeLessThan($artifact)
-        // In one process an emit that ran before the first write would leave nothing to make between writes.
-        ->and(min(array_slice($made, 1)))->toBeGreaterThan(intdiv($artifact, 2));
+        ->and(max($held) - $held[0])->toBeLessThan($artifact);
 })->with(['in one process' => 1, 'with workers' => 8]);
 
 it('leaves no worker behind when writing a target throws', function (): void {

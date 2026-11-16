@@ -204,8 +204,10 @@ lint:
   leakage:
     enabled: true
     # Property names, parameter names or JSON pointers to accept, e.g.
-    # ['reset_token', '/components/schemas/Invoice/properties/status']. A name silences this lint
-    # only; the response recorder redacts by name regardless and honours a pointer alone.
+    # ['reset_token', '/components/schemas/Invoice/properties/status']. Copy a pointer as the
+    # warning prints it, escaped (~1 for /) and naming a parameter by in:name, never by position. A
+    # name silences this lint only; the response recorder redacts by name regardless and honours a
+    # pointer alone.
     allow: []
     # Extra heuristics, merged over the built-in table (built-in tokens keep their label). Key = a
     # token matched anywhere inside a property or parameter name, value = the label.
@@ -249,11 +251,14 @@ lint:
   #   # Operation signatures or operationIds to accept, e.g. ['GET /auth/callback'].
   #   allow: []
 
-# Codes you have read and accepted. An accepted diagnostic still prints, marked `accepted`, and stops
-# counting towards `--fail-on` — so a stricter gate can go on before the last report is fixed. An
-# error is never accepted, and an entry nothing reports warns so the list cannot rot.
+# Diagnostics you have read and accepted. An accepted diagnostic still prints, marked `accepted`, and
+# stops counting towards `--fail-on` — so a stricter gate can go on before the last report is fixed.
+# An entry is a whole code, or a code at one operation, copied as the route signature printed above
+# the finding. An error is never accepted, and an entry nothing reports warns so the list cannot rot.
 diagnostics:
-  accept: [] # e.g. ['eloquent.no-columns']
+  accept: []
+    # - 'eloquent.no-columns'
+    # - { code: 'attribute.body-parameter-narrower', operation: 'POST /api/orders' }
 
 # Which engine backs type inference. A boot failure always degrades to no inference rather than
 # failing the build, so docblock- and attribute-driven documentation keeps working.
@@ -262,9 +267,10 @@ engine:
   # docuccino/inference-phpstan package — without it 'in-process' warns and falls back. Anything else
   # warns and runs in-process rather than failing the build. DOCUCCINO_ENGINE overrides this.
   mode: 'in-process' # in-process | null
-  # PHP memory limit for inference, which runs PHPStan inside the calling process. Applied on console
-  # builds only, and only ever RAISES — an already-higher (or unlimited) process is left alone, and
-  # `-1` isn't accepted here. `--memory-limit` on the build commands overrides it.
+  # PHP memory limit for inference, which runs PHPStan inside the calling process. Unset, a console
+  # build raises itself to 1G. Applied on console builds only, and only ever RAISES — an already-higher
+  # (or unlimited) process is left alone, and `-1` isn't accepted here. `--memory-limit` on the build
+  # commands overrides it.
   # memory_limit: '2G'
   # Directories the engine descends into for interprocedural analysis (throw classification, inline
   # `Validator::make(...)` rules). Defaults to every PSR-4 source root your composer.json declares

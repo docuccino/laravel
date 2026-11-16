@@ -35,6 +35,7 @@ final class WatchCommand extends Command
     use IteratesDocuments;
     use RefusesUnreadConfig;
     use RendersDiagnostics;
+    use StartsConsoleBuild;
 
     protected $signature = 'docuccino:watch
         {document? : The configured document key (defaults to every document)}

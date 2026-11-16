@@ -1,0 +1,3147 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/consignments/{consignment}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:jvebltvgn6olamml",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                "line": 42,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ParcelController::consigned"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:zhnhyx4sibo4k2i4",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                      "line": 42,
+                      "symbol": "implicit:route-model-binding"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.consignments.@consignment",
+        "summary": "Bound by a binder the application registered, so what the segment holds is the binder's business.",
+        "tags": [
+          "Parcel"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:nyitedlcxzdzmuyz",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                    "line": 42,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ParcelController::consigned"
+                  }
+                }
+              ]
+            },
+            "name": "consignment",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:xjjet5v5iktymg4z",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ParcelResource"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            },
+            "links": {
+              "delete.api.parcels.@parcel": {
+                "operationId": "delete.api.parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.parcels.@parcel": {
+                "operationId": "get.api.parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.parcels.@parcel.latest-scan": {
+                "operationId": "get.api.parcels.@parcel.latest-scan",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.shipments.@shipment": {
+                "operationId": "get.api.shipments.@shipment",
+                "parameters": {
+                  "shipment": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.tracked-parcels.@parcel": {
+                "operationId": "get.api.tracked-parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/data/tracking"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "patch.api.parcels.@parcel": {
+                "operationId": "patch.api.parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "post.api.parcels.@parcel.scans": {
+                "operationId": "post.api.parcels.@parcel.scans",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/labels": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:hzuga3hmpewrdb6c",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ResponseLinks/LabelController.php",
+                "line": 20,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\LabelController::store"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.labels",
+        "tags": [
+          "Label"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:vi3eoc2eq774r45v",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "parcel": {
+                      "type": "integer"
+                    },
+                    "printer": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "parcel",
+                    "printer"
+                  ]
+                }
+              }
+            },
+            "links": {
+              "LabelledParcel": {
+                "description": "The parcel the label is for.",
+                "operationId": "get.api.parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/parcel"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "attribute",
+                      "layer": "attribute",
+                      "source": {
+                        "file": "tests/Fixtures/ResponseLinks/LabelController.php",
+                        "line": 20,
+                        "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\LabelController::store"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pallets": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:orqgjxkm34n2jgyv",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                "line": 53,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ParcelController::storePallet"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.pallets",
+        "tags": [
+          "Parcel"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:yvmvyjikqd2cjuav",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PalletResource"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            },
+            "links": {
+              "get.api.pallets.@pallet": {
+                "operationId": "get.api.pallets.@pallet",
+                "parameters": {
+                  "pallet": "$response.body#/data/tag"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pallets/{pallet}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:4ktm7a4kerrjgd4h",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                "line": 58,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ParcelController::showPallet"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:i36ktlzkspnzetyi",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                      "line": 58,
+                      "symbol": "implicit:route-model-binding"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.pallets.@pallet",
+        "tags": [
+          "Parcel"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:teliswhgsh2paut7",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                    "line": 58,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ParcelController::showPallet"
+                  }
+                }
+              ],
+              "facts": {
+                "routeBinding": {
+                  "key": "tag"
+                }
+              }
+            },
+            "name": "pallet",
+            "in": "path",
+            "description": "Matched on the resource's `tag`.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                      "line": 58,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ParcelController::showPallet"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:v3l6mfgbbvbeqxgo",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PalletResource"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/parcels": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:aqyvn7u6py7axywj",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                "line": 14,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ParcelController::store"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.parcels",
+        "tags": [
+          "Parcel"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:2jxxly4qxso62zdt",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ParcelResource"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            },
+            "links": {
+              "delete.api.parcels.@parcel": {
+                "operationId": "delete.api.parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.parcels.@parcel": {
+                "operationId": "get.api.parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.parcels.@parcel.latest-scan": {
+                "operationId": "get.api.parcels.@parcel.latest-scan",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.shipments.@shipment": {
+                "operationId": "get.api.shipments.@shipment",
+                "parameters": {
+                  "shipment": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.tracked-parcels.@parcel": {
+                "operationId": "get.api.tracked-parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/data/tracking"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "patch.api.parcels.@parcel": {
+                "operationId": "patch.api.parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "post.api.parcels.@parcel.scans": {
+                "operationId": "post.api.parcels.@parcel.scans",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/parcels/{parcel}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:af3jhz4zlrwbr2ur",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                "line": 19,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ParcelController::show"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:h5xj5yvkhwgxkucw",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                      "line": 19,
+                      "symbol": "implicit:route-model-binding"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.parcels.@parcel",
+        "tags": [
+          "Parcel"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:26ik7mqk3sv4dv6p",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                    "line": 19,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ParcelController::show"
+                  }
+                }
+              ],
+              "facts": {
+                "routeBinding": {
+                  "key": "id"
+                }
+              }
+            },
+            "name": "parcel",
+            "in": "path",
+            "description": "Matched on the resource's `id`.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                      "line": 19,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ParcelController::show"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:w3rxgqgujlq27oqu",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ParcelResource"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            },
+            "links": {
+              "delete.api.parcels.@parcel": {
+                "operationId": "delete.api.parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.parcels.@parcel.latest-scan": {
+                "operationId": "get.api.parcels.@parcel.latest-scan",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.shipments.@shipment": {
+                "operationId": "get.api.shipments.@shipment",
+                "parameters": {
+                  "shipment": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.tracked-parcels.@parcel": {
+                "operationId": "get.api.tracked-parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/data/tracking"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "patch.api.parcels.@parcel": {
+                "operationId": "patch.api.parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "post.api.parcels.@parcel.scans": {
+                "operationId": "post.api.parcels.@parcel.scans",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "x-docuccino": {
+          "id": "op:v1:hdpwo6sdktijmxoi",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                "line": 29,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ParcelController::destroy"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:haycvj3falgwriub",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                      "line": 29,
+                      "symbol": "implicit:route-model-binding"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "delete.api.parcels.@parcel",
+        "tags": [
+          "Parcel"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:enoe33voa6bcumon",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                    "line": 29,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ParcelController::destroy"
+                  }
+                }
+              ],
+              "facts": {
+                "routeBinding": {
+                  "key": "id"
+                }
+              }
+            },
+            "name": "parcel",
+            "in": "path",
+            "description": "Matched on the resource's `id`.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                      "line": 29,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ParcelController::destroy"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "patch": {
+        "x-docuccino": {
+          "id": "op:v1:djtnk64a26nvw53s",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                "line": 24,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ParcelController::update"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:2d7fh4lgcwkwk7zx",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                      "line": 24,
+                      "symbol": "implicit:route-model-binding"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "patch.api.parcels.@parcel",
+        "tags": [
+          "Parcel"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:sl6bzhwp7hkfn5bu",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                    "line": 24,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ParcelController::update"
+                  }
+                }
+              ],
+              "facts": {
+                "routeBinding": {
+                  "key": "id"
+                }
+              }
+            },
+            "name": "parcel",
+            "in": "path",
+            "description": "Matched on the resource's `id`.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                      "line": 24,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ParcelController::update"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:i7wf5lrj2kglvilp",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ParcelResource"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            },
+            "links": {
+              "delete.api.parcels.@parcel": {
+                "operationId": "delete.api.parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.parcels.@parcel": {
+                "operationId": "get.api.parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.parcels.@parcel.latest-scan": {
+                "operationId": "get.api.parcels.@parcel.latest-scan",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.shipments.@shipment": {
+                "operationId": "get.api.shipments.@shipment",
+                "parameters": {
+                  "shipment": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.tracked-parcels.@parcel": {
+                "operationId": "get.api.tracked-parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/data/tracking"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "post.api.parcels.@parcel.scans": {
+                "operationId": "post.api.parcels.@parcel.scans",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/parcels/{parcel}/latest-scan": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:w6ni3jpetupymo3r",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ResponseLinks/ScanController.php",
+                "line": 28,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ScanController::latest"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:igh5bpanixol23sv",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ScanController.php",
+                      "line": 28,
+                      "symbol": "implicit:route-model-binding"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.parcels.@parcel.latest-scan",
+        "tags": [
+          "Scan"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:6cggdbgpcbw3x2qt",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/ResponseLinks/ScanController.php",
+                    "line": 28,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ScanController::latest"
+                  }
+                }
+              ],
+              "facts": {
+                "routeBinding": {
+                  "key": "id"
+                }
+              }
+            },
+            "name": "parcel",
+            "in": "path",
+            "description": "Matched on the resource's `id`.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ScanController.php",
+                      "line": 28,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ScanController::latest"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:yw6ddy4uh3a4izsl",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ScanResource"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            },
+            "links": {
+              "get.api.scans.@scan": {
+                "operationId": "get.api.scans.@scan",
+                "parameters": {
+                  "scan": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/parcels/{parcel}/scans": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:jzpqxes5vaenn7kr",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ResponseLinks/ScanController.php",
+                "line": 13,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ScanController::store"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:vyjatjcqu4flgtib",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ScanController.php",
+                      "line": 13,
+                      "symbol": "implicit:route-model-binding"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.parcels.@parcel.scans",
+        "tags": [
+          "Scan"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:razqeggbqbb4cipn",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/ResponseLinks/ScanController.php",
+                    "line": 13,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ScanController::store"
+                  }
+                }
+              ],
+              "facts": {
+                "routeBinding": {
+                  "key": "id"
+                }
+              }
+            },
+            "name": "parcel",
+            "in": "path",
+            "description": "Matched on the resource's `id`.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ScanController.php",
+                      "line": 13,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ScanController::store"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:35xc5gegrp3fn2fx",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ScanResource"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            },
+            "links": {
+              "get.api.parcels.@parcel.scans.@scan": {
+                "operationId": "get.api.parcels.@parcel.scans.@scan",
+                "parameters": {
+                  "parcel": "$request.path.parcel",
+                  "scan": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.scans.@scan": {
+                "operationId": "get.api.scans.@scan",
+                "parameters": {
+                  "scan": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "patch.api.parcels.@parcel.scans.@scan": {
+                "operationId": "patch.api.parcels.@parcel.scans.@scan",
+                "parameters": {
+                  "parcel": "$request.path.parcel",
+                  "scan": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/parcels/{parcel}/scans/{scan}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:pxbj2uxtdi3psg6n",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ResponseLinks/ScanController.php",
+                "line": 18,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ScanController::show"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:pmjxsubdl7zaufls",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ScanController.php",
+                      "line": 18,
+                      "symbol": "implicit:route-model-binding"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.parcels.@parcel.scans.@scan",
+        "tags": [
+          "Scan"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:adsdorgkoeduwkvd",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/ResponseLinks/ScanController.php",
+                    "line": 18,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ScanController::show"
+                  }
+                }
+              ],
+              "facts": {
+                "routeBinding": {
+                  "key": "id"
+                }
+              }
+            },
+            "name": "parcel",
+            "in": "path",
+            "description": "Matched on the resource's `id`.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ScanController.php",
+                      "line": 18,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ScanController::show"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:pz4yog2rpjd5y7qa",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/ResponseLinks/ScanController.php",
+                    "line": 18,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ScanController::show"
+                  }
+                }
+              ],
+              "facts": {
+                "routeBinding": {
+                  "key": "id",
+                  "scopedTo": "parcel"
+                }
+              }
+            },
+            "name": "scan",
+            "in": "path",
+            "description": "Matched on the resource's `id`. Scoped to `{parcel}`: only values belonging to it match.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ScanController.php",
+                      "line": 18,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ScanController::show"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:7tcliafvc242g4kk",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ScanResource"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            },
+            "links": {
+              "get.api.scans.@scan": {
+                "operationId": "get.api.scans.@scan",
+                "parameters": {
+                  "scan": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "patch.api.parcels.@parcel.scans.@scan": {
+                "operationId": "patch.api.parcels.@parcel.scans.@scan",
+                "parameters": {
+                  "parcel": "$request.path.parcel",
+                  "scan": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "patch": {
+        "x-docuccino": {
+          "id": "op:v1:r4hfxry5coh43le3",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ResponseLinks/ScanController.php",
+                "line": 23,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ScanController::update"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:wsb2dhk4iaqvaykl",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ScanController.php",
+                      "line": 23,
+                      "symbol": "implicit:route-model-binding"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "patch.api.parcels.@parcel.scans.@scan",
+        "tags": [
+          "Scan"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:rndpxiy4tqdd5w25",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/ResponseLinks/ScanController.php",
+                    "line": 23,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ScanController::update"
+                  }
+                }
+              ],
+              "facts": {
+                "routeBinding": {
+                  "key": "id"
+                }
+              }
+            },
+            "name": "parcel",
+            "in": "path",
+            "description": "Matched on the resource's `id`.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ScanController.php",
+                      "line": 23,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ScanController::update"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:trt5lqdy6cs247mj",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/ResponseLinks/ScanController.php",
+                    "line": 23,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ScanController::update"
+                  }
+                }
+              ],
+              "facts": {
+                "routeBinding": {
+                  "key": "id",
+                  "scopedTo": "parcel"
+                }
+              }
+            },
+            "name": "scan",
+            "in": "path",
+            "description": "Matched on the resource's `id`. Scoped to `{parcel}`: only values belonging to it match.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ScanController.php",
+                      "line": 23,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ScanController::update"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:ohu6nrmm3xtq2btn",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ScanResource"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            },
+            "links": {
+              "get.api.parcels.@parcel.scans.@scan": {
+                "operationId": "get.api.parcels.@parcel.scans.@scan",
+                "parameters": {
+                  "parcel": "$request.path.parcel",
+                  "scan": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.scans.@scan": {
+                "operationId": "get.api.scans.@scan",
+                "parameters": {
+                  "scan": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/raw-parcels": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:dsd3jg4o6defhmi2",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                "line": 36,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ParcelController::storeRaw"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.raw-parcels",
+        "tags": [
+          "Parcel"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:3eahwjqedbyavjcx",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/Parcel"
+                }
+              }
+            },
+            "links": {
+              "delete.api.parcels.@parcel": {
+                "operationId": "delete.api.parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.parcels.@parcel": {
+                "operationId": "get.api.parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.parcels.@parcel.latest-scan": {
+                "operationId": "get.api.parcels.@parcel.latest-scan",
+                "parameters": {
+                  "parcel": "$response.body#/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.shipments.@shipment": {
+                "operationId": "get.api.shipments.@shipment",
+                "parameters": {
+                  "shipment": "$response.body#/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.tracked-parcels.@parcel": {
+                "operationId": "get.api.tracked-parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/tracking"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "patch.api.parcels.@parcel": {
+                "operationId": "patch.api.parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "post.api.parcels.@parcel.scans": {
+                "operationId": "post.api.parcels.@parcel.scans",
+                "parameters": {
+                  "parcel": "$response.body#/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scans/{scan}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:esnodzf2odbjewzv",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ResponseLinks/ScanController.php",
+                "line": 33,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ScanController::find"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:4rtros6latf2h7pg",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ScanController.php",
+                      "line": 33,
+                      "symbol": "implicit:route-model-binding"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.scans.@scan",
+        "tags": [
+          "Scan"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:rkhe537wrxjlguhi",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/ResponseLinks/ScanController.php",
+                    "line": 33,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ScanController::find"
+                  }
+                }
+              ],
+              "facts": {
+                "routeBinding": {
+                  "key": "id"
+                }
+              }
+            },
+            "name": "scan",
+            "in": "path",
+            "description": "Matched on the resource's `id`.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ScanController.php",
+                      "line": 33,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ScanController::find"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:euskrbts34cx3pgh",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ScanResource"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/shipments/{shipment}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:jragbzamvzvu6rhn",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                "line": 48,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ParcelController::shipped"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:yiyszckxz3d5wf7u",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                      "line": 48,
+                      "symbol": "implicit:route-model-binding"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.shipments.@shipment",
+        "summary": "Bound with `Route::model()`, so the signature names no type.",
+        "tags": [
+          "Parcel"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:xm2zyagu5rctvzb5",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                    "line": 48,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ParcelController::shipped"
+                  }
+                }
+              ],
+              "facts": {
+                "routeBinding": {
+                  "key": "id"
+                }
+              }
+            },
+            "name": "shipment",
+            "in": "path",
+            "description": "Matched on the resource's `id`.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                      "line": 48,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ParcelController::shipped"
+                    }
+                  }
+                ]
+              },
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:npk3qcdt5uo7su2e",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ParcelResource"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            },
+            "links": {
+              "delete.api.parcels.@parcel": {
+                "operationId": "delete.api.parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.parcels.@parcel": {
+                "operationId": "get.api.parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.parcels.@parcel.latest-scan": {
+                "operationId": "get.api.parcels.@parcel.latest-scan",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.tracked-parcels.@parcel": {
+                "operationId": "get.api.tracked-parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/data/tracking"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "patch.api.parcels.@parcel": {
+                "operationId": "patch.api.parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "post.api.parcels.@parcel.scans": {
+                "operationId": "post.api.parcels.@parcel.scans",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/tracked-parcels/{parcel}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:aw64jnd2m23rbogh",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                "line": 31,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ParcelController::track"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "404": {
+                "id": "res:v1:kh76yue3pqiny676",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                      "line": 31,
+                      "symbol": "implicit:route-model-binding"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.tracked-parcels.@parcel",
+        "tags": [
+          "Parcel"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:wegqufmju6xioopg",
+              "provenance": [
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                    "line": 31,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ParcelController::track"
+                  }
+                }
+              ],
+              "facts": {
+                "routeBinding": {
+                  "key": "tracking"
+                }
+              }
+            },
+            "name": "parcel",
+            "in": "path",
+            "description": "Matched on the resource's `tracking`.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ResponseLinks/ParcelController.php",
+                      "line": 31,
+                      "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ResponseLinks\\ParcelController::track"
+                    }
+                  }
+                ]
+              },
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:ww3cai7yr36o3h4w",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 0.9
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ParcelResource"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            },
+            "links": {
+              "delete.api.parcels.@parcel": {
+                "operationId": "delete.api.parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.parcels.@parcel": {
+                "operationId": "get.api.parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.parcels.@parcel.latest-scan": {
+                "operationId": "get.api.parcels.@parcel.latest-scan",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "get.api.shipments.@shipment": {
+                "operationId": "get.api.shipments.@shipment",
+                "parameters": {
+                  "shipment": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "patch.api.parcels.@parcel": {
+                "operationId": "patch.api.parcels.@parcel",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              },
+              "post.api.parcels.@parcel.scans": {
+                "operationId": "post.api.parcels.@parcel.scans",
+                "parameters": {
+                  "parcel": "$response.body#/data/id"
+                },
+                "x-docuccino": {
+                  "provenance": [
+                    {
+                      "producer": "inference",
+                      "layer": "inference"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "NotFound": {
+        "x-docuccino": {
+          "id": "sch:v1:bvvuacym2wsq7ebk"
+        },
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "PalletResource": {
+        "x-docuccino": {
+          "id": "sch:v1:iqzgm6tclckyg3ij"
+        },
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "tag": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tag"
+        ]
+      },
+      "Parcel": {
+        "x-docuccino": {
+          "id": "sch:v1:b6dagkfpks3kasut"
+        },
+        "type": "object",
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "label": {
+            "type": "string"
+          },
+          "tracking": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "tracking",
+          "label",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "ParcelResource": {
+        "x-docuccino": {
+          "id": "sch:v1:5paeijv5eatxe25c"
+        },
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "label": {
+            "type": "string"
+          },
+          "tracking": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tracking",
+          "label"
+        ]
+      },
+      "ScanResource": {
+        "x-docuccino": {
+          "id": "sch:v1:mew67m33gs444isw"
+        },
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "parcel_id": {
+            "type": "integer"
+          },
+          "place": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "parcel_id",
+          "place"
+        ]
+      }
+    },
+    "responses": {
+      "NotFound": {
+        "description": "Not Found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/NotFound"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "87e64268f04af1a000c8774c3ece265bd4cdfa961071e3ece9071d3956097e6e"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.23.4",
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
+    }
+  }
+}

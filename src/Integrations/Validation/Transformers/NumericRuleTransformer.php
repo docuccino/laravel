@@ -10,7 +10,7 @@ use Docuccino\Core\Extensions\Validation\ValidationField;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
- * `multiple_of` → `multipleOf`; `decimal` → a `number` with a decimal-places description; and the
+ * `multiple_of` → `multipleOf`; `decimal` → a `number` with a decimal-places note; and the
  * numeric-literal forms of `gt`/`gte`/`lt`/`lte` → `exclusiveMinimum`/`minimum`/`exclusiveMaximum`/`maximum`.
  * The comparisons also accept a field reference (`gt:other_field`), which is not a bound — that form is
  * described, never read as a literal. Untyped fields default to `number`.
@@ -120,7 +120,6 @@ final class NumericRuleTransformer implements RuleTransformer
 
     private function describe(ValidationField $field, string $note): void
     {
-        $existing = $field->get('description');
-        $field->set('description', is_string($existing) && $existing !== '' ? $existing.' '.$note : $note);
+        $field->note($note);
     }
 }

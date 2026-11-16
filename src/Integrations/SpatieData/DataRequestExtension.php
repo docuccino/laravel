@@ -16,6 +16,7 @@ use Docuccino\Core\Inference\ClassMetadata;
 use Docuccino\Core\Inference\ClassRef;
 use Docuccino\Laravel\Integrations\FormRequest\RulesFromClass;
 use Docuccino\Laravel\Integrations\FormRequest\UnrecoveredRules;
+use Docuccino\Laravel\Integrations\Support\RuleDialect;
 use Docuccino\Laravel\Integrations\Validation\RuleOrdering;
 use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
 use ReflectionMethod;
@@ -35,7 +36,7 @@ final class DataRequestExtension implements OperationExtension
         private readonly RuleOrdering $ordering = new RuleOrdering,
         private readonly RuleSetNormalizer $normalizer = new RuleSetNormalizer,
         private readonly RecoveredRequest $request = new RecoveredRequest,
-        private readonly RulesFromClass $rulesOverride = new RulesFromClass,
+        private readonly RulesFromClass $rulesOverride = new RulesFromClass(RuleDialect::LaravelData),
     ) {}
 
     public function phase(): OperationPhase

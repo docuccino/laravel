@@ -11,9 +11,9 @@ use Docuccino\Core\Extensions\Validation\ValidationRule;
 use Docuccino\Laravel\Integrations\Support\DateWireFormat;
 
 /**
- * `date_wire:<PHP date() format>` — the wire format a date-typed property really accepts, stated outright
- * by the recovering integration from the most specific source it has, because Laravel's rule vocabulary
- * has no word for it. Runs straight after the type rules and REPLACES what they left: a bare `date` rule
+ * `date_wire:<PHP date() format>,…` — the wire format a date-typed property really accepts, or the formats
+ * it accepts any of, stated outright by the recovering integration from the most specific source it has,
+ * because Laravel's rule vocabulary has no word for it. Runs straight after the type rules and REPLACES what they left: a bare `date` rule
  * accepts anything non-relative `strtotime` parses, so the `format: date` {@see TypeRuleTransformer} pairs
  * with it is only its reading of intent where nothing better is known — which is why that transformer sets
  * a format only on a field that hasn't got one, and why this rule outranks what it left.
@@ -38,31 +38,33 @@ final class DateWireRuleTransformer implements RuleTransformer
 
     public function apply(ValidationRule $rule, ValidationField $field, SchemaContext $context): void
     {
-        $format = $rule->parameter();
-        if ($format === null || $format === '') {
+        $formats = array_values(array_filter($rule->parameters, static fn (string $format): bool => $format !== ''));
+        if ($formats === []) {
             return;
         }
 
-        if ($format === DateWireFormat::UNIX) {
+        if ($formats === [DateWireFormat::UNIX]) {
             $field->setType('integer');
             $field->remove('format');
-            $field->set('description', DateWireFormat::TIMESTAMP_NOTE);
+            $field->replaceNotes(DateWireFormat::TIMESTAMP_NOTE);
 
             return;
         }
 
-        $field->setType('string');
+        // Several formats are tried in turn, so a value in any of them is accepted; an epoch among them
+        // still takes the integer.
+        $field->setTypes(in_array(DateWireFormat::UNIX, $formats, true) ? ['integer', 'string'] : ['string']);
 
-        $oas = DateWireFormat::oas($format);
+        $oas = DateWireFormat::oasOfAll($formats);
         if ($oas !== null) {
             $field->set('format', $oas);
         } else {
             // Nothing names this pattern's values, so the coarse rule's guess goes with it rather than
             // outliving the rule that displaced it.
             $field->remove('format');
-            $field->set('description', DateWireFormat::expected($format));
+            $field->replaceNotes(DateWireFormat::expected(...$formats));
         }
 
-        $field->proposeExample(DateWireFormat::example($format));
+        $field->proposeExample(DateWireFormat::example($formats[0]));
     }
 }

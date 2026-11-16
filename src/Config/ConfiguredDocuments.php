@@ -59,7 +59,8 @@ final class ConfiguredDocuments
      * The shipped bag and not an empty one, because the readers do not all default to what the shipped
      * file says and three of them differ in ways that decide what gets published: `routes.include`
      * reads an absent filter as "publish everything" where the file says `api/*`,
-     * `security.auth_middleware` reads it as "no route is authenticated" where the file says `auth*`,
+     * `security.auth_middleware` reads it as "no route carries the `default` requirement" where the
+     * file says `auth*`,
      * and `error_responses` reads it as `none` where the file says `default`. Each of those readings is
      * right for a document somebody WROTE and left a key out of — a second document declaring only
      * `routes.exclude` wants every route — and wrong for a document nobody wrote at all: running

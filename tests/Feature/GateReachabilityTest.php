@@ -17,6 +17,7 @@ use Docuccino\Laravel\Support\CanGate;
 use Docuccino\Laravel\Support\GateDenial;
 use Docuccino\Laravel\Support\GateInternals;
 use Docuccino\Laravel\Support\GatePoliciesDigestContributor;
+use Docuccino\Laravel\Support\RouteAuthentication;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Awning;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Banner;
 use Docuccino\Laravel\Tests\Fixtures\Authorization\Fascia;
@@ -53,6 +54,8 @@ use Illuminate\Contracts\Auth\Access\Gate as GateContract;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Routing\Middleware\ValidateSignature;
 use Illuminate\Support\Facades\Gate;
+use Laravel\Sanctum\Http\Middleware\CheckAbilities;
+use Spatie\Permission\Middleware\PermissionMiddleware;
 
 /**
  * `authorization.gate-cannot-deny`: the implicit 403 is synthesized from the PRESENCE of a `can:` gate,
@@ -764,6 +767,61 @@ it('recomputes a verdict a reordered registration moved, instead of replaying it
         ->and($warm)->toBe($cold);
 });
 
+/**
+ * Whether a guest reaches the gate is a fact about the authenticator the route runs, which refuses a
+ * guest whatever `security.auth_middleware` says; that key only chooses where `security.default` goes.
+ */
+it('reads a guest as refused behind the authenticator in a document that declares no security', function (): void {
+    $gate = CanGate::parse('can:view,'.Kiosk::class);
+    $denial = new GateDenial(app(RouteAuthentication::class), static fn (): GateContract => app(GateContract::class), static fn (): bool => false);
+    $context = static fn (array $middleware): RouteContext => new RouteContext(
+        route: new RouteDescriptor(['GET'], 'api/kiosks', middleware: $middleware),
+        actionRef: new ActionRef('', KioskController::class, 'index'),
+        attributes: new AttributeSet([]),
+        engine: new NullTypeEngine,
+        document: new DocumentConfig('default', []),
+    );
+
+    expect($gate)->not->toBeNull()
+        ->and($denial->undeniablePolicyMethod($context(['auth:web', 'can:view,'.Kiosk::class]), $gate))->toBe(KioskPolicy::class.'::view')
+        // Anti-vacuity: without the authenticator a guest reaches a method that refuses guests, which denies.
+        ->and($denial->undeniablePolicyMethod($context(['can:view,'.Kiosk::class]), $gate))->toBeNull();
+});
+
+/** An auth package's token middleware reads the user itself, so a guest is refused before the gate there too. */
+it("reads a guest as refused behind an auth package's token middleware", function (): void {
+    $gate = CanGate::parse('can:view,'.Kiosk::class);
+    $denial = new GateDenial(app(RouteAuthentication::class), static fn (): GateContract => app(GateContract::class), static fn (): bool => false);
+    $context = new RouteContext(
+        route: new RouteDescriptor(['GET'], 'api/kiosks', middleware: [CheckAbilities::class.':read', 'can:view,'.Kiosk::class]),
+        actionRef: new ActionRef('', KioskController::class, 'index'),
+        attributes: new AttributeSet([]),
+        engine: new NullTypeEngine,
+        document: new DocumentConfig('default', []),
+    );
+
+    expect($gate)->not->toBeNull()
+        ->and($denial->undeniablePolicyMethod($context, $gate))->toBe(KioskPolicy::class.'::view');
+});
+
+/** spatie/laravel-permission's middleware reads the user itself too, and refuses a guest before the gate with its 403. */
+it("reads a guest as refused behind spatie/laravel-permission's middleware", function (): void {
+    $gate = CanGate::parse('can:view,'.Kiosk::class);
+    $denial = new GateDenial(app(RouteAuthentication::class), static fn (): GateContract => app(GateContract::class), static fn (): bool => false);
+    $context = static fn (array $integrations): RouteContext => new RouteContext(
+        route: new RouteDescriptor(['GET'], 'api/kiosks', middleware: [PermissionMiddleware::class.':edit', 'can:view,'.Kiosk::class]),
+        actionRef: new ActionRef('', KioskController::class, 'index'),
+        attributes: new AttributeSet([]),
+        engine: new NullTypeEngine,
+        document: new DocumentConfig('default', [], raw: ['integrations' => $integrations]),
+    );
+
+    expect($gate)->not->toBeNull()
+        ->and($denial->undeniablePolicyMethod($context(['permission' => ['enabled' => true]]), $gate))->toBe(KioskPolicy::class.'::view')
+        // Anti-vacuity: where the integration is off, nothing on the route is known to refuse a guest.
+        ->and($denial->undeniablePolicyMethod($context([]), $gate))->toBeNull();
+});
+
 it('says nothing about a policy method a package declares', function (): void {
     // The report's whole remedy is an edit. A policy shipped inside a package, or a vendor base class
     // an application policy extends, is a body its reader does not own — so the check answers "is there
@@ -777,10 +835,10 @@ it('says nothing about a policy method a package declares', function (): void {
     $vendor = new VendorRoutePolicy($policyFile === false ? '' : dirname($policyFile));
 
     expect($gate)->not->toBeNull()
-        ->and((new GateDenial($resolver, $vendor->isVendorFile(...)))->undeniablePolicyMethod($context, $gate))->toBeNull()
+        ->and((new GateDenial(app(RouteAuthentication::class), $resolver, $vendor->isVendorFile(...)))->undeniablePolicyMethod($context, $gate))->toBeNull()
         // Anti-vacuity: the same gate with no boundary reports, so the silence above is the boundary's
         // doing and not the fixture's.
-        ->and((new GateDenial($resolver, static fn (): bool => false))->undeniablePolicyMethod($context, $gate))->toBe(KioskPolicy::class.'::viewAny');
+        ->and((new GateDenial(app(RouteAuthentication::class), $resolver, static fn (): bool => false))->undeniablePolicyMethod($context, $gate))->toBe(KioskPolicy::class.'::viewAny');
 });
 
 it('says nothing about an ability method an application policy inherits from a vendor base class', function (): void {
@@ -818,11 +876,11 @@ it('says nothing about an ability method an application policy inherits from a v
     $resolver = static fn (): GateContract => app(GateContract::class);
 
     expect($gate)->not->toBeNull()
-        ->and((new GateDenial($resolver, static fn (string $file): bool => str_contains($file, $token)))
+        ->and((new GateDenial(app(RouteAuthentication::class), $resolver, static fn (string $file): bool => str_contains($file, $token)))
             ->undeniablePolicyMethod($context, $gate))->toBeNull()
         // Anti-vacuity, and the mechanism in one line: with nothing vendor the same gate reports, and
         // what it names is the BASE's method — so the file the boundary is asked about is the base's.
-        ->and((new GateDenial($resolver, static fn (): bool => false))->undeniablePolicyMethod($context, $gate))
+        ->and((new GateDenial(app(RouteAuthentication::class), $resolver, static fn (): bool => false))->undeniablePolicyMethod($context, $gate))
         ->toBe($namespace.'\\Vendor\\BaseSignPolicy::viewAny');
 
     unlink($root.'/'.$token.'/BaseSignPolicy.php');
@@ -875,7 +933,7 @@ it('stays silent when the Gate resolution step it calls throws', function (): vo
     // the framework's own method, and what it raises has to answer "a gate this could not resolve" and
     // never reach the build.
     $gate = new IlluminateGate(app(), static fn () => null);
-    $denial = new GateDenial(static fn (): GateContract => $gate, static fn (): bool => false);
+    $denial = new GateDenial(app(RouteAuthentication::class), static fn (): GateContract => $gate, static fn (): bool => false);
     $context = gateDenialContext();
     $raises = CanGate::parse('can:viewAny,'.Fascia::class);
     $reads = CanGate::parse('can:viewAny,'.Pylon::class);
@@ -982,11 +1040,11 @@ it('says nothing it cannot read, rather than guessing', function (): void {
     $gate = CanGate::parse('can:viewAny,'.Kiosk::class);
 
     expect($gate)->not->toBeNull()
-        ->and((new GateDenial(static fn (): GateContract => $foreign, static fn (): bool => false))->undeniablePolicyMethod($context, $gate))->toBeNull()
+        ->and((new GateDenial(app(RouteAuthentication::class), static fn (): GateContract => $foreign, static fn (): bool => false))->undeniablePolicyMethod($context, $gate))->toBeNull()
         ->and((new GatePoliciesDigestContributor(static fn (): GateContract => $foreign))->digest())->toBe('')
         // Anti-vacuity: the real Gate answers for the very same context, so the null above is about the
         // Gate this cannot read and not about the fixture.
-        ->and((new GateDenial(static fn (): GateContract => app(GateContract::class), static fn (): bool => false))->undeniablePolicyMethod($context, $gate))
+        ->and((new GateDenial(app(RouteAuthentication::class), static fn (): GateContract => app(GateContract::class), static fn (): bool => false))->undeniablePolicyMethod($context, $gate))
         ->toBe(KioskPolicy::class.'::viewAny');
 });
 
@@ -1006,7 +1064,7 @@ it('keys the fragment on every file a policy-naming attribute could be written i
     $gate = CanGate::parse('can:viewAny,'.Lightbox::class);
     expect($gate)->not->toBeNull();
 
-    (new GateDenial(static fn (): GateContract => app(GateContract::class), static fn (): bool => false))
+    (new GateDenial(app(RouteAuthentication::class), static fn (): GateContract => app(GateContract::class), static fn (): bool => false))
         ->undeniablePolicyMethod($context, $gate);
 
     $files = $context->dependencies()->files();

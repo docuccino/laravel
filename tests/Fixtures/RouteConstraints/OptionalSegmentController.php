@@ -58,4 +58,10 @@ final class OptionalSegmentController
     {
         return ['page' => $page];
     }
+
+    #[PathParameter('page', description: 'The page to open.')]
+    public function described(string $page = 'first'): array
+    {
+        return ['page' => $page];
+    }
 }

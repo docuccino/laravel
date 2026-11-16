@@ -55,9 +55,11 @@ it('maps every known cast base in both directions', function (string $cast, ?arr
     'immutable_datetime' => ['immutable_datetime', null, ['type' => 'string', 'format' => 'date-time']],
     'date' => ['date', null, ['type' => 'string', 'format' => 'date']],
     'immutable_date' => ['immutable_date', null, ['type' => 'string', 'format' => 'date']],
-    // Everything else answers both directions alike.
+    // Everything else answers both directions alike, but for what a written timestamp counts.
     'custom_datetime' => ['custom_datetime', ['type' => 'string', 'format' => 'date-time'], ['type' => 'string', 'format' => 'date-time']],
-    'timestamp' => ['timestamp', ['type' => 'integer'], ['type' => 'integer']],
+    // Written as the integer `getTimestamp()` returns, which says what it counts the way a request date
+    // read with `U` says it; a request names the integer alone, as it does for every other column.
+    'timestamp' => ['timestamp', ['type' => 'integer', 'x-docuccino' => ['notes' => ['Unix timestamp (seconds).']]], ['type' => 'integer']],
     'boolean' => ['boolean', ['type' => 'boolean'], ['type' => 'boolean']],
     'bool' => ['bool', ['type' => 'boolean'], ['type' => 'boolean']],
     'integer' => ['integer', ['type' => 'integer'], ['type' => 'integer']],
@@ -90,7 +92,8 @@ it('strips decimal/plain parameters and is case-insensitive on the base', functi
 it('publishes the format a parameterised date cast writes, and accepts the domain it stores', function (string $cast, array $written, array $accepted): void {
     // A cast naming its own format is WRITTEN with it, whichever of the five carries it; the hook is
     // never reached. A request puts in the cast's domain either way — the value is matched against the
-    // stored column, which the parameter does not touch.
+    // stored column, which the parameter does not touch. A pattern no keyword names is a note, not the
+    // description, so a summary the column's author writes leads it rather than replacing it.
     expect(CastSchema::written($cast))->toBe($written)
         ->and(CastSchema::accepted($cast))->toBe($accepted);
 })->with([
@@ -100,17 +103,17 @@ it('publishes the format a parameterised date cast writes, and accepts the domai
     'date-only' => ['datetime:Y-m-d', ['type' => 'string', 'format' => 'date'], ['type' => 'string', 'format' => 'date-time']],
     // `date-time` is RFC 3339, which wants the `T` and an offset — a space-separated value has neither, so
     // it is a described string like any other format no keyword names.
-    'space-separated' => ['datetime:Y-m-d H:i:s', ['type' => 'string', 'description' => 'Serialized using the date format "Y-m-d H:i:s".'], ['type' => 'string', 'format' => 'date-time']],
-    'custom format' => ['datetime:d/m/Y', ['type' => 'string', 'description' => 'Serialized using the date format "d/m/Y".'], ['type' => 'string', 'format' => 'date-time']],
+    'space-separated' => ['datetime:Y-m-d H:i:s', ['type' => 'string', 'x-docuccino' => ['notes' => ['Serialized using the date format "Y-m-d H:i:s".']]], ['type' => 'string', 'format' => 'date-time']],
+    'custom format' => ['datetime:d/m/Y', ['type' => 'string', 'x-docuccino' => ['notes' => ['Serialized using the date format "d/m/Y".']]], ['type' => 'string', 'format' => 'date-time']],
     // The `date` half, which read its parameter in neither direction: a bespoke pattern published
     // `format: date` over bytes no full-date validator accepts, and `date:c` a full-date keyword over a
     // value carrying a time.
-    'a date cast with a bespoke pattern' => ['date:d/m/Y', ['type' => 'string', 'description' => 'Serialized using the date format "d/m/Y".'], ['type' => 'string', 'format' => 'date']],
+    'a date cast with a bespoke pattern' => ['date:d/m/Y', ['type' => 'string', 'x-docuccino' => ['notes' => ['Serialized using the date format "d/m/Y".']]], ['type' => 'string', 'format' => 'date']],
     'a date cast with an ISO date pattern' => ['date:Y-m-d', ['type' => 'string', 'format' => 'date'], ['type' => 'string', 'format' => 'date']],
     'a date cast with a full ISO pattern' => ['date:c', ['type' => 'string', 'format' => 'date-time'], ['type' => 'string', 'format' => 'date']],
-    'an immutable date cast with a bespoke pattern' => ['immutable_date:d/m/Y', ['type' => 'string', 'description' => 'Serialized using the date format "d/m/Y".'], ['type' => 'string', 'format' => 'date']],
+    'an immutable date cast with a bespoke pattern' => ['immutable_date:d/m/Y', ['type' => 'string', 'x-docuccino' => ['notes' => ['Serialized using the date format "d/m/Y".']]], ['type' => 'string', 'format' => 'date']],
     // The internal name takes its parameter the same way, and it is the only form that MUST have one.
-    'the internal cast-type name' => ['custom_datetime:d/m/Y', ['type' => 'string', 'description' => 'Serialized using the date format "d/m/Y".'], ['type' => 'string', 'format' => 'date-time']],
+    'the internal cast-type name' => ['custom_datetime:d/m/Y', ['type' => 'string', 'x-docuccino' => ['notes' => ['Serialized using the date format "d/m/Y".']]], ['type' => 'string', 'format' => 'date-time']],
 ]);
 
 it('decrypts-then-casts an encrypted:<inner> compound to the inner shape', function (): void {

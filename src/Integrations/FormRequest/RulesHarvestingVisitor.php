@@ -193,6 +193,6 @@ abstract class RulesHarvestingVisitor implements TraceVisitor
                 : $folded;
         }
 
-        return ConstValue::array($items);
+        return ConstValue::array($items, $value->keys);
     }
 }

@@ -34,16 +34,17 @@ final class EloquentRouteBindingSchema implements RouteBindingFieldSchemaResolve
      * The second case used to answer with the PRIMARY key's shape as the closest static answer, and
      * closest is not the bar: a model binding on a slug published `integer`, which refuses every value
      * the route actually accepts and gives a generated client a parameter it cannot pass. A vague true
-     * shape beats a precise false one, so this defers and the caller documents a plain string and says
-     * so.
+     * shape beats a precise false one, so this defers. So does a model that names another column as its
+     * route key: that column's shape is the column chain's to answer ({@see fieldSchemaFor()}), and the
+     * caller asks it.
      *
      * @return array<string, mixed>|null
      */
     public function keySchemaFor(string $modelFqcn): ?array
     {
-        return $this->keyNameFor($modelFqcn) === null
-            ? null
-            : $this->reflector->keySchemaFor($modelFqcn);
+        return $this->reflector->routesOnPrimaryKey($modelFqcn)
+            ? $this->reflector->keySchemaFor($modelFqcn)
+            : null;
     }
 
     /**

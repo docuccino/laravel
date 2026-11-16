@@ -1,0 +1,1530 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/notices/constructed": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:zsfoy5vxntahwtcn",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeController.php",
+                "line": 21,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeController::constructed"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "410": {
+                "id": "res:v1:ybppm4kj2yso7v6z",
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "description"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.notices.constructed",
+        "summary": "Read the expiry notice.",
+        "tags": [
+          "Notice"
+        ],
+        "responses": {
+          "410": {
+            "$ref": "#/components/responses/Error410_2wh2zkbh"
+          }
+        }
+      }
+    },
+    "/api/notices/constructed-array": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:77m72ijawbkt2uvd",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeController.php",
+                "line": 33,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeController::constructedArray"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:d2hhiooxe5kz426i",
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "description"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.notices.constructed-array",
+        "summary": "Read the lock notice.",
+        "tags": [
+          "Notice"
+        ],
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          }
+        }
+      }
+    },
+    "/api/notices/constructed-array-labelled": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:wdglduoqudqflyfo",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeController.php",
+                "line": 45,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeController::constructedArrayLabelled"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:x5bkhwrxjs2bl5pw",
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "description"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.notices.constructed-array-labelled",
+        "summary": "Read the lock notice as text.",
+        "tags": [
+          "Notice"
+        ],
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/Error422"
+          }
+        }
+      }
+    },
+    "/api/notices/constructed-csv": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:x6bhfei3droszb2x",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeController.php",
+                "line": 39,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeController::constructedCsv"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.notices.constructed-csv",
+        "summary": "Export the notices.",
+        "tags": [
+          "Notice"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:47jyhej4yqnl2ogq",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "const",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "string",
+                  "const": "id,name"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notices/constructed-empty": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:fkcwzlt6nkpdcmcl",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeController.php",
+                "line": 27,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeController::constructedEmpty"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.notices.constructed-empty",
+        "summary": "Clear the expiry notice.",
+        "tags": [
+          "Notice"
+        ],
+        "responses": {
+          "410": {
+            "x-docuccino": {
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Gone"
+          }
+        }
+      }
+    },
+    "/api/notices/constructed-text-or-array": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:ip3fpc4vtc5vskjr",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeController.php",
+                "line": 129,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeController::constructedTextOrArray"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "410": {
+                "id": "res:v1:egnesh5q5l3efc6m",
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "description"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.notices.constructed-text-or-array",
+        "summary": "Read the notice as text or fields.",
+        "tags": [
+          "Notice"
+        ],
+        "responses": {
+          "410": {
+            "$ref": "#/components/responses/Error410_hcdqg4mp"
+          }
+        }
+      }
+    },
+    "/api/notices/facade": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:s2my2rqk2vdrpzqf",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeController.php",
+                "line": 87,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeController::facade"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "410": {
+                "id": "res:v1:hpbi5t7olfecuyab",
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "description"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.notices.facade",
+        "summary": "Read the facade's notice.",
+        "tags": [
+          "Notice"
+        ],
+        "responses": {
+          "410": {
+            "$ref": "#/components/responses/Error410_2wh2zkbh"
+          }
+        }
+      }
+    },
+    "/api/notices/factory": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:z5skcgzqxhrqxkxe",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeController.php",
+                "line": 93,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeController::factory"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "410": {
+                "id": "res:v1:ov6ddkbssnufnssa",
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "description"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.notices.factory",
+        "summary": "Read the factory's notice.",
+        "tags": [
+          "Notice"
+        ],
+        "responses": {
+          "410": {
+            "$ref": "#/components/responses/Error410_2wh2zkbh"
+          }
+        }
+      }
+    },
+    "/api/notices/helper": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:5zbyowpsp5c3nfwh",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeController.php",
+                "line": 51,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeController::helper"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "410": {
+                "id": "res:v1:isa6zbz6volo2c4u",
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "description"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.notices.helper",
+        "summary": "Read the archived notice.",
+        "tags": [
+          "Notice"
+        ],
+        "responses": {
+          "410": {
+            "$ref": "#/components/responses/Error410_2wh2zkbh"
+          }
+        }
+      }
+    },
+    "/api/notices/helper-array": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:oip4xjob4n6yc5zq",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeController.php",
+                "line": 63,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeController::helperArray"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.notices.helper-array",
+        "summary": "Read the notice summary.",
+        "tags": [
+          "Notice"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:wvsf7ickaj7v4wrm",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "const": "locked"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notices/helper-cached": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:7upfpt2xvfutbqrg",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeController.php",
+                "line": 117,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeController::helperCached"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "410": {
+                "id": "res:v1:ybroni7ho72shale",
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "description"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.notices.helper-cached",
+        "summary": "Read the cached notice.",
+        "tags": [
+          "Notice"
+        ],
+        "responses": {
+          "410": {
+            "$ref": "#/components/responses/Error410_hcdqg4mp"
+          }
+        }
+      }
+    },
+    "/api/notices/helper-cached-csv": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:o6mpjq6puzhll6xf",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeController.php",
+                "line": 135,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeController::helperCachedCsv"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.notices.helper-cached-csv",
+        "summary": "Export the cached notices.",
+        "tags": [
+          "Notice"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:w4lbtlgfifki44k2",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notices/helper-cached-ok": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:yysfnxqqoe2b7utb",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeController.php",
+                "line": 123,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeController::helperCachedOk"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.notices.helper-cached-ok",
+        "summary": "Read the cached notice, whatever it holds.",
+        "tags": [
+          "Notice"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:fhegf4yi7qtu54g4",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notices/helper-empty": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:onkybyuo53qlon6p",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeController.php",
+                "line": 57,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeController::helperEmpty"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.notices.helper-empty",
+        "summary": "Acknowledge a notice.",
+        "tags": [
+          "Notice"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/notices/helper-file": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:vdwwy5cakc5i3gxe",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeController.php",
+                "line": 141,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeController::helperFile"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.notices.helper-file",
+        "summary": "Read the notice image.",
+        "tags": [
+          "Notice"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:fxgrg2kkggoxxcmj",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "image/png": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notices/helper-message": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:vtb6dtwdmdicpxgm",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeController.php",
+                "line": 75,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeController::helperMessage"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.notices.helper-message",
+        "summary": "Read the maintenance notice.",
+        "tags": [
+          "Notice"
+        ],
+        "responses": {
+          "503": {
+            "x-docuccino": {
+              "id": "res:v1:xzb77ro33w44xs2p",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Service Unavailable",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notices/helper-plain": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:cii6pdihkpykug4y",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeController.php",
+                "line": 69,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeController::helperPlain"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.notices.helper-plain",
+        "summary": "Read the archived notice as text.",
+        "tags": [
+          "Notice"
+        ],
+        "responses": {
+          "410": {
+            "x-docuccino": {
+              "id": "res:v1:yrzjfhlb5mxsdrdx",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Gone",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "const",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/Error410"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notices/helper-view": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:3efbnipi6xrxdro5",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeController.php",
+                "line": 81,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeController::helperView"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.notices.helper-view",
+        "summary": "Show the archived notice page.",
+        "tags": [
+          "Notice"
+        ],
+        "responses": {
+          "410": {
+            "x-docuccino": {
+              "id": "res:v1:wiabkjx7kemf4vom",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Gone",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notices/subclass": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:urtgq7dq3yqg7kwe",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeController.php",
+                "line": 105,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeController::subclass"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "410": {
+                "id": "res:v1:tfvqeuvqnu7jeiuo",
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "description"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.notices.subclass",
+        "summary": "Read the expired notice.",
+        "tags": [
+          "Notice"
+        ],
+        "responses": {
+          "410": {
+            "$ref": "#/components/responses/Error410_2wh2zkbh"
+          }
+        }
+      }
+    },
+    "/api/notices/subclass-array": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:bjhdgyoyhtnkrda3",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeController.php",
+                "line": 111,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeController::subclassArray"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.notices.subclass-array",
+        "summary": "Read the locked notice.",
+        "tags": [
+          "Notice"
+        ],
+        "responses": {
+          "423": {
+            "x-docuccino": {
+              "id": "res:v1:4pcrra3tcxudqcvn",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Locked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "const": "locked"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notices/symfony": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:g3m7huttzuyo3zde",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeController.php",
+                "line": 99,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeController::symfony"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "410": {
+                "id": "res:v1:xsnstgcnsxfqsntu",
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "description"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.notices.symfony",
+        "summary": "Read the transport notice.",
+        "tags": [
+          "Notice"
+        ],
+        "responses": {
+          "410": {
+            "$ref": "#/components/responses/Error410_2wh2zkbh"
+          }
+        }
+      }
+    },
+    "/api/notices/symfony-cached": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:5eff6wpx7n2wfhru",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/NoticeController.php",
+                "line": 147,
+                "symbol": "Workbench\\App\\Http\\Controllers\\NoticeController::symfonyCached"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.notices.symfony-cached",
+        "summary": "Read the transport's cached notice.",
+        "tags": [
+          "Notice"
+        ],
+        "responses": {
+          "410": {
+            "x-docuccino": {
+              "id": "res:v1:uxno6lhksaqgiztw",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Gone",
+            "content": {
+              "text/html": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error410": {
+        "x-docuccino": {
+          "id": "sch:v1:htt67oayz43fobqv"
+        },
+        "type": "string",
+        "const": "The export has expired."
+      },
+      "Error422": {
+        "x-docuccino": {
+          "id": "sch:v1:nzqr7bijbjezgqtr"
+        },
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "const": "locked"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      }
+    },
+    "responses": {
+      "Error410_2wh2zkbh": {
+        "description": "Gone",
+        "content": {
+          "text/html": {
+            "schema": {
+              "$ref": "#/components/schemas/Error410"
+            }
+          }
+        }
+      },
+      "Error410_hcdqg4mp": {
+        "description": "Gone",
+        "content": {
+          "*/*": {
+            "schema": {}
+          }
+        }
+      },
+      "Error422": {
+        "description": "Unprocessable Entity",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error422"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "8e5779b8e4a5e4bfab21c6fb46db548be8e608cda862fdee0b8f1c05562c5f12"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.23.4",
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
+    }
+  }
+}

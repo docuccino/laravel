@@ -359,6 +359,10 @@ final class WorkbenchEngine
                     new PropertyMetadata('status', ScalarT::string()),
                     new PropertyMetadata('meta', ScalarT::string()),
                 ]),
+                // The column the model names as its route key.
+                self::ARTICLE_MODEL => new ClassMetadata(self::ARTICLE_MODEL, [
+                    new PropertyMetadata('slug', ScalarT::string()),
+                ]),
                 self::LEDGER_MODEL => new ClassMetadata(self::LEDGER_MODEL, [
                     new PropertyMetadata('id', ScalarT::int()),
                     new PropertyMetadata('reference', ScalarT::string(), 'The ledger\'s human reference.'),
@@ -483,6 +487,8 @@ final class WorkbenchEngine
     private const JOURNAL_MODEL = 'Workbench\\App\\Models\\Journal';
 
     private const LEDGER_MODEL = 'Workbench\\App\\Models\\Ledger';
+
+    private const ARTICLE_MODEL = 'Workbench\\App\\Models\\Article';
 
     private const PAYMENT_EXCEPTION = 'Workbench\\App\\Exceptions\\PaymentRequiredException';
 }

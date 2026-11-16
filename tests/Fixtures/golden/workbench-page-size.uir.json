@@ -559,6 +559,274 @@
         }
       }
     },
+    "/api/paged/overBound": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:jnfc3g5fg6sd42xe",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/PagedListController.php",
+                "line": 66,
+                "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::overBound"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:5xzx6pvg54skl5el",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/PagedListController.php",
+                      "line": 66,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.paged.overBound",
+        "summary": "A fallback past the bound the FormRequest validates: an absent key is served 50, a sent one at most 20.",
+        "tags": [
+          "PagedList"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:5c5igjhjlgg7hjm5",
+              "provenance": [
+                {
+                  "producer": "integration:api-resources",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/PagedListController.php",
+                    "line": 66,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::overBound"
+                  }
+                }
+              ]
+            },
+            "name": "page",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:api-resources",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/PagedListController.php",
+                      "line": 66,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::overBound"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:3jr373rjljn3emby",
+              "provenance": [
+                {
+                  "producer": "integration:api-resources",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/PagedListController.php",
+                    "line": 66,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::overBound"
+                  }
+                },
+                {
+                  "producer": "integration:page-size",
+                  "layer": "integration",
+                  "fields": [
+                    "description"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/PagedListController.php",
+                    "line": 66,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::overBound"
+                  }
+                }
+              ]
+            },
+            "name": "per_page",
+            "in": "query",
+            "description": "Number of items per page.\n\nDefaults to `50`.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:api-resources",
+                    "layer": "integration",
+                    "fields": [
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/PagedListController.php",
+                      "line": 66,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::overBound"
+                    }
+                  },
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "example",
+                      "maximum",
+                      "minimum"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/PagedListController.php",
+                      "line": 66,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::overBound"
+                    }
+                  },
+                  {
+                    "producer": "integration:page-size",
+                    "layer": "integration",
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/PagedListController.php",
+                      "line": 66,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::overBound"
+                    },
+                    "overrode": [
+                      {
+                        "field": "default",
+                        "value": 50,
+                        "producer": "integration:api-resources"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "type": "integer",
+              "maximum": 20,
+              "minimum": 1,
+              "example": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:c42wlr4dhu4gojzs",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:api-resources",
+                        "layer": "integration",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/PagedListController.php",
+                          "line": 66,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::overBound"
+                        },
+                        "overrode": [
+                          {
+                            "field": "type",
+                            "value": "object",
+                            "producer": "inference"
+                          },
+                          {
+                            "field": "properties",
+                            "value": {
+                              "data": {
+                                "items": {
+                                  "$ref": "#/components/schemas/ArticleResource"
+                                },
+                                "type": "array"
+                              }
+                            },
+                            "producer": "inference"
+                          },
+                          {
+                            "field": "required",
+                            "value": [
+                              "data"
+                            ],
+                            "producer": "inference"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/ArticleResourcePage"
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
     "/api/paged/preset": {
       "get": {
         "x-docuccino": {
@@ -713,6 +981,248 @@
           }
         }
       }
+    },
+    "/api/paged/withinBound": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:zmh63wvof6ctdztw",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/PagedListController.php",
+                "line": 76,
+                "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::withinBound"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:uypry6v6nfvk43jc",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/PagedListController.php",
+                      "line": 76,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "get.api.paged.withinBound",
+        "summary": "The same bound with a fallback inside it.",
+        "tags": [
+          "PagedList"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:ypioojaex5qxtgt5",
+              "provenance": [
+                {
+                  "producer": "integration:api-resources",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/PagedListController.php",
+                    "line": 76,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::withinBound"
+                  }
+                }
+              ]
+            },
+            "name": "page",
+            "in": "query",
+            "description": "Page number.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:api-resources",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "minimum",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/PagedListController.php",
+                      "line": 76,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::withinBound"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          },
+          {
+            "x-docuccino": {
+              "id": "par:v1:ivgg44ogxifaezas",
+              "provenance": [
+                {
+                  "producer": "integration:api-resources",
+                  "layer": "integration",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/PagedListController.php",
+                    "line": 76,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::withinBound"
+                  }
+                }
+              ]
+            },
+            "name": "per_page",
+            "in": "query",
+            "description": "Number of items per page.",
+            "required": false,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "integration:api-resources",
+                    "layer": "integration",
+                    "fields": [
+                      "default",
+                      "type"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/PagedListController.php",
+                      "line": 76,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::withinBound"
+                    }
+                  },
+                  {
+                    "producer": "integration:form-request",
+                    "layer": "integration",
+                    "fields": [
+                      "example",
+                      "maximum",
+                      "minimum"
+                    ],
+                    "source": {
+                      "file": "workbench/app/Http/Controllers/PagedListController.php",
+                      "line": 76,
+                      "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::withinBound"
+                    }
+                  }
+                ]
+              },
+              "type": "integer",
+              "default": 15,
+              "maximum": 20,
+              "minimum": 1,
+              "example": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:25knxz5jubwnijvm",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "integration:api-resources",
+                        "layer": "integration",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "source": {
+                          "file": "workbench/app/Http/Controllers/PagedListController.php",
+                          "line": 76,
+                          "symbol": "Workbench\\App\\Http\\Controllers\\PagedListController::withinBound"
+                        },
+                        "overrode": [
+                          {
+                            "field": "type",
+                            "value": "object",
+                            "producer": "inference"
+                          },
+                          {
+                            "field": "properties",
+                            "value": {
+                              "data": {
+                                "items": {
+                                  "$ref": "#/components/schemas/ArticleResource"
+                                },
+                                "type": "array"
+                              }
+                            },
+                            "producer": "inference"
+                          },
+                          {
+                            "field": "required",
+                            "value": [
+                              "data"
+                            ],
+                            "producer": "inference"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/ArticleResourcePage"
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -859,6 +1369,42 @@
             "type": "integer"
           }
         }
+      },
+      "UnprocessableEntity": {
+        "x-docuccino": {
+          "id": "sch:v1:f3tcwvg2vhs255gy"
+        },
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "errors"
+        ]
+      }
+    },
+    "responses": {
+      "UnprocessableEntity": {
+        "description": "Unprocessable Entity",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/UnprocessableEntity"
+            }
+          }
+        }
       }
     }
   },
@@ -866,7 +1412,7 @@
     "document": {
       "id": "doc:page-size",
       "configHash": "0902620ee05e979fb634964a8073c35becef86a216e111fc8b3a10b9f3472468",
-      "contentHash": "c758335d9d2b5b3edfb36834ee81c7225cb9f03a67461c3630b371c666a85968"
+      "contentHash": "1d137f6e3fc97db792d139fcbbebd2b232d1c9d07676a0f20e3c59aa31efdbf6"
     },
     "generator": {
       "name": "docuccino/laravel",

@@ -7,32 +7,41 @@ namespace Docuccino\Laravel\Integrations\InferredHandler;
 use Docuccino\Core\Draft\ResponseDraft;
 use Docuccino\Core\Extensions\Context\RouteContext;
 use Docuccino\Core\Inference\CallCondition;
+use Docuccino\Core\Inference\ConditionTree;
 use Docuccino\Core\Inference\TypeCondition;
 use Docuccino\Laravel\Integrations\Support\RoutePredicates;
 
 /**
  * Whether one return of a `respond()` callback can be reached for the route being documented, read off the
- * facts the engine proved there ({@see CallCondition}, {@see TypeCondition}). A fact not answerable without
- * a request in hand, or about a response whose class the build does not know ({@see RenderedResponse}), is
- * no evidence either way, so the return stays reachable.
+ * facts the engine proved there ({@see CallCondition}, {@see TypeCondition}) and the guards it read on the way
+ * ({@see ConditionTree}). A fact not answerable without a request in hand, or about a response whose class
+ * the build does not know ({@see RenderedResponse}), is no evidence either way, so the return stays reachable.
  */
 final class RespondConditions
 {
     /**
-     * @param  list<CallCondition|TypeCondition>  $conditions
+     * @param  list<CallCondition|TypeCondition>  $conditions  each proven to hold on the way to the return
+     * @param  ConditionTree|null  $guards  what the guards on the way require where nothing proves each part
      */
-    public static function reachable(array $conditions, RespondCallback $callback, RouteContext $context, ResponseDraft $rendered, ?RenderedResponse $sent = null): bool
+    public static function reachable(array $conditions, RespondCallback $callback, RouteContext $context, ResponseDraft $rendered, ?RenderedResponse $sent = null, ?ConditionTree $guards = null): bool
     {
-        foreach ($conditions as $condition) {
-            $answer = $condition instanceof TypeCondition
-                ? self::isA($condition, $callback, $sent)
-                : self::answer($condition, $callback, $context, $rendered);
-            if ($answer !== null && $answer !== $condition->value) {
-                return false;
-            }
-        }
+        $required = ConditionTree::all([
+            ...array_map(ConditionTree::leaf(...), $conditions),
+            ...($guards === null ? [] : [$guards]),
+        ]);
 
-        return true;
+        return $required->evaluate(static fn (CallCondition|TypeCondition $condition): ?bool => self::holds($condition, $callback, $context, $rendered, $sent)) !== false;
+    }
+
+    /** Whether the condition holds for this route, or null where that is not knowable. */
+    private static function holds(CallCondition|TypeCondition $condition, RespondCallback $callback, RouteContext $context, ResponseDraft $rendered, ?RenderedResponse $sent): ?bool
+    {
+        $answer = $condition instanceof TypeCondition
+            ? self::isA($condition, $callback, $sent)
+            : self::answer($condition, $callback, $context, $rendered);
+
+        // A call compared with a value of another type — a status read as a truth value — is not answered here.
+        return $answer === null || get_debug_type($answer) !== get_debug_type($condition->value) ? null : $answer === $condition->value;
     }
 
     /**

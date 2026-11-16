@@ -74,10 +74,16 @@ final class RouteReflector
     }
 
     /**
+     * The class without a leading separator: Laravel's route registrar writes one
+     * (`Route::middleware(…)->get(…, [Foo::class, …])`) and `Route::get()` does not, and both name one
+     * controller.
+     *
      * @return array{0: class-string|null, 1: string}
      */
     private function splitAction(string $uses): array
     {
+        $uses = ltrim($uses, '\\');
+
         if (str_contains($uses, '@')) {
             [$class, $method] = explode('@', $uses, 2);
 

@@ -75,6 +75,12 @@ final class CastSchema
             return null;
         }
 
+        // Read as the table below reads it. An integer like any other until its meaning is said, which a
+        // request date read with `U` says the same way.
+        if (strtolower(explode(':', $cast, 2)[0]) === 'timestamp') {
+            return DateWireFormat::timestampSchema();
+        }
+
         return self::ownDateFormat($cast) ?? self::accepted($cast);
     }
 

@@ -11,7 +11,7 @@ use Docuccino\Core\Inference\DType\ClassT;
 use Docuccino\Core\Inference\DType\DType;
 use Docuccino\Core\Inference\DType\LiteralT;
 use Docuccino\Laravel\Integrations\Support\DependencyFileSet;
-use Docuccino\Laravel\Integrations\Support\RuleParsing;
+use Docuccino\Laravel\Integrations\Support\RuleDialect;
 use Docuccino\Laravel\Integrations\Validation\CustomRuleReader;
 use Docuccino\Laravel\Integrations\Validation\RuleLosses;
 use Docuccino\Laravel\Integrations\Validation\UnreadRule;
@@ -41,6 +41,7 @@ final class ShapeToRuleSet
 
     public function __construct(
         private readonly CustomRuleReader $customRules = new CustomRuleReader,
+        private readonly RuleDialect $dialect = RuleDialect::Laravel,
     ) {
         $this->dependencyFiles = new DependencyFileSet;
     }
@@ -124,7 +125,7 @@ final class ShapeToRuleSet
     private function rulesFor(string $key, DType $value): array
     {
         if ($value instanceof LiteralT && is_string($value->value)) {
-            return RuleParsing::tokens($value->value);
+            return $this->dialect->field($value->value);
         }
 
         if (! $value instanceof ArrayShapeT) {
@@ -137,7 +138,7 @@ final class ShapeToRuleSet
             $type = $item->type;
             if ($type instanceof LiteralT) {
                 if (is_string($type->value)) {
-                    $out[] = RuleParsing::token($type->value);
+                    $out = [...$out, ...$this->dialect->listed($type->value)];
                 }
 
                 continue;

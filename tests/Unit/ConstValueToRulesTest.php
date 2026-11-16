@@ -3,14 +3,22 @@
 declare(strict_types=1);
 
 use Docuccino\Core\Inference\ConstValue;
+use Docuccino\Core\Support\Fqcn;
 use Docuccino\Laravel\Integrations\FormRequest\ConstValueToRules;
+use Docuccino\Laravel\Integrations\Validation\CastRuleObject;
+use Docuccino\Laravel\Integrations\Validation\LiveRuleValue;
 use Docuccino\Laravel\Integrations\Validation\RuleFactories;
 use Docuccino\Laravel\Tests\Fixtures\Rules\BankReference;
 use Docuccino\Laravel\Tests\Fixtures\Rules\LegacyStringRule;
 use Docuccino\Laravel\Tests\Fixtures\Rules\OpaqueCheck;
 use Docuccino\Laravel\Tests\Fixtures\Rules\TenantMember;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Email;
+use Illuminate\Validation\Rules\File;
+use Illuminate\Validation\Rules\ImageFile;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationRuleParser;
 use Workbench\App\Enums\FormChannel;
 use Workbench\App\Enums\WidgetPriority;
@@ -268,12 +276,14 @@ it('leaves out a rule it cannot read that can only refuse values, keeps the rest
     'a rule object chained after new' => [ConstValue::instance(OpaqueCheck::class, [])->withChainedCall('strict', []), 'new '.OpaqueCheck::class],
     'a rule object of a class this build cannot load' => [ConstValue::instance('App\\Rules\\Missing', []), 'new App\\Rules\\Missing'],
     'a closure' => [ConstValue::instance('Closure', []), 'a closure'],
-    'Password::min()' => [ConstValue::descriptor('Illuminate\\Validation\\Rules\\Password::min', [ConstValue::scalar(8)]), 'Password::min(…)'],
-    'File::types()' => [ConstValue::descriptor('Illuminate\\Validation\\Rules\\File::types', [ConstValue::scalar('pdf')]), 'File::types(…)'],
-    'Rule::contains()' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::contains', [ConstValue::scalar('root')]), 'Rule::contains(…)'],
-    'Rule::requiredIf()' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::requiredIf', [ConstValue::unknown('closure')]), 'Rule::requiredIf(…)'],
-    'new Password()' => [ConstValue::instance('Illuminate\\Validation\\Rules\\Password', [ConstValue::scalar(8)]), 'new Illuminate\\Validation\\Rules\\Password'],
-    'new Contains()' => [ConstValue::instance('Illuminate\\Validation\\Rules\\Contains', [ConstValue::array([ConstValue::scalar('root')])]), 'new Illuminate\\Validation\\Rules\\Contains'],
+    // What the application registered at boot, which no file the build keys on states.
+    'Password::defaults()' => [ConstValue::descriptor('Illuminate\\Validation\\Rules\\Password::defaults', []), 'Password::defaults(…)'],
+    'File::default()' => [ConstValue::descriptor('Illuminate\\Validation\\Rules\\File::default', []), 'File::default(…)'],
+    'File::types() with values nothing can read' => [ConstValue::descriptor('Illuminate\\Validation\\Rules\\File::types', [ConstValue::unknown('variable')]), 'File::types(…)'],
+    'Rule::contains() with values nothing can read' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::contains', [ConstValue::unknown('variable')]), 'Rule::contains(…)'],
+    'Rule::string() with a bound nothing can read' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::string', [])->withChainedCall('max', [ConstValue::unknown('call')]), 'Rule::string(…)'],
+    'new Password() with a minimum nothing can read' => [ConstValue::instance('Illuminate\\Validation\\Rules\\Password', [ConstValue::unknown('call')]), 'new Illuminate\\Validation\\Rules\\Password'],
+    'new Contains() with values nothing can read' => [ConstValue::instance('Illuminate\\Validation\\Rules\\Contains', [ConstValue::array([ConstValue::scalar('root'), ConstValue::spread('spread array item')])]), 'new Illuminate\\Validation\\Rules\\Contains'],
 ]);
 
 it('gives up a field one of whose rules has content it cannot read, and names that rule', function (ConstValue $opaque, string $named): void {
@@ -297,6 +307,108 @@ it('gives up a field one of whose rules has content it cannot read, and names th
     'a rule object Laravel casts to a string' => [ConstValue::instance(LegacyStringRule::class, []), 'new '.LegacyStringRule::class],
     'a value from a call or a variable' => [ConstValue::unknown('non-constant array item'), 'a value this build cannot read'],
     'a nested array' => [ConstValue::array([ConstValue::scalar('nullable')]), 'a nested array'],
+]);
+
+it('reads a rule object Laravel validates by its state as the rules it runs, so the field takes all the object takes', function (ConstValue $written, Closure $live, Closure $samples, bool $checks): void {
+    // Laravel validates a password, file or email object with a rule list its state builds, and a password then
+    // runs checks of its own. The fold, rebuilt as rule strings and handed to Laravel, must take every value the
+    // object takes; with no check of its own beside it, it must take nothing more either.
+    $folder = new ConstValueToRules;
+    $rules = $folder->fold($written);
+    $strings = array_map(static fn ($rule): string => $rule->parameters === [] ? $rule->name : $rule->name.':'.implode(',', $rule->parameters), $rules);
+
+    expect($strings)->not->toBeEmpty();
+    foreach ($samples() as $label => $value) {
+        $byObject = Validator::make(['f' => $value], ['f' => [$live()]])->passes();
+        $byRules = Validator::make(['f' => $value], ['f' => $strings])->passes();
+
+        expect(! $byObject || $byRules)->toBeTrue((string) $label);
+        if (! $checks) {
+            expect($byRules)->toBe($byObject, (string) $label);
+        }
+    }
+
+    // The same object PHP built reads alike, whichever path it reached the fold by.
+    $fromLive = new ConstValueToRules;
+    expect($fromLive->fold(LiveRuleValue::of($live())))->toEqual($rules)
+        ->and($folder->unread() !== [])->toBe($checks)
+        ->and($fromLive->unread() !== [])->toBe($checks);
+})->with([
+    'new Password()' => [
+        ConstValue::instance('Illuminate\\Validation\\Rules\\Password', [ConstValue::scalar(8)]),
+        static fn () => new Password(8),
+        static fn (): array => ['seven' => 'abcdefg', 'eight' => 'abcdefgh', 'a number' => 12345678, 'nothing' => null],
+        false,
+    ],
+    'Password::min() bounded both ways, with rules of its own' => [
+        ConstValue::descriptor('Illuminate\\Validation\\Rules\\Password::min', [ConstValue::scalar(8)])->withChainedCall('max', [ConstValue::scalar(12)])->withChainedCall('rules', [ConstValue::array([ConstValue::scalar('alpha')])]),
+        static fn () => Password::min(8)->max(12)->rules(['alpha']),
+        static fn (): array => ['eight letters' => 'abcdefgh', 'thirteen letters' => 'abcdefghijklm', 'with a digit' => 'abcdefg1'],
+        false,
+    ],
+    'Password::min() needing letters in both cases' => [
+        ConstValue::descriptor('\\Illuminate\\Validation\\Rules\\Password::min', [ConstValue::scalar(8)])->withChainedCall('letters', [])->withChainedCall('mixedCase', []),
+        static fn () => Password::min(8)->letters()->mixedCase(),
+        static fn (): array => ['lower case' => 'abcdefgh', 'mixed case' => 'abcdEFGH', 'short' => 'aB'],
+        true,
+    ],
+    'Rule::email() compliant with the RFC' => [
+        ConstValue::descriptor('Illuminate\\Validation\\Rule::email', [])->withChainedCall('rfcCompliant', []),
+        static fn () => Rule::email()->rfcCompliant(),
+        static fn (): array => ['an address' => 'ada@example.com', 'no address' => 'ada', 'a number' => 5],
+        false,
+    ],
+    'new Email()' => [
+        ConstValue::instance('Illuminate\\Validation\\Rules\\Email', []),
+        static fn () => new Email,
+        static fn (): array => ['an address' => 'ada@example.com', 'no address' => 'ada'],
+        false,
+    ],
+    'File::types() under a size' => [
+        ConstValue::descriptor('Illuminate\\Validation\\Rules\\File::types', [ConstValue::array([ConstValue::scalar('pdf')])])->withChainedCall('max', [ConstValue::scalar('1mb')]),
+        static fn () => File::types(['pdf'])->max('1mb'),
+        static fn (): array => [
+            'a small pdf' => UploadedFile::fake()->create('a.pdf', 10, 'application/pdf'),
+            'a large pdf' => UploadedFile::fake()->create('b.pdf', 2000, 'application/pdf'),
+            'a text file' => UploadedFile::fake()->create('c.txt', 10, 'text/plain'),
+            'a string' => 'a.pdf',
+        ],
+        false,
+    ],
+    'File::image() within dimensions' => [
+        ConstValue::descriptor('Illuminate\\Validation\\Rules\\File::image', [])->withChainedCall('dimensions', [ConstValue::descriptor('Illuminate\\Validation\\Rule::dimensions', [])->withChainedCall('maxWidth', [ConstValue::scalar(100)])]),
+        static fn () => File::image()->dimensions(Rule::dimensions()->maxWidth(100)),
+        static fn (): array => [
+            'a narrow image' => UploadedFile::fake()->image('a.png', 50, 50),
+            'a wide image' => UploadedFile::fake()->image('b.png', 200, 50),
+            'a text file' => UploadedFile::fake()->create('c.txt', 10, 'text/plain'),
+        ],
+        false,
+    ],
+    'Rule::imageFile() written with new' => [
+        ConstValue::instance('Illuminate\\Validation\\Rules\\ImageFile', [])->withChainedCall('max', [ConstValue::scalar(5)]),
+        static fn () => (new ImageFile)->max(5),
+        static fn (): array => ['a small image' => UploadedFile::fake()->image('a.png', 10, 10), 'a large file' => UploadedFile::fake()->image('b.png', 10, 10)->size(50)],
+        false,
+    ],
+]);
+
+it('leaves a rule object Laravel validates by its state out where the build would run the application\'s code', function (ConstValue $written, string $named): void {
+    // Each answers with what the application registered at boot, or a callable, which nothing here runs.
+    Password::defaults(static fn () => Password::min(12));
+
+    try {
+        $folder = new ConstValueToRules;
+        expect($folder->fold(ConstValue::array([ConstValue::scalar('string'), $written])))->toHaveCount(1)
+            ->and($folder->unread())->toBe([$named]);
+    } finally {
+        Password::$defaultCallback = null;
+    }
+})->with([
+    'Password::defaults()' => [ConstValue::descriptor('Illuminate\\Validation\\Rules\\Password::defaults', []), 'Password::defaults(…)'],
+    'Password::required()' => [ConstValue::descriptor('Illuminate\\Validation\\Rules\\Password::required', []), 'Password::required(…)'],
+    'Email::default()' => [ConstValue::descriptor('Illuminate\\Validation\\Rules\\Email::default', []), 'Email::default(…)'],
+    'a password checked by a callable' => [ConstValue::descriptor('Illuminate\\Validation\\Rules\\Password::min', [ConstValue::scalar(8)])->withChainedCall('when', [ConstValue::scalar(true), ConstValue::scalar('trim')]), 'Password::min(…)'],
 ]);
 
 it('reads a framework rule object narrowed by a chained call as the factory chain that builds it', function (): void {
@@ -424,12 +536,46 @@ it('folds every exclude descriptor and rule object to the exclude rule it stands
     ]), [['exclude_if', []], ['required', []], ['string', []]]],
 ]);
 
-it('folds every framework factory and rule object that excludes a field', function (): void {
-    // The rows above list them by hand; this reads the framework's own. An exclude factory or rule class
-    // Laravel adds would otherwise fold to nothing, as any unrecognised descriptor or unannotated object does.
+it('folds every required and prohibited descriptor and rule object to the rule its condition settles', function (ConstValue $value, array $expected): void {
+    // A literal bool is decided now, as `__toString()` decides it: the rule, or none, so a false condition
+    // leaves the field optional or sendable. A callback or a value only the request decides is not, so the
+    // rule stays with its condition unknown, which requires and refuses nothing.
+    $folder = new ConstValueToRules;
+    $rules = $folder->fold(ConstValue::array([ConstValue::scalar('string'), $value]));
+
+    expect(array_map(static fn ($r): array => [$r->name, $r->parameters], $rules))->toBe([['string', []], ...$expected])
+        ->and($folder->unread())->toBe([])
+        ->and($folder->opaque())->toBeNull();
+})->with([
+    'Rule::requiredIf(true)' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::requiredIf', [ConstValue::scalar(true)]), [['required', []]]],
+    'Rule::requiredIf(false)' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::requiredIf', [ConstValue::scalar(false)]), []],
+    'Rule::requiredIf(callback)' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::requiredIf', [ConstValue::unknown('closure')]), [['required_if', []]]],
+    'Rule::requiredUnless(false)' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::requiredUnless', [ConstValue::scalar(false)]), [['required', []]]],
+    'Rule::requiredUnless(true)' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::requiredUnless', [ConstValue::scalar(true)]), []],
+    'Rule::prohibitedIf(true)' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::prohibitedIf', [ConstValue::scalar(true)]), [['prohibited', []]]],
+    'Rule::prohibitedIf(false)' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::prohibitedIf', [ConstValue::scalar(false)]), []],
+    'Rule::prohibitedIf(callback)' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::prohibitedIf', [ConstValue::unknown('closure')]), [['prohibited_if', []]]],
+    'Rule::prohibitedUnless(false)' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::prohibitedUnless', [ConstValue::scalar(false)]), [['prohibited', []]]],
+    'Rule::prohibitedUnless(callback)' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::prohibitedUnless', [ConstValue::unknown('closure')]), [['prohibited_unless', []]]],
+    'Rule::requiredIf with no argument' => [ConstValue::descriptor('Illuminate\\Validation\\Rule::requiredIf', []), [['required_if', []]]],
+    'new RequiredIf(true)' => [ConstValue::instance('Illuminate\\Validation\\Rules\\RequiredIf', [ConstValue::scalar(true)]), [['required', []]]],
+    'new RequiredIf(false)' => [ConstValue::instance('\\Illuminate\\Validation\\Rules\\RequiredIf', [ConstValue::scalar(false)]), []],
+    'new RequiredIf(a value the request decides)' => [ConstValue::instance('Illuminate\\Validation\\Rules\\RequiredIf', [ConstValue::unknown('call')]), [['required_if', []]]],
+    'new RequiredUnless(callback)' => [ConstValue::instance('Illuminate\\Validation\\Rules\\RequiredUnless', [ConstValue::unknown('closure')]), [['required_unless', []]]],
+    'new ProhibitedIf(true)' => [ConstValue::instance('Illuminate\\Validation\\Rules\\ProhibitedIf', [ConstValue::scalar(true)]), [['prohibited', []]]],
+    'new ProhibitedIf(false)' => [ConstValue::instance('Illuminate\\Validation\\Rules\\ProhibitedIf', [ConstValue::scalar(false)]), []],
+    'new ProhibitedUnless(true)' => [ConstValue::instance('Illuminate\\Validation\\Rules\\ProhibitedUnless', [ConstValue::scalar(true)]), []],
+]);
+
+it('folds every framework factory and rule object that applies a rule on a condition', function (): void {
+    // The rows above list them by hand; this reads the framework's own: every exclude rule, and every rule
+    // object holding a `condition`, with the factories that build them. One Laravel adds would otherwise fold to
+    // nothing, as any unrecognised descriptor or unannotated object does.
+    $conditional = static fn (string $class): bool => str_starts_with($class, 'Illuminate\\Validation\\Rules\\') && class_exists($class)
+        && (str_starts_with(substr($class, (int) strrpos($class, '\\') + 1), 'Exclude') || property_exists($class, 'condition'));
     $factories = array_values(array_filter(
         array_map(static fn (ReflectionMethod $method): string => $method->getName(), (new ReflectionClass(Rule::class))->getMethods(ReflectionMethod::IS_STATIC)),
-        static fn (string $name): bool => str_starts_with($name, 'exclude'),
+        static fn (string $name): bool => str_starts_with($name, 'exclude') || $conditional((string) RuleFactories::builtClass($name)),
     ));
 
     expect($factories)->not->toBeEmpty();
@@ -439,47 +585,89 @@ it('folds every framework factory and rule object that excludes a field', functi
 
     $classes = array_values(array_filter(
         array_map(static fn (string $file): string => 'Illuminate\\Validation\\Rules\\'.basename($file, '.php'), glob(dirname((string) (new ReflectionClass(Rule::class))->getFileName()).'/Rules/*.php') ?: []),
-        static fn (string $class): bool => str_starts_with(substr($class, (int) strrpos($class, '\\') + 1), 'Exclude'),
+        $conditional,
     ));
 
-    expect($classes)->not->toBeEmpty();
+    // ExcludeIf, ExcludeUnless and the four required and prohibited forms, on every Laravel this supports.
+    expect(count($classes))->toBeGreaterThanOrEqual(6);
     foreach ($classes as $class) {
         expect((new ConstValueToRules)->fold(ConstValue::instance($class, [ConstValue::unknown('closure')])))->toHaveCount(1, $class);
     }
 });
 
-it('folds a framework rule object written with new as the Rule factory that builds it', function (): void {
-    // `new Enum(X::class)` is the object `Rule::enum(X::class)` returns, so the two are one rule however
-    // it is written. Every factory whose descriptor folds is asked, and the class it builds is Laravel's
-    // own answer, by calling it.
-    // A static that returns a rule string builds no object, and reads as its string (below).
+it('folds every object a Rule static builds, written either way, to the rules Laravel reads it as', function (): void {
+    // Every static of the installed `Rule` that builds one of the framework's rule objects is called with
+    // literal arguments named for its parameters, and the object built as `new` with the same arguments.
+    // Laravel validates with one that casts to a string as the rules its own parser reads off it, so each
+    // spelling owes exactly those. `Exists` and `Unique` are read by name alone: the table and column decide
+    // nothing the document states. The rest are checks run on the value, read alike however written.
     $samples = [
-        'array' => [[['a', 'b']], [ConstValue::array([ConstValue::scalar('a'), ConstValue::scalar('b')])]],
-        'enum' => [[WidgetStatus::class], [ConstValue::scalar(WidgetStatus::class)]],
-        'exists' => [['users'], [ConstValue::scalar('users')]],
-        'in' => [[['a', 'b']], [ConstValue::array([ConstValue::scalar('a'), ConstValue::scalar('b')])]],
-        'notIn' => [[['a', 'b']], [ConstValue::array([ConstValue::scalar('a'), ConstValue::scalar('b')])]],
-        'unique' => [['users'], [ConstValue::scalar('users')]],
+        'anotherField' => 'kind', 'otherField' => 'kind', 'field' => 'kind', 'value' => 'business',
+        'fields' => ['vat', 'company'], 'keys' => ['name', 'email'], 'values' => ['a', 'b'], 'table' => 'users',
+        'type' => WidgetStatus::class, 'pattern' => '/^[a-z]+$/', 'rules' => ['string'], 'ability' => 'update',
     ];
+    $conditional = ['excludeIf', 'excludeUnless', 'requiredIf', 'requiredUnless', 'prohibitedIf', 'prohibitedUnless'];
+    $literal = static fn (mixed $value): ConstValue => is_array($value)
+        ? ConstValue::array(array_map(static fn (string $item): ConstValue => ConstValue::scalar($item), $value))
+        : ConstValue::scalar(is_scalar($value) ? $value : null);
+    $read = static function (array $rules): array {
+        return array_map(static fn ($rule): array => [ValidationRuleParser::parse($rule->name)[0], $rule->parameters], $rules);
+    };
+    $laravel = static function (object $rule): array {
+        $pieces = (new ValidationRuleParser([]))->explode(['field' => [$rule]])->rules['field'];
 
-    $folding = array_values(array_filter(
-        array_map(static fn (ReflectionMethod $method): string => $method->getName(), (new ReflectionClass(Rule::class))->getMethods(ReflectionMethod::IS_STATIC)),
-        static fn (string $name): bool => ! str_starts_with($name, 'exclude')
-            && RuleFactories::builtClass($name) !== null
-            && (new ConstValueToRules)->fold(ConstValue::descriptor('Illuminate\\Validation\\Rule::'.$name, [ConstValue::scalar(WidgetStatus::class)])) !== [],
-    ));
-    sort($folding);
+        // An empty parameter list (`dimensions:`) parses as one null, which states no parameter.
+        return array_map(static function ($piece): array {
+            [$name, $parameters] = ValidationRuleParser::parse((string) $piece);
 
-    expect($folding)->toBe(array_keys($samples));
+            return [$name, $parameters === [null] ? [] : $parameters];
+        }, $pieces);
+    };
 
-    foreach ($samples as $factory => [$arguments, $folded]) {
-        $class = get_class(Rule::{$factory}(...$arguments));
-        $asObject = (new ConstValueToRules)->fold(ConstValue::instance($class, $folded));
-        $asFactory = (new ConstValueToRules)->fold(ConstValue::descriptor('Illuminate\\Validation\\Rule::'.$factory, $folded));
+    $statics = array_filter(
+        (new ReflectionClass(Rule::class))->getMethods(ReflectionMethod::IS_STATIC),
+        static fn (ReflectionMethod $method): bool => ! in_array($method->getName(), $conditional, true)
+            && str_starts_with((string) RuleFactories::builtClass($method->getName()), 'Illuminate\\Validation\\Rules\\'),
+    );
 
-        expect($asObject)->not->toBe([], $class)
-            ->and($asObject)->toEqual($asFactory);
+    $cast = 0;
+    foreach ($statics as $static) {
+        $name = $static->getName();
+        $values = [];
+        foreach ($static->getParameters() as $parameter) {
+            if (! $parameter->isOptional()) {
+                expect(array_key_exists($parameter->getName(), $samples))->toBeTrue("Rule::{$name}() takes \${$parameter->getName()}, which needs a sample.");
+                $values[] = $samples[$parameter->getName()];
+            }
+        }
+
+        $object = Rule::{$name}(...$values);
+        $class = $object::class;
+        $folded = array_map($literal, $values);
+        $asFactory = (new ConstValueToRules)->fold(ConstValue::array([ConstValue::descriptor('Illuminate\\Validation\\Rule::'.$name, $folded)]));
+        $asObject = (new ConstValueToRules)->fold(ConstValue::array([ConstValue::instance($class, $folded)]));
+
+        if (! CastRuleObject::casts($class)) {
+            expect($asObject)->toEqual($asFactory, $name);
+
+            continue;
+        }
+
+        $cast++;
+        if (in_array($class, ['Illuminate\\Validation\\Rules\\Exists', 'Illuminate\\Validation\\Rules\\Unique'], true)) {
+            expect($read($asFactory))->toBe([[ValidationRuleParser::parse(Fqcn::short($class))[0], []]], $name)
+                ->and($asObject)->toEqual($asFactory, $name);
+
+            continue;
+        }
+
+        expect($read($asFactory))->toBe($laravel($object), "Rule::{$name}()")
+            ->and($read($asObject))->toBe($laravel(new $class(...$values)), "new {$class}");
     }
+
+    // In, NotIn, ArrayRule, Exists, Unique, Contains, DoesntContain, Date, Dimensions, Numeric and StringRule,
+    // on every Laravel this supports.
+    expect($cast)->toBeGreaterThanOrEqual(11);
 });
 
 it('folds new Enum beside the rules written with it', function (): void {
@@ -551,6 +739,8 @@ it('reads Rule::notIn and new NotIn as the not_in rule Laravel casts them to', f
     'one array' => [[ConstValue::array([ConstValue::scalar('admin'), ConstValue::scalar('root')])], ['admin', 'root']],
     'separate arguments' => [[ConstValue::scalar('admin'), ConstValue::scalar('root')], ['admin', 'root']],
     'numbers and a bool' => [[ConstValue::array([ConstValue::scalar(0), ConstValue::scalar(true)])], ['0', '1']],
+    // PHP spells `false` as an empty string, so the rule excludes `""` (and with it `false`), never `"0"`.
+    'false and a float' => [[ConstValue::array([ConstValue::scalar(false), ConstValue::scalar(1.5)])], ['', '1.5']],
 ]);
 
 it('publishes no exclusion where a value of Rule::notIn comes from a call, and says it widened', function (): void {

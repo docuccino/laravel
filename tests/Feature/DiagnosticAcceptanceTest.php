@@ -200,3 +200,104 @@ it('cannot accept a validate failure any more than an export one', function (): 
         ->expectsOutputToContain('config.accept-refused')
         ->assertFailed();
 });
+
+/*
+ * One code, two routes. `query-builder.default-config` fires on both query routes, so an entry scoped
+ * to one of them is what tells a reviewed finding from an unreviewed one of the same code: the gate
+ * has to keep catching the route nobody looked at.
+ */
+function bothQueryRoutes(): void
+{
+    setBuild('documents.default.routes.include', ['api/widget-query', 'api/ledger-query']);
+}
+
+it('accepts a code at the operation an entry names, and still fails on it everywhere else', function (): void {
+    bothQueryRoutes();
+    setBuild('diagnostics.accept', [
+        ['code' => 'query-builder.default-config', 'operation' => 'GET /api/widget-query'],
+        'query-builder.untyped-filter',
+    ]);
+    $out = acceptanceOut();
+
+    $this->artisan('docuccino:export', ['--out' => $out, '--fail-on' => 'info'])
+        ->expectsOutputToContain('[info, accepted] query-builder.default-config')
+        ->expectsOutputToContain('[info] query-builder.default-config')
+        ->expectsOutputToContain('Accepted, so --fail-on ignores them: query-builder.default-config (1), query-builder.untyped-filter (1)')
+        ->doesntExpectOutputToContain('config.accept-unused')
+        ->doesntExpectOutputToContain('config.unknown-setting')
+        ->assertFailed();
+
+    setBuild('diagnostics.accept', [
+        ['code' => 'query-builder.default-config', 'operation' => 'GET /api/widget-query'],
+        ['code' => 'query-builder.default-config', 'operation' => 'GET /api/ledger-query'],
+        'query-builder.untyped-filter',
+    ]);
+
+    $this->artisan('docuccino:export', ['--out' => $out, '--fail-on' => 'info'])
+        ->doesntExpectOutputToContain('[info] query-builder.default-config')
+        ->assertSuccessful();
+
+    @unlink($out);
+});
+
+it('reads a plain code as that code on every route, as it always has', function (): void {
+    bothQueryRoutes();
+    setBuild('diagnostics.accept', ['query-builder.default-config', 'query-builder.untyped-filter']);
+    $out = acceptanceOut();
+
+    $this->artisan('docuccino:export', ['--out' => $out, '--fail-on' => 'info'])
+        ->expectsOutputToContain('Accepted, so --fail-on ignores them: query-builder.default-config (2), query-builder.untyped-filter (1)')
+        ->doesntExpectOutputToContain('[info] query-builder.default-config')
+        ->assertSuccessful();
+
+    @unlink($out);
+});
+
+/*
+ * A scoped entry outlives its route as easily as a code outlives its cause, and the code firing on
+ * some other route is no evidence the entry still does anything.
+ */
+it('reports a scoped entry nothing reported at its operation, while the code fires elsewhere', function (): void {
+    onlyTheRecoveringRoute();
+    setBuild('diagnostics.accept', [
+        'query-builder.default-config',
+        ['code' => 'query-builder.default-config', 'operation' => 'GET /api/widget-query-renamed'],
+    ]);
+    $out = acceptanceOut();
+
+    $this->artisan('docuccino:export', ['--out' => $out, '--fail-on' => 'none'])
+        ->expectsOutputToContain("[warning] config.accept-unused: diagnostics.accept names 'query-builder.default-config' at 'GET /api/widget-query-renamed', which nothing reported in this build.")
+        ->expectsOutputToContain('the route was renamed')
+        ->assertSuccessful();
+
+    @unlink($out);
+});
+
+it('says why an entry scoped to an operation failed the run anyway', function (): void {
+    setBuild('diagnostics.accept', [['code' => 'route.build-failed', 'operation' => 'GET /api/broken']]);
+    $out = acceptanceOut();
+
+    $this->artisan('docuccino:export', ['--out' => $out, '--fail-on' => 'error'])
+        ->expectsOutputToContain("[warning] config.accept-refused: diagnostics.accept names 'route.build-failed' at 'GET /api/broken', which this build reported as an error")
+        ->assertFailed();
+
+    @unlink($out);
+});
+
+/*
+ * A misspelled scope must fail closed: read as the whole code it would quiet every finding of it, which
+ * is the opposite of what its author wrote it for. The typo itself is the settings report's to name.
+ */
+it('accepts nothing for an entry whose scope is misspelled, and names the misspelling', function (): void {
+    onlyTheRecoveringRoute();
+    setBuild('diagnostics.accept', [['code' => 'query-builder.default-config', 'opration' => 'GET /api/widget-query']]);
+    $out = acceptanceOut();
+
+    $this->artisan('docuccino:export', ['--out' => $out, '--fail-on' => 'info'])
+        ->expectsOutputToContain('[info] query-builder.default-config')
+        ->expectsOutputToContain('config.unknown-setting: diagnostics.accept.0.opration names no setting')
+        ->expectsOutputToContain('Did you mean diagnostics.accept.0.operation?')
+        ->assertFailed();
+
+    @unlink($out);
+});

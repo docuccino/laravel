@@ -12,11 +12,14 @@ use Docuccino\Core\Extensions\Schema\EnumDecoration;
 use Docuccino\Core\Extensions\Schema\EnumReflection;
 use Docuccino\Core\Extensions\Validation\ValidationField;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
+use Docuccino\Laravel\Integrations\Validation\ChoiceValues;
 use Docuccino\Laravel\Support\ListValueNames;
+use stdClass;
 
 /**
- * `in:a,b,c` and `enum` (a folded `Rule::enum(…)`/`Rule::in(…)`) → an `enum` of the allowed values.
- * Numeric-only sets get an integer type, everything else string.
+ * `in:a,b,c` and `enum` (a folded `Rule::enum(…)`/`Rule::in(…)`) → an `enum` of the allowed values, in the
+ * type a type rule beside it declares ({@see ChoiceValues}). Where none does, a numeric-only set is an
+ * integer and anything else a string.
  *
  * Where the rule folded from an enum class and lists ALL of its cases, the field publishes a `$ref`
  * to that enum's component instead of a second copy of it — the same component a response property of
@@ -50,24 +53,21 @@ final class ChoiceRuleTransformer implements RuleTransformer
 
     public function apply(ValidationRule $rule, ValidationField $field, SchemaContext $context): void
     {
-        $values = $rule->parameters;
-        if ($values === []) {
+        if ($rule->parameters === []) {
             return;
         }
 
-        $allNumeric = true;
-        foreach ($values as $value) {
-            if (! is_numeric($value) || str_contains($value, '.')) {
-                $allNumeric = false;
-                break;
-            }
-        }
+        $types = $field->types();
+        $enum = ChoiceValues::of($rule, $types);
 
-        if (! $field->has('type')) {
-            $field->setType($allNumeric ? 'integer' : 'string');
-        }
+        if ($types === []) {
+            $field->setType(is_int($enum[0] ?? null) ? 'integer' : 'string');
+        } elseif ($enum === []) {
+            // No value of the declared type is in the list, so the server refuses every value.
+            $field->set('not', new stdClass);
 
-        $enum = $allNumeric ? array_map('intval', $values) : $values;
+            return;
+        }
 
         // The enum's declaring file answers the values, the names and the prose, whichever way this
         // goes, so it keys the fragment: adding a case, or a #[CaseDescription], re-documents the
@@ -79,7 +79,11 @@ final class ChoiceRuleTransformer implements RuleTransformer
 
         $wholeEnum = $this->wholeEnum($enum, $rule->note);
 
-        $reference = $wholeEnum === null ? null : $this->reference($wholeEnum, $context);
+        // The component publishes the cases' own values, so a list cast to another type (`string` beside an
+        // int-backed enum) publishes its own copy.
+        $reference = $wholeEnum === null || ($types !== [] && ! self::sameValues($enum, EnumReflection::values($wholeEnum)))
+            ? null
+            : $this->reference($wholeEnum, $context);
         if ($reference !== null) {
             // The component states the type, the values and their whole vocabulary. Setting any of it
             // here as well would publish one fact in two places — which is the duplication the
@@ -112,7 +116,7 @@ final class ChoiceRuleTransformer implements RuleTransformer
      * `$ref` to the component would tell a consumer the server takes values it rejects, and the
      * sentence would describe a set this field does not accept.
      *
-     * @param  list<int|string>  $enum
+     * @param  list<bool|float|int|string>  $enum
      */
     private function wholeEnum(array $enum, ?string $fqcn): ?string
     {
@@ -127,6 +131,23 @@ final class ChoiceRuleTransformer implements RuleTransformer
         sort($stated);
 
         return $cases !== [] && $cases === $stated ? $fqcn : null;
+    }
+
+    /**
+     * Whether two value lists hold the same values, type and all, in any order.
+     *
+     * @param  list<bool|float|int|string>  $a
+     * @param  list<int|string>  $b
+     */
+    private static function sameValues(array $a, array $b): bool
+    {
+        $a = array_map(static fn (bool|float|int|string $value): string => var_export($value, true), $a);
+        $b = array_map(static fn (int|string $value): string => var_export($value, true), $b);
+
+        sort($a);
+        sort($b);
+
+        return $a === $b;
     }
 
     /**
@@ -152,9 +173,9 @@ final class ChoiceRuleTransformer implements RuleTransformer
      * {@see EnumComponent::description()} on the same terms as any other schema class's.
      *
      * A description already on the field is this field's own and outranks the type's; a `#[RuleSchema]`
-     * one arrives after this rule ({@see RuleOrdering}) and appends to this, as it appends to any note an
-     * earlier rule left — which is the `$ref` form's two descriptions flattened into the one slot an
-     * inline field has.
+     * one arrives after this rule ({@see RuleOrdering}) and appends to this — which is the `$ref` form's
+     * two descriptions flattened into the one slot an inline field has. The notes rules state stand
+     * beneath whichever it is.
      */
     private function describe(string $fqcn, ValidationField $field, SchemaContext $context): void
     {
@@ -172,7 +193,7 @@ final class ChoiceRuleTransformer implements RuleTransformer
      *
      * Hands back the reports for the case prose PHP could not construct, for the caller to raise.
      *
-     * @param  list<int|string>  $enum
+     * @param  list<bool|float|int|string>  $enum
      * @return list<Diagnostic>
      */
     private function decorate(array $enum, ?string $note, ValidationField $field, SchemaContext $context): array
@@ -182,7 +203,7 @@ final class ChoiceRuleTransformer implements RuleTransformer
         $decorated = EnumDecoration::apply(
             ['enum' => $enum],
             $context->representation()->enumNaming,
-            self::names(array_map(strval(...), $enum), $note),
+            self::names(array_map(static fn (bool|float|int|string $value): string => is_bool($value) ? var_export($value, true) : (string) $value, $enum), $note),
             $descriptions,
         );
 

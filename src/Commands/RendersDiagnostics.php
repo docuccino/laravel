@@ -84,25 +84,8 @@ trait RendersDiagnostics
     }
 
     /**
-     * Every code this run printed. Printing is the widest net there is — a diagnostic the reader
-     * never saw cannot be the one their acceptance was for — so an entry missing from here is one
-     * nothing in the run reported.
-     *
-     * @return list<string>
-     */
-    protected function printedCodes(): array
-    {
-        $codes = [];
-
-        foreach ($this->printed as $diagnostic) {
-            $codes[$diagnostic->code] = true;
-        }
-
-        return array_keys($codes);
-    }
-
-    /**
-     * Every diagnostic this run printed, which is the set `--fail-on` reads ({@see $printed}).
+     * Every diagnostic this run printed, which is the set `--fail-on` reads ({@see $printed}). Printing
+     * is the widest net there is, so an acceptance entry nothing here matches is one nothing reported.
      *
      * @return list<Diagnostic>
      */

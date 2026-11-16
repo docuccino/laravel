@@ -1,0 +1,191 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-overridden": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:4iypsr6ky5igrggj",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/OverriddenResponse/OverriddenResponseController.php",
+                "line": 19,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\OverriddenResponse\\OverriddenResponseController::show"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-overridden",
+        "tags": [
+          "OverriddenResponse"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:2aj6hikego6gx5d6",
+              "provenance": [
+                {
+                  "producer": "attribute",
+                  "layer": "attribute",
+                  "fields": [
+                    "description"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/OverriddenResponse/OverriddenResponseController.php",
+                    "line": 19,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\OverriddenResponse\\OverriddenResponseController::show"
+                  },
+                  "overrode": [
+                    {
+                      "field": "description",
+                      "value": "OK",
+                      "producer": "fallback"
+                    }
+                  ]
+                }
+              ]
+            },
+            "description": "The widget.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "attribute",
+                        "layer": "attribute",
+                        "fields": [
+                          "$ref"
+                        ],
+                        "source": {
+                          "file": "tests/Fixtures/OverriddenResponse/OverriddenResponseController.php",
+                          "line": 19,
+                          "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\OverriddenResponse\\OverriddenResponseController::show"
+                        },
+                        "overrode": [
+                          {
+                            "field": "$ref",
+                            "value": "#/components/schemas/FormData",
+                            "producer": "inference"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "$ref": "#/components/schemas/WidgetData"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "FormData": {
+        "x-docuccino": {
+          "id": "sch:v1:6iocn62c7ru5zutw"
+        },
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "publishedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ]
+      },
+      "WidgetData": {
+        "x-docuccino": {
+          "id": "sch:v1:ielxonxqf7p26bdu"
+        },
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/WidgetStatus"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status"
+        ]
+      },
+      "WidgetStatus": {
+        "x-docuccino": {
+          "id": "sch:v1:xxkbfhrj65orbrgo"
+        },
+        "description": "Where a widget stands in its publication lifecycle.",
+        "type": "string",
+        "enum": [
+          "draft",
+          "published",
+          "archived"
+        ],
+        "x-enum-descriptions": [
+          "Not yet visible to applicants.",
+          "Live and accepting traffic.",
+          ""
+        ],
+        "x-enum-varnames": [
+          "Draft",
+          "Published",
+          "Archived"
+        ],
+        "x-enumNames": [
+          "Draft",
+          "Published",
+          "Archived"
+        ]
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "97d82632c23d59d3a7a1723cc834f766cfa6e25b7dbd2dfad7b7df44634dc3e6"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.23.4",
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
+    }
+  }
+}

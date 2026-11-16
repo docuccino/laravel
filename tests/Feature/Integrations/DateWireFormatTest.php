@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Docuccino\Core\Draft\OperationDraft;
+use Docuccino\Core\Draft\SchemaNotes;
 use Docuccino\Core\Extensions\BuiltIn\DateTimeTypeToSchema;
 use Docuccino\Core\Extensions\BuiltIn\DefaultTypeMappers;
 use Docuccino\Core\Extensions\Context\AttributeSet;
@@ -45,14 +46,16 @@ use Docuccino\Laravel\Tests\Fixtures\SpatieData\DateLadderController;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\DateLadderData;
 use Docuccino\Laravel\Tests\Fixtures\SpatieData\DateOverrideData;
 use Illuminate\Routing\Router;
+use Opis\JsonSchema\Validator;
 use Spatie\LaravelData\Attributes\Validation\DateFormat;
 use Spatie\LaravelData\Attributes\WithCast;
 use Spatie\LaravelData\Optional;
 use Workbench\App\Support\StampedDate;
 
 /**
- * What a date-typed property publishes, in BOTH directions, from one class. The invariant: one value is
- * documented one way. A `date` rule is one word for everything non-relative `strtotime` parses, so it is
+ * What a date-typed property publishes, in BOTH directions, from one class. Each direction reads the source
+ * laravel-data uses for it — a request what the cast parses, a response what the transformer writes — so
+ * where the class states neither, one value is documented one way. A `date` rule is one word for everything non-relative `strtotime` parses, so it is
  * narrower than the server accepts and never the source a date-typed property's format comes from — and a
  * client round-tripping a value documented `date` on the way in and `date-time` on the way out truncates
  * the time.
@@ -171,11 +174,12 @@ it('resolves a date property\'s format from its most specific source, both ways'
         ['type' => 'string', 'format' => 'date-time'],
     ],
 
-    // 2. The `DateTimeInterfaceCast` format is what the cast really parses input with. `U` is the one
-    //    shape that is not a string at all, and both sides say integer.
-    'a U cast is a timestamp on both sides' => ['castTimestamp',
+    // 2. The `DateTimeInterfaceCast` format is what the cast really parses input with, and only input:
+    //    the response is written by the transformer, which never reads the cast. `U` makes the request
+    //    an integer and leaves the response the configured string.
+    'a U cast is a timestamp in, the configured string out' => ['castTimestamp',
         ['type' => 'integer', 'format' => null],
-        ['type' => 'integer', 'format' => null],
+        ['type' => 'string', 'format' => 'date-time'],
     ],
     'a date-only cast beats the configured format' => ['castDateOnly',
         ['type' => 'string', 'format' => 'date'],
@@ -330,8 +334,8 @@ it('keeps the recovered wire format under a rules() override that says less', fu
     ]);
 
     $rules = (new DataValidationRules)->build(DateOverrideData::class, $metadata, $engine, $override, $converter);
-    $schema = (new DefaultValidationRulesToSchema(ValidationIntegration::transformers()))
-        ->convert((new RuleOrdering)->order((new RuleSetNormalizer)->normalize($rules)), $converter)->schema;
+    $schema = SchemaNotes::rendered((new DefaultValidationRulesToSchema(ValidationIntegration::transformers()))
+        ->convert((new RuleOrdering)->order((new RuleSetNormalizer)->normalize($rules)), $converter)->schema);
 
     expect($schema['properties']['restatedDate']['format'])->toBe('date-time')
         ->and($schema['properties']['statedFormat'])->not->toHaveKey('format')
@@ -340,15 +344,16 @@ it('keeps the recovered wire format under a rules() override that says less', fu
         ->and($schema['properties']['noTypeStated']['format'])->toBe('date-time');
 });
 
-it('describes a Unix-timestamp property identically in both directions', function (): void {
-    // The one date shape that is not a string: the integer says it, and the coarse rule's `format` goes
-    // with the type it belonged to rather than lingering on an integer.
+it('describes a Unix-timestamp cast as the epoch it reads, and the response as the string it writes', function (): void {
+    // The one date shape a request takes that is not a string: the integer says it, and the coarse rule's
+    // `format` goes with the type it belonged to rather than lingering on an integer. laravel-data writes
+    // the value with its date transformer, which formats with `data.date_format` and never reads the cast.
     $classes = [DateLadderData::class => ladderMetadata()];
 
     expect(dateWireRequest(DateLadderData::class, DateLadderController::class, $classes)['castTimestamp'])
         ->toBe(['type' => 'integer', 'description' => 'Unix timestamp (seconds).'])
         ->and(dateWireResponse(DateLadderData::class, $classes)['castTimestamp'])
-        ->toBe(['type' => 'integer', 'description' => 'Unix timestamp (seconds).']);
+        ->toBe(['type' => 'string', 'format' => 'date-time']);
 });
 
 it('claims a format only where the pattern\'s own bytes satisfy it', function (): void {
@@ -378,6 +383,87 @@ it('claims a format only where the pattern\'s own bytes satisfy it', function ()
         ->and(DateWireFormat::oas('Y-m-d\T'))->toBeNull()
         ->and(DateWireFormat::oas(DateWireFormat::UNIX))->toBeNull();
 });
+
+/**
+ * A date rule's leaf schema, its notes rendered into the description as the document publishes them.
+ *
+ * @param  list<string>  $formats
+ * @return array<string, mixed>
+ */
+function dateWireLeaf(string $rule, array $formats): array
+{
+    $schema = SchemaNotes::rendered((new DefaultValidationRulesToSchema(ValidationIntegration::transformers()))
+        ->convert(new RuleSet(['f' => [ValidationRule::of($rule, $formats)]]), schemaConverter())->schema);
+
+    /** @var array<string, mixed> $leaf */
+    $leaf = $schema['properties']['f'];
+
+    return $leaf;
+}
+
+it('admits a value in any of the formats a date_format rule lists, as Laravel does', function (array $formats, array $leaf): void {
+    // Laravel's `date_format` passes a value matching any one of its patterns, so the schema owes each of
+    // them: checked by a JSON Schema validator against the values Laravel's own validator passes, and the
+    // example against Laravel too. One `format` is claimed only where every pattern's values carry it.
+    $schema = dateWireLeaf('date_format', $formats);
+    $candidates = ['2024-01-01T00:00:00+00:00', '2024-01-01T00:00:00.000000+00:00', '2024-01-01', '01/01/2024', 'soon'];
+    $laravel = static fn (string $value): bool => validator(['f' => $value], ['f' => 'date_format:'.implode(',', $formats)])->passes();
+
+    expect($schema)->toBe($leaf)
+        ->and($laravel($schema['example']))->toBeTrue();
+
+    $passed = 0;
+    foreach ($candidates as $value) {
+        if ($laravel($value)) {
+            $passed++;
+            expect((new Validator)->validate($value, json_decode((string) json_encode(array_diff_key($schema, ['description' => true]))))->isValid())
+                ->toBeTrue($value.' passes Laravel and fails '.json_encode($schema));
+        }
+    }
+
+    expect($passed)->toBe(count($formats));
+})->with([
+    'two patterns no keyword names together' => [['Y-m-d', 'd/m/Y'], [
+        'type' => 'string',
+        'description' => 'Expected format: one of "Y-m-d", "d/m/Y"',
+        'example' => '2024-01-01',
+    ]],
+    'two patterns one keyword names' => [['Y-m-d\TH:i:sP', 'Y-m-d\TH:i:s.uP'], [
+        'type' => 'string',
+        'format' => 'date-time',
+        'description' => 'Expected format: one of "Y-m-d\TH:i:sP", "Y-m-d\TH:i:s.uP"',
+        'example' => '2024-01-01T00:00:00+00:00',
+    ]],
+]);
+
+it('takes an epoch or a string where a cast tries a Unix timestamp among other formats', function (): void {
+    // laravel-data's cast reads an integer through `U` and a string through the rest, so the field is both.
+    expect(dateWireLeaf('date_wire', ['U', 'Y-m-d']))->toBe([
+        'type' => ['integer', 'string'],
+        'description' => 'Expected format: one of "U", "Y-m-d"',
+        'example' => '1704067200',
+    ])
+        // Formats one keyword names keep it.
+        ->and(dateWireLeaf('date_wire', ['Y-m-d', 'Y-m-d'])['format'])->toBe('date');
+});
+
+it('reads a pattern without the reset characters a value never spells', function (string $format, string $read): void {
+    // `!` and `|` reset fields when `createFromFormat()` parses, and `format()` writes them as bytes. The
+    // pattern a value is written in is the one whose rendered bytes the original format reads back as the
+    // same instant; an escaped one is a literal and stays.
+    $instant = new DateTimeImmutable('2024-01-01 00:00:00', new DateTimeZone('UTC'));
+    $parsed = DateTimeImmutable::createFromFormat($format, $instant->format($read), new DateTimeZone('UTC'));
+
+    expect(DateWireFormat::readPattern($format))->toBe($read)
+        ->and($parsed)->toBeInstanceOf(DateTimeImmutable::class)
+        ->and($parsed?->format('Y-m-d'))->toBe('2024-01-01');
+})->with([
+    'a leading reset' => ['!Y-m-d', 'Y-m-d'],
+    'a trailing reset' => ['Y-m-d|', 'Y-m-d'],
+    'an escaped bang' => ['\!Y-m-d', '\!Y-m-d'],
+    'an escaped backslash before a reset' => ['Y-m-d\\\\|', 'Y-m-d\\\\'],
+    'no reset' => ['d/m/Y', 'd/m/Y'],
+]);
 
 it('breaks the rank-12 tie on insertion order alone', function (): void {
     // `additional_properties` and `date_wire` share a rank, so the sort tie-breaks on position — a

@@ -172,8 +172,13 @@
                   "type": "object",
                   "properties": {
                     "errors": {
-                      "type": "array",
-                      "items": {}
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
                     },
                     "status": {
                       "type": "integer",
@@ -361,8 +366,13 @@
                   "type": "object",
                   "properties": {
                     "errors": {
-                      "type": "array",
-                      "items": {}
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
                     },
                     "status": {
                       "type": "integer",
@@ -539,8 +549,13 @@
                   "type": "object",
                   "properties": {
                     "errors": {
-                      "type": "array",
-                      "items": {}
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
                     },
                     "status": {
                       "type": "integer",
@@ -708,7 +723,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "4ca93981af029ae745e3d1ffef972f75043703e2826399e4b2cb5a0cb7331c7c"
+      "contentHash": "1ec5bf9475df90d3162c5570a21695d98e80527751daf9bf142e7cabf9c1cf10"
     },
     "generator": {
       "name": "docuccino/laravel",

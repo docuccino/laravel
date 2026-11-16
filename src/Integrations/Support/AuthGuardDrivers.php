@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Docuccino\Laravel\Integrations\Support;
 
+use Closure;
 use Docuccino\Laravel\Support\AuthMiddlewareNames;
 
 /**
@@ -11,8 +12,8 @@ use Docuccino\Laravel\Support\AuthMiddlewareNames;
  * DRIVERS behind those guards, via the app's
  * `config('auth.guards')` map. The driver, not the guard name, is what tells you which security
  * integration owns a route: a `passport`-driver guard is Passport whatever it's called, and an `api`
- * guard on a `sanctum` driver isn't. The extension resolves the config and passes the plain map in, so
- * this stays pure and dataset-testable.
+ * guard on a `sanctum` driver isn't. The extension resolves the config and passes the plain map in, and
+ * the reader of an entry's guard arguments with it, so this stays pure and dataset-testable.
  */
 final class AuthGuardDrivers
 {
@@ -23,13 +24,15 @@ final class AuthGuardDrivers
      *
      * @param  list<string>  $middleware
      * @param  array<string, string>  $drivers  guard name → driver
+     * @param  Closure(string): ?string  $guardArguments  an entry's guard arguments, by class through the
+     *                                                    build's alias map ({@see AuthMiddlewareNames::guardArguments()})
      * @return list<string>
      */
-    public static function driversFor(array $middleware, array $drivers, string $defaultGuard): array
+    public static function driversFor(array $middleware, array $drivers, string $defaultGuard, Closure $guardArguments): array
     {
         $result = [];
         foreach ($middleware as $entry) {
-            foreach (self::guardsFor($entry, $defaultGuard) as $guard) {
+            foreach (self::guardsFor($guardArguments($entry), $defaultGuard) as $guard) {
                 $driver = $drivers[$guard] ?? null;
                 if ($driver !== null && ! in_array($driver, $result, true)) {
                     $result[] = $driver;
@@ -62,8 +65,8 @@ final class AuthGuardDrivers
     }
 
     /**
-     * The guards an entry names: the comma list for `auth:a,b`, and the default guard wherever the
-     * entry names none — none otherwise.
+     * The guards an entry's guard arguments name: the comma list for `auth:a,b`, and the default guard
+     * wherever the entry names none — none where the entry is not the authenticator (null arguments).
      *
      * An EMPTY guard name is the default guard, which is the framework's own rule:
      * `AuthManager::guard()` opens with `$name = $name ?: $this->getDefaultDriver()`, so `auth`,
@@ -79,12 +82,8 @@ final class AuthGuardDrivers
      *
      * @return list<string>
      */
-    private static function guardsFor(string $entry, string $defaultGuard): array
+    private static function guardsFor(?string $arguments, string $defaultGuard): array
     {
-        // Both spellings of the authenticator, read through the one list of them ({@see
-        // AuthMiddlewareNames}): a `passport` guard written `Authenticate::using('api')` names the same
-        // guard `auth:api` does.
-        $arguments = AuthMiddlewareNames::guardArguments($entry);
         if ($arguments === null) {
             return [];
         }

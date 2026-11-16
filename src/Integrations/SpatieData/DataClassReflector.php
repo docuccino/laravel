@@ -13,8 +13,9 @@ use Docuccino\Core\Inference\DType\DType;
 use Docuccino\Core\Inference\DType\ListT;
 use Docuccino\Core\Inference\DType\MapT;
 use Docuccino\Core\Inference\DType\UnionT;
-use Docuccino\Core\Support\Fqcn;
 use Docuccino\Laravel\Integrations\Support\EnumCaseValue;
+use Docuccino\Laravel\Integrations\Support\RuleParsing;
+use Docuccino\Laravel\Integrations\Validation\LiveRuleValue;
 use Illuminate\Support\Str;
 use ReflectionAttribute;
 use ReflectionClass;
@@ -22,6 +23,7 @@ use ReflectionIntersectionType;
 use ReflectionNamedType;
 use ReflectionProperty;
 use ReflectionUnionType;
+use Throwable;
 use UnitEnum;
 
 /**
@@ -105,17 +107,50 @@ final class DataClassReflector
 
     private const MERGE_VALIDATION_RULES = 'Spatie\\LaravelData\\Attributes\\MergeValidationRules';
 
-    private const WITH_CAST = 'Spatie\\LaravelData\\Attributes\\WithCast';
-
-    private const DATETIME_CAST = 'Spatie\\LaravelData\\Casts\\DateTimeInterfaceCast';
+    /** What `#[WithCast]`, `#[WithCastAndTransformer]` and `#[WithCastable]` implement, in every 4.x. */
+    private const GETS_CAST = 'Spatie\\LaravelData\\Attributes\\GetsCast';
 
     private const WITH_TRANSFORMER = 'Spatie\\LaravelData\\Attributes\\WithTransformer';
+
+    private const WITH_CAST_AND_TRANSFORMER = 'Spatie\\LaravelData\\Attributes\\WithCastAndTransformer';
+
+    /** Present from laravel-data 4.14, whose attribute lookup reads `#[WithTransformer]` before `#[WithCastAndTransformer]`. */
+    private const ATTRIBUTES_BY_KIND = 'Spatie\\LaravelData\\Support\\DataAttributesCollection';
 
     private const DATA_COLLECTION_OF = 'Spatie\\LaravelData\\Attributes\\DataCollectionOf';
 
     private const RULE_ATTRIBUTE = 'Spatie\\LaravelData\\Attributes\\Validation\\Rule';
 
     private const ENUM_ATTRIBUTE = 'Spatie\\LaravelData\\Attributes\\Validation\\Enum';
+
+    /** The attributes laravel-data validates with whatever `getRule()` returns: a rule string or a rule object. */
+    private const OBJECT_ATTRIBUTE = 'Spatie\\LaravelData\\Attributes\\Validation\\ObjectValidationAttribute';
+
+    /**
+     * Attributes that build a framework choice object from the values they are given, by its class, or take
+     * one in place of their values: laravel-data validates with the object itself when it is the only argument.
+     */
+    private const CHOICE_ATTRIBUTES = [
+        'Spatie\\LaravelData\\Attributes\\Validation\\In' => 'Illuminate\\Validation\\Rules\\In',
+        'Spatie\\LaravelData\\Attributes\\Validation\\NotIn' => 'Illuminate\\Validation\\Rules\\NotIn',
+    ];
+
+    private const PASSWORD_ATTRIBUTE = 'Spatie\\LaravelData\\Attributes\\Validation\\Password';
+
+    private const PASSWORD_RULE = 'Illuminate\\Validation\\Rules\\Password';
+
+    /**
+     * The attributes whose rule is a `DatabaseRule`, by the parameter naming its table. Laravel resolves a table
+     * written as a model's class by constructing the model, which is application code.
+     */
+    private const DATABASE_ATTRIBUTES = [
+        'Spatie\\LaravelData\\Attributes\\Validation\\Exists' => 'table',
+        'Spatie\\LaravelData\\Attributes\\Validation\\Unique' => 'table',
+    ];
+
+    private const MODEL = 'Illuminate\\Database\\Eloquent\\Model';
+
+    private const VALIDATION_PATH = 'Spatie\\LaravelData\\Support\\Validation\\ValidationPath';
 
     /**
      * spatie's built-in name mappers → the transform each applies. A mapper class passed to
@@ -144,35 +179,12 @@ final class DataClassReflector
 
     private const VALIDATION_NS = 'Spatie\\LaravelData\\Attributes\\Validation\\';
 
-    /**
-     * Spatie validation attribute short name → Laravel rule name. Tokens go through the shared
-     * validation chain, so `#[Max(100)]` documents identically to `'max:100'` on a FormRequest. Curated
-     * to the common floor — an unmapped attribute degrades (see validationTokens) rather than guessing.
-     *
-     * Reflection reports an attribute under the case it was WRITTEN in, so the key is the class name
-     * spatie declares — `IP`, not `Ip` — which is the only spelling whose source autoloads on a
-     * case-sensitive filesystem. A key that miscases one matches nothing.
-     *
-     * @var array<string, string>
-     */
-    private const RULE_MAP = [
-        'Required' => 'required', 'Nullable' => 'nullable', 'Sometimes' => 'sometimes',
-        'Present' => 'present', 'Prohibited' => 'prohibited', 'Filled' => 'filled',
-        'Email' => 'email', 'Url' => 'url', 'ActiveUrl' => 'active_url', 'Uuid' => 'uuid',
-        'Ulid' => 'ulid', 'Numeric' => 'numeric', 'IntegerType' => 'integer', 'StringType' => 'string',
-        'BooleanType' => 'boolean', 'ArrayType' => 'array', 'Alpha' => 'alpha', 'AlphaNumeric' => 'alpha_num',
-        'AlphaDash' => 'alpha_dash', 'Date' => 'date', 'Json' => 'json', 'IP' => 'ip',
-        'Max' => 'max', 'Min' => 'min', 'Size' => 'size', 'Between' => 'between',
-        'In' => 'in', 'NotIn' => 'not_in', 'Regex' => 'regex', 'DateFormat' => 'date_format',
-        'MaxDigits' => 'max_digits', 'MinDigits' => 'min_digits', 'DigitsBetween' => 'digits_between',
-        'StartsWith' => 'starts_with', 'EndsWith' => 'ends_with',
-    ];
+    /** The attributes laravel-data writes as a rule string, from their own `keyword()` and `parameters()`. */
+    private const STRING_ATTRIBUTE = 'Spatie\\LaravelData\\Attributes\\Validation\\StringValidationAttribute';
 
-    /** Rules that carry comma-separated parameters (`max:100`, `in:a,b`); others are bare (`required`). */
-    private const VALUE_RULES = [
-        'max', 'min', 'size', 'between', 'in', 'not_in', 'regex', 'date_format',
-        'max_digits', 'min_digits', 'digits_between', 'starts_with', 'ends_with',
-    ];
+    private const REQUIRING_RULE = 'Spatie\\LaravelData\\Support\\Validation\\RequiringRule';
+
+    private const FIELD_REFERENCE = 'Spatie\\LaravelData\\Support\\Validation\\References\\FieldReference';
 
     /** Any `BaseData` implementor that isn't itself a collectable — the schema mapper's trigger. */
     public static function isData(string $fqcn): bool
@@ -229,30 +241,17 @@ final class DataClassReflector
     }
 
     /**
-     * The `format` of a `#[WithCast(DateTimeInterfaceCast::class, format: '…')]`, else null. Read from
-     * the attribute arguments (nothing is instantiated). It governs the wire shape — notably `U`, which
-     * serialises as an integer timestamp rather than a date-time string.
+     * The cast laravel-data reads this property's input with, as the class and constructor arguments its
+     * attribute names (nothing is instantiated), else null: the first attribute that gets a cast —
+     * `#[WithCast]`, `#[WithCastAndTransformer]` or `#[WithCastable]` — in declared order.
+     *
+     * @return array{class: string, arguments: array<array-key, mixed>}|null
      */
-    public function dateTimeCastFormat(string $fqcn, string $property): ?string
+    public function propertyCast(string $fqcn, string $property): ?array
     {
-        $reflection = $this->property($fqcn, $property);
-        if ($reflection === null) {
-            return null;
-        }
+        $attributes = $this->property($fqcn, $property)?->getAttributes(self::GETS_CAST, ReflectionAttribute::IS_INSTANCEOF) ?? [];
 
-        $attributes = $reflection->getAttributes(self::WITH_CAST);
-        if ($attributes === []) {
-            return null;
-        }
-
-        $arguments = $attributes[0]->getArguments();
-        if (($arguments[0] ?? null) !== self::DATETIME_CAST) {
-            return null;
-        }
-
-        $format = $arguments['format'] ?? $arguments[1] ?? null;
-
-        return is_string($format) ? $format : null;
+        return $attributes === [] ? null : self::named($attributes[0]);
     }
 
     /** Property-level `#[Hidden]`, either spatie's or Docuccino's. */
@@ -302,60 +301,42 @@ final class DataClassReflector
     }
 
     /**
-     * Laravel rule tokens recovered from a property's spatie validation attributes, read via
-     * {@see ReflectionAttribute::getArguments()} — the attribute is never instantiated, so no spatie
-     * rule logic runs. {@see DataValidationRules} feeds them through the shared validation chain.
+     * What a property's spatie validation attributes hand Laravel: the rule strings laravel-data writes for
+     * them ({@see attributeRule()}), a `#[Rule(...)]`'s split as laravel-data splits them
+     * ({@see RuleParsing::dataPieces()}), and the rule OBJECTS — any a `#[Rule(...)]` carries, bare or inside
+     * an array, and the one any other attribute validates with ({@see handedObject()}).
      *
-     * @return list<string>
+     * @param  string  $path  where the object declaring the property sits in the request (`range`,
+     *                        `ranges.*`), empty at the root — what laravel-data resolves a field reference under
+     * @return array{0: list<string>, 1: list<object>}
      */
-    public function validationTokens(string $fqcn, string $property): array
+    public function attributeRules(string $fqcn, string $property, string $path = ''): array
     {
-        $reflection = $this->property($fqcn, $property);
-        if ($reflection === null) {
-            return [];
+        [$tokens, $objects] = [[], []];
+        foreach ($this->property($fqcn, $property)?->getAttributes() ?? [] as $attribute) {
+            if ($attribute->getName() === self::RULE_ATTRIBUTE) {
+                $arguments = $attribute->getArguments();
+                array_walk_recursive($arguments, static function (mixed $value) use (&$tokens, &$objects): void {
+                    if (is_string($value)) {
+                        $tokens = [...$tokens, ...RuleParsing::dataPieces($value)];
+                    } elseif (is_object($value)) {
+                        $objects[] = $value;
+                    }
+                });
+
+                continue;
+            }
+
+            $handed = self::handedObject($attribute);
+            $rule = $handed === null && str_starts_with($attribute->getName(), self::VALIDATION_NS) ? self::attributeRule($attribute, $path) : null;
+            if ($handed !== null) {
+                $objects[] = $handed;
+            } elseif ($rule !== null) {
+                $tokens[] = $rule;
+            }
         }
 
-        $tokens = [];
-        foreach ($reflection->getAttributes() as $attribute) {
-            $name = $attribute->getName();
-            if (! str_starts_with($name, self::VALIDATION_NS)) {
-                continue;
-            }
-
-            // `#[Rule('max:10|min:1')]` is spatie's escape hatch — its arguments already ARE Laravel
-            // rule strings, so pass them straight through rather than emit a junk `rule:…` token.
-            if ($name === self::RULE_ATTRIBUTE) {
-                foreach ($this->ruleAttributeTokens($attribute->getArguments()) as $token) {
-                    $tokens[] = $token;
-                }
-
-                continue;
-            }
-
-            // `#[Enum(Status::class)]` expands to `in:` over the backing values — the class name itself
-            // is not an allowed value.
-            if ($name === self::ENUM_ATTRIBUTE) {
-                $token = $this->enumAttributeToken($attribute->getArguments());
-                if ($token !== null) {
-                    $tokens[] = $token;
-                }
-
-                continue;
-            }
-
-            $short = Fqcn::short($name);
-            $mapped = self::RULE_MAP[$short] ?? null;
-            // Unmapped attributes degrade to the snake-cased short name, which the shared chain then
-            // treats like any unknown string rule (a transformer if one exists, else permissive + info).
-            $rule = $mapped ?? self::snake($short);
-
-            $parameters = $this->scalarArguments($attribute->getArguments());
-            $carriesParameters = in_array($rule, self::VALUE_RULES, true) || ($mapped === null && $parameters !== '');
-
-            $tokens[] = $carriesParameters && $parameters !== '' ? $rule.':'.$parameters : $rule;
-        }
-
-        return $tokens;
+        return [$tokens, $objects];
     }
 
     /**
@@ -396,77 +377,122 @@ final class DataClassReflector
     }
 
     /**
-     * The classes of any rule OBJECTS a property's `#[Rule(new Iban)]` attributes carry — spatie's one
-     * attribute that takes one. Only the class is used; its `#[RuleSchema]` is the documented contract.
+     * The rule object an attribute hands Laravel in place of a rule string, or null. An `#[In]`/`#[NotIn]` is the
+     * object it is given, or the one it builds from its values ({@see builtChoice()}); any other object attribute
+     * is the object its `getRule()` builds, as laravel-data builds it ({@see builtRule()}).
      *
-     * @return list<string>
+     * @param  ReflectionAttribute<object>  $attribute
      */
-    public function ruleObjectClasses(string $fqcn, string $property): array
+    private static function handedObject(ReflectionAttribute $attribute): ?object
     {
-        $reflection = $this->property($fqcn, $property);
-        if ($reflection === null) {
-            return [];
+        if (isset(self::CHOICE_ATTRIBUTES[$attribute->getName()])) {
+            return self::givenObject($attribute) ?? self::builtChoice($attribute);
         }
 
-        $out = [];
-        foreach ($reflection->getAttributes() as $attribute) {
-            if ($attribute->getName() !== self::RULE_ATTRIBUTE) {
-                continue;
-            }
+        $rule = self::builtRule($attribute);
 
-            // array_walk_recursive descends arrays and hands objects over as leaves, so a rule object
-            // is found whether it was written bare or inside an array argument.
-            $arguments = $attribute->getArguments();
-            array_walk_recursive($arguments, static function (mixed $value) use (&$out): void {
-                if (is_object($value)) {
-                    $out[] = $value::class;
-                }
-            });
-        }
-
-        return $out;
+        return is_object($rule) ? $rule : null;
     }
 
     /**
-     * Every string in a `#[Rule(...)]` attribute's arguments, flattened — each one is a rule string.
+     * The `In`/`NotIn` an `#[In]`/`#[NotIn]` builds from its values, flattened as laravel-data flattens them.
+     * Each value stays as written, so the list reads as `Rule::in()` does ({@see LiveRuleValue}): `true` as
+     * `"1"` and `false` as `""`, the strings Laravel compares, and a reference only a request resolves as a
+     * value this build cannot read.
      *
-     * @param  array<array-key, mixed>  $arguments
-     * @return list<string>
+     * @param  ReflectionAttribute<object>  $attribute
      */
-    private function ruleAttributeTokens(array $arguments): array
+    private static function builtChoice(ReflectionAttribute $attribute): object
     {
-        $out = [];
-        array_walk_recursive($arguments, static function (mixed $value) use (&$out): void {
-            if (is_string($value) && trim($value) !== '') {
-                $out[] = trim($value);
-            }
+        $class = self::CHOICE_ATTRIBUTES[$attribute->getName()];
+
+        $values = [];
+        $arguments = $attribute->getArguments();
+        array_walk_recursive($arguments, static function (mixed $value) use (&$values): void {
+            $values[] = $value;
         });
 
-        return $out;
+        return new $class($values);
     }
 
     /**
-     * `in:v1,v2` from a `#[Enum(Status::class)]` attribute's enum backing values, or null when the
-     * class argument is missing / not a resolvable enum.
+     * The framework choice object an `#[In]` or `#[NotIn]` was given as its only argument, or null.
      *
-     * @param  array<array-key, mixed>  $arguments
+     * @param  ReflectionAttribute<object>  $attribute
      */
-    private function enumAttributeToken(array $arguments): ?string
+    private static function givenObject(ReflectionAttribute $attribute): ?object
     {
-        $class = null;
-        array_walk_recursive($arguments, static function (mixed $value) use (&$class): void {
-            if ($class === null && is_string($value) && $value !== '') {
-                $class = ltrim($value, '\\');
-            }
-        });
+        $class = self::CHOICE_ATTRIBUTES[$attribute->getName()] ?? null;
+        $arguments = array_values($attribute->getArguments());
 
-        if ($class === null) {
+        return $class !== null && count($arguments) === 1 && $arguments[0] instanceof $class ? $arguments[0] : null;
+    }
+
+    /**
+     * What an object attribute validates with — the rule string or object its own `getRule()` builds, as
+     * laravel-data builds it — or null for any other attribute, or where the rule cannot be built: an argument
+     * this version does not take, or a reference only a request can resolve. A `#[Password(default: true)]` is
+     * the default the application registers at boot, which no file this build keys on states, and a database
+     * rule whose table is a model's class is resolved by constructing the model, so each is read as its bare
+     * keyword instead.
+     *
+     * @param  ReflectionAttribute<object>  $attribute
+     */
+    private static function builtRule(ReflectionAttribute $attribute): object|string|null
+    {
+        if (! is_a($attribute->getName(), self::OBJECT_ATTRIBUTE, true)) {
             return null;
         }
 
-        $values = array_map(strval(...), EnumReflection::values($class));
+        if (self::tableIsModel($attribute)) {
+            $class = $attribute->getName();
 
-        return $values === [] ? null : 'in:'.implode(',', $values);
+            return $class::keyword();
+        }
+
+        try {
+            $instance = $attribute->newInstance();
+            if (self::takesRegisteredDefault($instance)) {
+                $class = $attribute->getName();
+
+                return $class::keyword();
+            }
+
+            $rule = method_exists($instance, 'getRule') ? $instance->getRule(new (self::VALIDATION_PATH)) : null;
+        } catch (Throwable) {
+            return null;
+        }
+
+        return is_object($rule) || is_string($rule) ? $rule : null;
+    }
+
+    /**
+     * Whether a database rule's table is written as a model's class, which `DatabaseRule` resolves as Laravel does.
+     *
+     * @param  ReflectionAttribute<object>  $attribute
+     */
+    private static function tableIsModel(ReflectionAttribute $attribute): bool
+    {
+        $parameter = self::DATABASE_ATTRIBUTES[$attribute->getName()] ?? null;
+        $arguments = $attribute->getArguments();
+        $table = $parameter === null ? null : ($arguments[$parameter] ?? $arguments[0] ?? null);
+
+        return is_string($table) && str_contains($table, '\\') && is_a($table, self::MODEL, true);
+    }
+
+    /** Whether a `#[Password]` validates with the default the application registered rather than its own arguments. */
+    private static function takesRegisteredDefault(object $instance): bool
+    {
+        $rule = self::PASSWORD_RULE;
+        $reflection = new ReflectionClass($instance);
+        if (! is_a($instance, self::PASSWORD_ATTRIBUTE) || ! $reflection->hasProperty('default') || ! property_exists($rule, 'defaultCallback')) {
+            return false;
+        }
+
+        // A rule object it is given wins over `default`, as it does in `getRule()`.
+        $given = $reflection->hasProperty('rule') ? $reflection->getProperty('rule')->getValue($instance) : null;
+
+        return $given === null && $reflection->getProperty('default')->getValue($instance) === true && $rule::$defaultCallback !== null;
     }
 
     /**
@@ -543,15 +569,49 @@ final class DataClassReflector
         return null;
     }
 
-    /** A spatie `#[Prohibited]` property is documented as never-sendable. */
-    public function isProhibited(string $fqcn, string $property): bool
+    /**
+     * What each `#[Prohibited]` on the property validates with, as laravel-data builds it: the `prohibited` rule
+     * string, or the `ProhibitedIf` object it was handed.
+     *
+     * @return list<object|string>
+     */
+    public function prohibitions(string $fqcn, string $property): array
+    {
+        $reflection = $this->property($fqcn, $property);
+        if ($reflection === null) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($reflection->getAttributes(self::VALIDATION_NS.'Prohibited') as $attribute) {
+            $rule = self::builtRule($attribute);
+            if ($rule !== null) {
+                $out[] = $rule;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Whether the property carries one of spatie's `RequiringRule` attributes — `#[Required]` and the
+     * `#[Required…]` family — which take the place of the `required` its type implies, whatever rule they go
+     * on to build: a `#[Required(new RequiredIf(false))]` builds none, and the property is not required.
+     */
+    public function statesRequiringRule(string $fqcn, string $property): bool
     {
         $reflection = $this->property($fqcn, $property);
         if ($reflection === null) {
             return false;
         }
 
-        return $reflection->getAttributes(self::VALIDATION_NS.'Prohibited') !== [];
+        foreach ($reflection->getAttributes() as $attribute) {
+            if (is_a($attribute->getName(), self::REQUIRING_RULE, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -641,35 +701,92 @@ final class DataClassReflector
         return $found;
     }
 
-    /** CamelCase attribute short name → snake_case rule name (`StartsWith` → `starts_with`). */
-    private static function snake(string $name): string
+    /**
+     * The rule string laravel-data writes for a validation attribute: the attribute's own `keyword()`, then
+     * the `parameters()` it reports, as laravel-data's `RuleDenormalizer` joins them. An object attribute is the
+     * rule string its own `getRule()` builds ({@see builtRule()}), and null where that is an object. Null too where
+     * laravel-data cannot build the rule either, which fails every request.
+     *
+     * @param  ReflectionAttribute<object>  $attribute
+     */
+    private static function attributeRule(ReflectionAttribute $attribute, string $path): ?string
     {
-        $snake = preg_replace('/(?<!^)[A-Z]/', '_$0', $name);
+        $class = $attribute->getName();
+        if (! method_exists($class, 'keyword')) {
+            return null;
+        }
 
-        return strtolower($snake ?? $name);
+        // An object attribute that builds a rule string hands Laravel that string.
+        $built = self::builtRule($attribute);
+        if (is_string($built)) {
+            return $built;
+        }
+
+        if (is_a($class, self::OBJECT_ATTRIBUTE, true)) {
+            return null;
+        }
+
+        try {
+            $keyword = $class::keyword();
+            $instance = is_a($class, self::STRING_ATTRIBUTE, true) ? $attribute->newInstance() : null;
+            $parameters = $instance !== null && method_exists($instance, 'parameters')
+                ? $instance->parameters()
+                : array_values($attribute->getArguments());
+        } catch (Throwable) {
+            return null;
+        }
+
+        if (! is_string($keyword) || ! is_array($parameters)) {
+            return null;
+        }
+
+        $written = [];
+        foreach ($parameters as $key => $parameter) {
+            $value = self::ruleParameter($parameter, $path);
+            if ($value !== null) {
+                $written[] = is_string($key) ? $key.'='.$value : $value;
+            }
+        }
+
+        return $written === [] ? $keyword : $keyword.':'.implode(',', $written);
     }
 
     /**
-     * Attribute arguments as a comma-joined rule parameter string: `Between(1, 10)` → `"1,10"`,
-     * `In(['a','b'])` → `"a,b"`. An enum case is the value Laravel casts it to, so `In(Status::Open)` is
-     * `"open"` ({@see EnumCaseValue}). Other non-scalars are dropped.
-     *
-     * @param  array<array-key, mixed>  $arguments
+     * One rule parameter as laravel-data writes it, or null where it leaves it out. A bool is `true`/`false`, a
+     * list its members joined, and an enum case the value Laravel casts it to ({@see EnumCaseValue}). A field
+     * reference names its field under `$path` ({@see fieldName()}). A value only a request or the clock decides —
+     * an external reference, a date — is left out too, as nothing the build can state.
      */
-    private function scalarArguments(array $arguments): string
+    private static function ruleParameter(mixed $value, string $path): ?string
     {
-        $flat = [];
-        array_walk_recursive($arguments, static function (mixed $value) use (&$flat): void {
-            if ($value instanceof UnitEnum) {
-                $value = EnumCaseValue::ofLive($value);
-            }
+        if (is_array($value)) {
+            return $value === [] ? null : implode(',', array_map(static fn (mixed $item): string => self::ruleParameter($item, $path) ?? '', $value));
+        }
 
-            if (is_scalar($value)) {
-                $flat[] = is_bool($value) ? ($value ? 'true' : 'false') : (string) $value;
-            }
-        });
+        return match (true) {
+            is_string($value), is_int($value), is_float($value) => (string) $value,
+            is_bool($value) => $value ? 'true' : 'false',
+            $value instanceof UnitEnum => (string) EnumCaseValue::ofLive($value),
+            is_object($value) && is_a($value, self::FIELD_REFERENCE) => self::fieldName($value, $path),
+            default => null,
+        };
+    }
 
-        return implode(',', $flat);
+    /**
+     * The field a laravel-data field reference names: a sibling of the property, under the path of the object
+     * declaring it, unless it was written `fromRoot`. laravel-data resolves it under that object's own path —
+     * `range.min`, `ranges.0.min` — and `ranges.*.min` is that path in Laravel's own grammar, which reads the
+     * `*` as the index of the item being validated.
+     */
+    private static function fieldName(object $reference, string $path): ?string
+    {
+        $fields = get_object_vars($reference);
+        $name = $fields['name'] ?? null;
+        if (! is_string($name)) {
+            return null;
+        }
+
+        return $path === '' || ($fields['fromRoot'] ?? null) === true ? $name : $path.'.'.$name;
     }
 
     /**
@@ -899,6 +1016,55 @@ final class DataClassReflector
 
         return $reflection !== null
             && $reflection->getAttributes(self::WITH_TRANSFORMER, ReflectionAttribute::IS_INSTANCEOF) !== [];
+    }
+
+    /**
+     * The transformer laravel-data writes this property with, as the class and constructor arguments its
+     * attribute names (nothing is instantiated), else null. That is the first `#[WithTransformer]` or
+     * `#[WithCastAndTransformer]`: from 4.14 a `#[WithTransformer]` before any `#[WithCastAndTransformer]`,
+     * and before that whichever is declared first.
+     *
+     * @return array{class: string, arguments: array<array-key, mixed>}|null
+     */
+    public function propertyTransformer(string $fqcn, string $property): ?array
+    {
+        $reflection = $this->property($fqcn, $property);
+        if ($reflection === null) {
+            return null;
+        }
+
+        $attributes = array_values(array_filter(
+            $reflection->getAttributes(),
+            static fn (ReflectionAttribute $attribute): bool => is_a($attribute->getName(), self::WITH_TRANSFORMER, true)
+                || is_a($attribute->getName(), self::WITH_CAST_AND_TRANSFORMER, true),
+        ));
+
+        if (class_exists(self::ATTRIBUTES_BY_KIND)) {
+            // Stable, so each kind keeps its declared order.
+            usort($attributes, static fn (ReflectionAttribute $a, ReflectionAttribute $b): int => (int) ! is_a($a->getName(), self::WITH_TRANSFORMER, true)
+                <=> (int) ! is_a($b->getName(), self::WITH_TRANSFORMER, true));
+        }
+
+        if ($attributes === []) {
+            return null;
+        }
+
+        return self::named($attributes[0]);
+    }
+
+    /**
+     * The class a cast or transformer attribute names first, and the arguments it is constructed with.
+     *
+     * @param  ReflectionAttribute<object>  $attribute
+     * @return array{class: string, arguments: array<array-key, mixed>}|null
+     */
+    private static function named(ReflectionAttribute $attribute): ?array
+    {
+        $arguments = $attribute->getArguments();
+        $class = $arguments[0] ?? $arguments['castClass'] ?? $arguments['transformerClass'] ?? $arguments['class'] ?? $arguments['castableClass'] ?? null;
+        unset($arguments[0], $arguments['castClass'], $arguments['transformerClass'], $arguments['class'], $arguments['castableClass']);
+
+        return is_string($class) ? ['class' => $class, 'arguments' => $arguments] : null;
     }
 
     /**

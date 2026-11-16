@@ -209,6 +209,132 @@
         ]
       }
     },
+    "/api/zz-described": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:etqyim2ncavba26m",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/RouteConstraints/OptionalSegmentController.php",
+                "line": 63,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\RouteConstraints\\OptionalSegmentController::described"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-described",
+        "tags": [
+          "OptionalSegment"
+        ]
+      }
+    },
+    "/api/zz-described/{page}": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:lgk6zenxbij6rs6n",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/RouteConstraints/OptionalSegmentController.php",
+                "line": 63,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\RouteConstraints\\OptionalSegmentController::described"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-described.@page",
+        "tags": [
+          "OptionalSegment"
+        ],
+        "parameters": [
+          {
+            "x-docuccino": {
+              "id": "par:v1:ic7ajcsereounus7",
+              "provenance": [
+                {
+                  "producer": "attribute",
+                  "layer": "attribute",
+                  "fields": [
+                    "description",
+                    "required"
+                  ],
+                  "source": {
+                    "file": "tests/Fixtures/RouteConstraints/OptionalSegmentController.php",
+                    "line": 63,
+                    "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\RouteConstraints\\OptionalSegmentController::described"
+                  },
+                  "overrode": [
+                    {
+                      "field": "required",
+                      "value": true,
+                      "producer": "fallback"
+                    }
+                  ]
+                },
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "name": "page",
+            "in": "path",
+            "description": "The page to open.\n\nLeaving it off is the same as sending `first`.",
+            "required": true,
+            "schema": {
+              "x-docuccino": {
+                "provenance": [
+                  {
+                    "producer": "fallback",
+                    "layer": "fallback",
+                    "fields": [
+                      "type"
+                    ]
+                  },
+                  {
+                    "producer": "inference",
+                    "layer": "inference",
+                    "fields": [
+                      "default"
+                    ]
+                  }
+                ]
+              },
+              "type": "string",
+              "default": "first"
+            }
+          }
+        ]
+      }
+    },
     "/api/zz-latest": {
       "get": {
         "x-docuccino": {
@@ -437,7 +563,7 @@
               "source": {
                 "file": "tests/Fixtures/RouteConstraints/ConstraintController.php",
                 "line": 45,
-                "symbol": "\\Docuccino\\Laravel\\Tests\\Fixtures\\RouteConstraints\\ConstraintController::hosted"
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\RouteConstraints\\ConstraintController::hosted"
               }
             },
             {
@@ -489,7 +615,7 @@
               "source": {
                 "file": "tests/Fixtures/RouteConstraints/ConstraintController.php",
                 "line": 45,
-                "symbol": "\\Docuccino\\Laravel\\Tests\\Fixtures\\RouteConstraints\\ConstraintController::hosted"
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\RouteConstraints\\ConstraintController::hosted"
               }
             },
             {
@@ -536,7 +662,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "bdacba7377c5f8cf14f631fae9e288ef85f583c5033305c8a0723eac910dbea4"
+      "contentHash": "4500ade1068ec73e1937736babaec69384314f3d1f2eb7d68ccd6e0d9cc9dae5"
     },
     "generator": {
       "name": "docuccino/laravel",

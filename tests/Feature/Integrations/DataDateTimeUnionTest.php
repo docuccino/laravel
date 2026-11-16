@@ -96,9 +96,10 @@ it('expresses a nullable date-time in the shape the document asked for', functio
         ->toBe(['anyOf' => [['type' => 'string', 'format' => 'date-time'], ['type' => 'null']]]);
 });
 
-it('keeps the null on a timestamp cast to an integer too', function (DType $type, array $expected): void {
-    // `expiresAt` carries `#[WithCast(DateTimeInterfaceCast::class, format: 'U')]`, so its wire TYPE is an
-    // integer — which had the same hole: the cast answered for the whole union.
+it('keeps the null on a date whose cast reads an epoch, written as the transformer writes it', function (DType $type, array $expected): void {
+    // `expiresAt` carries `#[WithCast(DateTimeInterfaceCast::class, format: 'U')]`. A cast only reads input:
+    // laravel-data writes the value with its date transformer, which formats with `data.date_format` and
+    // never consults the cast. So the response is a date-time string, and the null arm stays beside it.
     $components = new ComponentRegistry;
     $engine = new StubTypeEngine(classes: [
         TimelineData::class => new ClassMetadata(TimelineData::class, [
@@ -113,11 +114,11 @@ it('keeps the null on a timestamp cast to an integer too', function (DType $type
 })->with([
     'CarbonImmutable' => [
         new ClassT(CarbonImmutable::class),
-        ['type' => 'integer', 'description' => 'Unix timestamp (seconds).'],
+        ['type' => 'string', 'format' => 'date-time'],
     ],
     '?CarbonImmutable' => [
         UnionT::of([new ClassT(CarbonImmutable::class), new NullT]),
-        ['type' => ['integer', 'null'], 'description' => 'Unix timestamp (seconds).'],
+        ['type' => ['string', 'null'], 'format' => 'date-time'],
     ],
 ]);
 

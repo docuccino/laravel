@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Docuccino\Laravel\Commands\MemoryLimitOption;
+use Docuccino\Laravel\Commands\StartsConsoleBuild;
 use Docuccino\Laravel\Config\BuildConfig;
 use Docuccino\Laravel\Engine\ConsoleBuild;
 use Docuccino\Laravel\Engine\EnginePackage;
@@ -10,16 +11,16 @@ use Docuccino\Laravel\Engine\LazyTypeEngine;
 use Docuccino\Laravel\Engine\MemoryLimit;
 use Docuccino\Laravel\Engine\OutOfMemoryNotice;
 use Docuccino\Laravel\Engine\TypeEngineFactory;
-use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Support\Facades\Artisan;
+use Symfony\Component\Console\Command\Command as SymfonyCommand;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\Console\Output\NullOutput;
 
 /**
  * In-process inference is bound by the calling process's memory_limit, and exhausting it is an uncatchable
  * fatal — so the knob has to be honest about what it does. It only raises: a configured ceiling that isn't
- * higher than the one in force, and an already-unlimited process, are both left alone.
+ * higher than the one in force, and an already-unlimited process, are both left alone. With nothing
+ * configured the ceiling is the default, under the same rule.
  */
 it('reads every php.ini shorthand a memory limit can use', function (string $value, ?int $bytes): void {
     expect(MemoryLimit::bytes($value))->toBe($bytes);
@@ -54,13 +55,24 @@ it('raises only towards a higher ceiling', function (?string $configured, string
     'an equal limit in other units is a no-op' => ['1024M', '1G', null],
     // The knob exists to prevent an OOM, so it never introduces one — and never removes the ceiling either.
     'an unlimited process is never capped' => ['2G', '-1', null],
-    'unlimited cannot be asked for' => ['-1', '512M', null],
-    'an overlong figure leaves the process alone' => ['9999999999999G', '512M', null],
-    'nothing configured leaves the process alone' => [null, '512M', null],
-    'a blank value leaves the process alone' => ['   ', '512M', null],
-    'an unparseable value leaves the process alone' => ['heaps', '512M', null],
+    // A ceiling the project wrote is its answer, even one below the default.
+    'a configured limit below the default applies' => ['512M', '128M', '512M'],
+    // PHP's stock 128M is less than a small application's cold build needs, so nothing configured is not
+    // "leave the process alone": the build gets the ceiling that fits it, under the same raise-only rule.
+    'nothing configured raises to the default' => [null, '128M', '1G'],
+    'nothing configured leaves a higher process alone' => [null, '2G', null],
+    'nothing configured leaves a process at the default alone' => [null, '1024M', null],
+    'nothing configured never caps an unlimited process' => [null, '-1', null],
+    // A value the knob can't use is as good as none, and none means the default — not PHP's 128M, which is
+    // the failure the default exists to prevent.
+    'a blank value raises to the default' => ['   ', '128M', '1G'],
+    'unlimited cannot be asked for, so the default applies' => ['-1', '128M', '1G'],
+    'an overlong figure raises to the default' => ['9999999999999G', '128M', '1G'],
+    'an unparseable value raises to the default' => ['heaps', '128M', '1G'],
+    'an unusable value leaves a higher process alone' => ['heaps', '2G', null],
     // A current value we can't read shouldn't block a legitimate raise.
     'an unreadable current limit still raises' => ['2G', 'unknown', '2G'],
+    'an unreadable current limit raises to the default' => [null, 'unknown', '1G'],
 ]);
 
 it('recognises memory exhaustion and only memory exhaustion', function (?array $error, bool $expected): void {
@@ -130,6 +142,83 @@ it('explains exhaustion in the process that armed the notice, and in none it for
     'a worker it forked' => [true, false],
 ]);
 
+it('still explains exhaustion when a shutdown function registered before the notice needs memory to run', function (): void {
+    // PHP runs shutdown functions in the order they were registered, and the first one to fail stops the
+    // rest. The framework registers its error handler's while it bootstraps, long before a build arms the
+    // notice, and that handler reports the fatal first: it loads a logger and renders the error, on a heap
+    // that is already full. Here the earlier function asks for a few megabytes, as reporting does, and
+    // leaves shutdown work of its own behind, as Collision's error page does when it first renders.
+    $run = runPhp(<<<'PHP'
+        register_shutdown_function(static function (): void {
+            if (Docuccino\Laravel\Engine\OutOfMemoryNotice::isExhaustion(error_get_last())) {
+                $report = str_repeat('r', 8 * 1024 * 1024);
+                fwrite(STDERR, "\nreported ".strlen($report)."\n");
+                register_shutdown_function(static function (): void {
+                    fwrite(STDERR, "\nrendered again\n");
+                });
+            }
+        });
+
+        Docuccino\Laravel\Engine\OutOfMemoryNotice::arm();
+
+        ini_set('memory_limit', (string) (memory_get_usage() + 4 * 1024 * 1024));
+        $hog = [];
+        while (true) {
+            $hog[] = str_repeat('x', 1024);
+        }
+        PHP, timeout: 20.0);
+
+    $reported = strpos($run['output'], 'reported 8388608');
+    $again = strpos($run['output'], 'rendered again');
+    $explained = strpos($run['output'], 'Docuccino ran out of memory building your documentation');
+
+    // The earlier function finishes its report, and the build still ends on the notice, after all of it —
+    // read off one stream, the one the notice is written to, so the order is the order it was written in.
+    expect($run['exit'])->toBe(255)
+        ->and($reported)->not->toBeFalse($run['output'])
+        ->and($again)->not->toBeFalse($run['output'])
+        ->and($explained)->not->toBeFalse($run['output'])
+        ->and($explained)->toBeGreaterThan(max((int) $reported, (int) $again));
+});
+
+it('still explains exhaustion when the heap has no room left for a function\'s first call', function (): void {
+    // A function's first call takes memory, and a build that ran out has none to give until the notice lets
+    // go of its reserve. Any first call the shutdown work makes before that is a second fatal, and PHP runs
+    // nothing after one: no report, no notice. The build's workers are loaded, as in any build, so their
+    // hook, which runs ahead of the notice's, is held to the same.
+    $run = runPhp(<<<'PHP'
+        Docuccino\Core\Pipeline\BuildWorkers::none();
+        Docuccino\Laravel\Engine\OutOfMemoryNotice::arm();
+        PHP."\n".fillingTheArena()."\n".<<<'PHP'
+        ini_set('memory_limit', (string) (memory_get_usage(true) + 8 * 1024 * 1024));
+        $hog = [];
+        while (true) {
+            $hog[] = str_repeat('x', 512);
+        }
+        PHP, ini: ['memory_limit' => '512M', 'display_errors' => 'stderr', 'log_errors' => '0'], timeout: 30.0);
+
+    $explained = strrpos($run['output'], 'Docuccino ran out of memory building your documentation');
+
+    expect($run['output'])->toContain('arena: 3')
+        ->and($run['exit'])->toBe(255)
+        ->and(substr_count($run['output'], 'Allowed memory size of'))->toBe(1, $run['output'])
+        ->and($explained)->not->toBeFalse($run['output'])
+        ->and(trim(substr($run['output'], (int) $explained)))->toEndWith('attributes alone.');
+});
+
+it('leaves the ceiling alone when an armed build shuts down without running out', function (): void {
+    // The early shutdown hook runs at the end of every console process, armed or not; only exhaustion is a
+    // reason to move the ceiling past what the build asked for.
+    OutOfMemoryNotice::arm();
+    OutOfMemoryNotice::arm();
+    $before = ini_get('memory_limit');
+
+    OutOfMemoryNotice::shutdown();
+    OutOfMemoryNotice::shutdown();
+
+    expect(ini_get('memory_limit'))->toBe($before);
+});
+
 it('declares the flag on every command that builds a document', function (string $command): void {
     expect(Artisan::all()[$command]->getDefinition()->hasOption('memory-limit'))->toBeTrue();
 })->with(['docuccino:export', 'docuccino:cache', 'docuccino:validate', 'docuccino:diff']);
@@ -141,11 +230,7 @@ it('does not offer the flag on the command that builds nothing', function (): vo
 it('captures the flag into the engine bag the factory reads', function (): void {
     setBuild('engine.memory_limit', '512M');
 
-    MemoryLimitOption::capture(new CommandStarting(
-        'docuccino:export',
-        new ArgvInput(['artisan', 'docuccino:export', '--memory-limit=3G']),
-        new NullOutput,
-    ));
+    MemoryLimitOption::capture(new ArgvInput(['artisan', 'docuccino:export', '--memory-limit=3G']));
 
     // The flag wins over the configured ceiling, which is the whole point of the two being one lever.
     expect(MemoryLimitOption::requested())->toBe('3G')
@@ -155,24 +240,7 @@ it('captures the flag into the engine bag the factory reads', function (): void 
 it('leaves the configured ceiling alone when no flag was passed', function (): void {
     setBuild('engine.memory_limit', '512M');
 
-    MemoryLimitOption::capture(new CommandStarting(
-        'docuccino:export',
-        new ArgvInput(['artisan', 'docuccino:export']),
-        new NullOutput,
-    ));
-
-    expect(MemoryLimitOption::requested())->toBeNull()
-        ->and(app(BuildConfig::class)->engine()['memory_limit'])->toBe('512M');
-});
-
-it('ignores the flag for commands that are not ours', function (): void {
-    setBuild('engine.memory_limit', '512M');
-
-    MemoryLimitOption::capture(new CommandStarting(
-        'migrate',
-        new ArgvInput(['artisan', 'migrate', '--memory-limit=3G']),
-        new NullOutput,
-    ));
+    MemoryLimitOption::capture(new ArgvInput(['artisan', 'docuccino:export']));
 
     expect(MemoryLimitOption::requested())->toBeNull()
         ->and(app(BuildConfig::class)->engine()['memory_limit'])->toBe('512M');
@@ -183,11 +251,7 @@ it('ignores the flag on one of our commands called in-process', function (): voi
     // Artisan::call() is not what started the process it runs in.
     setBuild('engine.memory_limit', '512M');
 
-    MemoryLimitOption::capture(new CommandStarting(
-        'docuccino:export',
-        new ArrayInput(['command' => 'docuccino:export', '--memory-limit' => '3G']),
-        new NullOutput,
-    ));
+    MemoryLimitOption::capture(new ArrayInput(['command' => 'docuccino:export', '--memory-limit' => '3G']));
 
     expect(MemoryLimitOption::requested())->toBeNull()
         ->and(app(BuildConfig::class)->engine()['memory_limit'])->toBe('512M');
@@ -202,17 +266,26 @@ it('refuses to tune the process until one of our commands has started', function
     expect(ConsoleBuild::active())->toBeFalse()
         ->and(app(TypeEngineFactory::class)->mayTuneProcess())->toBeFalse();
 
-    MemoryLimitOption::capture(new CommandStarting('docuccino:export', new ArgvInput(['artisan', 'docuccino:export']), new NullOutput));
+    MemoryLimitOption::capture(new ArgvInput(['artisan', 'docuccino:export']));
 
     expect(ConsoleBuild::active())->toBeTrue()
         ->and(app(TypeEngineFactory::class)->mayTuneProcess())->toBeTrue();
 });
 
-it('is not marked a console build by somebody else\'s command', function (): void {
-    MemoryLimitOption::capture(new CommandStarting('migrate', new ArgvInput(['artisan', 'migrate']), new NullOutput));
+it('lets every command of ours mark its run a console build', function (): void {
+    // The mark is each command's own act ({@see StartsConsoleBuild}), so one that forgets it builds under
+    // PHP's ceiling, unexplained and alone. Read off the commands the application has registered.
+    $ours = array_filter(
+        Artisan::all(),
+        static fn (SymfonyCommand $command): bool => str_starts_with((string) $command->getName(), 'docuccino:'),
+    );
+    $marking = array_filter(
+        $ours,
+        static fn (SymfonyCommand $command): bool => in_array(StartsConsoleBuild::class, class_uses_recursive($command), true),
+    );
 
-    expect(ConsoleBuild::active())->toBeFalse()
-        ->and(app(TypeEngineFactory::class)->mayTuneProcess())->toBeFalse();
+    expect(count($ours))->toBeGreaterThanOrEqual(10)
+        ->and(array_keys($marking))->toBe(array_keys($ours));
 });
 
 it('raises the ceiling for a console build before the engine exists, and boots nothing', function (): void {

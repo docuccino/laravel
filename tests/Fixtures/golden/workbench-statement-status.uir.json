@@ -1,0 +1,1056 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/deferred/csv": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:s7ejstt5axki4bsu",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/DeferredExportController.php",
+                "line": 119,
+                "symbol": "Workbench\\App\\Http\\Controllers\\DeferredExportController::csv"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.deferred.csv",
+        "summary": "Download an export as CSV.",
+        "tags": [
+          "DeferredExport"
+        ],
+        "responses": {
+          "202": {
+            "x-docuccino": {
+              "id": "res:v1:e43m2e6rvg74kqjh",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Accepted",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "const",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "string",
+                  "const": "id,total"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/deferred/defer": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:cinup7ldfzqd45wt",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/DeferredExportController.php",
+                "line": 61,
+                "symbol": "Workbench\\App\\Http\\Controllers\\DeferredExportController::defer"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.deferred.defer",
+        "summary": "Queue an export, deferring it when asked to.",
+        "tags": [
+          "DeferredExport"
+        ],
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:eemwqecg3v5u2em3",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "queued": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "queued"
+                  ]
+                }
+              }
+            }
+          },
+          "202": {
+            "x-docuccino": {
+              "id": "res:v1:t6g6455ks5nac5ni",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "queued": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "queued"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/deferred/forward": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:nisjierbt4uhxc5n",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/DeferredExportController.php",
+                "line": 52,
+                "symbol": "Workbench\\App\\Http\\Controllers\\DeferredExportController::forward"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.deferred.forward",
+        "summary": "Send the client on to the export list.",
+        "tags": [
+          "DeferredExport"
+        ],
+        "responses": {
+          "303": {
+            "x-docuccino": {
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                },
+                {
+                  "producer": "inference",
+                  "layer": "inference",
+                  "fields": [
+                    "headers"
+                  ],
+                  "source": {
+                    "file": "workbench/app/Http/Controllers/DeferredExportController.php",
+                    "line": 52,
+                    "symbol": "Workbench\\App\\Http\\Controllers\\DeferredExportController::forward"
+                  }
+                }
+              ]
+            },
+            "description": "See Other",
+            "headers": {
+              "Location": {
+                "description": "The URL to follow.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/deferred/hand": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:efw6mhet6aaojaed",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/DeferredExportController.php",
+                "line": 92,
+                "symbol": "Workbench\\App\\Http\\Controllers\\DeferredExportController::hand"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.deferred.hand",
+        "summary": "Hand an export to the queue.",
+        "tags": [
+          "DeferredExport"
+        ],
+        "responses": {
+          "default": {
+            "x-docuccino": {
+              "id": "res:v1:cyr3w5dktatvgdlq",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ],
+              "facts": {
+                "statusUnplaced": true
+              }
+            },
+            "description": "Any status",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/deferred/note": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:tq5vvcxvywfxiozk",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/DeferredExportController.php",
+                "line": 32,
+                "symbol": "Workbench\\App\\Http\\Controllers\\DeferredExportController::note"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.deferred.note",
+        "summary": "Leave a note on the export queue.",
+        "tags": [
+          "DeferredExport"
+        ],
+        "responses": {
+          "202": {
+            "x-docuccino": {
+              "id": "res:v1:fruyufld2ydvyd6o",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Accepted",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "const",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "string",
+                  "const": "queued"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/deferred/queue": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:3fpqqmdyl3lrke6g",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/DeferredExportController.php",
+                "line": 23,
+                "symbol": "Workbench\\App\\Http\\Controllers\\DeferredExportController::queue"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.deferred.queue",
+        "summary": "Queue an export.",
+        "tags": [
+          "DeferredExport"
+        ],
+        "responses": {
+          "202": {
+            "x-docuccino": {
+              "id": "res:v1:tutxxeynw2rp4xfk",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "queued": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "queued"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/deferred/refuse": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:ftwlw2kv4ob56e2r",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/DeferredExportController.php",
+                "line": 128,
+                "symbol": "Workbench\\App\\Http\\Controllers\\DeferredExportController::refuse"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.deferred.refuse",
+        "summary": "Refuse an export that is already running.",
+        "tags": [
+          "DeferredExport"
+        ],
+        "responses": {
+          "409": {
+            "x-docuccino": {
+              "id": "res:v1:xauusnw22aftzoom",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "queued": {
+                      "type": "boolean",
+                      "const": false
+                    }
+                  },
+                  "required": [
+                    "queued"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/deferred/relay": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:rdn552mnmsgfwpbb",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/DeferredExportController.php",
+                "line": 110,
+                "symbol": "Workbench\\App\\Http\\Controllers\\DeferredExportController::relay"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.deferred.relay",
+        "summary": "Relay an export's status from upstream.",
+        "tags": [
+          "DeferredExport"
+        ],
+        "responses": {
+          "default": {
+            "x-docuccino": {
+              "id": "res:v1:ywkwjff5d6iredwq",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ],
+              "facts": {
+                "statusUnplaced": true
+              }
+            },
+            "description": "Any status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "queued": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "queued"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/deferred/restart": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:sznftxmfox3rb3yy",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/DeferredExportController.php",
+                "line": 82,
+                "symbol": "Workbench\\App\\Http\\Controllers\\DeferredExportController::restart"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.deferred.restart",
+        "summary": "Start an export over.",
+        "tags": [
+          "DeferredExport"
+        ],
+        "responses": {
+          "201": {
+            "x-docuccino": {
+              "id": "res:v1:yajvpluxjh3ixgov",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "created": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "created"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/deferred/retry": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:ggdfkefcbbohlyzx",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/DeferredExportController.php",
+                "line": 72,
+                "symbol": "Workbench\\App\\Http\\Controllers\\DeferredExportController::retry"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.deferred.retry",
+        "summary": "Retry a failed export.",
+        "tags": [
+          "DeferredExport"
+        ],
+        "responses": {
+          "202": {
+            "x-docuccino": {
+              "id": "res:v1:7b736m6jh7o5yt4r",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "queued": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "queued"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/deferred/stamp": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:5f26bg7awutqbfvu",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/DeferredExportController.php",
+                "line": 101,
+                "symbol": "Workbench\\App\\Http\\Controllers\\DeferredExportController::stamp"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "post.api.deferred.stamp",
+        "summary": "Queue an export, stamped with the API version that queued it.",
+        "tags": [
+          "DeferredExport"
+        ],
+        "responses": {
+          "202": {
+            "x-docuccino": {
+              "id": "res:v1:sdxtje37frj2dqjl",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "properties",
+                          "required",
+                          "type"
+                        ],
+                        "confidence": 1
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "properties": {
+                    "queued": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "queued"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/deferred/stream": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:wbufsp3kaijdyrkn",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "workbench/app/Http/Controllers/DeferredExportController.php",
+                "line": 41,
+                "symbol": "Workbench\\App\\Http\\Controllers\\DeferredExportController::stream"
+              }
+            },
+            {
+              "producer": "docblock",
+              "layer": "docblock",
+              "fields": [
+                "summary"
+              ]
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.deferred.stream",
+        "summary": "Stream an export as it is written.",
+        "tags": [
+          "DeferredExport"
+        ],
+        "responses": {
+          "202": {
+            "x-docuccino": {
+              "id": "res:v1:kiuiletjwr4p5kjw",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "Accepted",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "x-docuccino": {
+                    "provenance": [
+                      {
+                        "producer": "inference",
+                        "layer": "inference",
+                        "fields": [
+                          "format",
+                          "type"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "f11c1cabbe90bd4b561b814f74573a33b429e7ab89d58a4008fa41128a87aca6"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.23.4",
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
+    }
+  }
+}

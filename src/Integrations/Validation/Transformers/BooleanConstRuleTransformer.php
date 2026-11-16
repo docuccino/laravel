@@ -11,8 +11,9 @@ use Docuccino\Core\Extensions\Validation\ValidationRule;
 use Docuccino\Laravel\Integrations\Validation\BlankString;
 
 /**
- * `accepted` → a boolean `const: true`, `declined` → `const: false`. The `_if` variants keep the same
- * `const` — the documented happy path — and add a description naming the condition that enforces it.
+ * `accepted` → a boolean `const: true`, `declined` → `const: false`. The `_if` forms ask nothing of the value
+ * until the other field holds one of the listed values, and no schema can state that, so they publish only a
+ * note naming the condition.
  */
 final class BooleanConstRuleTransformer implements RuleTransformer
 {
@@ -30,40 +31,29 @@ final class BooleanConstRuleTransformer implements RuleTransformer
 
     public function apply(ValidationRule $rule, ValidationField $field, SchemaContext $context): void
     {
-        $accepted = $rule->name === 'accepted' || $rule->name === 'accepted_if';
+        if ($rule->name === 'accepted_if' || $rule->name === 'declined_if') {
+            $this->conditional($rule, $field);
+
+            return;
+        }
 
         $field->setType('boolean');
-        $field->set('const', $accepted);
+        $field->set('const', $rule->name === 'accepted');
 
-        // An `_if` holds a blank to account only while its condition does, which no schema can state.
         if (BlankString::refusedBy($rule->name)) {
             $field->refuseBlank();
         }
-
-        if ($rule->name === 'accepted_if' || $rule->name === 'declined_if') {
-            $condition = $this->condition($rule);
-            if ($condition !== null) {
-                $verb = $accepted ? 'accepted' : 'declined';
-                $note = sprintf('Must be %s when %s.', $verb, $condition);
-                $existing = $field->get('description');
-                $field->set('description', is_string($existing) && $existing !== '' ? $existing.' '.$note : $note);
-            }
-        }
     }
 
-    /** "field is value" (or several such clauses joined by "or") from the field,value parameter pairs. */
-    private function condition(ValidationRule $rule): ?string
+    /** "Must be accepted when kind is business or charity.", from Laravel's `field,value,…` parameters. */
+    private function conditional(ValidationRule $rule, ValidationField $field): void
     {
         $params = $rule->parameters;
         if (count($params) < 2) {
-            return null;
+            return;
         }
 
-        $clauses = [];
-        for ($i = 0; $i + 1 < count($params); $i += 2) {
-            $clauses[] = sprintf('%s is %s', $params[$i], $params[$i + 1]);
-        }
-
-        return implode(' or ', $clauses);
+        $verb = $rule->name === 'accepted_if' ? 'accepted' : 'declined';
+        $field->note(sprintf('Must be %s when %s is %s.', $verb, $params[0], implode(' or ', array_slice($params, 1))));
     }
 }

@@ -22,9 +22,14 @@ final readonly class QueryBuilderConfig
     /** The major whose minting/expansion grammar the documented enums encode. */
     private const SUPPORTED_MAJOR = 7;
 
+    /** The release that added `filter_value_splitting_enabled`; an older one splits whatever it says. */
+    private const SPLITTING_SWITCH = '7.2.1';
+
     /**
      * @param  array<string, string>  $filterDescriptions  filter kind => the sentence that leads its
      *                                                     description, from the document's own config
+     * @param  bool  $filterSplitting  `query-builder.filter_value_splitting_enabled`: false leaves the value
+     *                                 of a filter with no `->delimiter()` of its own whole
      */
     public function __construct(
         public string $filter = 'filter',
@@ -48,6 +53,7 @@ final readonly class QueryBuilderConfig
         // sort/include enums degrade to plain strings.
         public int $spatieMajor = self::SUPPORTED_MAJOR,
         public array $filterDescriptions = [],
+        public bool $filterSplitting = true,
     ) {}
 
     /**
@@ -81,15 +87,58 @@ final readonly class QueryBuilderConfig
             delimiter: $this->delimiter,
             spatieMajor: $this->spatieMajor,
             filterDescriptions: $descriptions,
+            filterSplitting: $this->filterSplitting,
         );
     }
 
     /**
-     * Built from the effective `query-builder` config bag; an empty one yields defaults, unrecovered.
+     * The config one filter's values are read under: its own `->delimiter()` in place of the configured
+     * one, which is what Spatie splits that filter on, and the empty delimiter (no splitting) where it set
+     * none and splitting is turned off. A delimiter of its own splits whatever the switch says, as Spatie's
+     * `filterValueSplittingDisabled()` asks only of a filter without one. Everything else is the document's.
+     */
+    public function forFilter(QbEntry $filter): self
+    {
+        $delimiter = $filter->delimiter ?? ($this->filterSplitting ? $this->delimiter : '');
+        if ($delimiter === $this->delimiter) {
+            return $this;
+        }
+
+        return new self(
+            filter: $this->filter,
+            sort: $this->sort,
+            include: $this->include,
+            fields: $this->fields,
+            recovered: $this->recovered,
+            strict: $this->strict,
+            countSuffix: $this->countSuffix,
+            existsSuffix: $this->existsSuffix,
+            delimiter: $delimiter,
+            spatieMajor: $this->spatieMajor,
+            filterDescriptions: $this->filterDescriptions,
+            filterSplitting: $this->filterSplitting,
+        );
+    }
+
+    /**
+     * Built from the effective bag under the INSTALLED package version, which decides the grammar the bag
+     * is read in ({@see majorOf()}, {@see readsSplittingSwitch()}).
      *
      * @param  array<string, mixed>  $config
      */
-    public static function fromArray(array $config, int $spatieMajor = self::SUPPORTED_MAJOR): self
+    public static function fromInstalled(array $config, ?string $version): self
+    {
+        return self::fromArray($config, self::majorOf($version), self::readsSplittingSwitch($version));
+    }
+
+    /**
+     * Built from the effective `query-builder` config bag; an empty one yields defaults, unrecovered.
+     * `filter_value_splitting_enabled` is read only where the installed package reads it, and as Spatie
+     * reads it: present and falsy turns splitting off.
+     *
+     * @param  array<string, mixed>  $config
+     */
+    public static function fromArray(array $config, int $spatieMajor = self::SUPPORTED_MAJOR, bool $readsSplittingSwitch = true): self
     {
         if ($config === []) {
             return new self(recovered: false, spatieMajor: $spatieMajor);
@@ -112,6 +161,9 @@ final readonly class QueryBuilderConfig
             existsSuffix: self::rawString($suffixes, 'exists', 'Exists'),
             delimiter: self::rawString($config, 'delimiter', ','),
             spatieMajor: $spatieMajor,
+            filterSplitting: ! $readsSplittingSwitch
+                || ! array_key_exists('filter_value_splitting_enabled', $config)
+                || (bool) $config['filter_value_splitting_enabled'],
         );
     }
 
@@ -138,6 +190,19 @@ final readonly class QueryBuilderConfig
         return $version !== null && preg_match('/^v?(\d+)\./', $version, $matches) === 1
             ? (int) $matches[1]
             : self::SUPPORTED_MAJOR;
+    }
+
+    /**
+     * Whether the installed package reads `filter_value_splitting_enabled`, which a patch release of the
+     * supported major added. An unparseable version reads as current, as {@see majorOf()} does.
+     */
+    public static function readsSplittingSwitch(?string $version): bool
+    {
+        if ($version === null || preg_match('/^v?(\d+(?:\.\d+)*)/', $version, $matches) !== 1) {
+            return true;
+        }
+
+        return version_compare($matches[1], self::SPLITTING_SWITCH, '>=');
     }
 
     /** Whether the installed package predates the grammar the sort/include enums encode. */

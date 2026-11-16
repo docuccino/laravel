@@ -266,6 +266,30 @@ it('reads an enum case default as the value its query binds, at the call site an
     'pure' => ['\\Workbench\\App\\Enums\\FormChannel::Post', 'Post'],
 ]);
 
+/**
+ * Spatie applies a default as if it had been sent: a list is matched as `whereIn`, an empty one applies
+ * nothing, and `->default(null)` makes the filter nullable too, so the `null` it applies is accepted. A
+ * keyed array or one holding a `null` is not a value set any request could send, so it is no default.
+ */
+it('reads a list default, and a null one as making the filter nullable', function (string $default, bool $hasDefault, mixed $value, bool $nullable): void {
+    $filter = traceQbSnippet(
+        "QueryBuilder::for(App\\Models\\User::class)->allowedFilters([AllowedFilter::exact('status')->default({$default})])"
+    )->facts->filters[0];
+
+    expect($filter->hasDefault)->toBe($hasDefault)
+        ->and($filter->default)->toBe($value)
+        ->and($filter->nullable)->toBe($nullable);
+})->with([
+    'a list of values' => ["['draft', 'published']", true, ['draft', 'published'], false],
+    'a list of cases is the values they bind' => ['[\\Workbench\\App\\Enums\\WidgetStatus::Draft, \\Workbench\\App\\Enums\\WidgetStatus::Published]', true, ['draft', 'published'], false],
+    'a list written with its own keys' => ["[0 => 'draft', 1 => 'published']", true, ['draft', 'published'], false],
+    'null' => ['null', true, null, true],
+    'an empty list applies nothing' => ['[]', false, null, false],
+    'a keyed array' => ["['state' => 'draft']", false, null, false],
+    'a list holding null' => ["['draft', null]", false, null, false],
+    'a list holding a value that does not fold' => ["['draft', \$dynamic]", false, null, false],
+]);
+
 it('degrades a non-constant ->default() to no default without dropping the entry', function (): void {
     $facts = traceQbSnippet(
         "QueryBuilder::for(App\\Models\\User::class)->allowedFilters([AllowedFilter::exact('status')->default(\$dynamic)])"
@@ -276,6 +300,34 @@ it('degrades a non-constant ->default() to no default without dropping the entry
         ->and($facts->filters[0]->hasDefault)->toBeFalse()
         ->and($facts->unresolved)->toBe([]);
 });
+
+/**
+ * Spatie splits a filter's values on its own `->delimiter()` where it set one, so the separator is part of
+ * the filter, read at the call site and in a helper's body alike — and written either side of a default,
+ * which is still the filter's default. The empty separator turns splitting off and is a value too.
+ */
+it('reads a filter\'s own ->delimiter(), at the call site and in a helper\'s body', function (string $modifiers, ?string $delimiter, ?string $default): void {
+    $called = traceQbSnippet(
+        "QueryBuilder::for(App\\Models\\User::class)->allowedFilters([AllowedFilter::exact('status'){$modifiers}])"
+    );
+    $folded = traceQbSnippet(
+        'QueryBuilder::for(App\\Models\\User::class)->allowedFilters([$this->statusFilter()])',
+        foldedReturns: ['statusFilter' => TraceScript::foldOf("AllowedFilter::exact('status'){$modifiers}")],
+    );
+
+    foreach ([$called, $folded] as $visitor) {
+        expect($visitor->facts->filters)->toHaveCount(1)
+            ->and($visitor->facts->filters[0]->delimiter)->toBe($delimiter)
+            ->and($visitor->facts->filters[0]->default)->toBe($default);
+    }
+})->with([
+    'none' => ['', null, null],
+    'a pipe' => ["->delimiter('|')", '|', null],
+    'no splitting' => ["->delimiter('')", '', null],
+    'before a default' => ["->delimiter('|')->default('draft|published')", '|', 'draft|published'],
+    'after a default' => ["->default('draft')->delimiter('|')", '|', 'draft'],
+    'set twice, the last call standing' => ["->delimiter(';')->delimiter('|')", '|', null],
+]);
 
 it('records a first-class-callable modifier as unresolved rather than peeling past it', function (): void {
     // `->default(...)` makes the whole entry a closure, not a configured filter. Peeling it would document

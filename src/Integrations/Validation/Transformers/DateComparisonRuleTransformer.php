@@ -11,7 +11,7 @@ use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
  * `before`, `before_or_equal`, `after`, `after_or_equal`. The bound is a runtime relationship OpenAPI can't
- * express, so it becomes a description — and, being outside the schema, it also withdraws the synthesized
+ * express, so it becomes a note — and, being outside the schema, it also withdraws the synthesized
  * example: nothing constant is provably on its legal side.
  *
  * The format is read off the TARGET, so it is a guess about the field and claimed only where nothing
@@ -49,8 +49,7 @@ final class DateComparisonRuleTransformer implements RuleTransformer
         }
 
         $note = sprintf('%s %s.', $this->phrase($rule->name), $target);
-        $existing = $field->get('description');
-        $field->set('description', is_string($existing) && $existing !== '' ? $existing.' '.$note : $note);
+        $field->note($note);
 
         // The bound is a moment or another field, so no constant is provably on the legal side of it —
         // a relative target ('tomorrow') would also have to be read against the clock. No example.

@@ -28,6 +28,9 @@ use Docuccino\Laravel\Integrations\Validation\Transformers\SizeRuleTransformer;
  * document says both rather than picking one. Every recovery integration runs this alongside
  * {@see RuleOrdering}, and reports what it could not decide ({@see undecidedFields()}).
  *
+ * Once that is decided, an `in` or `not_in` beside `array` is rewritten to read the elements, as Laravel
+ * reads it ({@see elementChoices()}).
+ *
  * Each trade is a rewrite rather than a deletion because the type-aware rules downstream READ the type: a
  * field left with no type word at all takes its size bounds as string lengths, and which container it is
  * decides that keyword ({@see SizeRuleTransformer}).
@@ -42,6 +45,9 @@ final class RuleSetNormalizer
 
     /** The word it lacks for the container nothing decided — a value that may be either. */
     public const UNDECIDED_RULE = 'array_or_object';
+
+    /** `not_in` beside `array`, which refuses an array whose every element is listed ({@see elementChoices()}). */
+    public const ARRAY_NOT_IN_RULE = 'array_not_in';
 
     /**
      * Words that settle the container on their own, so an `array` standing beside one is a restatement
@@ -93,6 +99,7 @@ final class RuleSetNormalizer
         $keys = array_keys($fields);
 
         $out = [];
+        $arrays = [];
         foreach ($fields as $field => $fieldRules) {
             $path = (string) $field;
             $out[$field] = match (true) {
@@ -100,6 +107,59 @@ final class RuleSetNormalizer
                 ! FieldPaths::hasAnyChild($path, $keys) => self::asUndecided($fieldRules),
                 default => $fieldRules,
             };
+
+            if (in_array('array', array_map(static fn (ValidationRule $rule): string => $rule->name, $fieldRules), true)) {
+                $arrays[] = $path;
+            }
+        }
+
+        // After the containers are decided, so an item key this writes decides none of them.
+        return self::elementChoices($out, $arrays);
+    }
+
+    /**
+     * Beside Laravel's `array` rule, `in` and `not_in` read an array value's elements rather than the value:
+     * `array|in:a,b` takes `["a"]`, `["a", "b"]` and `[]`, refusing `["c"]` and an element that is itself an
+     * array, and `array|not_in:a,b` refuses exactly the arrays that takes. So `in` moves onto the items, as
+     * `field.*` (written if no rule names it), where an item rule types it; and `not_in` becomes
+     * {@see ARRAY_NOT_IN_RULE}. Without `array` (`list` included) both read the value, and stand.
+     *
+     * @param  array<string, list<ValidationRule>>  $fields
+     * @param  list<string>  $arrays  the fields stating `array`, as written
+     * @return array<string, list<ValidationRule>>
+     */
+    private static function elementChoices(array $fields, array $arrays): array
+    {
+        $rewritten = [];
+        $moved = [];
+
+        foreach ($fields as $field => $rules) {
+            if (! in_array((string) $field, $arrays, true)) {
+                $rewritten[$field] = $rules;
+
+                continue;
+            }
+
+            $kept = [];
+            foreach ($rules as $rule) {
+                match ($rule->name) {
+                    'in' => $moved[$field.'.*'][] = $rule,
+                    'not_in' => $kept[] = ValidationRule::of(self::ARRAY_NOT_IN_RULE, $rule->parameters, $rule->note),
+                    default => $kept[] = $rule,
+                };
+            }
+
+            $rewritten[$field] = $kept;
+        }
+
+        $out = [];
+        foreach ($rewritten as $field => $rules) {
+            $out[$field] = [...$rules, ...$moved[(string) $field] ?? []];
+
+            $items = $field.'.*';
+            if (isset($moved[$items]) && ! array_key_exists($items, $rewritten)) {
+                $out[$items] = $moved[$items];
+            }
         }
 
         return $out;

@@ -1,0 +1,215 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-admin-reports": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:li2cajmtsxlv5ebc",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/TagNames/Admin/ReportController.php",
+                "line": 10,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\TagNames\\Admin\\ReportController::index"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-admin-reports",
+        "tags": [
+          "Report"
+        ]
+      }
+    },
+    "/api/zz-api-reports": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:iwq77uw2uvdqevun",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/TagNames/Api/ReportController.php",
+                "line": 15,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\TagNames\\Api\\ReportController::index"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-api-reports",
+        "tags": [
+          "Report"
+        ]
+      }
+    },
+    "/api/zz-daybook": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:kesapdb3nwoss3ov",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/TagNames/Api/DaybookController.php",
+                "line": 10,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\TagNames\\Api\\DaybookController::index"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-daybook",
+        "tags": [
+          "Accounts"
+        ]
+      }
+    },
+    "/api/zz-journal": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:s42ne4l2hmy3sc7w",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/TagNames/Api/JournalController.php",
+                "line": 10,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\TagNames\\Api\\JournalController::index"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-journal",
+        "tags": [
+          "Accounts"
+        ]
+      }
+    },
+    "/api/zz-ledgers": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:fgmrckqtncc7jspr",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/TagNames/Api/LedgerController.php",
+                "line": 10,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\TagNames\\Api\\LedgerController::index"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "get.api.zz-ledgers",
+        "tags": [
+          "Ledger"
+        ]
+      }
+    },
+    "/api/zz-ledgers/archive": {
+      "get": {
+        "x-docuccino": {
+          "id": "op:v1:szonr4s4mh4t4wc5",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/TagNames/Api/LedgerController.php",
+                "line": 10,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\TagNames\\Api\\LedgerController::index"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            }
+          ]
+        },
+        "operationId": "ledgers.archive",
+        "tags": [
+          "Ledger"
+        ]
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "21a88bee66de3655bfbf4ef0e65c3fe7a70584c26956901f08cc7d3e58e558bb",
+      "contentHash": "d7e14565aed5f6ef94ff1e8c8afce7dc1110818b0bc99b61598dbaa4ac8184aa"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.23.4",
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
+    }
+  }
+}

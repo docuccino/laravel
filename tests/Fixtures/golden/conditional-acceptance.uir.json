@@ -1,0 +1,326 @@
+{
+  "openapi": "3.2.0",
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.2/dialect/base",
+  "info": {
+    "title": "API Documentation",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/zz-consent-data": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:imzhfblwk4bflg7u",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ConditionalAcceptance/ConsentController.php",
+                "line": 17,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ConditionalAcceptance\\ConsentController::storeData"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:spatie-data",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ConditionalAcceptance/ConsentController.php",
+                "line": 17,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ConditionalAcceptance\\ConsentController::storeData"
+              }
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:ihc2cy2ximyifbcq",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ConditionalAcceptance/ConsentController.php",
+                      "line": 17,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.zz-consent-data",
+        "tags": [
+          "Consent"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsentDataRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:qaxrjszada5wq574",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/api/zz-consents": {
+      "post": {
+        "x-docuccino": {
+          "id": "op:v1:q2eyqieg2nzswwro",
+          "provenance": [
+            {
+              "producer": "attribute",
+              "layer": "attribute",
+              "fields": [
+                "tags"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ConditionalAcceptance/ConsentController.php",
+                "line": 12,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ConditionalAcceptance\\ConsentController::store"
+              }
+            },
+            {
+              "producer": "fallback",
+              "layer": "fallback",
+              "fields": [
+                "operationId"
+              ]
+            },
+            {
+              "producer": "integration:form-request",
+              "layer": "integration",
+              "fields": [
+                "requestBody"
+              ],
+              "source": {
+                "file": "tests/Fixtures/ConditionalAcceptance/ConsentController.php",
+                "line": 12,
+                "symbol": "Docuccino\\Laravel\\Tests\\Fixtures\\ConditionalAcceptance\\ConsentController::store"
+              }
+            }
+          ],
+          "uses": {
+            "responses": {
+              "422": {
+                "id": "res:v1:nfjovh4xv547tvyj",
+                "provenance": [
+                  {
+                    "producer": "integration:implicit-response",
+                    "layer": "integration",
+                    "fields": [
+                      "component",
+                      "description"
+                    ],
+                    "source": {
+                      "file": "tests/Fixtures/ConditionalAcceptance/ConsentController.php",
+                      "line": 12,
+                      "symbol": "implicit:validated-request"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "operationId": "post.api.zz-consents",
+        "tags": [
+          "Consent"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreConsentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "x-docuccino": {
+              "id": "res:v1:vftefjm2tccgjttx",
+              "provenance": [
+                {
+                  "producer": "fallback",
+                  "layer": "fallback",
+                  "fields": [
+                    "description"
+                  ]
+                }
+              ]
+            },
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ConsentDataRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:eklkmwz7gtvp76xr"
+        },
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "marketing": {
+            "description": "Must be declined when kind is business.",
+            "type": "boolean",
+            "example": true
+          },
+          "terms": {
+            "description": "Must be accepted when kind is business.",
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "kind",
+          "terms"
+        ]
+      },
+      "StoreConsentRequest": {
+        "x-docuccino": {
+          "id": "sch:v1:tgvrm77gzcadzy7j"
+        },
+        "type": "object",
+        "properties": {
+          "contract": {
+            "description": "Must be accepted when kind is business or charity."
+          },
+          "kind": {
+            "type": "string"
+          },
+          "marketing": {
+            "description": "Must be declined when kind is business."
+          },
+          "newsletter": {
+            "description": "Must be accepted when kind is business.",
+            "type": "boolean",
+            "example": true
+          },
+          "privacy": {
+            "type": "boolean",
+            "const": true
+          },
+          "terms": {
+            "description": "Must be accepted when kind is business."
+          },
+          "tracking": {
+            "x-docuccino": {
+              "facts": {
+                "blankAsNull": "^[\\x00\\t-\\r  ­͏؜ᅟᅠ ឴឵᠎           ​‌‍‎‏\u2028\u2029  ⁠⁡⁢⁣⁤⁥⁪⁫⁬⁭⁮⁯⠀　ㅤ﻿ﾠ𝅙𝅳𝅴𝅵𝅶𝅷𝅸𝅹𝅺󠀠]*$"
+              }
+            },
+            "description": "Must be declined when kind is business."
+          }
+        }
+      },
+      "UnprocessableEntity": {
+        "x-docuccino": {
+          "id": "sch:v1:f3tcwvg2vhs255gy"
+        },
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "errors"
+        ]
+      }
+    },
+    "responses": {
+      "UnprocessableEntity": {
+        "description": "Unprocessable Entity",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/UnprocessableEntity"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-docuccino": {
+    "document": {
+      "id": "doc:default",
+      "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
+      "contentHash": "77fd437079f39b94464a6d07ceef0adf0a70ddb4c59ee9bb0d7f370609c9da6d"
+    },
+    "generator": {
+      "name": "docuccino/laravel",
+      "version": "0.23.4",
+      "specVersion": "2.1.0",
+      "schema": "https://spec.docuccino.app/uir/2.1/schema.json"
+    }
+  }
+}

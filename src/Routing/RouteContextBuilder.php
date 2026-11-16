@@ -78,7 +78,10 @@ final class RouteContextBuilder
         $documentedMethod = $method ?? $descriptor->primaryMethod();
         $signature = $descriptor->signature($documentedMethod);
 
-        $bindings = $this->routeBindings($reflected, $pathParameters);
+        // A `Route::model()` binding runs before implicit binding and resolves on the model's own route key,
+        // so it decides the class, takes no `{param:column}`, and is never scoped to a parent.
+        $explicit = RouteBindingResolution::explicitModels($this->router, $pathParameters);
+        $bindings = [...$this->routeBindings($reflected, $pathParameters), ...$explicit];
 
         $context = new RouteContext(
             route: $descriptor,
@@ -96,8 +99,8 @@ final class RouteContextBuilder
             pathParameters: $pathParameters,
             optionalPathParameters: $optional,
             routeBindings: $bindings,
-            routeBindingFields: self::bindingFields($route, $pathParameters),
-            scopedBindings: RouteBindingResolution::scoped($route, $pathParameters, $bindings),
+            routeBindingFields: array_diff_key(self::bindingFields($route, $pathParameters), $explicit),
+            scopedBindings: array_diff_key(RouteBindingResolution::scoped($route, $pathParameters, $bindings), $explicit),
             customBoundParameters: RouteBindingResolution::custom($this->router, $pathParameters),
             summary: $prose['summary'],
             description: $prose['description'],
