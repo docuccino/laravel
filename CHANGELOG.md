@@ -7,6 +7,80 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.24.0
+
+### Breaking changes
+
+- read Laravel's password, file and email rule builders, and dimensions given as a keyed array, as the rules they validate with ([#769](https://github.com/docuccino/docuccino/pull/769))
+  - a field validated by `new Password`, `Password::min()`, `Rule::email()`, `new Email`, `File::types()`, `File::image()`, `Rule::file()` or `Rule::imageFile()` in a rules array now publishes the type, length or format the rule checks, and a file rule makes the request `multipart/form-data`. `docuccino:diff` reports a type arriving as breaking. Regenerate committed documents after upgrading.
+- document a Spatie Data request date in every format its cast reads, and leave one an app's own cast reads untyped ([#764](https://github.com/docuccino/docuccino/pull/764))
+  - a Spatie Data request date is documented as laravel-data's cast reads it. A list of formats names every format the cast tries, an application's own cast leaves the property untyped, a `!` or `|` reset is left out of the format named (so `!Y-m-d` is `format: date`), and `date_format:Y-m-d,d/m/Y` names both patterns. Most of these only widen, but where a `format` arrives or changes, a committed document diffed across the upgrade reports it as breaking. Regenerate it and review the change in its own pull request.
+- document a Spatie Data response date as its transformer writes it ([#762](https://github.com/docuccino/docuccino/pull/762))
+  - a Spatie Data response date is now documented as laravel-data writes it. A property with a `U` cast is now the configured date string instead of an integer, a `#[WithTransformer]` format replaces the app's, the first entry of a list-valued `data.date_format` is used, and a property with an application's own transformer is untyped. Nothing needs editing. A client generated from the document changes, and `docuccino:diff` reports the changed type as breaking.
+- keep what a field's rules enforce beneath the description its author writes ([#757](https://github.com/docuccino/docuccino/pull/757))
+  - An extension that reads the schema `ValidationRulesToSchema::convert()` returns now finds each field's notes under `x-docuccino.notes` rather than in its description. Render them with `SchemaNotes::rendered()` before publishing the schema any way other than a request body or a component. A `RuleTransformer` should state a fact with `$field->note()`, and `ValidationField::get('description')` no longer includes earlier notes.
+- a required or prohibited rule on a condition publishes what the condition settles ([#754](https://github.com/docuccino/docuccino/pull/754))
+  - a field carrying `Rule::requiredIf(true)` or `new RequiredIf(true)` now publishes as required, a narrowing `docuccino:diff` reports as breaking. Regenerate committed documents after upgrading.
+- read a Spatie Data attribute that builds a rule object as the object laravel-data validates with ([#752](https://github.com/docuccino/docuccino/pull/752))
+  - a field carrying `#[Password]` now publishes the `minLength` it is validated with, a narrowing `docuccino:diff` reports as breaking. Regenerate committed documents after upgrading.
+- read a Spatie Data validation attribute as the rule laravel-data writes for it ([#747](https://github.com/docuccino/docuccino/pull/747))
+  - a Spatie Data validation attribute now publishes the rule laravel-data writes for it. `#[GreaterThan]`, `#[GreaterThanOrEqualTo]`, `#[LessThan]` and `#[LessThanOrEqualTo]` given a number publish their bound, and `#[ListType]` types the field as an array, where nothing was published before. A committed document diffed across the upgrade reports these as breaking. Regenerate it and review the change in its own pull request.
+- a choice attribute on a Spatie Data array property lists the elements laravel-data checks ([#745](https://github.com/docuccino/docuccino/pull/745))
+  - a choice attribute on a Spatie Data property typed `array` now publishes its `enum` on `items` (or on `additionalProperties` for a map) instead of on the field, and `#[NotIn]` now refuses the arrays whose every value is listed. The server's behaviour has not changed. A committed document diffed across the upgrade reports these as breaking. Regenerate it and review the change in its own pull request.
+- split a Spatie Data rule string at its pipes as laravel-data does ([#744](https://github.com/docuccino/docuccino/pull/744))
+  - a Spatie Data `#[Rule]` string, or a string in a list in a Data class's `rules()`, now publishes every rule its pipes separate, and a `rules()` string holding `regex:` publishes its pattern. `docuccino:diff --enforce` reads the new `maxLength` or `pattern` as a narrowing. Upgrade in a pull request of its own and review what moved; see UPGRADING.md.
+- a choice list beside an array rule lists the elements Laravel checks ([#736](https://github.com/docuccino/docuccino/pull/736))
+  - a choice list beside `array` moves from the field to `items`, and `not_in` beside `array` now refuses the arrays whose every element is listed. A diff across the upgrade reports `schema.enum-removed` and `schema.enum-added`; regenerate and review the committed document.
+- read a choice list as Laravel does, keeping an empty or quoted entry and each value an #[In] is given ([#734](https://github.com/docuccino/docuccino/pull/734))
+  - a published choice list changes where a rule string quotes an entry or leaves one empty, where a Spatie `#[In]`/`#[NotIn]` is given a boolean, a value holding a comma, or a reference only a request resolves, and a `regex` holding a comma changes its `pattern`. `docuccino:diff --enforce` reports the entries leaving an `enum` and a `not` or `pattern` arriving as breaking; your API did not change. See UPGRADING.md.
+- publish the choices a rule object states in a Spatie Data attribute ([#733](https://github.com/docuccino/docuccino/pull/733))
+  - A request field whose Spatie Data attribute carries one of Laravel's rule objects now publishes that rule's `enum` or `not`. An `#[Enum]` with `only:`/`except:` lists only the cases it allows. So `docuccino:diff --enforce` against a document built before the upgrade reports these narrowings as breaking. The API itself did not change; review the changeset in a PR of its own (see UPGRADING.md).
+- a choice rule beside a type rule publishes its values in that type, so string|in:1,2 takes "1" ([#729](https://github.com/docuccino/docuccino/pull/729))
+  - a field with a type rule beside `in`, `Rule::in`, `Rule::enum` or `not_in` publishes its values in that type, so `docuccino:diff` reports values leaving an `enum` (breaking) across the upgrade, and `string` beside an int-backed `Rule::enum()` no longer refers to the enum's component. Nothing needs editing. Upgrade in a pull request of its own and read the changeset (UPGRADING.md).
+- an enum case in a choice rule publishes the value Laravel compares, not its name ([#708](https://github.com/docuccino/docuccino/pull/708))
+  - `TypeScope::constantValueOf()` now folds an enum case to a `ConstValue` of kind `case` (`isCase()`, `class`, `caseName()`) instead of a scalar holding the case name, and a plain constant on an enum folds to its value. A trace visitor that read a case's name from `scalar` must read `caseName()`.
+
+### Features
+
+- link a Spatie Data response built from a model ([#798](https://github.com/docuccino/docuccino/pull/798))
+- accept a diagnostic at one operation, so the same code on another route still fails --fail-on ([#743](https://github.com/docuccino/docuccino/pull/743))
+
+### Bug fixes
+
+- an exception mapper answering with an HttpResponseException documents the response it carries ([#792](https://github.com/docuccino/docuccino/pull/792))
+- name a Spatie Data field reference in nested Data by the path laravel-data compares it at ([#789](https://github.com/docuccino/docuccino/pull/789))
+- state a page size's fallback in prose when it sits outside the bounds its validation publishes ([#788](https://github.com/docuccino/docuccino/pull/788))
+- document a Query Builder filter as one value when filter value splitting is turned off ([#787](https://github.com/docuccino/docuccino/pull/787))
+- publish the token, Passport and default security requirement behind an application's own authenticator alias ([#786](https://github.com/docuccino/docuccino/pull/786))
+- read a file or stream response's headers, name and disposition when they are passed by name ([#778](https://github.com/docuccino/docuccino/pull/778))
+- leave an application's own keys in config/docuccino.php alone, and name the default viewer as the one serving a missing document ([#776](https://github.com/docuccino/docuccino/pull/776))
+- require Sanctum's session cookie on a stateful route behind an application's own authenticator alias ([#775](https://github.com/docuccino/docuccino/pull/775))
+- document a Query Builder filter by the delimiter it sets with ->delimiter() ([#774](https://github.com/docuccino/docuccino/pull/774))
+- publish a jsonPaginate() page size's default as the size it pages by when it exceeds the maximum ([#773](https://github.com/docuccino/docuccino/pull/773))
+- a form request that answers a failed validation or authorization its own way documents that answer, not the framework's ([#772](https://github.com/docuccino/docuccino/pull/772))
+- a Query Builder filter's default publishes as a value its schema allows, a list on an enum filter ([#771](https://github.com/docuccino/docuccino/pull/771))
+- read Laravel's rule objects that validate as a rule string, Laravel 13's conditional ones included ([#767](https://github.com/docuccino/docuccino/pull/767))
+- an accepted_if or declined_if publishes only its condition, since Laravel takes any value while it fails ([#766](https://github.com/docuccino/docuccino/pull/766))
+- keep the pattern a response date is written with beneath the description its author writes ([#761](https://github.com/docuccino/docuccino/pull/761))
+- a JSON response's subclass returned bare documents the open JSON body its framework class sends ([#760](https://github.com/docuccino/docuccino/pull/760))
+- keep a Query Builder list's values, separator and default beneath the description its author writes ([#759](https://github.com/docuccino/docuccino/pull/759))
+- keep how a path parameter resolves beneath the description its author writes ([#755](https://github.com/docuccino/docuccino/pull/755))
+- ipv4 and ipv6 publish their formats, and mac_address and hex_color the pattern Laravel checks ([#750](https://github.com/docuccino/docuccino/pull/750))
+- a route behind spatie/laravel-permission's middleware documents its 403 ([#749](https://github.com/docuccino/docuccino/pull/749))
+- a route behind Sanctum's or Passport's token middleware documents its 401 and 403 ([#746](https://github.com/docuccino/docuccino/pull/746))
+- a build that runs out of memory still ends with the notice and the framework's report, however full its heap ([#739](https://github.com/docuccino/docuccino/pull/739))
+- settle a respond() guard joining conditions with ||, && or ! one condition at a time ([#731](https://github.com/docuccino/docuccino/pull/731))
+- a spatie Data class a named constructor returns unwrapped is documented at the root, not inside a second data ([#730](https://github.com/docuccino/docuccino/pull/730))
+- not_in no longer types the field it excludes values from, since Laravel takes a value of any other type there ([#726](https://github.com/docuccino/docuccino/pull/726))
+- state a token ability or permission beneath a docblock description instead of losing it to one ([#725](https://github.com/docuccino/docuccino/pull/725))
+- read a route registered through the route registrar as the controller it names ([#723](https://github.com/docuccino/docuccino/pull/723))
+- a console build with no memory limit raises itself to 1G, and its out-of-memory notice survives the framework's shutdown ([#719](https://github.com/docuccino/docuccino/pull/719))
+- a command-line build applies its memory limit and forks workers when APP_ENV is testing ([#717](https://github.com/docuccino/docuccino/pull/717))
+- a route behind Laravel's authenticator documents its 401 without security.auth_middleware ([#715](https://github.com/docuccino/docuccino/pull/715))
+- Rule::notIn() and new NotIn publish the values they exclude, and Rule::array() reads as array ([#706](https://github.com/docuccino/docuccino/pull/706))
+- name a validation rule the build cannot read, and publish a field such a rule could loosen as optional and unconstrained ([#704](https://github.com/docuccino/docuccino/pull/704))
+- distinct on tags.* makes the list unique rather than each tag, and new Enum or new In publishes its values ([#699](https://github.com/docuccino/docuccino/pull/699))
+
 ## v0.23.3
 
 ### Bug fixes
