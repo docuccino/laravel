@@ -21,7 +21,7 @@ use Docuccino\Core\Extensions\Validation\ValidationRule;
 final class TypeRuleTransformer implements RuleTransformer
 {
     /**
-     * @var array<string, array{type: string, format?: string}>
+     * @var array<string, array{type: string, format?: string, contentEncoding?: string, example?: string}>
      */
     private const TYPES = [
         'string' => ['type' => 'string'],
@@ -39,6 +39,9 @@ final class TypeRuleTransformer implements RuleTransformer
         'ipv4' => ['type' => 'string', 'format' => 'ipv4'],
         'ipv6' => ['type' => 'string', 'format' => 'ipv6'],
         'date' => ['type' => 'string', 'format' => 'date'],
+        // Laravel 13's: a non-empty string that decodes strictly and re-encodes to itself. The example is
+        // one, where a synthesised `"string"` would be refused by the rule it illustrates.
+        'base64' => ['type' => 'string', 'contentEncoding' => 'base64', 'example' => 'ZXhhbXBsZQ=='],
     ];
 
     public function supports(ValidationRule $rule): bool
@@ -58,6 +61,14 @@ final class TypeRuleTransformer implements RuleTransformer
         $field->setType($mapping['type']);
         if (isset($mapping['format']) && $field->mayClaim('format')) {
             $field->set('format', $mapping['format']);
+        }
+
+        if (isset($mapping['contentEncoding'])) {
+            $field->set('contentEncoding', $mapping['contentEncoding']);
+        }
+
+        if (isset($mapping['example'])) {
+            $field->proposeExample($mapping['example']);
         }
     }
 }

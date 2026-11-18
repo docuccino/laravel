@@ -94,13 +94,33 @@ it('projects one x-tagGroups group for a duplicated root', function (): void {
         $raw['tags']['definitions'] = [
             ['name' => 'Forms'],
             ['name' => 'Forms'],
-            ['name' => 'Zebra', 'parent' => 'Forms'],
+            ['name' => 'Widgets', 'parent' => 'Forms'],
         ];
 
         return $raw;
     });
 
-    expect($document['x-tagGroups'])->toBe([['name' => 'Forms', 'tags' => ['Forms', 'Zebra']]]);
+    expect($document['x-tagGroups'])->toBe([['name' => 'Forms', 'tags' => ['Forms', 'Widgets']]]);
+});
+
+/**
+ * A root that only heads its children — a navigation heading with no operations of its own — names its
+ * group without being listed in it: a renderer draws every member as a page, and this one would be empty.
+ */
+it('lists a heading root in no group, only the tags under it that operations carry', function (): void {
+    $document = stubDocumentArray(function (array $raw): array {
+        $raw['tags']['definitions'] = [
+            ['name' => 'Catalogue', 'kind' => 'nav'],
+            ['name' => 'Forms', 'parent' => 'Catalogue'],
+            ['name' => 'Widgets', 'parent' => 'Catalogue'],
+            ['name' => 'Archive', 'parent' => 'Catalogue'],
+        ];
+
+        return $raw;
+    });
+
+    expect($document['x-tagGroups'])->toBe([['name' => 'Catalogue', 'tags' => ['Forms', 'Widgets']]])
+        ->and(array_column($document['tags'], 'name'))->toContain('Catalogue', 'Archive');
 });
 
 it('emits byte-identical documents however the tag definitions are ordered', function (): void {

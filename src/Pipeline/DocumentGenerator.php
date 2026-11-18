@@ -39,6 +39,7 @@ use Docuccino\Core\SpecValidation\Finding;
 use Docuccino\Core\SpecValidation\Validator;
 use Docuccino\Core\Support\RouteOperationId;
 use Docuccino\Laravel\Engine\LazyTypeEngine;
+use Docuccino\Laravel\Integrations\Validation\UnreadRuleNotices;
 use Docuccino\Laravel\Registry\ConfigDiagnostics;
 use Docuccino\Laravel\Registry\DefaultExtensions;
 use Docuccino\Laravel\Registry\ExtensionRegistry;
@@ -246,7 +247,8 @@ final class DocumentGenerator
         // Last, since it waits for the lints running beside everything above; the bag sorts what it holds.
         $bag->addAll($assembly->diagnostics());
 
-        return new GenerationResult($published, $bag->sorted(), $assembly->schemaSources);
+        // A rule class on many fields is one remedy, read across every route's notices once all are in.
+        return new GenerationResult($published, UnreadRuleNotices::grouped($bag->sorted()), $assembly->schemaSources);
     }
 
     /**

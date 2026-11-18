@@ -10,11 +10,15 @@ use Workbench\App\Enums\Season;
 use Workbench\App\Models\Almanac;
 use Workbench\App\Models\Article;
 use Workbench\App\Models\Beacon;
+use Workbench\App\Models\Bulletin;
+use Workbench\App\Models\Consignment;
 use Workbench\App\Models\Coupon;
 use Workbench\App\Models\Dossier;
 use Workbench\App\Models\Form;
 use Workbench\App\Models\Journal;
 use Workbench\App\Models\Ledger;
+use Workbench\App\Models\Memo;
+use Workbench\App\Models\Playbook;
 use Workbench\App\Models\Voucher;
 
 /**
@@ -136,5 +140,33 @@ final class BindingController
     public function showBeacon(Beacon $beacon): JsonResponse
     {
         return response()->json($beacon);
+    }
+
+    /** Show a playbook you own, or a shared one. */
+    #[Group('Bindings')]
+    public function showPlaybook(Playbook $playbook): JsonResponse
+    {
+        return response()->json($playbook);
+    }
+
+    /** Show a published bulletin. */
+    #[Group('Bindings')]
+    public function showBulletin(Bulletin $bulletin): JsonResponse
+    {
+        return response()->json($bulletin);
+    }
+
+    /** Show an unarchived memo. */
+    #[Group('Bindings')]
+    public function showMemo(Memo $memo): JsonResponse
+    {
+        return response()->json($memo);
+    }
+
+    /** Show a consignment by its reference, in any case. */
+    #[Group('Bindings')]
+    public function showConsignment(Consignment $consignment): JsonResponse
+    {
+        return response()->json($consignment);
     }
 }

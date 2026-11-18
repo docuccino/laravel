@@ -132,7 +132,7 @@ final class EloquentModelReflector
             return null;
         }
 
-        if ((new ReflectionMethod($fqcn, 'getKeyName'))->getDeclaringClass()->getName() !== self::MODEL || self::resolvesOwnBinding($fqcn)) {
+        if ((new ReflectionMethod($fqcn, 'getKeyName'))->getDeclaringClass()->getName() !== self::MODEL || self::resolvesOwnBinding($fqcn, null)) {
             return null;
         }
 
@@ -144,16 +144,25 @@ final class EloquentModelReflector
     }
 
     /**
-     * Whether the model resolves a binding, or hands out its route key, in code of its own: a hashid or
-     * public-id trait overriding `resolveRouteBinding()` and `getRouteKey()` is the usual shape. Whatever
-     * column it matches on is in that code, whichever column the route or the route key names. A model
-     * finding its scoped children its own way counts too, since nothing says which of its methods a
-     * lookup on it reaches. The framework's own traits (`HasUuids` validating the value first) keep the
-     * column, so they don't count.
+     * Whether the model resolves a binding of a segment naming `$field` (null for `{model}`), or hands out
+     * its route key, in code of its own: a hashid or public-id trait overriding `resolveRouteBinding()` and
+     * `getRouteKey()` is the usual shape. Whatever column it matches on is in that code, whichever column
+     * the route or the route key names. A model finding its scoped children its own way counts too, since
+     * nothing says which of its methods a lookup on it reaches. The framework's own traits (`HasUuids`
+     * validating the value first) keep the column, and so does an override that only narrows the
+     * framework's own lookup ({@see RouteBindingOverride}), so neither counts.
      */
-    public static function resolvesOwnBinding(string $fqcn): bool
+    public static function resolvesOwnBinding(string $fqcn, ?string $field): bool
     {
-        return self::overridesAny($fqcn, [...self::OWN_BINDING, ...self::CHILD_BINDING]);
+        foreach (self::overridden($fqcn, [...self::OWN_BINDING, ...self::CHILD_BINDING]) as $method) {
+            $node = RouteBindingOverride::reads($method->getName()) ? ParsedClassFile::declarationOf($method) : null;
+
+            if ($node === null || ! RouteBindingOverride::matchesLikeTheFramework($node, $field, $method->getDeclaringClass()->getName() === $fqcn)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -182,11 +191,23 @@ final class EloquentModelReflector
      */
     private static function overridesAny(string $fqcn, array $methods): bool
     {
+        return self::overridden($fqcn, $methods) !== [];
+    }
+
+    /**
+     * Those of `$methods` the model takes from code outside the framework.
+     *
+     * @param  list<string>  $methods
+     * @return list<ReflectionMethod>
+     */
+    private static function overridden(string $fqcn, array $methods): array
+    {
         if (! self::isModel($fqcn) || ! class_exists($fqcn)) {
-            return false;
+            return [];
         }
 
         $framework = dirname((string) (new ReflectionClass(self::MODEL))->getFileName()).DIRECTORY_SEPARATOR;
+        $overridden = [];
 
         foreach ($methods as $name) {
             if (! method_exists($fqcn, $name)) {
@@ -195,11 +216,11 @@ final class EloquentModelReflector
 
             $method = new ReflectionMethod($fqcn, $name);
             if ($method->getDeclaringClass()->getName() !== self::MODEL && ! str_starts_with((string) $method->getFileName(), $framework)) {
-                return true;
+                $overridden[] = $method;
             }
         }
 
-        return false;
+        return $overridden;
     }
 
     /**

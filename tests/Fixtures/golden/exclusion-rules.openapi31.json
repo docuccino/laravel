@@ -68,7 +68,9 @@
       "StoreAccountRequest": {
         "type": "object",
         "properties": {
-          "alias": {},
+          "alias": {
+            "description": "Must differ from username."
+          },
           "handle": {
             "type": "string",
             "not": {
@@ -87,8 +89,15 @@
               ]
             }
           },
-          "nickname": {},
-          "prefix": {},
+          "nickname": {
+            "description": "Must not match /^admin/."
+          },
+          "prefix": {
+            "not": {
+              "type": "string",
+              "pattern": "^sys"
+            }
+          },
           "referrer": {
             "description": "Must not be sent when role is guest."
           },
@@ -100,7 +109,12 @@
               ]
             }
           },
-          "suffix": {},
+          "suffix": {
+            "not": {
+              "type": "string",
+              "pattern": "bot$"
+            }
+          },
           "tier": {
             "not": {
               "enum": [

@@ -26,6 +26,7 @@ use Docuccino\Laravel\Integrations\Validation\Transformers\FileRuleTransformer;
 use Docuccino\Laravel\Integrations\Validation\Transformers\FixedPatternRuleTransformer;
 use Docuccino\Laravel\Integrations\Validation\Transformers\JsonRuleTransformer;
 use Docuccino\Laravel\Integrations\Validation\Transformers\NoOpRuleTransformer;
+use Docuccino\Laravel\Integrations\Validation\Transformers\NoteRuleTransformer;
 use Docuccino\Laravel\Integrations\Validation\Transformers\NotInRuleTransformer;
 use Docuccino\Laravel\Integrations\Validation\Transformers\NumericRuleTransformer;
 use Docuccino\Laravel\Integrations\Validation\Transformers\PresenceRuleTransformer;
@@ -79,6 +80,7 @@ final class ValidationIntegration
             new ConditionalRequiredRuleTransformer,
             new ProhibitedRuleTransformer,
             new AnnotationRuleTransformer,
+            new NoteRuleTransformer,
             new NoOpRuleTransformer,
         ];
     }

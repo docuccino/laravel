@@ -61,6 +61,7 @@ final class AttributeResponsesExtension implements OperationExtension
         IgnoredResponses::sweep($operation, $context);
 
         $this->reportIllegalComponents($context);
+        $this->reportIllegalSchemaNames($context);
 
         foreach ($context->attributes->all(Response::class) as $attribute) {
             $status = (string) $attribute->status;
@@ -111,6 +112,14 @@ final class AttributeResponsesExtension implements OperationExtension
             // One declared shape, not a keyword-by-keyword patch: whatever a producer worked out about
             // the body it replaces comes off with it (SchemaDraft::declareShape()).
             $schema = $context->converter()->toSchema($this->types->parseDeclared($attribute->type, $imports))->schema;
+
+            // The body under the name its author gave it — the body as published, so an envelope a wrap
+            // writes is what the name names. No identity: identical bodies named alike are one component,
+            // and different bodies contesting one name are settled as any contest is.
+            if ($attribute->schemaName !== null && ComponentNames::isLegal($attribute->schemaName)) {
+                $schema = $context->components->reference($attribute->schemaName, $schema);
+            }
+
             $response->content($mediaType)->declareShape($schema, Contribution::attribute($context->actionSource()));
         }
 
@@ -131,6 +140,46 @@ final class AttributeResponsesExtension implements OperationExtension
             Contribution::attribute($context->actionSource(), specificity: 1),
             namesResponse: true,
         );
+    }
+
+    /**
+     * One warning per `schemaName:` no component key can carry, which names nothing and leaves the body
+     * where it would have been. Keyed and sorted as {@see reportIllegalComponents()} is.
+     */
+    private function reportIllegalSchemaNames(RouteContext $context): void
+    {
+        /** @var array<string, array{string, string}> $illegal */
+        $illegal = [];
+        foreach ($context->attributes->all(Response::class) as $attribute) {
+            $name = $attribute->schemaName;
+            if ($name === null || $attribute->type === null || ComponentNames::isLegal($name)) {
+                continue;
+            }
+
+            $status = (string) $attribute->status;
+            if (IgnoredResponses::drops($context, $status)) {
+                continue;
+            }
+
+            $illegal[$status."\0".$name] = [$status, $name];
+        }
+
+        ksort($illegal);
+
+        foreach ($illegal as [$status, $name]) {
+            $context->components->addDiagnostic(new Diagnostic(
+                severity: Severity::Warning,
+                code: 'attribute.response-schema-name-invalid',
+                message: sprintf(
+                    '#[Response(status: %s, schemaName: "%s")] is not a name an OpenAPI component key can carry, so the argument names nothing and the body is published as it would have been.',
+                    $status,
+                    $name,
+                ),
+                source: $context->actionSource(),
+                routeSignature: $context->route->signature(),
+                help: ComponentNames::LEGAL_NAME_HELP,
+            ));
+        }
     }
 
     /**

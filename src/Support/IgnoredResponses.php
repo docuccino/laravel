@@ -118,6 +118,16 @@ final class IgnoredResponses
         $notes = $context->notes()->snapshot();
 
         $mapped = $context->mapThrow($throw);
+
+        // A throw that is no response at all ({@see AssertedThrows}) is read the same way and rolled back the
+        // same way, but no declaration dropped it, so no match is recorded for one.
+        if ($mapped !== null && AssertedThrows::unsent($throw, $mapped)) {
+            $context->components->restore($components);
+            $context->notes()->restore($notes);
+
+            return null;
+        }
+
         if ($mapped === null || ! self::drops($context, $mapped->draft->status)) {
             return $mapped;
         }

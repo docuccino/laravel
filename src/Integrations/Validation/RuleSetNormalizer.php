@@ -18,9 +18,10 @@ use Docuccino\Laravel\Integrations\Validation\Transformers\SizeRuleTransformer;
 /**
  * Makes a recovered field map coherent before the rule chain runs — the facts only visible ACROSS
  * fields, or in the ORDER a field's rules were written ({@see gated()}), which a per-field
- * {@see RuleTransformer} cannot see. A bare `prohibited` field and everything
+ * {@see RuleTransformer} cannot see. A bare `prohibited` or `missing` field and everything
  * under it is dropped, since the API refuses it outright (the conditional forms and `prohibits` stay —
- * those fields are sendable). The rest is one question asked of every field: `array` is the one word
+ * those fields are sendable), and `required_array_keys` states each key it names `present`
+ * ({@see withRequiredKeys()}). The rest is one question asked of every field: `array` is the one word
  * Laravel's vocabulary has for both containers, so what the field's CHILD keys say decides which it is.
  * A named, non-`*` child key proves an object, and the `array`/`list` word trades for `object` — a
  * `{"type": "array", "properties": …}` validates nothing. No child key at all proves nothing, and the
@@ -37,6 +38,9 @@ use Docuccino\Laravel\Integrations\Validation\Transformers\SizeRuleTransformer;
  */
 final class RuleSetNormalizer
 {
+    /** Laravel's rule naming the keys an array value must hold, each read as `present` on that key. */
+    public const REQUIRED_KEYS_RULE = 'required_array_keys';
+
     /** Type rules meaning "PHP array", which a named child key resolves to an object. */
     private const ARRAY_RULES = ['array', 'list'];
 
@@ -94,7 +98,7 @@ final class RuleSetNormalizer
      */
     private function fields(array $fields): array
     {
-        $fields = $this->withoutProhibited(array_map(self::gated(...), $fields));
+        $fields = $this->withoutProhibited(self::withRequiredKeys(array_map(self::gated(...), $fields)));
 
         $keys = array_keys($fields);
 
@@ -348,7 +352,7 @@ final class RuleSetNormalizer
         $prohibited = [];
         foreach ($fields as $field => $fieldRules) {
             foreach ($fieldRules as $rule) {
-                if ($rule->name === 'prohibited') {
+                if ($rule->name === 'prohibited' || $rule->name === 'missing') {
                     // Cast for the same reason {@see FieldPaths::hasNamedChild()} does: a purely numeric
                     // field key reaches PHP as an INT array key, and a path is read as a string.
                     $prohibited[] = (string) $field;
@@ -373,6 +377,41 @@ final class RuleSetNormalizer
         }
 
         return $out;
+    }
+
+    /**
+     * `required_array_keys:a,b` on a field as what it checks: each key it names is in the value, whatever
+     * that key holds — which is exactly `present` on the key's own path, and so the JSON Schema `required`
+     * that publishes. Written onto the child, created if no rule names it, so the field reads as the object
+     * its named keys prove. A key Laravel reads literally but a path would split (`a.b`, `*`) names no child
+     * this can write, and is left unstated.
+     *
+     * @param  array<string, list<ValidationRule>>  $fields
+     * @return array<string, list<ValidationRule>>
+     */
+    private static function withRequiredKeys(array $fields): array
+    {
+        foreach ($fields as $field => $fieldRules) {
+            foreach ($fieldRules as $rule) {
+                if ($rule->name !== self::REQUIRED_KEYS_RULE) {
+                    continue;
+                }
+
+                foreach ($rule->parameters as $key) {
+                    if ($key === '' || str_contains($key, '.') || str_contains($key, '*')) {
+                        continue;
+                    }
+
+                    $child = $field.'.'.$key;
+                    $present = array_filter($fields[$child] ?? [], static fn (ValidationRule $r): bool => in_array($r->name, ['present', 'required'], true));
+                    if ($present === []) {
+                        $fields[$child] = [...$fields[$child] ?? [], ValidationRule::of('present')];
+                    }
+                }
+            }
+        }
+
+        return $fields;
     }
 
     /**

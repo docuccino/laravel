@@ -253,9 +253,9 @@ it('derives the refusing rules from the validator Laravel installed', function (
     ];
 
     // Implicit rules the vocabulary does not read: the field stays as permissive as the rule leaves it, and
-    // the blank with it — the rule-unhandled diagnostic is what the author sees.
-    $unread = ['missing', 'missing_if', 'missing_unless', 'missing_with', 'missing_with_all', 'present_if',
-        'present_unless', 'present_with', 'present_with_all', 'required_if_accepted', 'required_if_declined'];
+    // the blank with it — the rule-unhandled diagnostic is what the author sees. Every rule the framework
+    // ships is read today ({@see FrameworkRuleCoverageTest}), so none is.
+    $unread = [];
 
     $refusing = [];
     foreach ($implicit as $studly) {
@@ -286,8 +286,18 @@ it('derives the refusing rules from the validator Laravel installed', function (
             continue;
         }
 
-        expect(in_array($rule, $unread, true))->toBeFalse($rule.' is listed as unread')
-            ->and(BlankAsNull::of(($this->schema)('field', $rules)))->toBe($taken ? BlankString::PATTERN : null, $rules);
+        expect(in_array($rule, $unread, true))->toBeFalse($rule.' is listed as unread');
+
+        // A rule no request may satisfy by sending the field (`missing`) leaves it out of the document, which
+        // agrees with the server only while the server refuses the blank too.
+        $document = validationSchema(new RuleSet(['field' => RuleParsing::tokens($rules)]), schemaConverter());
+        if (! isset($document['properties']['field'])) {
+            expect($taken)->toBeFalse($rules.' omits the field, so the server must refuse it sent blank');
+
+            continue;
+        }
+
+        expect(BlankAsNull::of(($this->schema)('field', $rules)))->toBe($taken ? BlankString::PATTERN : null, $rules);
     }
 
     sort($refusing);

@@ -363,6 +363,28 @@ final class WorkbenchEngine
                 self::ARTICLE_MODEL => new ClassMetadata(self::ARTICLE_MODEL, [
                     new PropertyMetadata('slug', ScalarT::string()),
                 ]),
+                // Models that resolve their own binding: a `{playbook:slug}` segment types off `slug` only
+                // where the override is read as the framework's own lookup, and `title` and `reference` are
+                // what a memo's or a consignment's segment would be typed from if its override were misread
+                // as one.
+                self::PLAYBOOK_MODEL => new ClassMetadata(self::PLAYBOOK_MODEL, [
+                    new PropertyMetadata('id', ScalarT::string()),
+                    new PropertyMetadata('slug', ScalarT::string()),
+                    new PropertyMetadata('owner_id', UnionT::of([ScalarT::int(), new NullT])),
+                ]),
+                self::BULLETIN_MODEL => new ClassMetadata(self::BULLETIN_MODEL, [
+                    new PropertyMetadata('id', ScalarT::string()),
+                    new PropertyMetadata('published', ScalarT::bool()),
+                ]),
+                self::MEMO_MODEL => new ClassMetadata(self::MEMO_MODEL, [
+                    new PropertyMetadata('id', ScalarT::int()),
+                    new PropertyMetadata('title', ScalarT::string()),
+                    new PropertyMetadata('archived', ScalarT::bool()),
+                ]),
+                self::CONSIGNMENT_MODEL => new ClassMetadata(self::CONSIGNMENT_MODEL, [
+                    new PropertyMetadata('id', ScalarT::int()),
+                    new PropertyMetadata('reference', ScalarT::string()),
+                ]),
                 self::LEDGER_MODEL => new ClassMetadata(self::LEDGER_MODEL, [
                     new PropertyMetadata('id', ScalarT::int()),
                     new PropertyMetadata('reference', ScalarT::string(), 'The ledger\'s human reference.'),
@@ -489,6 +511,14 @@ final class WorkbenchEngine
     private const LEDGER_MODEL = 'Workbench\\App\\Models\\Ledger';
 
     private const ARTICLE_MODEL = 'Workbench\\App\\Models\\Article';
+
+    private const PLAYBOOK_MODEL = 'Workbench\\App\\Models\\Playbook';
+
+    private const BULLETIN_MODEL = 'Workbench\\App\\Models\\Bulletin';
+
+    private const MEMO_MODEL = 'Workbench\\App\\Models\\Memo';
+
+    private const CONSIGNMENT_MODEL = 'Workbench\\App\\Models\\Consignment';
 
     private const PAYMENT_EXCEPTION = 'Workbench\\App\\Exceptions\\PaymentRequiredException';
 }

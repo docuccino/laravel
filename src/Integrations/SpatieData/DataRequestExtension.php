@@ -19,6 +19,7 @@ use Docuccino\Laravel\Integrations\FormRequest\UnrecoveredRules;
 use Docuccino\Laravel\Integrations\Support\RuleDialect;
 use Docuccino\Laravel\Integrations\Validation\RuleOrdering;
 use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
+use Docuccino\Laravel\Integrations\Validation\UnreadRule;
 use ReflectionMethod;
 use ReflectionNamedType;
 use Throwable;
@@ -143,7 +144,7 @@ final class DataRequestExtension implements OperationExtension
 
         foreach ($this->rules->unreadRuleObjects() as $unread) {
             if ($unread['narrows']) {
-                $notes->unread($context, $unread['key'], sprintf('Data property %s::$%s has a rule this build cannot read (%s), so that rule is left off %s; the rest of its rules are documented.', $unread['class'], $unread['property'], $unread['rule'], RecoveredRequest::destination($context)));
+                $notes->unread($context, $unread['key'], sprintf('Data property %s::$%s has a rule this build cannot read (%s), so that rule is left off %s; the rest of its rules are documented.', $unread['class'], $unread['property'], $unread['rule'], RecoveredRequest::destination($context)), UnreadRule::classOf($unread['rule']));
 
                 continue;
             }

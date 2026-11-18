@@ -9,6 +9,7 @@ use Docuccino\Core\Extensions\Validation\RecoveredRequest;
 use Docuccino\Core\Extensions\Validation\RuleSet;
 use Docuccino\Core\Inference\ActionRef;
 use Docuccino\Laravel\Integrations\Support\RuleDialect;
+use Docuccino\Laravel\Integrations\Validation\UnreadRule;
 use ReflectionClass;
 
 /**
@@ -128,7 +129,7 @@ final class RulesFromClass
         }
 
         foreach ($unread as $field => $rules) {
-            $notes->unread($context, (string) $field, sprintf('Validation field "%s" on %s has a rule this build cannot read (%s), so that rule is left off %s; the rest of its rules are documented.', $field, $class, implode(', ', $rules), RecoveredRequest::destination($context)));
+            $notes->unread($context, (string) $field, sprintf('Validation field "%s" on %s has a rule this build cannot read (%s), so that rule is left off %s; the rest of its rules are documented.', $field, $class, implode(', ', $rules), RecoveredRequest::destination($context)), count($rules) === 1 ? UnreadRule::classOf($rules[0]) : null);
         }
 
         foreach (array_values(array_unique($unrecoverable)) as $field) {

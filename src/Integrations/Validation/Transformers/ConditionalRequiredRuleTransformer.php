@@ -10,9 +10,10 @@ use Docuccino\Core\Extensions\Validation\ValidationField;
 use Docuccino\Core\Extensions\Validation\ValidationRule;
 
 /**
- * `required_if`, `required_unless`, `required_with[_all]`, `required_without[_all]`. The field is required
- * only under a runtime condition OpenAPI can't express, so it stays optional — the safe floor — and the
- * condition becomes a "Required when …" note.
+ * `required_if[_accepted|_declined]`, `required_unless`, `required_with[_all]`, `required_without[_all]`, and
+ * the `present_*` forms that require the key without requiring a value. The field is required only under a
+ * runtime condition OpenAPI can't express, so it stays optional — the safe floor — and the condition becomes
+ * a "Required when …" or "Must be sent when …" note.
  */
 final class ConditionalRequiredRuleTransformer implements RuleTransformer
 {
@@ -23,6 +24,12 @@ final class ConditionalRequiredRuleTransformer implements RuleTransformer
         'required_with_all',
         'required_without',
         'required_without_all',
+        'required_if_accepted',
+        'required_if_declined',
+        'present_if',
+        'present_unless',
+        'present_with',
+        'present_with_all',
     ];
 
     public function supports(ValidationRule $rule): bool
@@ -69,6 +76,15 @@ final class ConditionalRequiredRuleTransformer implements RuleTransformer
             'required_without', 'required_without_all' => $one
                 ? sprintf('Required when %s is absent.', $field)
                 : sprintf($rule->name === 'required_without' ? 'Required when any of %s is absent.' : 'Required when %s are all absent.', $list),
+            // Laravel reads only the first field for these two.
+            'required_if_accepted' => sprintf('Required when %s is accepted.', $field),
+            'required_if_declined' => sprintf('Required when %s is declined.', $field),
+            // `present` asks for the key and nothing about its value, so the note says "sent", not "required".
+            'present_if' => sprintf('Must be sent, even empty, when %s is %s.', $field, implode(' or ', $values)),
+            'present_unless' => sprintf('Must be sent, even empty, unless %s is %s.', $field, implode(' or ', $values)),
+            'present_with', 'present_with_all' => $one
+                ? sprintf('Must be sent, even empty, when %s is present.', $field)
+                : sprintf($rule->name === 'present_with' ? 'Must be sent, even empty, when any of %s is present.' : 'Must be sent, even empty, when %s are all present.', $list),
             default => null,
         };
     }

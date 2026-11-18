@@ -73,6 +73,16 @@ function bindingFactRoutes(): callable
             ->scopeBindings();
         // A framework trait that validates the value before the default lookup, which keeps the column.
         $router->get('api/binding-beacons/{beacon}', [BindingController::class, 'showBeacon']);
+        // Models that resolve a binding in code of their own only to narrow which records it admits — a
+        // grouped closure, a plain extra where — and still look the segment up as the framework does, by
+        // key and by a column the route names; one that looks it up on its route key whatever the route
+        // names; and one that changes the value before looking it up.
+        $router->get('api/binding-playbooks/{playbook}', [BindingController::class, 'showPlaybook']);
+        $router->get('api/binding-playbook-slugs/{playbook:slug}', [BindingController::class, 'showPlaybook']);
+        $router->get('api/binding-bulletins/{bulletin}', [BindingController::class, 'showBulletin']);
+        $router->get('api/binding-memos/{memo}', [BindingController::class, 'showMemo']);
+        $router->get('api/binding-memo-titles/{memo:title}', [BindingController::class, 'showMemo']);
+        $router->get('api/binding-consignments/{consignment}', [BindingController::class, 'showConsignment']);
         // Every note a binding writes, on segments their author described as well.
         $router->get('api/binding-described/{ledger:reference}/entries/{entry}', [DescribedBindingController::class, 'showEntry'])
             ->scopeBindings()
@@ -134,6 +144,40 @@ it('names the column a binding is matched on', function (string $path, string $n
     'a model whose framework trait validates the value first' => ['/api/binding-beacons/{beacon}', 'beacon', 'id'],
     // The parent decodes its own segment but finds its children the framework's way, on their key.
     'a child of a model that resolves only its own binding' => ['/api/binding-vouchers/{voucher}/entries/{entry}', 'entry', 'id'],
+    // The model resolves its binding itself only to narrow which records it admits, and looks the segment
+    // up on `$field ?? $this->getRouteKeyName()` as the framework does.
+    'a model that narrows its own lookup in a closure' => ['/api/binding-playbooks/{playbook}', 'playbook', 'id'],
+    'a model that narrows its own lookup with a where' => ['/api/binding-bulletins/{bulletin}', 'bulletin', 'id'],
+    'a model that narrows its own lookup, under a column the route names' => ['/api/binding-playbook-slugs/{playbook}', 'playbook', 'slug'],
+    // `$this->getRouteKeyName()` alone is the framework's column wherever the route names none.
+    'a model that narrows its own lookup on its route key' => ['/api/binding-memos/{memo}', 'memo', 'id'],
+]);
+
+/**
+ * The framework looks a segment up with `where($field ?? $this->getRouteKeyName(), $value)`. A model that
+ * overrides `resolveRouteBinding()` to run that same lookup with conditions of its own beside it — the
+ * owner's records and the shared ones, published ones only — still matches the value against that column
+ * as the value arrived, so a value not shaped like the column never resolves. The segment is the column's
+ * shape, exactly as the default binding publishes it, and nothing reports it as unread.
+ */
+it('types a model that only narrows its own lookup as the default binding', function (string $path, string $name, array $schema, string $description): void {
+    $result = localityBuild(bindingFactRoutes());
+    /** @var array{schema: array<string, mixed>, description?: string} $parameter */
+    $parameter = pathParameter(emittedArray($result)['paths'][$path]['get'], $name);
+    unset($parameter['schema']['x-docuccino']);
+    $reported = array_filter(
+        [...diagnosticsCoded($result->diagnostics, 'route-binding.untyped'), ...diagnosticsCoded($result->diagnostics, 'route-binding.column-untyped')],
+        static fn ($diagnostic): bool => $diagnostic->routeSignature === 'GET '.$path,
+    );
+
+    expect($parameter['schema'])->toBe($schema)
+        ->and($parameter['description'] ?? null)->toBe($description)
+        ->and($reported)->toBe([]);
+})->with([
+    'narrowed in a closure, on a uuid key' => ['/api/binding-playbooks/{playbook}', 'playbook', ['type' => 'string', 'format' => 'uuid'], 'Matched on the resource\'s `id`.'],
+    'narrowed with a where, on a ulid key' => ['/api/binding-bulletins/{bulletin}', 'bulletin', ['type' => 'string', 'format' => 'ulid'], 'Matched on the resource\'s `id`.'],
+    'narrowed, under a column the route names' => ['/api/binding-playbook-slugs/{playbook}', 'playbook', ['type' => 'string'], 'Matched on the resource\'s `slug`.'],
+    'narrowed on its route key, on an integer key' => ['/api/binding-memos/{memo}', 'memo', ['type' => 'integer'], 'Matched on the resource\'s `id`.'],
 ]);
 
 /**
@@ -182,6 +226,11 @@ it('says nothing about a column it cannot read', function (string $path, string 
     'a model that narrows its binding query' => ['/api/binding-coupons/{coupon}', 'coupon'],
     // The parent finds its scoped children in code of its own, so the child's key decides nothing.
     'a child its parent finds its own way' => ['/api/binding-coupons/{coupon}/entries/{entry}', 'entry'],
+    // The lookup is the framework's column, but on an upper-cased value, so what a client sends is not
+    // what the column holds.
+    'a model that changes the value before looking it up' => ['/api/binding-consignments/{consignment}', 'consignment'],
+    // The lookup is on the route key whatever the route names, so `title` is not the column it matches.
+    'a model that looks up its route key, under a column the route names' => ['/api/binding-memo-titles/{memo}', 'memo'],
 ]);
 
 /**
@@ -220,6 +269,8 @@ it('widens the schema of a binding whose column it cannot read, and reports it',
     'a model that resolves its bindings itself' => ['/api/binding-vouchers/{voucher}', 'voucher', 'route-binding.untyped', true],
     'a model that narrows its binding query' => ['/api/binding-coupons/{coupon}', 'coupon', 'route-binding.untyped', true],
     'a child its parent finds its own way' => ['/api/binding-coupons/{coupon}/entries/{entry}', 'entry', 'route-binding.untyped', true],
+    'a model that changes the value before looking it up' => ['/api/binding-consignments/{consignment}', 'consignment', 'route-binding.untyped', true],
+    'a model that looks up its route key, under a column the route names' => ['/api/binding-memo-titles/{memo}', 'memo', 'route-binding.untyped', true],
 ]);
 
 /**

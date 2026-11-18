@@ -81,7 +81,8 @@ final readonly class FormRequestFailure
         ));
         $throws = array_values(array_filter(
             $analysis->throws,
-            static fn (ThrownException $throw): bool => $throw->disposition === ThrowDisposition::Signal,
+            // An assertion is kept for the mapping to decide, as an action's is ({@see AssertedThrows}).
+            static fn (ThrownException $throw): bool => $throw->disposition === ThrowDisposition::Signal || $throw->disposition === ThrowDisposition::Assertion,
         ));
 
         return new self($hook, $declaring.'::'.$hook.'()', $responses, $throws);

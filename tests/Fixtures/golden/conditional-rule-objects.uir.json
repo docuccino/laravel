@@ -168,6 +168,7 @@
             "description": "Must be accepted when kind is business or charity."
           },
           "email": {
+            "description": "Required when newsletter is accepted.",
             "type": "string"
           },
           "kind": {
@@ -194,12 +195,14 @@
             "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
           },
           "referral": {
+            "description": "Must not be sent when kind is business.",
             "type": "string"
           },
           "terms": {
             "description": "Must be accepted when kind is business."
           },
           "vat": {
+            "description": "Must be sent, even empty, when kind is business.",
             "type": "string"
           },
           "website": {
@@ -220,7 +223,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "3edea95593227699c224b6897b656fa85b9a5f9e9bcba5fb3fccba18072ea735"
+      "contentHash": "5f2a3eb60a2132739da23aa6191142a21faffe144c8ff6e19a2c10c5407a6f3d"
     },
     "generator": {
       "name": "docuccino/laravel",

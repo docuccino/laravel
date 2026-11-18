@@ -62,7 +62,9 @@ final class ErrorResponsesExtension implements OperationExtension
         $illegal = [];
 
         foreach ($context->analysis()->throws as $throw) {
-            if ($throw->disposition !== ThrowDisposition::Signal) {
+            // An assertion is mapped too: the application's exception handling may render it at a status of
+            // its own, and only the mapping says whether it does ({@see AssertedThrows}).
+            if ($throw->disposition !== ThrowDisposition::Signal && $throw->disposition !== ThrowDisposition::Assertion) {
                 continue;
             }
 

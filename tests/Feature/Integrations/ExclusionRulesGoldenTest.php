@@ -89,7 +89,8 @@ it('takes every body the server takes, and refuses the values it excludes', func
     'a numeric suffix' => [['suffix' => 5], true, true],
     'an alias equal to the username' => [['alias' => 'ada'], false, false],
     'a nickname not_regex excludes' => [['nickname' => 'admin1'], false, false],
-    'a prefix doesnt_start_with excludes' => [['prefix' => 'sysop'], false, false],
-    'a suffix doesnt_end_with excludes' => [['suffix' => 'chatbot'], false, false],
+    // An escaped literal states these exactly, so the document refuses what the server does.
+    'a prefix doesnt_start_with excludes' => [['prefix' => 'sysop'], false, true],
+    'a suffix doesnt_end_with excludes' => [['suffix' => 'chatbot'], false, true],
     'a referrer from a guest' => [['role' => 'guest', 'referrer' => 'x'], false, false],
 ]);

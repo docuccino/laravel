@@ -207,16 +207,21 @@ function fieldNoticeTraces(): array
     ];
 }
 
-function fieldNoticeDocument(): GenerationResult
+function fieldNoticeRoutes(): callable
 {
-    return localityBuild(static function (Router $router): void {
+    return static function (Router $router): void {
         $router->post('api/field-notices', [NoticeFieldsController::class, 'store']);
         // The same three unreadable shapes on a read verb, where the rules become query parameters.
         $router->get('api/field-notices', [NoticeFieldsController::class, 'index']);
         // And the other declaration site for the same notice: an inline validate(), whose only
         // declarations are the ones on the action itself.
         $router->post('api/field-notices/inline', [InlineValidationController::class, 'store']);
-    }, static fn (): TypeEngine => WorkbenchEngine::make(traceOverrides: fieldNoticeTraces()));
+    };
+}
+
+function fieldNoticeDocument(): GenerationResult
+{
+    return localityBuild(fieldNoticeRoutes(), static fn (): TypeEngine => WorkbenchEngine::make(traceOverrides: fieldNoticeTraces()));
 }
 
 /**
@@ -244,15 +249,31 @@ it('emits the validation notice population and its document byte-identically', f
             'validation.container-undecided',
             'validation.container-undecided',
             'validation.rule-unrecoverable',
-            // A rule left out beside rules that read: on the body, the query and an inline validate().
-            'validation.rule-unrecoverable',
-            'validation.rule-unrecoverable',
+            // A rule left out beside rules that read — one rule class on the body, the query and an inline
+            // validate(), said once for the class, since annotating it answers all three; and a closure.
             'validation.rule-unrecoverable',
             'validation.rule-unrecoverable',
             // A conditional rule, which gives up its field.
             'validation.rule-unrecoverable',
         ],
-        ['"secret"', '"visibility"', '"window"', '"meta"', 'omitted from the query parameters', 'omitted from the request schema', '"reference"', '"body"', '"audience"', '"term"', '"summary"', 'left off the query parameters'],
+        ['"secret"', '"visibility"', '"window"', '"meta"', 'omitted from the query parameters', 'omitted from the request schema', '"body"', '"audience"', 'NoticeFilter is a rule this build cannot read, so it is left off each of the 3 fields it validates, across 3 operations (GET /api/field-notices, POST /api/field-notices, POST /api/field-notices/inline)'],
         ['"attachment"', '"status"', '"tags"', '"marker"', '"scope"', '"payload"', '"title"', '"channel"', '"author"'],
     );
+});
+
+/**
+ * One rule class unread on three routes is one notice, read off the class each route's notice names as its
+ * source. Every route's notices come back off its cached fragment on a warm build, so the class has to
+ * travel with them — a warm build that lost it would print three notices where a cold one prints one.
+ */
+it('reads one rule class across routes as one notice on a warm build too', function (): void {
+    $warm = assertWarmEqualsCold(fieldNoticeRoutes(), fieldNoticeRoutes(), static fn (): TypeEngine => WorkbenchEngine::make(traceOverrides: fieldNoticeTraces()));
+
+    $merged = array_values(array_filter(
+        $warm->diagnostics,
+        static fn (Diagnostic $d): bool => str_starts_with($d->message, 'Workbench\\App\\Rules\\NoticeFilter is a rule this build cannot read'),
+    ));
+
+    expect($merged)->toHaveCount(1)
+        ->and($merged[0]->source?->file)->toBe('workbench/app/Rules/NoticeFilter.php');
 });

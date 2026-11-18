@@ -171,3 +171,45 @@ it('answers null with nothing to roll back when no mapper claims the throw', fun
     expect(IgnoredResponses::mapThrow($context, rollbackThrow()))->toBeNull()
         ->and($context->notes()->all())->toBe([]);
 });
+
+/** A throw the analysis files as an assertion, on a route dropping `$ignored`. */
+function rollbackAssertion(string $status, ?int $ignored = null): array
+{
+    $attributes = new AttributeSet;
+    if ($ignored !== null) {
+        $attributes->add(new IgnoreResponse($ignored));
+    }
+
+    $context = new RouteContext(
+        route: new RouteDescriptor(['GET'], 'api/gadgets'),
+        actionRef: new ActionRef('/app/Http/GadgetController.php', 'App\\Http\\GadgetController', 'index'),
+        attributes: $attributes,
+        engine: new StubTypeEngine,
+        document: new DocumentConfig('default', []),
+        extensions: new ResolvedExtensions(exceptionToResponse: [rollbackWritingMapper($status)]),
+    );
+
+    return [$context, new ThrownException('LogicException', 500, [], ThrowConfidence::Certain, ThrowDisposition::Assertion)];
+}
+
+it('leaves nothing of an assertion rendered as a 500 behind, and records no drop for one', function (?int $ignored): void {
+    [$context, $throw] = rollbackAssertion('500', $ignored);
+
+    // No request gets it, so it is read and rolled back like a dropped status — but no declaration dropped
+    // it, so an ignore naming its status did nothing, and the pass that says so must be able to.
+    expect(IgnoredResponses::mapThrow($context, $throw))->toBeNull()
+        ->and($context->components->schemas())->toBe([])
+        ->and($context->components->diagnostics())->toBe([])
+        ->and($context->notes()->all())->toBe([])
+        ->and($context->dependencyFiles())->toContain('/app/Exceptions/Renderer.php');
+})->with([
+    'no ignore' => [null],
+    'an ignore naming its status' => [500],
+]);
+
+it('keeps an assertion the application renders at a status of its own', function (): void {
+    [$context, $throw] = rollbackAssertion('422');
+
+    expect(IgnoredResponses::mapThrow($context, $throw)?->draft->status)->toBe('422')
+        ->and(array_keys($context->components->schemas()))->toBe(['Discarded']);
+});

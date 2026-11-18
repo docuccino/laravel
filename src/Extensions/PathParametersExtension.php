@@ -64,8 +64,9 @@ use ReflectionEnum;
  * What is NOT settled is left out rather than guessed. A column comes from the route where the route
  * names one (`{post:slug}`) and from the bound model's route key otherwise — but only while nothing
  * has moved that decision into a method body, which an override of the key methods or a binder of the
- * application's own both do. A short description costs a consumer nothing; a wrong one sends them to
- * look records up by the wrong attribute.
+ * application's own both do. An override that only adds conditions to the framework's own lookup has
+ * not. A short description costs a consumer nothing; a wrong one sends them to look records up by the
+ * wrong attribute.
  */
 #[ExtensionOrder(priority: Priorities::EARLY)]
 final class PathParametersExtension implements OperationExtension

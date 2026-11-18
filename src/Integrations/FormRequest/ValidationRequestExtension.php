@@ -12,6 +12,7 @@ use Docuccino\Core\Extensions\Validation\RecoveredRequest;
 use Docuccino\Core\Extensions\Validation\RuleSet;
 use Docuccino\Laravel\Integrations\Validation\RuleOrdering;
 use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
+use Docuccino\Laravel\Integrations\Validation\UnreadRule;
 
 /**
  * Documents a request from its validation rules. Recovers a rule set statically — a FormRequest's
@@ -101,7 +102,7 @@ final class ValidationRequestExtension implements OperationExtension
         }
 
         foreach ($visitor->unreadRules() as $field => $rules) {
-            $notes->unread($context, $field, sprintf('Inline validation field "%s" has a rule this build cannot read (%s), so that rule is left off %s; the rest of its rules are documented.', $field, implode(', ', $rules), RecoveredRequest::destination($context)));
+            $notes->unread($context, $field, sprintf('Inline validation field "%s" has a rule this build cannot read (%s), so that rule is left off %s; the rest of its rules are documented.', $field, implode(', ', $rules), RecoveredRequest::destination($context)), count($rules) === 1 ? UnreadRule::classOf($rules[0]) : null);
         }
 
         foreach ($visitor->widenedFields() as $field) {

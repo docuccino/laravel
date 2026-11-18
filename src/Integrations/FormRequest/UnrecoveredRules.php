@@ -7,7 +7,11 @@ namespace Docuccino\Laravel\Integrations\FormRequest;
 use Docuccino\Core\Diagnostics\Diagnostic;
 use Docuccino\Core\Diagnostics\Severity;
 use Docuccino\Core\Extensions\Context\RouteContext;
+use Docuccino\Core\Extensions\Schema\DeclarationFiles;
 use Docuccino\Core\Extensions\Validation\DeclaredFields;
+use Docuccino\Core\Provenance\RootRelativeSourcePathResolver;
+use Docuccino\Core\Provenance\Source;
+use ReflectionClass;
 
 /**
  * The notes a rules recovery owes for a field it could not fully read, and the stand-down both take:
@@ -42,10 +46,14 @@ final class UnrecoveredRules
         $this->report($context, $field, Severity::Info, 'validation.rule-unrecoverable', $message, RulesHarvestingVisitor::OPAQUE_HELP);
     }
 
-    /** A field documented without a rule it could not read, one that can only refuse values; null as above. */
-    public function unread(RouteContext $context, ?string $field, string $message): void
+    /**
+     * A field documented without a rule it could not read, one that can only refuse values; null as above.
+     * Where that rule is one class's object, the class is the notice's source: annotating it answers every
+     * field it is on, which is what lets the notices it raises be read as one ({@see UnreadRuleNotices}).
+     */
+    public function unread(RouteContext $context, ?string $field, string $message, ?string $ruleClass = null): void
     {
-        $this->report($context, $field, Severity::Info, 'validation.rule-unrecoverable', $message, RulesHarvestingVisitor::UNREAD_HELP);
+        $this->report($context, $field, Severity::Info, 'validation.rule-unrecoverable', $message, RulesHarvestingVisitor::UNREAD_HELP, self::classSource($context, $ruleClass));
     }
 
     /** A field that recovered some of its rules and widened past values it could not read. */
@@ -58,7 +66,7 @@ final class UnrecoveredRules
      * The severity and the code travel from the callers above rather than being chosen here, so the
      * diagnostics-reference scanner reads both off a literal argument list ({@see tools/diagnostic-codes.php}).
      */
-    private function report(RouteContext $context, ?string $field, Severity $severity, string $code, string $message, string $help): void
+    private function report(RouteContext $context, ?string $field, Severity $severity, string $code, string $message, string $help, ?Source $source = null): void
     {
         if ($field !== null && $this->declared->publishes($field)) {
             return;
@@ -68,8 +76,29 @@ final class UnrecoveredRules
             severity: $severity,
             code: $code,
             message: $message,
+            source: $source,
             routeSignature: $context->route->signature(),
             help: $help,
         ));
+    }
+
+    /**
+     * Where the rule class is written, named by its FQCN. The file joins the route's dependencies, since the
+     * notice now carries its path and a warm build must carry the same one a cold build would.
+     */
+    private static function classSource(RouteContext $context, ?string $class): ?Source
+    {
+        if ($class === null || ! class_exists($class)) {
+            return null;
+        }
+
+        $file = (new ReflectionClass($class))->getFileName();
+        if ($file === false) {
+            return null;
+        }
+
+        $context->recordDependencyFiles(DeclarationFiles::of($class));
+
+        return new Source(($context->pathResolver ?? new RootRelativeSourcePathResolver(''))->relative($file), null, $class);
     }
 }

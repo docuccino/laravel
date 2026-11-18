@@ -169,6 +169,7 @@
             "format": "date"
           },
           "labels": {
+            "description": "Must contain none of: spam.",
             "type": [
               "array",
               "object"
@@ -188,6 +189,7 @@
             "example": 1
           },
           "tags": {
+            "description": "Must contain each of: featured.",
             "type": [
               "array",
               "object"
@@ -208,7 +210,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "b8ba7c096ff6ae96df7acccf360a3a4fdda6f9cc19e519bc96a79a68ff83ce9f"
+      "contentHash": "7cee8a85a614322c0eeafc85dfe4e9932f3a855605a2d6044e075e73f229bb45"
     },
     "generator": {
       "name": "docuccino/laravel",

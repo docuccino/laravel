@@ -12,9 +12,10 @@ use Docuccino\Laravel\Integrations\Validation\RuleSetNormalizer;
 
 /**
  * Valid Laravel rules with nothing left to say about the request shape by the time the chain runs, consumed
- * so none raises `validation.rule-unhandled`. The exclude family's effect is on rule ORDER, which only
- * {@see RuleSetNormalizer} sees, and it has already applied it; prohibitions are a real fact about the
- * request, handled by {@see ProhibitedRuleTransformer}.
+ * so none raises `validation.rule-unhandled`. The exclude family's effect is on rule ORDER, and
+ * `required_array_keys` speaks about the keys beneath the field, both of which only {@see RuleSetNormalizer}
+ * sees, and it has already applied them; prohibitions are a real fact about the request, handled by
+ * {@see ProhibitedRuleTransformer}.
  */
 final class NoOpRuleTransformer implements RuleTransformer
 {
@@ -26,6 +27,7 @@ final class NoOpRuleTransformer implements RuleTransformer
         'exclude_with',
         'exclude_without',
         'current_password',
+        'required_array_keys',
     ];
 
     public function supports(ValidationRule $rule): bool

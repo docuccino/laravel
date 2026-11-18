@@ -25,6 +25,8 @@ use Docuccino\Laravel\Tests\Fixtures\ResponseLinks\LabelController;
 use Docuccino\Laravel\Tests\Fixtures\ResponseLinks\MisdeclaredLinkController;
 use Docuccino\Laravel\Tests\Fixtures\ResponseLinks\Pallet;
 use Docuccino\Laravel\Tests\Fixtures\ResponseLinks\PalletResource;
+use Docuccino\Laravel\Tests\Fixtures\ResponseLinks\Pamphlet;
+use Docuccino\Laravel\Tests\Fixtures\ResponseLinks\PamphletController;
 use Docuccino\Laravel\Tests\Fixtures\ResponseLinks\Parcel;
 use Docuccino\Laravel\Tests\Fixtures\ResponseLinks\ParcelController;
 use Docuccino\Laravel\Tests\Fixtures\ResponseLinks\ParcelResource;
@@ -339,6 +341,37 @@ it('writes no link to a model that resolves its bindings itself', function (): v
     expect($paths['/api/crates']['post']['responses']['200']['links'])->toHaveKey('get.api.crates.@crate')
         ->and($paths['/api/tokens']['post']['responses']['200'])->not->toHaveKey('links')
         ->and($paths['/api/tokens/{token}']['get']['responses']['200'])->not->toHaveKey('links');
+});
+
+/**
+ * A model that overrides its binding only to narrow which records resolve still looks the segment up on
+ * its route key, with the value as it arrived, so the key a body sends is the value the route takes: it
+ * is linked as any model is. Its narrowing is a global scope's on a default binding — a record outside it
+ * answers 404 either way — and the link says only which value the parameter takes.
+ */
+it('links a model that only narrows its own lookup as any model', function (): void {
+    $routes = static function (Router $router): void {
+        $router->post('api/pamphlets', [PamphletController::class, 'store']);
+        $router->get('api/pamphlets/{pamphlet}', [PamphletController::class, 'show']);
+    };
+    $engine = static function (): TypeEngine {
+        $returns = static fn (string $fqcn): ActionAnalysis => new ActionAnalysis(returns: [new ReturnSite(new ClassT($fqcn), new SourceLocation(''))]);
+
+        return WorkbenchEngine::make(
+            classOverrides: [
+                Pamphlet::class => new ClassMetadata(Pamphlet::class, [new PropertyMetadata('id', ScalarT::int()), new PropertyMetadata('published', ScalarT::bool())]),
+            ],
+            analysisOverrides: [
+                PamphletController::class.'::store' => $returns(Pamphlet::class),
+                PamphletController::class.'::show' => $returns(Pamphlet::class),
+            ],
+        );
+    };
+
+    $paths = emittedArray(localityBuild($routes, $engine))['paths'];
+
+    expect($paths['/api/pamphlets']['post']['responses']['200']['links']['get.api.pamphlets.@pamphlet']['parameters'] ?? null)
+        ->toBe(['pamphlet' => '$response.body#/id']);
 });
 
 /**

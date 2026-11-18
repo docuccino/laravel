@@ -54,6 +54,15 @@ final class UnreadRule
     }
 
     /**
+     * The class a {@see classify()} label names — its exact inverse, so a reader holding only the label
+     * reads the class this wrote — or null for a closure and for any label it did not write.
+     */
+    public static function classOf(string $label): ?string
+    {
+        return str_starts_with($label, 'new ') && $label !== 'new ' ? substr($label, 4) : null;
+    }
+
+    /**
      * Whether a rule object of this class only refuses values. A class this build cannot load is taken
      * as a rule object, which is what a `new` in a rules list is; a loaded class that is none of Laravel's
      * own and implements no rule contract is cast to a rule string nothing here can read.

@@ -42,7 +42,7 @@ final class BoundColumn
         $parent = $context->scopedBindings[$name] ?? null;
         $parentBound = $parent === null ? null : ($context->routeBindings[$parent] ?? null);
 
-        return ($bound !== null && EloquentModelReflector::resolvesOwnBinding($bound))
+        return ($bound !== null && EloquentModelReflector::resolvesOwnBinding($bound, $context->routeBindingFields[$name] ?? null))
             || ($parentBound !== null && EloquentModelReflector::resolvesChildBindings($parentBound));
     }
 }

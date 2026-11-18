@@ -70,15 +70,16 @@ it('serves the generated OpenAPI JSON', function (): void {
 it('projects a tag hierarchy as x-tagGroups through the spec endpoint', function (string $driver): void {
     config()->set('docuccino.documents.default.viewer.gate', 'viewApiDocs');
     config()->set('docuccino.documents.default.viewer.driver', $driver);
+    // Two tags the workbench's operations carry: a group lists only tags an operation carries.
     setBuild('documents.default.tags.definitions', [
-        ['name' => 'Billing'],
-        ['name' => 'Invoices', 'parent' => 'Billing'],
+        ['name' => 'Forms'],
+        ['name' => 'Widgets', 'parent' => 'Forms'],
     ]);
     Gate::before(static fn ($user = null): bool => true);
 
     $json = json_decode((string) $this->get('/docs/api.json')->getContent(), true);
 
-    expect($json['x-tagGroups'])->toBe([['name' => 'Billing', 'tags' => ['Billing', 'Invoices']]]);
+    expect($json['x-tagGroups'])->toBe([['name' => 'Forms', 'tags' => ['Forms', 'Widgets']]]);
 })->with(['scalar', 'redoc']);
 
 // The absence pin: an unset `viewer.configuration` must publish no attribute at all, not an empty

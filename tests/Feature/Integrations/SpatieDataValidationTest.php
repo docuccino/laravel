@@ -205,18 +205,13 @@ it('drives the supported tokens through the shared chain to the expected schema'
     expect($result->schema['required'])->toContain('email', 'required');
 });
 
-it('degrades an unsupported spatie validation attribute like an unknown string rule', function (): void {
-    // `active_url` has no transformer → the field stays a plain typed property and an info diagnostic
-    // names it, identical to the unknown-string-rule contract (ValidationVocabularyTest).
+it('reads a spatie validation attribute as the framework rule it validates with', function (): void {
+    // `#[ActiveUrl]` validates with the framework's `active_url`, which the chain reads as every framework
+    // rule is read: a note beside the string type, and nothing reported unhandled.
     $result = buildValidatedSchema([new PropertyMetadata('activeUrl', ScalarT::string())]);
 
-    expect($result->schema['properties']['activeUrl'])->toBe(['type' => 'string']);
-
-    $unhandled = array_values(array_filter(
-        $result->diagnostics,
-        static fn ($d): bool => $d->code === 'validation.rule-unhandled' && str_contains($d->message, '"active_url"'),
-    ));
-    expect($unhandled)->toHaveCount(1);
+    expect(SchemaNotes::rendered($result->schema)['properties']['activeUrl'])->toBe(['type' => 'string', 'description' => 'Must be a URL whose host resolves in DNS.'])
+        ->and(array_filter($result->diagnostics, static fn ($d): bool => $d->code === 'validation.rule-unhandled'))->toBe([]);
 });
 
 it('reads an attribute that builds a rule object as the rules Laravel validates with that object', function (string $attribute, string $source, ClassT|ScalarT $type, array $schema, array $unread): void {

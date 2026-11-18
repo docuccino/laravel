@@ -166,6 +166,7 @@ it('maps every schema-producing string rule to its fragment', function (array $r
     'ipv4' => [[['ipv4']], ['format' => 'ipv4', 'type' => 'string', 'example' => '192.0.2.1']],
     'ipv6' => [[['ipv6']], ['format' => 'ipv6', 'type' => 'string', 'example' => '2001:db8::1']],
     'date' => [[['date']], ['format' => 'date', 'type' => 'string', 'example' => '2024-01-01']],
+    'base64' => [[['base64']], ['contentEncoding' => 'base64', 'type' => 'string', 'example' => 'ZXhhbXBsZQ==']],
 
     // ChoiceRuleTransformer — string set and numeric set, plus the enum-FQCN note. A validation set is
     // a closed set the application enforces, so it carries the member names every other published value
@@ -1063,9 +1064,9 @@ it('refuses a stated example the field\'s value list does not hold', function ()
 });
 
 it('raises an info diagnostic for a rule no transformer handles', function (): void {
-    // `lowercase` is outside the mapped vocabulary, so the field stays permissive and the unhandled
-    // contract holds.
-    $result = convertLaravelRules(['token' => 'string|lowercase']);
+    // Every rule the framework ships is read, so the one left is a name an application or a package
+    // registers with `Validator::extend()`: the field stays permissive and the unhandled contract holds.
+    $result = convertLaravelRules(['token' => 'string|postcode']);
 
     expect($result->schema['properties']['token'])->toBe(['type' => 'string'])
         ->and($result->diagnostics)->toHaveCount(1)
