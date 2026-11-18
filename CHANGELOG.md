@@ -7,6 +7,19 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.25.0
+
+### Features
+
+- publish a declared response body under the schema name #[Response] gives it ([#810](https://github.com/docuccino/docuccino/pull/810))
+- read every validation rule the installed framework ships ([#805](https://github.com/docuccino/docuccino/pull/805))
+
+### Bug fixes
+
+- say once that a rule class is unread, however many fields it is on ([#806](https://github.com/docuccino/docuccino/pull/806))
+- type a segment whose model only narrows the framework's own binding lookup ([#802](https://github.com/docuccino/docuccino/pull/802))
+- document an assertion only at a status the application renders it with ([#800](https://github.com/docuccino/docuccino/pull/800))
+
 ## v0.24.0
 
 ### Breaking changes
