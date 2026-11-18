@@ -7,6 +7,18 @@ User-facing changes to `docuccino/laravel` — features, fixes, performance work
 taken from the commit messages scoped `laravel`. Entries begin after v0.1.2; older history is in
 the [repository](https://github.com/docuccino/docuccino) git log.
 
+## v0.25.1
+
+### Features
+
+- publish the schema description #[Response] gives the schema it names ([#823](https://github.com/docuccino/docuccino/pull/823))
+
+### Bug fixes
+
+- say what an empty filter value does only where it matches rows with none ([#819](https://github.com/docuccino/docuccino/pull/819))
+- check the limiter of every throttle on a route, as the framework looks it up ([#814](https://github.com/docuccino/docuccino/pull/814))
+- stop reporting a route behind several throttles ([#813](https://github.com/docuccino/docuccino/pull/813))
+
 ## v0.25.0
 
 ### Features
