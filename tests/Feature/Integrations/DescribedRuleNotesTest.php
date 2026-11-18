@@ -131,7 +131,7 @@ it('keeps what the rules enforce beneath the description an author writes', func
     'a Data property docblock, in the body' => ['/api/zz-ranges', 'post', 'until', "End of the range.\n\nMust be a date after from."],
     'a Data property #[Description], in the query' => ['/api/zz-ranges', 'get', 'nickname', "What the lister goes by.\n\nMust not be sent when kind is business."],
     'a Data property #[Description], in the body' => ['/api/zz-ranges', 'post', 'nickname', "What the lister goes by.\n\nMust not be sent when kind is business."],
-    'a #[QueryParameter] over a filter\'s list and null' => ['/api/zz-gadgets', 'get', 'filter[status]', "The state to list.\n\nAccepts a comma-separated list of values (matched as `whereIn`). Accepts `null` to filter for absent values."],
+    'a #[QueryParameter] over a filter\'s list and null' => ['/api/zz-gadgets', 'get', 'filter[status]', "The state to list.\n\nAccepts a comma-separated list of values (matched as `whereIn`). An empty value matches rows that have no value."],
 ]);
 
 it('publishes the rules\' sentences alone where nobody described the field', function (string $field, string $expected): void {

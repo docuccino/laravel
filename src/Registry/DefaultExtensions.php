@@ -9,6 +9,7 @@ use Docuccino\Core\Extensions\BuiltIn\AttributeExamplesExtension;
 use Docuccino\Core\Extensions\BuiltIn\AttributeOverridesExtension;
 use Docuccino\Core\Extensions\BuiltIn\DefaultTypeMappers;
 use Docuccino\Core\Extensions\BuiltIn\EnumSchema;
+use Docuccino\Core\Extensions\BuiltIn\ReferencedSchemaDescriptions;
 use Docuccino\Core\Extensions\BuiltIn\SharedErrorResponses;
 use Docuccino\Core\Extensions\Context\DocumentConfig;
 use Docuccino\Core\Extensions\Schema\UnusableBodyDeclarations;
@@ -166,6 +167,9 @@ final class DefaultExtensions
             // The only document transformer that moves a byte, so everything reading the finished
             // document comes after it.
             SharedErrorResponses::class,
+            // Settles what the responses naming one schema say it is, over the hoisted document, so a
+            // description agreed by several declarations lands once and two that disagree land nowhere.
+            ReferencedSchemaDescriptions::class,
             // Derives the API version this document IS, after the last producer of bytes and before the
             // lints, so they read what will be emitted. A document declaring no `api_version` is not a
             // version and this moves nothing.

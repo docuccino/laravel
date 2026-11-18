@@ -35,10 +35,10 @@ it('keeps what a filter accepts beneath the description its author writes, in ei
 
     expect($published)->toBe($expected);
 })->with([
-    'bracketed, undescribed' => ['bracketed', null, 'Exact match on `status`. Accepts a comma-separated list of values (matched as `whereIn`). Accepts `null` to filter for absent values.'],
-    'bracketed, described' => ['bracketed', 'The state to list.', "The state to list.\n\nAccepts a comma-separated list of values (matched as `whereIn`). Accepts `null` to filter for absent values."],
-    'deepObject, undescribed' => ['deepObject', null, 'Exact match on `status`. Accepts a comma-separated list of values (matched as `whereIn`). Accepts `null` to filter for absent values.'],
-    'deepObject, described' => ['deepObject', 'The state to list.', "The state to list.\n\nAccepts a comma-separated list of values (matched as `whereIn`). Accepts `null` to filter for absent values."],
+    'bracketed, undescribed' => ['bracketed', null, 'Exact match on `status`. Accepts a comma-separated list of values (matched as `whereIn`). An empty value matches rows that have no value.'],
+    'bracketed, described' => ['bracketed', 'The state to list.', "The state to list.\n\nAccepts a comma-separated list of values (matched as `whereIn`). An empty value matches rows that have no value."],
+    'deepObject, undescribed' => ['deepObject', null, 'Exact match on `status`. Accepts a comma-separated list of values (matched as `whereIn`). An empty value matches rows that have no value.'],
+    'deepObject, described' => ['deepObject', 'The state to list.', "The state to list.\n\nAccepts a comma-separated list of values (matched as `whereIn`). An empty value matches rows that have no value."],
 ]);
 
 it('names the filter integration beside the author of a described filter', function (): void {

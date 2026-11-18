@@ -450,7 +450,7 @@
             },
             "name": "filter[unset_status]",
             "in": "query",
-            "description": "Exact match on `unset_status`. Accepts a comma-separated list of values (matched as `whereIn`). Accepts `null` to filter for absent values. Defaults to `null`.",
+            "description": "Exact match on `unset_status`. Accepts a comma-separated list of values (matched as `whereIn`). An empty value matches rows that have no value. Defaults to `null`.",
             "required": false,
             "style": "form",
             "explode": false,
@@ -623,7 +623,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "dada0f543501a51b93b7f0f6b12ac9d3781268c2e4f97bf4c53149ee60ad6802",
-      "contentHash": "86642ec749fccaff2e0ac395227c7e1780860ae1d572d6d606cee8f83166d586"
+      "contentHash": "1107def7c01704facc567f589e67270b59b9d0d877795ec4f33ce948d7b0250e"
     },
     "generator": {
       "name": "docuccino/laravel",

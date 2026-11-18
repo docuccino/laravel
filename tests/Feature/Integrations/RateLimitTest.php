@@ -33,7 +33,9 @@ use Illuminate\Cache\RateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Routing\Router;
+use Workbench\App\Http\Controllers\ArchiveController;
 use Workbench\App\Http\Controllers\FormController;
 use Workbench\App\Http\Controllers\IgnoredResponsesController;
 
@@ -151,10 +153,8 @@ it('reports a throttle on a limiter name nothing registered, and documents the s
 
 it('still reports an unregistered limiter on a route that ignores the 429', function (): void {
     // An `#[IgnoreResponse(429)]` says what to document; it says nothing about whether the limiter the
-    // route names exists. Consulting it above this check hid the app bug — every guest request 429s —
-    // behind an attribute about documentation. The multiple-throttles notice goes the other way: it
-    // reports what the DOCUMENT does with several throttles, so an operation documenting no 429 has
-    // nothing to under-report and would otherwise state a 429 that is not there.
+    // route names exists. Consulting it above this check hid the app bug — every guest request fails —
+    // behind an attribute about documentation.
     /** @var Router $router */
     $router = app('router');
     $router->get('api/ignored-named-throttle', [IgnoredResponsesController::class, 'throttled'])
@@ -168,28 +168,67 @@ it('still reports an unregistered limiter on a route that ignores the 429', func
     expect($reported)->toHaveCount(1)
         ->and($reported[0]->message)->toContain('"reports"')
         ->and($reported[0]->routeSignature)->toBe('GET /api/ignored-named-throttle')
-        ->and(diagnosticsCoded($result->diagnostics, 'rate-limit.multiple-throttles'))->toBe([])
         ->and($result->document->toArray()['paths']['/api/ignored-named-throttle']['get']['responses'] ?? [])
         ->not->toHaveKey('429');
 });
 
-it('says which throttle the one documented 429 came from when a route carries several', function (): void {
-    // OpenAPI has one 429 per operation, so a route behind two throttles documents the first and the
-    // reader is told the rest are still enforced — silence here reads as "one limit", which is a lie
-    // about what the server does.
+it('documents one 429 for a route behind several throttles, and reports nothing about it', function (): void {
+    // Every ThrottleRequests builds its 429 through the same path, and the documented 429 states no limit
+    // value (see RateLimitResponse), so the response a second throttle would add is byte-for-byte the one
+    // already there: one 429 is the whole truth about two limits, not the first limit's half of it. A
+    // notice saying "only the first is represented" would describe nothing the reader could find or fix.
     /** @var Router $router */
     $router = app('router');
-    $router->get('api/double-throttle', [FormController::class, 'index'])->middleware(['throttle:60,1', 'throttle:10,1']);
+    $router->get('api/single-throttle', [FormController::class, 'index'])->middleware('throttle:60,1');
+    $router->get('api/double-throttle', [ArchiveController::class, 'ping'])->middleware(['throttle:60,1', 'throttle:10,1']);
 
     bindStubEngine();
     $result = generateDocument();
+    $document = $result->document->toArray();
 
-    $reported = diagnosticsCoded($result->diagnostics, 'rate-limit.multiple-throttles');
+    $single = stripDocuccinoRecursive($document['paths']['/api/single-throttle']['get']['responses']['429'] ?? null);
+    $double = stripDocuccinoRecursive($document['paths']['/api/double-throttle']['get']['responses']['429'] ?? null);
+
+    expect($double)->not->toBeNull()
+        ->and($double)->toBe($single)
+        ->and(array_values(array_filter(
+            $result->diagnostics,
+            static fn ($diagnostic): bool => str_starts_with($diagnostic->code, 'rate-limit.'),
+        )))->toBe([]);
+});
+
+it('checks the limiter of every throttle on a route, not only the first', function (array $middleware): void {
+    // Each throttle on a route is enforced on its own, so an unregistered name anywhere in the stack fails
+    // requests exactly as one in first place does. Two throttles naming the same limiter are one fact.
+    /** @var Router $router */
+    $router = app('router');
+    $router->get('api/stacked-throttle', [FormController::class, 'index'])->middleware($middleware);
+
+    bindStubEngine();
+    $reported = diagnosticsCoded(generateDocument()->diagnostics, 'rate-limit.unregistered-limiter');
 
     expect($reported)->toHaveCount(1)
-        ->and($reported[0]->message)->toContain('2 throttle middleware')
-        ->and($reported[0]->routeSignature)->toBe('GET /api/double-throttle')
-        ->and($result->document->toArray()['paths']['/api/double-throttle']['get']['responses'])->toHaveKey('429');
+        ->and($reported[0]->message)->toContain('"reports"')
+        ->and($reported[0]->routeSignature)->toBe('GET /api/stacked-throttle');
+})->with([
+    'second of two' => [['throttle:60,1', 'throttle:reports']],
+    // The router already drops a repeated middleware string, so the repeat that reaches the check is one
+    // limiter spelled two ways.
+    'named twice' => [['throttle:reports', 'throttle:10,1', ThrottleRequests::using('reports')]],
+]);
+
+it('reports every unregistered limiter a route names, not only the first', function (): void {
+    /** @var Router $router */
+    $router = app('router');
+    $router->get('api/two-unregistered', [FormController::class, 'index'])->middleware(['throttle:reports', 'throttle:exports']);
+
+    bindStubEngine();
+    $reported = diagnosticsCoded(generateDocument()->diagnostics, 'rate-limit.unregistered-limiter');
+
+    expect(array_map(static fn ($diagnostic): string => $diagnostic->message, $reported))->toEqualCanonicalizing([
+        'Route throttles on the named rate limiter "reports", but nothing registers it with RateLimiter::for().',
+        'Route throttles on the named rate limiter "exports", but nothing registers it with RateLimiter::for().',
+    ]);
 });
 
 it('reports nothing for a registered named limiter, however dynamic it is', function (): void {

@@ -77,7 +77,7 @@
                   "overrode": [
                     {
                       "field": "description",
-                      "value": "Exact match on `status`. Accepts a comma-separated list of values (matched as `whereIn`). Accepts `null` to filter for absent values.",
+                      "value": "Exact match on `status`. Accepts a comma-separated list of values (matched as `whereIn`). An empty value matches rows that have no value.",
                       "producer": "integration:query-builder"
                     }
                   ]
@@ -101,7 +101,7 @@
             },
             "name": "filter[status]",
             "in": "query",
-            "description": "The state to list.\n\nAccepts a comma-separated list of values (matched as `whereIn`). Accepts `null` to filter for absent values.",
+            "description": "The state to list.\n\nAccepts a comma-separated list of values (matched as `whereIn`). An empty value matches rows that have no value.",
             "required": false,
             "style": "form",
             "explode": false,
@@ -281,7 +281,7 @@
             },
             "name": "filter[status]",
             "in": "query",
-            "description": "Exact match on `status`. Accepts a comma-separated list of values (matched as `whereIn`). Accepts `null` to filter for absent values.",
+            "description": "Exact match on `status`. Accepts a comma-separated list of values (matched as `whereIn`). An empty value matches rows that have no value.",
             "required": false,
             "style": "form",
             "explode": false,
@@ -1904,7 +1904,7 @@
     "document": {
       "id": "doc:default",
       "configHash": "8f7eeda32123d2dee5fba7c0722222043d8ddbf9b8453f13b0703604d4a1472a",
-      "contentHash": "ab57e3a13b009c154c04ff1fe3d46ee3886002fb345e7c544a2e85230d7417e4"
+      "contentHash": "21cb7b6f951969a6d92d18a3af028723cff700b4c2789e3c4256c046a0aebda7"
     },
     "generator": {
       "name": "docuccino/laravel",

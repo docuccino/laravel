@@ -27,12 +27,16 @@ it('tells a named limiter from an inline allowance, for each throttle form', fun
     // A pipe side may name a property on the user rather than a number (Laravel's resolveMaxAttempts);
     // the lookup uses the whole string, and nobody registers a limiter with a pipe in its name.
     'pipe form naming a user attribute' => ['throttle:10|rate_limit', null],
+    // With more than one parameter the framework consults no limiter at all: the first is a number, or an
+    // attribute on the signed-in user (resolveMaxAttempts), whatever a `RateLimiter::for` registers.
+    'user attribute with decay' => ['throttle:rate_limit,1', null],
+    'registered-looking name with a trailing argument' => ['throttle:api,extra', null],
+    'FQCN ::with() naming a user attribute' => ['Illuminate\Routing\Middleware\ThrottleRequests:rate_limit,1,uploads', null],
     'FQCN ::with() numeric' => ['Illuminate\Routing\Middleware\ThrottleRequests:60,1', null],
     'FQCN bare' => ['Illuminate\Routing\Middleware\ThrottleRequests', null],
     'FQCN redis variant numeric' => ['Illuminate\Routing\Middleware\ThrottleRequestsWithRedis:120,2', null],
     // Named limiters.
     'named limiter' => ['throttle:api', 'api'],
-    'named limiter with a trailing argument' => ['throttle:api,extra', 'api'],
     'named limiter with surrounding space' => ['throttle: api ', 'api'],
     'FQCN ::using() named' => ['Illuminate\Routing\Middleware\ThrottleRequests:api', 'api'],
     'FQCN redis variant named' => ['Illuminate\Routing\Middleware\ThrottleRequestsWithRedis:uploads', 'uploads'],

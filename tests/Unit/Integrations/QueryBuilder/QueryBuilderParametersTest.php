@@ -892,9 +892,9 @@ it('publishes a filter default as an instance of the schema beside it, and in pr
         (new QbEntry('status', 'exact', hasDefault: true, default: 'live'))->withColumn(enumColumnSchema(), enumTyped: true),
         ',', null, 'Accepts a comma-separated list of values (matched as `whereIn`). Defaults to `live`.',
     ],
-    'null is matched as absent values, which the type does not admit' => [
+    'null, which an empty value matches and the type does not admit' => [
         (new QbEntry('status', 'exact', hasDefault: true, default: null, nullable: true))->withColumn(enumColumnSchema(), enumTyped: true),
-        ',', null, 'Accepts a comma-separated list of values (matched as `whereIn`). Accepts `null` to filter for absent values. Defaults to `null`.',
+        ',', null, 'Accepts a comma-separated list of values (matched as `whereIn`). An empty value matches rows that have no value. Defaults to `null`.',
     ],
     'one value where nothing splits stays the value' => [
         (new QbEntry('status', 'exact', hasDefault: true, default: 'published'))->withColumn(enumColumnSchema(), enumTyped: true),
@@ -965,8 +965,46 @@ it('appends the nullable note to the description without adding a null enum case
     $byName = specsByName((new QueryBuilderParameters)->build($facts, bracketedPolicy()));
 
     expect($byName['filter[status]']->description)
-        ->toBe('Exact match on `status`. Accepts a comma-separated list of values (matched as `whereIn`). Accepts `null` to filter for absent values.')
+        ->toBe('Exact match on `status`. Accepts a comma-separated list of values (matched as `whereIn`). An empty value matches rows that have no value.')
         ->and($byName['filter[status]']->schema['items']['enum'])->toBe(['draft', 'published', 'archived']);
+});
+
+/**
+ * Spatie's `nullable()` means only that a null reaches the filter class instead of being dropped
+ * (`AllowedFilter::applyTo()`); what the class does with it is the class's own business. A query string has
+ * no `null`, so the null is an empty value the framework's `ConvertEmptyStringsToNull` turned into one. Read
+ * per kind off the filter classes the installed package ships:
+ *
+ *   - `exact`: `where(column, '=', null)`, which the query builder compiles as `whereNull` — the one kind
+ *     where an empty value matches the rows that have none.
+ *   - `partial`, `beginsWith`, `endsWith` (and the v6 spellings): `(string) null` is `''`, so the pattern is
+ *     `%%` or `%` — every row with any value, the opposite of the note.
+ *   - `belongsTo`: an empty list of related models, so no constraint at all.
+ *   - `trashed`: anything but `with`/`only` is `withoutTrashed()`.
+ *   - `operator`: the comparison is not recovered, and a null beside `>` is an exception, not a match.
+ *   - `groupOr`/`groupAnd`: each member's own answer, which this does not read.
+ *   - `scope`, `callback`, `custom`: user code.
+ */
+it('says what an empty value does only for the filter kind where it matches rows with no value', function (string $kind): void {
+    $facts = factsWith(function (QueryBuilderFacts $f) use ($kind): void {
+        $f->filters = [new QbEntry('status', $kind, nullable: true)];
+    });
+
+    $description = specsByName((new QueryBuilderParameters)->build($facts, bracketedPolicy()))['filter[status]']->description;
+
+    expect(str_contains((string) $description, 'An empty value matches rows that have no value.'))->toBe($kind === 'exact')
+        ->and((string) $description)->not->toContain('null');
+})->with(array_values(array_unique([...QueryBuilderParameters::filterKinds(), 'callback', 'custom'])));
+
+it('says nothing about an empty value for an exact match through a relation', function (): void {
+    // `exact('author.name')` constrains through `whereHas`, so an empty value matches rows whose related row
+    // has no name — and never a row with no related row at all, which "no value" would also promise.
+    $facts = factsWith(function (QueryBuilderFacts $f): void {
+        $f->filters = [new QbEntry('author', 'exact', internal: 'author.name', nullable: true)];
+    });
+
+    expect(specsByName((new QueryBuilderParameters)->build($facts, bracketedPolicy()))['filter[author]']->description)
+        ->toBe('Exact match on `author`.');
 });
 
 it('uses a leading comment as the description, overriding the kind sentence', function (): void {
@@ -1193,10 +1231,10 @@ it('appends every note after a configured lead in the same order as after a defa
 
     expect($byName['filter[status]']->description)->toBe($expected);
 })->with([
-    'the default lead' => ['', 'Exact match on `status`. Accepts a comma-separated list of values (matched as `whereIn`). Accepts `null` to filter for absent values.'],
-    'a configured lead' => ['Matches `%field%` exactly.', 'Matches `status` exactly. Accepts a comma-separated list of values (matched as `whereIn`). Accepts `null` to filter for absent values.'],
+    'the default lead' => ['', 'Exact match on `status`. Accepts a comma-separated list of values (matched as `whereIn`). An empty value matches rows that have no value.'],
+    'a configured lead' => ['Matches `%field%` exactly.', 'Matches `status` exactly. Accepts a comma-separated list of values (matched as `whereIn`). An empty value matches rows that have no value.'],
     // The lead is terminated before the notes are appended, whoever wrote it.
-    'a configured lead with no full stop' => ['Matches `%field%` exactly', 'Matches `status` exactly. Accepts a comma-separated list of values (matched as `whereIn`). Accepts `null` to filter for absent values.'],
+    'a configured lead with no full stop' => ['Matches `%field%` exactly', 'Matches `status` exactly. Accepts a comma-separated list of values (matched as `whereIn`). An empty value matches rows that have no value.'],
 ]);
 
 it('composes the custom-separator notes after a configured lead too', function (): void {

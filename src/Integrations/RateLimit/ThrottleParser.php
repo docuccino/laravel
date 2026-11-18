@@ -29,7 +29,15 @@ final class ThrottleParser
             return new ThrottleLimit;
         }
 
-        $first = trim(explode(',', $parameters)[0]);
+        // The framework looks a limiter up only when the throttle has exactly one parameter
+        // (`func_num_args() === 3` in ThrottleRequests::handle). With more, a non-numeric first one is read
+        // as an attribute on the signed-in user — `throttle:rate_limit,1` — and registering a limiter of
+        // that name would change nothing, so it is an allowance this cannot check, never a name.
+        if (str_contains($parameters, ',')) {
+            return new ThrottleLimit;
+        }
+
+        $first = trim($parameters);
 
         // Pipe form `10|60` is guest|authenticated allowances — see Laravel's resolveMaxAttempts. Never a
         // limiter name: the lookup uses the whole string, and nobody registers one containing a pipe.

@@ -24,9 +24,10 @@ use Illuminate\Cache\RateLimiter;
  * whose route carries a `throttle` middleware. Always on — `throttle` ships with Laravel.
  *
  * The 429 itself is the same for every throttled route, limit values included — see
- * {@see RateLimitResponse} for why. A named limiter (`throttle:api`) is still looked up in the booted
- * app's `RateLimiter::for` registrations, but only to check that the registration exists — see
- * {@see checkRegistered()}.
+ * {@see RateLimitResponse} for why — and so one 429 is the whole truth about a route behind several
+ * throttles: each of them refuses a request with that same response. A named limiter (`throttle:api`) is
+ * still looked up in the booted app's `RateLimiter::for` registrations, but only to check that the
+ * registration exists — see {@see checkRegistered()}.
  *
  * The body comes from the error-response chain rather than this integration — see {@see body()} for why a
  * middleware-synthesized response has to ask, and why it stays inline.
@@ -64,25 +65,22 @@ final class RateLimitResponsesExtension implements OperationExtension
             return;
         }
 
-        $limit = $limits[0];
-
-        // Above the ignore consult, because what it reports is an application bug rather than anything
-        // about the documented response — see {@see checkRegistered()}. An author saying "do not document
-        // the 429" has not said the limiter is registered.
-        if ($limit->name !== null) {
-            $this->checkRegistered($limit->name, $context);
+        // Every throttle on the route is enforced on its own, so every name is checked, each once. Above the
+        // ignore consult, because what it reports is an application bug rather than anything about the
+        // documented response — see {@see checkRegistered()}. An author saying "do not document the 429"
+        // has not said the limiter is registered.
+        $names = array_values(array_unique(array_filter(array_map(
+            static fn (ThrottleLimit $limit): ?string => $limit->name,
+            $limits,
+        ), static fn (?string $name): bool => $name !== null)));
+        foreach ($names as $name) {
+            $this->checkRegistered($name, $context);
         }
 
         // Asked before anything is built: the body below comes from the error-response chain, which
         // registers a shared response component as it goes ({@see IgnoredResponses}).
         if (IgnoredResponses::drops($context, '429')) {
             return;
-        }
-
-        // Below it, because this one reports what the DOCUMENT does with several throttles, and a route
-        // that documents no 429 at all represents none of them to under-report.
-        if (count($limits) > 1) {
-            $this->reportMultiple($limits, $context);
         }
 
         $contribution = Contribution::integration('rate-limit', $context->actionSource());
@@ -265,26 +263,11 @@ final class RateLimitResponsesExtension implements OperationExtension
     }
 
     /**
-     * @param  list<ThrottleLimit>  $limits
-     */
-    private function reportMultiple(array $limits, RouteContext $context): void
-    {
-        $context->components->addDiagnostic(new Diagnostic(
-            severity: Severity::Info,
-            code: 'rate-limit.multiple-throttles',
-            message: sprintf(
-                'Route carries %d throttle middleware; a single 429 is documented from the first — the others are enforced independently but not separately represented.',
-                count($limits),
-            ),
-            routeSignature: $context->route->signature(),
-        ));
-    }
-
-    /**
      * Reports a route throttling on a name nothing registered. That's an application bug rather than a
-     * documentation one — Laravel's named-limiter lookup misses, `resolveMaxAttempts` falls through and
-     * casts the name to `0` for a guest (so every request 429s) or reads it as a property off the user —
-     * and it changes nothing about the documented 429. Saying so IS the whole point of the check.
+     * documentation one — Laravel's named-limiter lookup misses and `resolveMaxAttempts` falls through,
+     * reading the name as an attribute on the signed-in user and otherwise throwing
+     * `MissingRateLimiterException` — and it changes nothing about the documented 429. Saying so IS the
+     * whole point of the check.
      *
      * What a registered limiter's closure says is deliberately not read: the response is value-free, so a
      * dynamic limiter and a literal one document identically and there is nothing to report about either.

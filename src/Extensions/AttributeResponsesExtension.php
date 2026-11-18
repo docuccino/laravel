@@ -62,6 +62,7 @@ final class AttributeResponsesExtension implements OperationExtension
 
         $this->reportIllegalComponents($context);
         $this->reportIllegalSchemaNames($context);
+        $this->reportUnnamedSchemaDescriptions($context);
 
         foreach ($context->attributes->all(Response::class) as $attribute) {
             $status = (string) $attribute->status;
@@ -118,6 +119,12 @@ final class AttributeResponsesExtension implements OperationExtension
             // and different bodies contesting one name are settled as any contest is.
             if ($attribute->schemaName !== null && ComponentNames::isLegal($attribute->schemaName)) {
                 $schema = $context->components->reference($attribute->schemaName, $schema);
+
+                // Said on the response, not written into the schema: every declaration naming it is a
+                // statement about one thing, settled over the whole document (ReferencedSchemaDescriptions).
+                if ($attribute->schemaDescription !== null) {
+                    $response->describeReferencedSchema($mediaType, $attribute->schemaDescription);
+                }
             }
 
             $response->content($mediaType)->declareShape($schema, Contribution::attribute($context->actionSource()));
@@ -178,6 +185,37 @@ final class AttributeResponsesExtension implements OperationExtension
                 source: $context->actionSource(),
                 routeSignature: $context->route->signature(),
                 help: ComponentNames::LEGAL_NAME_HELP,
+            ));
+        }
+    }
+
+    /**
+     * One warning per `schemaDescription:` with no `schemaName:` beside it: an unnamed body is inline, or
+     * the class's own schema, so there is no schema of the declaration's to describe. Keyed and sorted as
+     * {@see reportIllegalComponents()} is.
+     */
+    private function reportUnnamedSchemaDescriptions(RouteContext $context): void
+    {
+        $unnamed = [];
+        foreach ($context->attributes->all(Response::class) as $attribute) {
+            $status = (string) $attribute->status;
+            if ($attribute->schemaDescription === null || $attribute->schemaName !== null || IgnoredResponses::drops($context, $status)) {
+                continue;
+            }
+
+            $unnamed[$status] = true;
+        }
+
+        ksort($unnamed);
+
+        foreach (array_keys($unnamed) as $status) {
+            $context->components->addDiagnostic(new Diagnostic(
+                severity: Severity::Warning,
+                code: 'attribute.response-schema-description-unnamed',
+                message: sprintf('#[Response(status: %s)] describes a schema it does not name, so the description is published nowhere.', $status),
+                source: $context->actionSource(),
+                routeSignature: $context->route->signature(),
+                help: 'Name the schema with `schemaName:` beside the description, or describe the response itself with `description:`.',
             ));
         }
     }

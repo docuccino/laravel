@@ -26,7 +26,8 @@ final class QueryBuilderParameters
 {
     private const WHERE_IN_NOTE = 'Accepts a comma-separated list of values (matched as `whereIn`).';
 
-    private const NULLABLE_NOTE = 'Accepts `null` to filter for absent values.';
+    /** What an empty value does to a filter that matches it as null ({@see matchesEmptyAsNull()}). */
+    private const NULLABLE_NOTE = 'An empty value matches rows that have no value.';
 
     /** Spatie's `FiltersTrashed` accepts exactly these. */
     private const TRASHED_VALUES = ['with', 'only'];
@@ -296,7 +297,7 @@ final class QueryBuilderParameters
      * had been sent, so on a whereIn array it is the list a request sending it would split into — one
      * value is a list of one, a delimited string its parts. A default that still does not conform is
      * left off rather than published as a value the schema calls invalid; `null` never conforms, since a
-     * nullable filter says so in prose, not in its type.
+     * nullable filter says what an empty value does in prose, where it says anything, never in its type.
      *
      * @param  array<string, mixed>  $schema
      * @return array{0: string|int|float|bool|list<string|int|float|bool>}|null
@@ -361,8 +362,8 @@ final class QueryBuilderParameters
     }
 
     /**
-     * What the filter accepts that its schema cannot say — a list matched as `whereIn`, a `null` that
-     * matches absent values, a default its schema could not carry — as one paragraph, or null where it
+     * What the filter accepts that its schema cannot say — a list matched as `whereIn`, an empty value that
+     * matches rows with none, a default its schema could not carry — as one paragraph, or null where it
      * accepts nothing more. True whatever describes the filter, so a description an author writes over it
      * keeps these beneath.
      */
@@ -372,7 +373,7 @@ final class QueryBuilderParameters
         if ($filter->enumTyped) {
             $notes = [...$notes, ...self::whereInNotes($filter, $config)];
         }
-        if ($filter->nullable) {
+        if (self::matchesEmptyAsNull($filter)) {
             $notes[] = self::NULLABLE_NOTE;
         }
         if ($filter->hasDefault && self::schemaDefault($filter, self::valueSchema($filter, $policy, $config), $config) === null) {
@@ -881,6 +882,19 @@ final class QueryBuilderParameters
             ?? self::OPAQUE_DESCRIPTION;
 
         return str_replace(self::FIELD_TOKEN, $filter->name, $template);
+    }
+
+    /**
+     * Whether an empty value matches the rows that have no value. Spatie's `nullable()` — which a
+     * `default(null)` sets too — only lets a null through to the filter class instead of dropping it, and a
+     * query string's null is an empty value the framework converted. Only `exact` on a column of its own
+     * then compiles `where(column, '=', null)` as `whereNull`; the partial matches read null as `''` and
+     * match every row with a value, the rest constrain nothing or run code of their own, and an exact match
+     * through a relation constrains the related row and so never matches a row without one.
+     */
+    private static function matchesEmptyAsNull(QbEntry $filter): bool
+    {
+        return $filter->nullable && $filter->kind === 'exact' && ! str_contains($filter->column(), '.');
     }
 
     /**
